@@ -25,6 +25,21 @@ const FRAME: u16 = 1 << 10;
 const ENCIRCLE: u16 = 1 << 11;
 const OVERLINE: u16 = 1 << 12;
 
+/// Underline style variants for extended underline rendering.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum UnderlineStyle {
+    /// Standard single underline (SGR 4)
+    Single,
+    /// Double underline (SGR 21)
+    Double,
+    /// Curly/wavy underline (SGR 4:3)
+    Curly,
+    /// Dotted underline (SGR 4:4)
+    Dotted,
+    /// Dashed underline (SGR 4:5)
+    Dashed,
+}
+
 /// A terminal text style with colors, attributes, and links.
 #[derive(Clone, Debug)]
 pub struct Style {
@@ -38,6 +53,10 @@ pub struct Style {
     attributes: u16,
     /// Optional hyperlink URL
     link: Option<String>,
+    /// Optional underline color (SGR 58)
+    underline_color: Option<Color>,
+    /// Optional underline style variant
+    underline_style: Option<UnderlineStyle>,
 }
 
 impl Style {
@@ -67,6 +86,8 @@ impl Style {
             set_attributes: 0,
             attributes: 0,
             link: None,
+            underline_color: None,
+            underline_style: None,
         };
 
         if let Some(c) = color {
@@ -112,6 +133,8 @@ impl Style {
             set_attributes: 0,
             attributes: 0,
             link: None,
+            underline_color: None,
+            underline_style: None,
         }
     }
 
@@ -123,6 +146,8 @@ impl Style {
             set_attributes: 0,
             attributes: 0,
             link: None,
+            underline_color: None,
+            underline_style: None,
         }
     }
 
@@ -319,6 +344,66 @@ impl Style {
         self.link.as_deref()
     }
 
+    /// Returns the underline color.
+    pub fn underline_color(&self) -> Option<&Color> {
+        self.underline_color.as_ref()
+    }
+
+    /// Returns the underline style.
+    pub fn underline_style(&self) -> Option<UnderlineStyle> {
+        self.underline_style
+    }
+
+    /// Sets the bold attribute.
+    pub fn set_bold(&mut self, value: Option<bool>) {
+        self.set_attribute(BOLD, value);
+    }
+
+    /// Sets the dim attribute.
+    pub fn set_dim(&mut self, value: Option<bool>) {
+        self.set_attribute(DIM, value);
+    }
+
+    /// Sets the italic attribute.
+    pub fn set_italic(&mut self, value: Option<bool>) {
+        self.set_attribute(ITALIC, value);
+    }
+
+    /// Sets the underline attribute.
+    pub fn set_underline(&mut self, value: Option<bool>) {
+        self.set_attribute(UNDERLINE, value);
+    }
+
+    /// Sets the blink attribute.
+    pub fn set_blink(&mut self, value: Option<bool>) {
+        self.set_attribute(BLINK, value);
+    }
+
+    /// Sets the reverse attribute.
+    pub fn set_reverse(&mut self, value: Option<bool>) {
+        self.set_attribute(REVERSE, value);
+    }
+
+    /// Sets the conceal attribute.
+    pub fn set_conceal(&mut self, value: Option<bool>) {
+        self.set_attribute(CONCEAL, value);
+    }
+
+    /// Sets the strike attribute.
+    pub fn set_strike(&mut self, value: Option<bool>) {
+        self.set_attribute(STRIKE, value);
+    }
+
+    /// Sets the underline color.
+    pub fn set_underline_color(&mut self, color: Option<Color>) {
+        self.underline_color = color;
+    }
+
+    /// Sets the underline style.
+    pub fn set_underline_style(&mut self, style: Option<UnderlineStyle>) {
+        self.underline_style = style;
+    }
+
     /// Combines multiple styles into one (left-to-right merge).
     pub fn combine(styles: &[Style]) -> Style {
         styles
@@ -357,6 +442,17 @@ impl Style {
             }
         }
 
+        // Underline style codes (extended underline)
+        if let Some(ul_style) = &self.underline_style {
+            match ul_style {
+                UnderlineStyle::Single => codes.push("4:1".to_string()),
+                UnderlineStyle::Double => codes.push("4:2".to_string()),
+                UnderlineStyle::Curly => codes.push("4:3".to_string()),
+                UnderlineStyle::Dotted => codes.push("4:4".to_string()),
+                UnderlineStyle::Dashed => codes.push("4:5".to_string()),
+            }
+        }
+
         // Add color codes
         if let Some(color) = &self.color {
             codes.extend(color.get_ansi_codes(true));
@@ -364,6 +460,33 @@ impl Style {
 
         if let Some(bgcolor) = &self.bgcolor {
             codes.extend(bgcolor.get_ansi_codes(false));
+        }
+
+        // Underline color (SGR 58;5;N or 58;2;R;G;B)
+        if let Some(ul_color) = &self.underline_color {
+            let ul_codes = ul_color.get_ansi_codes(true);
+            // Convert foreground codes to underline color codes (38->58)
+            if !ul_codes.is_empty() {
+                let first = &ul_codes[0];
+                if first == "38" {
+                    codes.push("58".to_string());
+                    codes.extend(ul_codes[1..].iter().cloned());
+                } else {
+                    // Standard color: convert 3x to 58;5;N
+                    // Standard colors use codes 30-37, map to 0-7 for 58;5;N
+                    if let Ok(code_num) = first.parse::<u8>() {
+                        if (30..=37).contains(&code_num) {
+                            codes.push("58".to_string());
+                            codes.push("5".to_string());
+                            codes.push(format!("{}", code_num - 30));
+                        } else if (90..=97).contains(&code_num) {
+                            codes.push("58".to_string());
+                            codes.push("5".to_string());
+                            codes.push(format!("{}", code_num - 90 + 8));
+                        }
+                    }
+                }
+            }
         }
 
         let rendered = if codes.is_empty() {
@@ -386,6 +509,8 @@ impl Style {
             && self.bgcolor.is_none()
             && self.set_attributes == 0
             && self.link.is_none()
+            && self.underline_color.is_none()
+            && self.underline_style.is_none()
     }
 
     /// Returns a copy of this style without colors.
@@ -396,6 +521,8 @@ impl Style {
             set_attributes: self.set_attributes,
             attributes: self.attributes,
             link: self.link.clone(),
+            underline_color: self.underline_color.clone(),
+            underline_style: self.underline_style,
         }
     }
 
@@ -407,6 +534,8 @@ impl Style {
             set_attributes: 0,
             attributes: 0,
             link: None,
+            underline_color: None,
+            underline_style: None,
         }
     }
 
@@ -423,6 +552,8 @@ impl Style {
             set_attributes: self.set_attributes,
             attributes: self.attributes,
             link: None,
+            underline_color: self.underline_color.clone(),
+            underline_style: self.underline_style,
         }
     }
 
@@ -434,6 +565,8 @@ impl Style {
             set_attributes: 0,
             attributes: 0,
             link: Some(url.to_string()),
+            underline_color: None,
+            underline_style: None,
         }
     }
 
@@ -445,6 +578,8 @@ impl Style {
             set_attributes: self.set_attributes,
             attributes: self.attributes,
             link: link.map(|s| s.to_string()),
+            underline_color: self.underline_color.clone(),
+            underline_style: self.underline_style,
         }
     }
 
@@ -553,6 +688,16 @@ impl fmt::Display for Style {
             parts.push(bgcolor.name.clone());
         }
 
+        // Underline style
+        if let Some(ul_style) = &self.underline_style {
+            parts.push(format!("{:?}", ul_style).to_lowercase());
+        }
+
+        // Underline color
+        if let Some(ul_color) = &self.underline_color {
+            parts.push(format!("underline_color({})", ul_color.name));
+        }
+
         // Link
         if let Some(link) = &self.link {
             parts.push("link".to_string());
@@ -574,6 +719,8 @@ impl PartialEq for Style {
             && self.set_attributes == other.set_attributes
             && self.attributes == other.attributes
             && self.link == other.link
+            && self.underline_color == other.underline_color
+            && self.underline_style == other.underline_style
     }
 }
 
@@ -584,6 +731,8 @@ impl std::hash::Hash for Style {
         self.set_attributes.hash(state);
         self.attributes.hash(state);
         self.link.hash(state);
+        self.underline_color.hash(state);
+        self.underline_style.hash(state);
     }
 }
 
@@ -600,6 +749,8 @@ impl Add<Style> for Style {
             attributes: (self.attributes & !rhs.set_attributes)
                 | (rhs.attributes & rhs.set_attributes),
             link: rhs.link.or(self.link),
+            underline_color: rhs.underline_color.or(self.underline_color),
+            underline_style: rhs.underline_style.or(self.underline_style),
         }
     }
 }
@@ -1391,5 +1542,154 @@ mod tests {
         assert_eq!(result.link(), Some("https://example.com"));
         assert_eq!(result.color().unwrap().name, "red");
         assert_eq!(result.bold(), Some(true));
+    }
+
+    // -- Underline enhancement tests ----------------------------------------
+
+    #[test]
+    fn test_underline_style_setter_getter() {
+        let mut style = Style::null();
+        assert!(style.underline_style().is_none());
+        style.set_underline_style(Some(UnderlineStyle::Curly));
+        assert_eq!(style.underline_style(), Some(UnderlineStyle::Curly));
+    }
+
+    #[test]
+    fn test_underline_color_setter_getter() {
+        let mut style = Style::null();
+        assert!(style.underline_color().is_none());
+        let red = Color::parse("red").unwrap();
+        style.set_underline_color(Some(red));
+        assert!(style.underline_color().is_some());
+        assert_eq!(style.underline_color().unwrap().name, "red");
+    }
+
+    #[test]
+    fn test_underline_style_is_not_null() {
+        let mut style = Style::null();
+        style.set_underline_style(Some(UnderlineStyle::Double));
+        assert!(!style.is_null());
+    }
+
+    #[test]
+    fn test_underline_color_is_not_null() {
+        let mut style = Style::null();
+        style.set_underline_color(Some(Color::parse("red").unwrap()));
+        assert!(!style.is_null());
+    }
+
+    #[test]
+    fn test_underline_style_display() {
+        let mut style = Style::null();
+        style.set_underline_style(Some(UnderlineStyle::Curly));
+        assert!(style.to_string().contains("curly"));
+    }
+
+    #[test]
+    fn test_underline_color_display() {
+        let mut style = Style::null();
+        style.set_underline_color(Some(Color::parse("red").unwrap()));
+        assert!(style.to_string().contains("underline_color(red)"));
+    }
+
+    #[test]
+    fn test_underline_style_add() {
+        let mut s1 = Style::null();
+        s1.set_underline_style(Some(UnderlineStyle::Curly));
+        let mut s2 = Style::null();
+        s2.set_underline_style(Some(UnderlineStyle::Dashed));
+        let result = s1 + s2;
+        assert_eq!(result.underline_style(), Some(UnderlineStyle::Dashed));
+    }
+
+    #[test]
+    fn test_underline_color_add() {
+        let mut s1 = Style::null();
+        s1.set_underline_color(Some(Color::parse("red").unwrap()));
+        let s2 = Style::parse("bold").unwrap();
+        let result = s1 + s2;
+        assert_eq!(result.underline_color().unwrap().name, "red");
+    }
+
+    #[test]
+    fn test_underline_style_render_curly() {
+        let mut style = Style::null();
+        style.set_underline_style(Some(UnderlineStyle::Curly));
+        let rendered = style.render("foo", Some(ColorSystem::TrueColor));
+        assert!(rendered.contains("4:3"));
+    }
+
+    #[test]
+    fn test_underline_style_render_dashed() {
+        let mut style = Style::null();
+        style.set_underline_style(Some(UnderlineStyle::Dashed));
+        let rendered = style.render("foo", Some(ColorSystem::TrueColor));
+        assert!(rendered.contains("4:5"));
+    }
+
+    #[test]
+    fn test_underline_color_render_truecolor() {
+        let mut style = Style::null();
+        style.set_underline(Some(true));
+        style.set_underline_color(Some(Color::from_rgb(255, 0, 0)));
+        let rendered = style.render("foo", Some(ColorSystem::TrueColor));
+        // Should contain 58;2;255;0;0 for underline color
+        assert!(rendered.contains("58;2;255;0;0"), "rendered: {}", rendered);
+    }
+
+    #[test]
+    fn test_without_color_preserves_underline_color() {
+        let mut style = Style::parse("bold red on blue").unwrap();
+        style.set_underline_color(Some(Color::parse("green").unwrap()));
+        let without = style.without_color();
+        assert!(without.color().is_none());
+        assert!(without.bgcolor().is_none());
+        assert!(without.underline_color().is_some());
+        assert_eq!(without.underline_color().unwrap().name, "green");
+    }
+
+    #[test]
+    fn test_background_style_clears_underline() {
+        let mut style = Style::parse("bold red on blue").unwrap();
+        style.set_underline_color(Some(Color::parse("green").unwrap()));
+        style.set_underline_style(Some(UnderlineStyle::Curly));
+        let bg = style.background_style();
+        assert!(bg.underline_color().is_none());
+        assert!(bg.underline_style().is_none());
+    }
+
+    #[test]
+    fn test_underline_equality() {
+        let mut s1 = Style::null();
+        s1.set_underline_style(Some(UnderlineStyle::Curly));
+        let mut s2 = Style::null();
+        s2.set_underline_style(Some(UnderlineStyle::Curly));
+        assert_eq!(s1, s2);
+
+        let mut s3 = Style::null();
+        s3.set_underline_style(Some(UnderlineStyle::Dashed));
+        assert_ne!(s1, s3);
+    }
+
+    #[test]
+    fn test_public_setters() {
+        let mut style = Style::null();
+        style.set_bold(Some(true));
+        style.set_dim(Some(true));
+        style.set_italic(Some(true));
+        style.set_underline(Some(true));
+        style.set_blink(Some(true));
+        style.set_reverse(Some(true));
+        style.set_conceal(Some(true));
+        style.set_strike(Some(true));
+
+        assert_eq!(style.bold(), Some(true));
+        assert_eq!(style.dim(), Some(true));
+        assert_eq!(style.italic(), Some(true));
+        assert_eq!(style.underline(), Some(true));
+        assert_eq!(style.blink(), Some(true));
+        assert_eq!(style.reverse(), Some(true));
+        assert_eq!(style.conceal(), Some(true));
+        assert_eq!(style.strike(), Some(true));
     }
 }
