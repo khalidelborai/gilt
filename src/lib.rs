@@ -56,6 +56,8 @@
 
 pub mod align_widget;
 pub mod ansi;
+#[cfg(feature = "anstyle")]
+pub mod anstyle_adapter;
 pub mod bar;
 pub mod box_chars;
 pub mod cells;
@@ -73,8 +75,6 @@ pub mod emoji_codes;
 pub mod emoji_replace;
 pub mod errors;
 pub mod export_format;
-#[cfg(feature = "anstyle")]
-pub mod anstyle_adapter;
 #[cfg(feature = "eyre")]
 pub mod eyre_handler;
 pub mod filesize;

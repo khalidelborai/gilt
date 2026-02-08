@@ -50,14 +50,12 @@ impl From<&Color> for Option<anstyle::Color> {
                     None
                 }
             }
-            ColorType::EightBit => {
-                color.number.map(|n| anstyle::Color::Ansi256(anstyle::Ansi256Color(n)))
-            }
-            ColorType::TrueColor => {
-                color.triplet.map(|t| {
-                    anstyle::Color::Rgb(anstyle::RgbColor(t.red, t.green, t.blue))
-                })
-            }
+            ColorType::EightBit => color
+                .number
+                .map(|n| anstyle::Color::Ansi256(anstyle::Ansi256Color(n))),
+            ColorType::TrueColor => color
+                .triplet
+                .map(|t| anstyle::Color::Rgb(anstyle::RgbColor(t.red, t.green, t.blue))),
         }
     }
 }
@@ -74,12 +72,8 @@ impl From<anstyle::Color> for Color {
                 let n = ansi_color_to_number(ansi);
                 Color::from_ansi(n)
             }
-            anstyle::Color::Ansi256(anstyle::Ansi256Color(n)) => {
-                Color::from_ansi(n)
-            }
-            anstyle::Color::Rgb(anstyle::RgbColor(r, g, b)) => {
-                Color::from_rgb(r, g, b)
-            }
+            anstyle::Color::Ansi256(anstyle::Ansi256Color(n)) => Color::from_ansi(n),
+            anstyle::Color::Rgb(anstyle::RgbColor(r, g, b)) => Color::from_rgb(r, g, b),
         }
     }
 }
@@ -212,13 +206,41 @@ impl From<anstyle::Style> for Style {
 
         let effects = style.get_effects();
 
-        let bold = if effects.contains(anstyle::Effects::BOLD) { Some(true) } else { None };
-        let dim = if effects.contains(anstyle::Effects::DIMMED) { Some(true) } else { None };
-        let italic = if effects.contains(anstyle::Effects::ITALIC) { Some(true) } else { None };
-        let blink = if effects.contains(anstyle::Effects::BLINK) { Some(true) } else { None };
-        let reverse = if effects.contains(anstyle::Effects::INVERT) { Some(true) } else { None };
-        let conceal = if effects.contains(anstyle::Effects::HIDDEN) { Some(true) } else { None };
-        let strike = if effects.contains(anstyle::Effects::STRIKETHROUGH) { Some(true) } else { None };
+        let bold = if effects.contains(anstyle::Effects::BOLD) {
+            Some(true)
+        } else {
+            None
+        };
+        let dim = if effects.contains(anstyle::Effects::DIMMED) {
+            Some(true)
+        } else {
+            None
+        };
+        let italic = if effects.contains(anstyle::Effects::ITALIC) {
+            Some(true)
+        } else {
+            None
+        };
+        let blink = if effects.contains(anstyle::Effects::BLINK) {
+            Some(true)
+        } else {
+            None
+        };
+        let reverse = if effects.contains(anstyle::Effects::INVERT) {
+            Some(true)
+        } else {
+            None
+        };
+        let conceal = if effects.contains(anstyle::Effects::HIDDEN) {
+            Some(true)
+        } else {
+            None
+        };
+        let strike = if effects.contains(anstyle::Effects::STRIKETHROUGH) {
+            Some(true)
+        } else {
+            None
+        };
 
         // Determine underline and underline_style from effects
         let underline;
