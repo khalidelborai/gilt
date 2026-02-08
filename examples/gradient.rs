@@ -42,11 +42,11 @@ fn main() {
     let multi_stop = Gradient::new(
         "This text flows through magenta, orange, cyan, lime green, and gold.",
         vec![
-            Color::from_rgb(255, 0, 255),  // magenta
-            Color::from_rgb(255, 165, 0),  // orange
-            Color::from_rgb(0, 255, 255),  // cyan
-            Color::from_rgb(0, 255, 64),   // lime green
-            Color::from_rgb(255, 215, 0),  // gold
+            Color::from_rgb(255, 0, 255), // magenta
+            Color::from_rgb(255, 165, 0), // orange
+            Color::from_rgb(0, 255, 255), // cyan
+            Color::from_rgb(0, 255, 64),  // lime green
+            Color::from_rgb(255, 215, 0), // gold
         ],
     );
     console.print(&multi_stop);
@@ -55,10 +55,9 @@ fn main() {
     console.print(&Rule::with_title("Gradient + Bold Style"));
 
     let bold_style = Style::parse("bold").unwrap();
-    let bold_gradient = Gradient::rainbow(
-        "Bold rainbow text stands out even more in the terminal!",
-    )
-    .with_style(bold_style);
+    let bold_gradient =
+        Gradient::rainbow("Bold rainbow text stands out even more in the terminal!")
+            .with_style(bold_style);
     console.print(&bold_gradient);
 
     // ── Display Trait (println!) ─────────────────────────────────────────
@@ -81,10 +80,10 @@ fn main() {
     let sunset = Gradient::new(
         "Sunset gradient: deep red through orange to warm yellow",
         vec![
-            Color::from_rgb(139, 0, 0),   // dark red
-            Color::from_rgb(255, 69, 0),   // red-orange
-            Color::from_rgb(255, 140, 0),  // dark orange
-            Color::from_rgb(255, 200, 0),  // amber
+            Color::from_rgb(139, 0, 0),     // dark red
+            Color::from_rgb(255, 69, 0),    // red-orange
+            Color::from_rgb(255, 140, 0),   // dark orange
+            Color::from_rgb(255, 200, 0),   // amber
             Color::from_rgb(255, 255, 100), // warm yellow
         ],
     );

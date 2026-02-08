@@ -152,19 +152,13 @@ fn bench_text_operations(c: &mut Criterion) {
         b.iter(|| newline_text.split(black_box("\n"), false, false));
     });
 
-    let word_text = Text::new(
-        "The quick brown fox jumps over the lazy dog",
-        Style::null(),
-    );
+    let word_text = Text::new("The quick brown fox jumps over the lazy dog", Style::null());
     group.bench_function("split_words", |b| {
         b.iter(|| word_text.split(black_box(" "), false, false));
     });
 
     // divide
-    let divide_text = Text::new(
-        "The quick brown fox jumps over the lazy dog",
-        Style::null(),
-    );
+    let divide_text = Text::new("The quick brown fox jumps over the lazy dog", Style::null());
     group.bench_function("divide", |b| {
         b.iter(|| divide_text.divide(black_box(&[4, 10, 16, 20, 26, 31, 35, 40])));
     });
@@ -263,7 +257,10 @@ fn bench_console_render(c: &mut Criterion) {
     )
     .unwrap();
     let styled_panel = Panel::new(styled_panel_text)
-        .title(Text::new("Alert", Style::parse("bold white on red").unwrap()))
+        .title(Text::new(
+            "Alert",
+            Style::parse("bold white on red").unwrap(),
+        ))
         .style(Style::parse("red").unwrap());
     group.bench_function("panel_styled", |b| {
         b.iter(|| console.render(black_box(&styled_panel), None));

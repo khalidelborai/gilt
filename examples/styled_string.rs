@@ -66,13 +66,28 @@ fn main() {
     console.print(&"Custom foreground: #ff6600 (orange)".fg("#ff6600"));
     console.print(&"Custom foreground: rgb(100,149,237) (cornflower)".fg("rgb(100,149,237)"));
     console.print(&"Custom background: #330066 (deep purple)".bg("#330066"));
-    console.print(&"Combined: bold + #00ff88 fg + #222222 bg".bold().fg("#00ff88").bg("#222222"));
+    console.print(
+        &"Combined: bold + #00ff88 fg + #222222 bg"
+            .bold()
+            .fg("#00ff88")
+            .bg("#222222"),
+    );
 
     // ── Hyperlinks with .link() ──────────────────────────────────────────
     console.print(&Rule::with_title("Hyperlinks"));
 
-    console.print(&"Click me: Rust Homepage".bold().blue().link("https://www.rust-lang.org"));
-    console.print(&"Gilt on GitHub".underline().cyan().link("https://github.com/example/gilt"));
+    console.print(
+        &"Click me: Rust Homepage"
+            .bold()
+            .blue()
+            .link("https://www.rust-lang.org"),
+    );
+    console.print(
+        &"Gilt on GitHub"
+            .underline()
+            .cyan()
+            .link("https://github.com/example/gilt"),
+    );
 
     // ── Works on String too ──────────────────────────────────────────────
     console.print(&Rule::with_title("String (owned) values"));

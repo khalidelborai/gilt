@@ -188,8 +188,7 @@ fn format_value(value: &Value, options: &JsonOptions) -> String {
             let mut buf = Vec::new();
             let indent_str: Vec<u8> = vec![b' '; indent];
             let formatter = serde_json::ser::PrettyFormatter::with_indent(&indent_str);
-            let mut ser =
-                serde_json::Serializer::with_formatter(&mut buf, formatter);
+            let mut ser = serde_json::Serializer::with_formatter(&mut buf, formatter);
             serde::Serialize::serialize(&value, &mut ser)
                 .expect("serialization of Value should not fail");
             String::from_utf8(buf).unwrap_or_default()
@@ -430,7 +429,11 @@ mod tests {
         let plain = json.text.plain();
 
         // Helper to find spans covering a substring
-        fn spans_covering<'a>(text: &'a Text, substr: &str, plain: &str) -> Vec<&'a crate::text::Span> {
+        fn spans_covering<'a>(
+            text: &'a Text,
+            substr: &str,
+            plain: &str,
+        ) -> Vec<&'a crate::text::Span> {
             let start = plain.find(substr).unwrap();
             let char_start = plain[..start].chars().count();
             let char_end = char_start + substr.chars().count();
@@ -444,10 +447,7 @@ mod tests {
         let value_spans = spans_covering(&json.text, "\"value\"", plain);
 
         // Key should have at least one span (the key style from JSONHighlighter)
-        assert!(
-            !key_spans.is_empty(),
-            "key should have highlighting spans"
-        );
+        assert!(!key_spans.is_empty(), "key should have highlighting spans");
         // Value should have at least one span (the str style)
         assert!(
             !value_spans.is_empty(),
@@ -606,8 +606,14 @@ mod tests {
         let json = Json::new(input, JsonOptions::default()).unwrap();
         let plain = json.text.plain().to_string();
         // Pretty output should have newlines and spaces
-        assert!(plain.contains('\n'), "default indent should produce multi-line output");
-        assert!(plain.contains("  "), "default indent should use 2-space indentation");
+        assert!(
+            plain.contains('\n'),
+            "default indent should produce multi-line output"
+        );
+        assert!(
+            plain.contains("  "),
+            "default indent should use 2-space indentation"
+        );
     }
 
     #[test]
@@ -618,5 +624,4 @@ mod tests {
         assert!(s.contains("name"));
         assert!(s.contains("world"));
     }
-
 }

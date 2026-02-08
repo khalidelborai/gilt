@@ -7,10 +7,7 @@ use gilt::rule::Rule;
 use gilt::syntax::Syntax;
 
 fn main() {
-    let mut console = Console::builder()
-        .width(80)
-        .force_terminal(true)
-        .build();
+    let mut console = Console::builder().width(80).force_terminal(true).build();
 
     // -- Rust snippet with line numbers and a highlighted line ----------------
 

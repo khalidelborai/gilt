@@ -20,10 +20,10 @@ fn main() {
     console.print(&Rule::with_title("Text Justification (width 40)"));
 
     let modes: &[(&str, JustifyMethod)] = &[
-        ("Left",   JustifyMethod::Left),
+        ("Left", JustifyMethod::Left),
         ("Center", JustifyMethod::Center),
-        ("Right",  JustifyMethod::Right),
-        ("Full",   JustifyMethod::Full),
+        ("Right", JustifyMethod::Right),
+        ("Full", JustifyMethod::Full),
     ];
 
     for (label, justify) in modes {
@@ -48,8 +48,8 @@ fn main() {
     let long_word = "Supercalifragilisticexpialidocious";
 
     let overflow_modes: &[(&str, OverflowMethod)] = &[
-        ("Fold",    OverflowMethod::Fold),
-        ("Crop",    OverflowMethod::Crop),
+        ("Fold", OverflowMethod::Fold),
+        ("Crop", OverflowMethod::Crop),
         ("Ellipsis", OverflowMethod::Ellipsis),
     ];
 
@@ -79,8 +79,7 @@ fn main() {
     styled.append_str(".", None);
     styled.justify = Some(JustifyMethod::Center);
 
-    let panel = Panel::new(styled)
-        .title(Text::new("Styled & Centered", Style::null()));
+    let panel = Panel::new(styled).title(Text::new("Styled & Centered", Style::null()));
 
     console.print(&panel);
 }

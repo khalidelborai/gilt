@@ -7,9 +7,8 @@ use regex::Regex;
 
 use crate::emoji_codes::EMOJI;
 
-static EMOJI_RE: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r":(\S*?)(?:(?:\-)(emoji|text))?:").unwrap()
-});
+static EMOJI_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r":(\S*?)(?:(?:\-)(emoji|text))?:").unwrap());
 
 /// Replace `:emoji_name:` patterns in text with corresponding Unicode emoji.
 ///

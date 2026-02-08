@@ -32,9 +32,9 @@ fn main() {
 
     // 3. A small table
     let mut table = Table::new(&["Language", "Typing", "Speed"]);
-    table.add_row(&["Rust",   "Static",  "Fast"]);
+    table.add_row(&["Rust", "Static", "Fast"]);
     table.add_row(&["Python", "Dynamic", "Moderate"]);
-    table.add_row(&["Go",     "Static",  "Fast"]);
+    table.add_row(&["Go", "Static", "Fast"]);
     console.print(&table);
 
     // Another rule to close

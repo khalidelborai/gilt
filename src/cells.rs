@@ -180,8 +180,16 @@ mod tests {
         let x01_width = get_character_cell_size('\x01');
         let x1f_width = get_character_cell_size('\x1f');
         // These should be 0, but if unicode-width changes, we accept 0 or 1
-        assert!(x01_width <= 1, "\\x01 width should be 0 or 1, got {}", x01_width);
-        assert!(x1f_width <= 1, "\\x1f width should be 0 or 1, got {}", x1f_width);
+        assert!(
+            x01_width <= 1,
+            "\\x01 width should be 0 or 1, got {}",
+            x01_width
+        );
+        assert!(
+            x1f_width <= 1,
+            "\\x1f width should be 0 or 1, got {}",
+            x1f_width
+        );
 
         // Single-width: ASCII
         assert_eq!(get_character_cell_size('a'), 1);
@@ -214,12 +222,12 @@ mod tests {
         assert_eq!(cell_len("😽😽"), 4);
 
         // CJK
-        assert_eq!(cell_len("わさび"), 6);  // 3 CJK chars × 2
+        assert_eq!(cell_len("わさび"), 6); // 3 CJK chars × 2
         assert_eq!(cell_len("あ"), 2);
-        assert_eq!(cell_len("ありがとう"), 10);  // 5 CJK chars × 2
+        assert_eq!(cell_len("ありがとう"), 10); // 5 CJK chars × 2
 
         // Mixed ASCII + CJK
-        assert_eq!(cell_len("aあb"), 4);  // 1+2+1
+        assert_eq!(cell_len("aあb"), 4); // 1+2+1
 
         // Control characters
         // Note: unicode-width may treat some control characters as having width 1
@@ -231,7 +239,11 @@ mod tests {
 
         // Control char in middle - may have width
         let a_x01_b_len = cell_len("a\x01b");
-        assert!(a_x01_b_len >= 2 && a_x01_b_len <= 3, "Expected a\\x01b width 2-3, got {}", a_x01_b_len);
+        assert!(
+            a_x01_b_len >= 2 && a_x01_b_len <= 3,
+            "Expected a\\x01b width 2-3, got {}",
+            a_x01_b_len
+        );
 
         // Box drawing characters (single-width)
         assert_eq!(cell_len("┌─┬┐"), 4);
@@ -268,14 +280,20 @@ mod tests {
 
         // Crop in middle of emoji → space
         assert_eq!(set_cell_size("😽😽", 3), "😽 ");
-        assert_eq!(set_cell_size("😽😽", 1), " ");  // emoji is 2-wide, can't fit → space
+        assert_eq!(set_cell_size("😽😽", 1), " "); // emoji is 2-wide, can't fit → space
 
         // CJK cropping
         // "あり" = 2+2 = 4 cells, "ありが" = 2+2+2 = 6 cells
         let result = set_cell_size("ありがとう", 6);
-        assert_eq!(result, "ありが", "Expected 'ありが' (6 cells), got '{}' ({} cells)", result, cell_len(&result));
+        assert_eq!(
+            result,
+            "ありが",
+            "Expected 'ありが' (6 cells), got '{}' ({} cells)",
+            result,
+            cell_len(&result)
+        );
 
-        assert_eq!(set_cell_size("ありがとう", 5), "あり ");  // can't fit 3rd char, add space
+        assert_eq!(set_cell_size("ありがとう", 5), "あり "); // can't fit 3rd char, add space
         assert_eq!(set_cell_size("ありがとう", 4), "あり");
         assert_eq!(set_cell_size("ありがとう", 3), "あ ");
     }
@@ -285,7 +303,7 @@ mod tests {
         // Mixed ASCII + emoji
         assert_eq!(set_cell_size("a😽b", 4), "a😽b");
         assert_eq!(set_cell_size("a😽b", 3), "a😽");
-        assert_eq!(set_cell_size("a😽b", 2), "a ");  // 'a' fits (1), emoji doesn't (2), pad with space
+        assert_eq!(set_cell_size("a😽b", 2), "a "); // 'a' fits (1), emoji doesn't (2), pad with space
 
         // Mixed ASCII + CJK
         assert_eq!(set_cell_size("aあb", 4), "aあb");
@@ -295,7 +313,10 @@ mod tests {
 
     #[test]
     fn test_chop_cells_single_width() {
-        assert_eq!(chop_cells("abcdefghijk", 3), vec!["abc", "def", "ghi", "jk"]);
+        assert_eq!(
+            chop_cells("abcdefghijk", 3),
+            vec!["abc", "def", "ghi", "jk"]
+        );
         assert_eq!(chop_cells("hello", 3), vec!["hel", "lo"]);
         assert_eq!(chop_cells("abc", 3), vec!["abc"]);
         assert_eq!(chop_cells("abc", 10), vec!["abc"]);
@@ -305,13 +326,16 @@ mod tests {
     fn test_chop_cells_double_width() {
         // Each CJK char is 2-wide, so with width=3, only one char fits per line
         // (would need width=4 to fit 2 chars)
-        assert_eq!(chop_cells("ありがとう", 3), vec!["あ", "り", "が", "と", "う"]);
+        assert_eq!(
+            chop_cells("ありがとう", 3),
+            vec!["あ", "り", "が", "と", "う"]
+        );
         assert_eq!(chop_cells("ありがとう", 4), vec!["あり", "がと", "う"]);
         assert_eq!(chop_cells("ありがとう", 6), vec!["ありが", "とう"]);
 
         // Emoji
         assert_eq!(chop_cells("😽😽😽", 4), vec!["😽😽", "😽"]);
-        assert_eq!(chop_cells("😽😽😽", 5), vec!["😽😽", "😽"]);  // can't fit 3rd emoji
+        assert_eq!(chop_cells("😽😽😽", 5), vec!["😽😽", "😽"]); // can't fit 3rd emoji
     }
 
     #[test]
@@ -374,7 +398,7 @@ mod tests {
 
         // Long CJK string
         let long_cjk = "あ".repeat(300);
-        assert_eq!(cell_len(&long_cjk), 600);  // 300 chars × 2
+        assert_eq!(cell_len(&long_cjk), 600); // 300 chars × 2
         assert!(!is_single_cell_widths(&long_cjk));
     }
 
@@ -388,7 +412,11 @@ mod tests {
         // NUL followed by printable
         // Note: unicode-width may count \x00 as width 0 or 1 depending on version
         let nul_a_len = cell_len("\x00a");
-        assert!(nul_a_len >= 1 && nul_a_len <= 2, "Expected \\x00a width 1-2, got {}", nul_a_len);
+        assert!(
+            nul_a_len >= 1 && nul_a_len <= 2,
+            "Expected \\x00a width 1-2, got {}",
+            nul_a_len
+        );
 
         // Multiple spaces
         assert_eq!(cell_len("   "), 3);
@@ -400,7 +428,15 @@ mod tests {
         let newline_width = get_character_cell_size('\n');
         // Tab is often treated as width 2-4, newline as 0-1
         // Just verify they return reasonable values
-        assert!(tab_width <= 4, "Tab width should be <= 4, got {}", tab_width);
-        assert!(newline_width <= 1, "Newline width should be <= 1, got {}", newline_width);
+        assert!(
+            tab_width <= 4,
+            "Tab width should be <= 4, got {}",
+            tab_width
+        );
+        assert!(
+            newline_width <= 1,
+            "Newline width should be <= 1, got {}",
+            newline_width
+        );
     }
 }

@@ -66,50 +66,48 @@ impl Palette {
 }
 
 /// Standard 16-color ANSI palette.
-pub static STANDARD_PALETTE: once_cell::sync::Lazy<Palette> =
-    once_cell::sync::Lazy::new(|| {
-        Palette::new(vec![
-            (0, 0, 0),
-            (170, 0, 0),
-            (0, 170, 0),
-            (170, 85, 0),
-            (0, 0, 170),
-            (170, 0, 170),
-            (0, 170, 170),
-            (170, 170, 170),
-            (85, 85, 85),
-            (255, 85, 85),
-            (85, 255, 85),
-            (255, 255, 85),
-            (85, 85, 255),
-            (255, 85, 255),
-            (85, 255, 255),
-            (255, 255, 255),
-        ])
-    });
+pub static STANDARD_PALETTE: once_cell::sync::Lazy<Palette> = once_cell::sync::Lazy::new(|| {
+    Palette::new(vec![
+        (0, 0, 0),
+        (170, 0, 0),
+        (0, 170, 0),
+        (170, 85, 0),
+        (0, 0, 170),
+        (170, 0, 170),
+        (0, 170, 170),
+        (170, 170, 170),
+        (85, 85, 85),
+        (255, 85, 85),
+        (85, 255, 85),
+        (255, 255, 85),
+        (85, 85, 255),
+        (255, 85, 255),
+        (85, 255, 255),
+        (255, 255, 255),
+    ])
+});
 
 /// Windows 10 console 16-color palette.
-pub static WINDOWS_PALETTE: once_cell::sync::Lazy<Palette> =
-    once_cell::sync::Lazy::new(|| {
-        Palette::new(vec![
-            (12, 12, 12),
-            (197, 15, 31),
-            (19, 161, 14),
-            (193, 156, 0),
-            (0, 55, 218),
-            (136, 23, 152),
-            (58, 150, 221),
-            (204, 204, 204),
-            (118, 118, 118),
-            (231, 72, 86),
-            (22, 198, 12),
-            (249, 241, 165),
-            (59, 120, 255),
-            (180, 0, 158),
-            (97, 214, 214),
-            (242, 242, 242),
-        ])
-    });
+pub static WINDOWS_PALETTE: once_cell::sync::Lazy<Palette> = once_cell::sync::Lazy::new(|| {
+    Palette::new(vec![
+        (12, 12, 12),
+        (197, 15, 31),
+        (19, 161, 14),
+        (193, 156, 0),
+        (0, 55, 218),
+        (136, 23, 152),
+        (58, 150, 221),
+        (204, 204, 204),
+        (118, 118, 118),
+        (231, 72, 86),
+        (22, 198, 12),
+        (249, 241, 165),
+        (59, 120, 255),
+        (180, 0, 158),
+        (97, 214, 214),
+        (242, 242, 242),
+    ])
+});
 
 /// Generates the 8-bit (256-color) ANSI palette.
 ///
@@ -260,7 +258,8 @@ mod tests {
         // First 16 should match standard ANSI colors
         assert_eq!(EIGHT_BIT_PALETTE.get(0), ColorTriplet::new(0, 0, 0)); // Black
         assert_eq!(EIGHT_BIT_PALETTE.get(1), ColorTriplet::new(128, 0, 0)); // Dark red
-        assert_eq!(EIGHT_BIT_PALETTE.get(15), ColorTriplet::new(255, 255, 255)); // White
+        assert_eq!(EIGHT_BIT_PALETTE.get(15), ColorTriplet::new(255, 255, 255));
+        // White
     }
 
     #[test]
@@ -276,10 +275,7 @@ mod tests {
         assert_eq!(EIGHT_BIT_PALETTE.get(226), ColorTriplet::new(255, 255, 0));
 
         // Index 231 should be (255, 255, 255) - last cube color
-        assert_eq!(
-            EIGHT_BIT_PALETTE.get(231),
-            ColorTriplet::new(255, 255, 255)
-        );
+        assert_eq!(EIGHT_BIT_PALETTE.get(231), ColorTriplet::new(255, 255, 255));
     }
 
     #[test]

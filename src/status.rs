@@ -257,11 +257,8 @@ impl Status {
     #[must_use]
     pub fn with_spinner_style(mut self, style: Style) -> Self {
         self.spinner_style = style.clone();
-        self.spinner = std::mem::replace(
-            &mut self.spinner,
-            Spinner::new("dots").unwrap(),
-        )
-        .with_style(style);
+        self.spinner =
+            std::mem::replace(&mut self.spinner, Spinner::new("dots").unwrap()).with_style(style);
         self
     }
 
@@ -269,11 +266,8 @@ impl Status {
     #[must_use]
     pub fn with_speed(mut self, speed: f64) -> Self {
         self.speed = speed;
-        self.spinner = std::mem::replace(
-            &mut self.spinner,
-            Spinner::new("dots").unwrap(),
-        )
-        .with_speed(speed);
+        self.spinner =
+            std::mem::replace(&mut self.spinner, Spinner::new("dots").unwrap()).with_speed(speed);
         self
     }
 
@@ -492,7 +486,11 @@ mod tests {
     fn test_update_style() {
         let mut status = Status::new("test");
         let style = Style::parse("bold green").unwrap();
-        status.update().spinner_style(style.clone()).apply().unwrap();
+        status
+            .update()
+            .spinner_style(style.clone())
+            .apply()
+            .unwrap();
         assert_eq!(status.spinner_style, style);
     }
 
@@ -500,7 +498,11 @@ mod tests {
     fn test_update_style_applied_to_spinner_update() {
         let mut status = Status::new("test");
         let style = Style::parse("italic").unwrap();
-        status.update().spinner_style(style.clone()).apply().unwrap();
+        status
+            .update()
+            .spinner_style(style.clone())
+            .apply()
+            .unwrap();
         // The spinner's update method was called with the new style
         assert_eq!(status.spinner_style, style);
     }

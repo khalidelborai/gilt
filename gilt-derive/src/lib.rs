@@ -102,20 +102,14 @@ pub fn derive_table(input: TokenStream) -> TokenStream {
             }
         },
         Data::Enum(_) => {
-            return syn::Error::new_spanned(
-                struct_name,
-                "Table derive does not support enums",
-            )
-            .to_compile_error()
-            .into();
+            return syn::Error::new_spanned(struct_name, "Table derive does not support enums")
+                .to_compile_error()
+                .into();
         }
         Data::Union(_) => {
-            return syn::Error::new_spanned(
-                struct_name,
-                "Table derive does not support unions",
-            )
-            .to_compile_error()
-            .into();
+            return syn::Error::new_spanned(struct_name, "Table derive does not support unions")
+                .to_compile_error()
+                .into();
         }
     };
 

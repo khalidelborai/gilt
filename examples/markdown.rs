@@ -6,10 +6,7 @@ use gilt::console::Console;
 use gilt::markdown::Markdown;
 
 fn main() {
-    let mut console = Console::builder()
-        .width(80)
-        .force_terminal(true)
-        .build();
+    let mut console = Console::builder().width(80).force_terminal(true).build();
 
     let markup = r#"# Gilt Markdown Demo
 

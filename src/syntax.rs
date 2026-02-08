@@ -316,12 +316,15 @@ impl Syntax {
         }
         let ts = &*THEME_SET;
         if let Some(theme) = ts.themes.get(&self.theme) {
-            let bg = theme.settings.background.unwrap_or(syntect::highlighting::Color {
-                r: 0,
-                g: 0,
-                b: 0,
-                a: 255,
-            });
+            let bg = theme
+                .settings
+                .background
+                .unwrap_or(syntect::highlighting::Color {
+                    r: 0,
+                    g: 0,
+                    b: 0,
+                    a: 255,
+                });
             Style::from_color(None, Some(Color::from_rgb(bg.r, bg.g, bg.b)))
         } else {
             Style::null()
@@ -347,7 +350,9 @@ impl Syntax {
         let code_width = if let Some(cw) = self.code_width {
             cw
         } else if self.line_numbers {
-            max_width.saturating_sub(numbers_column_width).saturating_sub(1)
+            max_width
+                .saturating_sub(numbers_column_width)
+                .saturating_sub(1)
         } else {
             max_width
         };
@@ -392,11 +397,7 @@ impl Syntax {
             // Line number gutter
             if self.line_numbers {
                 let num_width = numbers_column_width - NUMBERS_COLUMN_DEFAULT_PADDING;
-                let num_str = format!(
-                    "{:>width$} ",
-                    line_no,
-                    width = num_width
-                );
+                let num_str = format!("{:>width$} ", line_no, width = num_width);
 
                 if is_highlighted {
                     let pointer_style = Style::from_color(
@@ -404,14 +405,25 @@ impl Syntax {
                         None,
                     );
                     segments.push(Segment::styled("> ", pointer_style));
-                    segments.push(Segment::styled(
-                        &num_str,
-                        background_style.clone(),
-                    ));
+                    segments.push(Segment::styled(&num_str, background_style.clone()));
                 } else {
                     let dim_style = Style::new(
-                        None, None, None, Some(true), None, None, None, None, None, None,
-                        None, None, None, None, None, None,
+                        None,
+                        None,
+                        None,
+                        Some(true),
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
                     )
                     .unwrap_or_else(|_| Style::null());
                     segments.push(Segment::styled("  ", background_style.clone()));
@@ -428,13 +440,7 @@ impl Syntax {
 
             if self.word_wrap && line_cell_len > code_width {
                 // Word wrap: split into wrapped segments
-                let wrapped = line.wrap(
-                    code_width,
-                    None,
-                    None,
-                    self.tab_size,
-                    false,
-                );
+                let wrapped = line.wrap(code_width, None, None, self.tab_size, false);
                 for (wi, wline) in wrapped.iter().enumerate() {
                     if wi > 0 && self.line_numbers {
                         // Continuation line: pad the gutter
@@ -447,10 +453,7 @@ impl Syntax {
                             continue;
                         }
                         let style = seg.style.clone().unwrap_or_else(Style::null);
-                        segments.push(Segment::styled(
-                            &seg.text,
-                            background_style.clone() + style,
-                        ));
+                        segments.push(Segment::styled(&seg.text, background_style.clone() + style));
                     }
                     // Pad to code_width
                     let wline_len = wline.cell_len();
@@ -468,10 +471,7 @@ impl Syntax {
                         continue;
                     }
                     let style = seg.style.clone().unwrap_or_else(Style::null);
-                    segments.push(Segment::styled(
-                        &seg.text,
-                        background_style.clone() + style,
-                    ));
+                    segments.push(Segment::styled(&seg.text, background_style.clone() + style));
                 }
                 // Pad to code_width
                 if line_cell_len < code_width {
@@ -504,14 +504,8 @@ impl Syntax {
             return Measurement::new(numbers_width, total);
         }
         let (_, processed) = self.process_code();
-        let max_line_width = processed
-            .lines()
-            .map(cell_len)
-            .max()
-            .unwrap_or(0);
-        let total = numbers_width
-            + max_line_width
-            + if self.line_numbers { 1 } else { 0 };
+        let max_line_width = processed.lines().map(cell_len).max().unwrap_or(0);
+        let total = numbers_width + max_line_width + if self.line_numbers { 1 } else { 0 };
         Measurement::new(numbers_width, total)
     }
 }
@@ -672,7 +666,11 @@ mod tests {
         let text: String = segments.iter().map(|s| s.text.as_str()).collect();
         // Should have line breaks from wrapping
         let newline_count = text.matches('\n').count();
-        assert!(newline_count > 1, "expected wrapping, got {} newlines", newline_count);
+        assert!(
+            newline_count > 1,
+            "expected wrapping, got {} newlines",
+            newline_count
+        );
     }
 
     // -- Tab expansion ------------------------------------------------------
@@ -829,10 +827,7 @@ mod tests {
         // Read this very test file
         let path = file!();
         // This file may be at a relative path; use the full crate root
-        let full_path = format!(
-            "/mnt/data/Velocity/rusty_rich/gilt/{}",
-            path
-        );
+        let full_path = format!("/mnt/data/Velocity/rusty_rich/gilt/{}", path);
         if std::path::Path::new(&full_path).exists() {
             let result = Syntax::from_path(&full_path);
             assert!(result.is_ok());
@@ -1003,7 +998,11 @@ mod tests {
         // With padding (1,1), we should have more lines than just the code line
         let newline_count = segments.iter().filter(|s| s.text == "\n").count();
         // 1 top padding + 1 code line + 1 bottom padding = 3 newlines
-        assert!(newline_count >= 3, "expected at least 3 newlines, got {}", newline_count);
+        assert!(
+            newline_count >= 3,
+            "expected at least 3 newlines, got {}",
+            newline_count
+        );
     }
 
     // -- Line range out of bounds -------------------------------------------
@@ -1014,7 +1013,8 @@ mod tests {
         let syntax = Syntax::new(code, "txt").with_line_range((10, 20));
         let segments = syntax.render_syntax(80);
         // Should produce nothing for the code area
-        let text: String = segments.iter()
+        let text: String = segments
+            .iter()
             .filter(|s| s.text != "\n" && s.text.trim() != "")
             .map(|s| s.text.as_str())
             .collect();
@@ -1052,7 +1052,11 @@ mod tests {
         for theme_name in ts.themes.keys() {
             let syntax = Syntax::new(code, "rs").with_theme(theme_name);
             let segments = syntax.render_syntax(80);
-            assert!(!segments.is_empty(), "theme '{}' produced no output", theme_name);
+            assert!(
+                !segments.is_empty(),
+                "theme '{}' produced no output",
+                theme_name
+            );
         }
     }
 
@@ -1174,5 +1178,4 @@ mod tests {
         assert!(s.contains("fn"));
         assert!(s.contains("main"));
     }
-
 }

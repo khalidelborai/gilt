@@ -164,7 +164,12 @@ impl Traceback {
         };
         Traceback {
             title: error_type_name(error),
-            message: format!("{}{}{}", title, if message.is_empty() { "" } else { "\n" }, message),
+            message: format!(
+                "{}{}{}",
+                title,
+                if message.is_empty() { "" } else { "\n" },
+                message
+            ),
             frames: Vec::new(),
             ..Traceback::new()
         }
@@ -362,7 +367,11 @@ impl Renderable for Traceback {
         };
 
         let actual_show = frames_to_show.len();
-        let half_mark = if truncated { self.max_frames / 2 } else { actual_show + 1 };
+        let half_mark = if truncated {
+            self.max_frames / 2
+        } else {
+            actual_show + 1
+        };
 
         for (i, frame) in frames_to_show.iter().enumerate() {
             // Insert ellipsis marker at the halfway point for truncated traces
@@ -415,10 +424,8 @@ impl Renderable for Traceback {
                                     .join("\n");
 
                                 // Determine language from file extension
-                                let ext = path
-                                    .extension()
-                                    .and_then(|e| e.to_str())
-                                    .unwrap_or("txt");
+                                let ext =
+                                    path.extension().and_then(|e| e.to_str()).unwrap_or("txt");
 
                                 let syntax = Syntax::new(&context, ext)
                                     .with_theme(&self.theme)
@@ -427,7 +434,10 @@ impl Renderable for Traceback {
                                     .with_highlight_lines(vec![lineno])
                                     .with_word_wrap(self.word_wrap);
 
-                                let syntax_segments = syntax.rich_console(console, &options.update_width(panel_width.saturating_sub(4)));
+                                let syntax_segments = syntax.rich_console(
+                                    console,
+                                    &options.update_width(panel_width.saturating_sub(4)),
+                                );
                                 if !syntax_segments.is_empty() {
                                     // Collect syntax output as a styled text block
                                     for seg in &syntax_segments {
@@ -470,9 +480,15 @@ impl Renderable for Traceback {
 
         // Wrap in a Panel
         let title_text = if self.title.is_empty() {
-            Text::styled("Traceback", Style::parse("bold red").unwrap_or_else(|_| Style::null()))
+            Text::styled(
+                "Traceback",
+                Style::parse("bold red").unwrap_or_else(|_| Style::null()),
+            )
         } else {
-            Text::styled(&self.title, Style::parse("bold red").unwrap_or_else(|_| Style::null()))
+            Text::styled(
+                &self.title,
+                Style::parse("bold red").unwrap_or_else(|_| Style::null()),
+            )
         };
 
         let panel = Panel::new(content_text)
@@ -507,12 +523,9 @@ impl Renderable for Traceback {
 /// ```
 fn parse_backtrace(bt: &str) -> Vec<Frame> {
     // Use a lazy regex that matches frame entries
-    let frame_re = Regex::new(
-        r"(?m)^\s*(\d+):\s+(.+?)$"
-    ).expect("invalid frame regex");
-    let location_re = Regex::new(
-        r"(?m)^\s+at\s+(.+?):(\d+)(?::(\d+))?\s*$"
-    ).expect("invalid location regex");
+    let frame_re = Regex::new(r"(?m)^\s*(\d+):\s+(.+?)$").expect("invalid frame regex");
+    let location_re =
+        Regex::new(r"(?m)^\s+at\s+(.+?):(\d+)(?::(\d+))?\s*$").expect("invalid location regex");
 
     let lines: Vec<&str> = bt.lines().collect();
     let mut frames = Vec::new();
@@ -521,7 +534,12 @@ fn parse_backtrace(bt: &str) -> Vec<Frame> {
     while i < lines.len() {
         let line = lines[i];
         if let Some(captures) = frame_re.captures(line) {
-            let name = captures.get(2).map(|m| m.as_str()).unwrap_or("").trim().to_string();
+            let name = captures
+                .get(2)
+                .map(|m| m.as_str())
+                .unwrap_or("")
+                .trim()
+                .to_string();
 
             // Check if the next line has location info
             let mut filename = String::new();
@@ -529,8 +547,14 @@ fn parse_backtrace(bt: &str) -> Vec<Frame> {
 
             if i + 1 < lines.len() {
                 if let Some(loc_captures) = location_re.captures(lines[i + 1]) {
-                    filename = loc_captures.get(1).map(|m| m.as_str()).unwrap_or("").to_string();
-                    lineno = loc_captures.get(2).and_then(|m| m.as_str().parse::<usize>().ok());
+                    filename = loc_captures
+                        .get(1)
+                        .map(|m| m.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    lineno = loc_captures
+                        .get(2)
+                        .and_then(|m| m.as_str().parse::<usize>().ok());
                     i += 1; // consume the location line
                 }
             }
@@ -617,7 +641,10 @@ mod tests {
     fn test_frame_with_source_line() {
         let frame = Frame::new("src/main.rs", Some(42), "main")
             .with_source_line("    println!(\"hello\");");
-        assert_eq!(frame.source_line, Some("    println!(\"hello\");".to_string()));
+        assert_eq!(
+            frame.source_line,
+            Some("    println!(\"hello\");".to_string())
+        );
     }
 
     #[test]
@@ -650,8 +677,7 @@ mod tests {
 
     #[test]
     fn test_frame_clone() {
-        let frame = Frame::new("src/main.rs", Some(42), "main")
-            .with_source_line("let x = 1;");
+        let frame = Frame::new("src/main.rs", Some(42), "main").with_source_line("let x = 1;");
         let cloned = frame.clone();
         assert_eq!(frame, cloned);
     }
@@ -796,9 +822,7 @@ mod tests {
             }
         }
 
-        let err = OuterError {
-            source: InnerError,
-        };
+        let err = OuterError { source: InnerError };
         let tb = Traceback::from_error(&err);
         assert!(tb.message.contains("outer failure"));
         assert!(tb.message.contains("inner failure"));
@@ -922,7 +946,11 @@ mod tests {
     #[test]
     fn test_renderable_produces_segments() {
         let tb = Traceback::from_backtrace(SAMPLE_BACKTRACE);
-        let console = Console::builder().width(80).no_color(true).markup(false).build();
+        let console = Console::builder()
+            .width(80)
+            .no_color(true)
+            .markup(false)
+            .build();
         let options = console.options();
         let segments = tb.rich_console(&console, &options);
         assert!(!segments.is_empty());
@@ -933,7 +961,11 @@ mod tests {
         let tb = Traceback::new()
             .with_title("TestError")
             .with_message("test message");
-        let console = Console::builder().width(80).no_color(true).markup(false).build();
+        let console = Console::builder()
+            .width(80)
+            .no_color(true)
+            .markup(false)
+            .build();
         let options = console.options();
         let segments = tb.rich_console(&console, &options);
         let output: String = segments.iter().map(|s| s.text.as_str()).collect();
@@ -948,7 +980,11 @@ mod tests {
             Frame::new("/some/path/file.rs", Some(42), "my_func")
                 .with_source_line("    let x = 1;"),
         );
-        let console = Console::builder().width(80).no_color(true).markup(false).build();
+        let console = Console::builder()
+            .width(80)
+            .no_color(true)
+            .markup(false)
+            .build();
         let options = console.options();
         let segments = tb.rich_console(&console, &options);
         let output: String = segments.iter().map(|s| s.text.as_str()).collect();
@@ -960,7 +996,11 @@ mod tests {
     #[test]
     fn test_renderable_wrapped_in_panel() {
         let tb = Traceback::new().with_title("PanelTest");
-        let console = Console::builder().width(40).no_color(true).markup(false).build();
+        let console = Console::builder()
+            .width(40)
+            .no_color(true)
+            .markup(false)
+            .build();
         let options = console.options();
         let segments = tb.rich_console(&console, &options);
         let output: String = segments.iter().map(|s| s.text.as_str()).collect();
@@ -970,10 +1010,12 @@ mod tests {
 
     #[test]
     fn test_renderable_with_width() {
-        let tb = Traceback::new()
-            .with_title("WidthTest")
-            .with_width(60);
-        let console = Console::builder().width(120).no_color(true).markup(false).build();
+        let tb = Traceback::new().with_title("WidthTest").with_width(60);
+        let console = Console::builder()
+            .width(120)
+            .no_color(true)
+            .markup(false)
+            .build();
         let options = console.options();
         let segments = tb.rich_console(&console, &options);
         // Segments should be produced
@@ -983,7 +1025,11 @@ mod tests {
     #[test]
     fn test_renderable_empty_traceback() {
         let tb = Traceback::new();
-        let console = Console::builder().width(80).no_color(true).markup(false).build();
+        let console = Console::builder()
+            .width(80)
+            .no_color(true)
+            .markup(false)
+            .build();
         let options = console.options();
         let segments = tb.rich_console(&console, &options);
         // Even empty tracebacks should produce panel segments
@@ -1091,7 +1137,8 @@ mod tests {
         let mut tb = Traceback::new()
             .with_title("RuntimeError")
             .with_message("division by zero");
-        tb.frames.push(Frame::new("src/math.rs", Some(15), "divide"));
+        tb.frames
+            .push(Frame::new("src/math.rs", Some(15), "divide"));
         tb.frames.push(Frame::new("src/main.rs", Some(8), "main"));
 
         let display = format!("{}", tb);

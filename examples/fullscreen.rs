@@ -55,8 +55,7 @@ fn main() {
     content.append_str(&exit_msg, Some(Style::parse("dim").unwrap()));
 
     // Use the Screen widget to fill exactly width x height.
-    let screen = Screen::new(content)
-        .with_style(Style::parse("on black").unwrap());
+    let screen = Screen::new(content).with_style(Style::parse("on black").unwrap());
 
     console.print(&screen);
 

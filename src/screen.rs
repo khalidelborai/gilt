@@ -72,13 +72,7 @@ impl Renderable for Screen {
         );
 
         // Crop / pad to exact width x height.
-        let lines = Segment::set_shape(
-            &lines,
-            width,
-            Some(height),
-            self.style.as_ref(),
-            false,
-        );
+        let lines = Segment::set_shape(&lines, width, Some(height), self.style.as_ref(), false);
 
         // Choose the inter-line separator.
         let new_line = if self.application_mode {

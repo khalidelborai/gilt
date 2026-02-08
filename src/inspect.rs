@@ -137,9 +137,8 @@ impl<'a> Inspect<'a> {
 
         let markup_part = parts.join("\n");
         // from_markup returns Result; fall back to plain text on error.
-        let mut text = Text::from_markup(&markup_part).unwrap_or_else(|_| {
-            Text::new(&markup_part, Style::null())
-        });
+        let mut text = Text::from_markup(&markup_part)
+            .unwrap_or_else(|_| Text::new(&markup_part, Style::null()));
 
         // Debug representation
         let debug_str = if self.pretty {
@@ -167,9 +166,10 @@ impl Renderable for Inspect<'_> {
         let content = self.build_content();
         let mut panel = Panel::new(content);
 
-        let title_str = self.title.clone().unwrap_or_else(|| {
-            format!("Inspect: {}", self.short_type_name())
-        });
+        let title_str = self
+            .title
+            .clone()
+            .unwrap_or_else(|| format!("Inspect: {}", self.short_type_name()));
         panel.title = Some(Text::new(&title_str, Style::null()));
 
         panel.rich_console(console, options)
@@ -222,10 +222,26 @@ mod tests {
         let data = vec![1, 2, 3];
         let inspect = Inspect::new(&data);
         let output = capture_inspect(&inspect);
-        assert!(output.contains("Vec"), "output should contain 'Vec': {}", output);
-        assert!(output.contains("1"), "output should contain '1': {}", output);
-        assert!(output.contains("2"), "output should contain '2': {}", output);
-        assert!(output.contains("3"), "output should contain '3': {}", output);
+        assert!(
+            output.contains("Vec"),
+            "output should contain 'Vec': {}",
+            output
+        );
+        assert!(
+            output.contains("1"),
+            "output should contain '1': {}",
+            output
+        );
+        assert!(
+            output.contains("2"),
+            "output should contain '2': {}",
+            output
+        );
+        assert!(
+            output.contains("3"),
+            "output should contain '3': {}",
+            output
+        );
     }
 
     // -- 2. Inspect a String -------------------------------------------------
@@ -235,8 +251,16 @@ mod tests {
         let data = String::from("hello world");
         let inspect = Inspect::new(&data);
         let output = capture_inspect(&inspect);
-        assert!(output.contains("String"), "output should contain 'String': {}", output);
-        assert!(output.contains("hello world"), "output should contain the value: {}", output);
+        assert!(
+            output.contains("String"),
+            "output should contain 'String': {}",
+            output
+        );
+        assert!(
+            output.contains("hello world"),
+            "output should contain the value: {}",
+            output
+        );
     }
 
     // -- 3. Inspect a struct -------------------------------------------------
@@ -252,9 +276,21 @@ mod tests {
         let point = TestPoint { x: 1.5, y: 2.5 };
         let inspect = Inspect::new(&point);
         let output = capture_inspect(&inspect);
-        assert!(output.contains("TestPoint"), "output should contain type name: {}", output);
-        assert!(output.contains("1.5"), "output should contain x value: {}", output);
-        assert!(output.contains("2.5"), "output should contain y value: {}", output);
+        assert!(
+            output.contains("TestPoint"),
+            "output should contain type name: {}",
+            output
+        );
+        assert!(
+            output.contains("1.5"),
+            "output should contain x value: {}",
+            output
+        );
+        assert!(
+            output.contains("2.5"),
+            "output should contain y value: {}",
+            output
+        );
     }
 
     // -- 4. Inspect with label -----------------------------------------------
@@ -264,8 +300,16 @@ mod tests {
         let data = 42u32;
         let inspect = Inspect::new(&data).with_label("answer");
         let output = capture_inspect(&inspect);
-        assert!(output.contains("Name:"), "output should contain 'Name:': {}", output);
-        assert!(output.contains("answer"), "output should contain label: {}", output);
+        assert!(
+            output.contains("Name:"),
+            "output should contain 'Name:': {}",
+            output
+        );
+        assert!(
+            output.contains("answer"),
+            "output should contain label: {}",
+            output
+        );
     }
 
     // -- 5. Inspect with doc -------------------------------------------------
@@ -275,10 +319,15 @@ mod tests {
         let data = 42u32;
         let inspect = Inspect::new(&data).with_doc("The meaning of life");
         let output = capture_inspect(&inspect);
-        assert!(output.contains("Doc:"), "output should contain 'Doc:': {}", output);
+        assert!(
+            output.contains("Doc:"),
+            "output should contain 'Doc:': {}",
+            output
+        );
         assert!(
             output.contains("The meaning of life"),
-            "output should contain doc text: {}", output
+            "output should contain doc text: {}",
+            output
         );
     }
 
@@ -291,7 +340,8 @@ mod tests {
         let output = capture_inspect(&inspect);
         assert!(
             output.contains("My Custom Title"),
-            "output should contain custom title: {}", output
+            "output should contain custom title: {}",
+            output
         );
     }
 
@@ -312,7 +362,11 @@ mod tests {
             pretty_output.len()
         );
         // Both should contain the values
-        assert!(compact_output.contains("[1, 2, 3]"), "compact should contain [1, 2, 3]: {}", compact_output);
+        assert!(
+            compact_output.contains("[1, 2, 3]"),
+            "compact should contain [1, 2, 3]: {}",
+            compact_output
+        );
     }
 
     // -- 8. Display trait works ----------------------------------------------
@@ -323,7 +377,11 @@ mod tests {
         let inspect = Inspect::new(&data);
         let output = format!("{}", inspect);
         assert!(!output.is_empty(), "Display output should not be empty");
-        assert!(output.contains("Vec"), "Display output should contain 'Vec': {}", output);
+        assert!(
+            output.contains("Vec"),
+            "Display output should contain 'Vec': {}",
+            output
+        );
     }
 
     // -- 9. Renderable produces segments -------------------------------------
@@ -358,12 +416,17 @@ mod tests {
         let data = vec![1, 2, 3];
         let inspect = Inspect::new(&data);
         let short = inspect.short_type_name();
-        assert_eq!(short, "Vec", "short_type_name should be 'Vec', got: {}", short);
+        assert_eq!(
+            short, "Vec",
+            "short_type_name should be 'Vec', got: {}",
+            short
+        );
         // Check it shows in the output
         let output = capture_inspect(&inspect);
         assert!(
             output.contains("Inspect: Vec"),
-            "default title should contain 'Inspect: Vec': {}", output
+            "default title should contain 'Inspect: Vec': {}",
+            output
         );
     }
 
@@ -379,7 +442,8 @@ mod tests {
         let output = capture_inspect(&inspect);
         assert!(
             output.contains("EmptyStruct"),
-            "output should contain 'EmptyStruct': {}", output
+            "output should contain 'EmptyStruct': {}",
+            output
         );
     }
 
@@ -390,8 +454,16 @@ mod tests {
         let data: Option<i32> = Some(42);
         let inspect = Inspect::new(&data);
         let output = capture_inspect(&inspect);
-        assert!(output.contains("Option"), "output should contain 'Option': {}", output);
-        assert!(output.contains("42"), "output should contain '42': {}", output);
+        assert!(
+            output.contains("Option"),
+            "output should contain 'Option': {}",
+            output
+        );
+        assert!(
+            output.contains("42"),
+            "output should contain '42': {}",
+            output
+        );
     }
 
     #[test]
@@ -399,7 +471,11 @@ mod tests {
         let data: Option<i32> = None;
         let inspect = Inspect::new(&data);
         let output = capture_inspect(&inspect);
-        assert!(output.contains("None"), "output should contain 'None': {}", output);
+        assert!(
+            output.contains("None"),
+            "output should contain 'None': {}",
+            output
+        );
     }
 
     #[test]
@@ -409,8 +485,16 @@ mod tests {
         data.insert("key", "value");
         let inspect = Inspect::new(&data);
         let output = capture_inspect(&inspect);
-        assert!(output.contains("HashMap"), "output should contain 'HashMap': {}", output);
-        assert!(output.contains("key"), "output should contain 'key': {}", output);
+        assert!(
+            output.contains("HashMap"),
+            "output should contain 'HashMap': {}",
+            output
+        );
+        assert!(
+            output.contains("key"),
+            "output should contain 'key': {}",
+            output
+        );
     }
 
     #[test]
@@ -423,8 +507,16 @@ mod tests {
             .with_pretty(false);
         let output = capture_inspect(&inspect);
         assert!(output.contains("answer"), "should have label: {}", output);
-        assert!(output.contains("The answer to everything"), "should have doc: {}", output);
-        assert!(output.contains("Custom"), "should have custom title: {}", output);
+        assert!(
+            output.contains("The answer to everything"),
+            "should have doc: {}",
+            output
+        );
+        assert!(
+            output.contains("Custom"),
+            "should have custom title: {}",
+            output
+        );
     }
 
     #[test]

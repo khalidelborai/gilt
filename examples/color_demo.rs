@@ -6,7 +6,14 @@ use gilt::color_triplet::ColorTriplet;
 fn main() {
     println!("=== Color Parsing ===\n");
 
-    let colors = ["red", "bright_cyan", "#ff6600", "color(100)", "rgb(50,150,250)", "default"];
+    let colors = [
+        "red",
+        "bright_cyan",
+        "#ff6600",
+        "color(100)",
+        "rgb(50,150,250)",
+        "default",
+    ];
     for name in colors {
         let color = Color::parse(name).unwrap();
         println!(
@@ -20,7 +27,12 @@ fn main() {
 
     println!("\n=== ANSI Escape Codes ===\n");
 
-    let pairs = [("red", true), ("red", false), ("#ff0000", true), ("color(100)", true)];
+    let pairs = [
+        ("red", true),
+        ("red", false),
+        ("#ff0000", true),
+        ("color(100)", true),
+    ];
     for (name, fg) in pairs {
         let color = Color::parse(name).unwrap();
         let codes = color.get_ansi_codes(fg);
@@ -36,9 +48,18 @@ fn main() {
 
     let truecolor = Color::parse("#ff6347").unwrap(); // tomato
     println!("Original:  {:?}", truecolor);
-    println!("→ 256-color: {:?}", truecolor.downgrade(ColorSystem::EightBit));
-    println!("→ 16-color:  {:?}", truecolor.downgrade(ColorSystem::Standard));
-    println!("→ Windows:   {:?}", truecolor.downgrade(ColorSystem::Windows));
+    println!(
+        "→ 256-color: {:?}",
+        truecolor.downgrade(ColorSystem::EightBit)
+    );
+    println!(
+        "→ 16-color:  {:?}",
+        truecolor.downgrade(ColorSystem::Standard)
+    );
+    println!(
+        "→ Windows:   {:?}",
+        truecolor.downgrade(ColorSystem::Windows)
+    );
 
     println!("\n=== Color Blending ===\n");
 

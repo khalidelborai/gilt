@@ -116,7 +116,12 @@ mod tests {
         for seg in &segments {
             if !seg.is_control() && !seg.text.is_empty() && seg.text != "\n" {
                 let s = seg.style.as_ref().expect("segment should have a style");
-                assert_eq!(s.bold(), Some(true), "segment {:?} should be bold", seg.text);
+                assert_eq!(
+                    s.bold(),
+                    Some(true),
+                    "segment {:?} should be bold",
+                    seg.text
+                );
                 assert_eq!(
                     s.italic(),
                     Some(true),

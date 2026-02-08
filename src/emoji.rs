@@ -55,9 +55,7 @@ impl Emoji {
     ///
     /// Returns `Err(NoEmoji)` if the name is not found.
     pub fn new(name: &str) -> Result<Self, NoEmoji> {
-        let emoji_char = EMOJI
-            .get(name)
-            .ok_or_else(|| NoEmoji(name.to_string()))?;
+        let emoji_char = EMOJI.get(name).ok_or_else(|| NoEmoji(name.to_string()))?;
 
         Ok(Emoji {
             name: name.to_string(),

@@ -208,12 +208,7 @@ impl Lines {
         self.lines.iter_mut()
     }
 
-    pub fn justify(
-        &mut self,
-        width: usize,
-        justify: JustifyMethod,
-        overflow: OverflowMethod,
-    ) {
+    pub fn justify(&mut self, width: usize, justify: JustifyMethod, overflow: OverflowMethod) {
         match justify {
             JustifyMethod::Default | JustifyMethod::Left => {
                 for line in &mut self.lines {
@@ -482,16 +477,8 @@ impl Text {
         if text.is_empty() {
             return Measurement::new(0, 0);
         }
-        let max_text_width = text
-            .lines()
-            .map(cell_len)
-            .max()
-            .unwrap_or(0);
-        let min_text_width = text
-            .split_whitespace()
-            .map(cell_len)
-            .max()
-            .unwrap_or(0);
+        let max_text_width = text.lines().map(cell_len).max().unwrap_or(0);
+        let min_text_width = text.split_whitespace().map(cell_len).max().unwrap_or(0);
         Measurement::new(min_text_width, max_text_width)
     }
 
@@ -597,12 +584,7 @@ impl Text {
 
     // -- Splitting and dividing ---------------------------------------------
 
-    pub fn split(
-        &self,
-        separator: &str,
-        include_separator: bool,
-        allow_blank: bool,
-    ) -> Lines {
+    pub fn split(&self, separator: &str, include_separator: bool, allow_blank: bool) -> Lines {
         let re = Regex::new(&regex::escape(separator)).unwrap();
         let plain = &self.text;
 
@@ -808,12 +790,7 @@ impl Text {
         });
     }
 
-    pub fn truncate(
-        &mut self,
-        max_width: usize,
-        overflow: Option<OverflowMethod>,
-        pad: bool,
-    ) {
+    pub fn truncate(&mut self, max_width: usize, overflow: Option<OverflowMethod>, pad: bool) {
         let current_width = self.cell_len();
         let overflow = overflow.unwrap_or(OverflowMethod::Fold);
 
@@ -961,11 +938,7 @@ impl Text {
         count
     }
 
-    pub fn highlight_regex_with_groups(
-        &mut self,
-        pattern: &Regex,
-        style_prefix: &str,
-    ) -> usize {
+    pub fn highlight_regex_with_groups(&mut self, pattern: &Regex, style_prefix: &str) -> usize {
         let plain = self.text.clone();
         let mut count = 0;
         for captures in pattern.captures_iter(&plain) {
@@ -986,12 +959,7 @@ impl Text {
         count
     }
 
-    pub fn highlight_words(
-        &mut self,
-        words: &[&str],
-        style: Style,
-        case_sensitive: bool,
-    ) -> usize {
+    pub fn highlight_words(&mut self, words: &[&str], style: Style, case_sensitive: bool) -> usize {
         let mut count = 0;
         for word in words {
             let escaped = regex::escape(word);
@@ -1232,7 +1200,7 @@ impl Text {
         let mut events: Vec<(usize, bool, usize)> = Vec::new();
         for (i, span) in self.spans.iter().enumerate() {
             events.push((span.start, false, i + 1)); // entering
-            events.push((span.end, true, i + 1));     // leaving
+            events.push((span.end, true, i + 1)); // leaving
         }
         events.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.cmp(&b.1)));
 
@@ -2207,8 +2175,7 @@ mod tests {
 
     #[test]
     fn test_from_markup_nested_styles() {
-        let text =
-            Text::from_markup("[bold][italic]nested[/italic][/bold]").unwrap();
+        let text = Text::from_markup("[bold][italic]nested[/italic][/bold]").unwrap();
         assert_eq!(text.plain(), "nested");
         assert_eq!(text.spans().len(), 2);
     }
@@ -2400,5 +2367,4 @@ mod tests {
         let text = Text::from(Cow::Owned(String::from("world")));
         assert_eq!(text.plain(), "world");
     }
-
 }

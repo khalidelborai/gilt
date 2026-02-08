@@ -102,7 +102,11 @@ mod tests {
     use crate::text::{JustifyMethod, OverflowMethod};
 
     fn make_console() -> Console {
-        Console::builder().width(80).markup(false).no_color(true).build()
+        Console::builder()
+            .width(80)
+            .markup(false)
+            .no_color(true)
+            .build()
     }
 
     fn segments_text(segments: &[Segment]) -> String {
@@ -175,9 +179,9 @@ mod tests {
     #[test]
     fn test_renderables_measure_multiple() {
         let items = vec![
-            Text::new("Hi", Style::null()),       // min=2, max=2
+            Text::new("Hi", Style::null()),          // min=2, max=2
             Text::new("Hello World", Style::null()), // min=5, max=11
-            Text::new("Foo", Style::null()),       // min=3, max=3
+            Text::new("Foo", Style::null()),         // min=3, max=3
         ];
         let r = Renderables::new(items);
         let m = r.measure();
@@ -190,8 +194,8 @@ mod tests {
     #[test]
     fn test_renderables_measure_correct_min_max() {
         let items = vec![
-            Text::new("abcdefghij", Style::null()),    // single word, min=10, max=10
-            Text::new("ab cd ef", Style::null()),       // min=2, max=8
+            Text::new("abcdefghij", Style::null()), // single word, min=10, max=10
+            Text::new("ab cd ef", Style::null()),   // min=2, max=8
         ];
         let r = Renderables::new(items);
         let m = r.measure();
@@ -348,9 +352,7 @@ mod tests {
 
     #[test]
     fn test_lines_index_mut_access() {
-        let mut lines = Lines::new(vec![
-            Text::new("Before", Style::null()),
-        ]);
+        let mut lines = Lines::new(vec![Text::new("Before", Style::null())]);
         lines[0].set_plain("After");
         assert_eq!(lines[0].plain(), "After");
     }
@@ -413,9 +415,7 @@ mod tests {
 
     #[test]
     fn test_lines_justify_center() {
-        let mut lines = Lines::new(vec![
-            Text::new("Hi", Style::null()),
-        ]);
+        let mut lines = Lines::new(vec![Text::new("Hi", Style::null())]);
         lines.justify(10, JustifyMethod::Center, OverflowMethod::Fold);
         let plain = lines[0].plain().to_string();
         assert_eq!(lines[0].cell_len(), 10);
@@ -427,9 +427,7 @@ mod tests {
 
     #[test]
     fn test_lines_justify_right() {
-        let mut lines = Lines::new(vec![
-            Text::new("Hi", Style::null()),
-        ]);
+        let mut lines = Lines::new(vec![Text::new("Hi", Style::null())]);
         lines.justify(10, JustifyMethod::Right, OverflowMethod::Fold);
         let plain = lines[0].plain().to_string();
         assert_eq!(lines[0].cell_len(), 10);

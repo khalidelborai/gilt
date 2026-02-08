@@ -160,11 +160,7 @@ pub fn ratio_reduce(
 /// If `minimums` is provided, ratios are zeroed for entries with zero minimum.
 /// Guarantees the sum of results equals `total` (may over-assign to the last entry
 /// to handle rounding).
-pub fn ratio_distribute(
-    total: usize,
-    ratios: &[usize],
-    minimums: Option<&[usize]>,
-) -> Vec<usize> {
+pub fn ratio_distribute(total: usize, ratios: &[usize], minimums: Option<&[usize]>) -> Vec<usize> {
     let ratios: Vec<usize> = if let Some(mins) = minimums {
         ratios
             .iter()
@@ -251,7 +247,11 @@ mod tests {
 
     #[test]
     fn test_resolve_all_fixed() {
-        let edges = vec![TestEdge::fixed(10), TestEdge::fixed(20), TestEdge::fixed(30)];
+        let edges = vec![
+            TestEdge::fixed(10),
+            TestEdge::fixed(20),
+            TestEdge::fixed(30),
+        ];
         let result = ratio_resolve(100, &edges);
         assert_eq!(result, vec![10, 20, 30]);
     }
@@ -293,10 +293,7 @@ mod tests {
     fn test_resolve_minimum_size_constraint() {
         // Two flexible edges with ratio 1:1, but 10 total — minimum_size=8 for one
         // The one with min 8 gets fixed at 8, leaving 2 for the other
-        let edges = vec![
-            TestEdge::new(None, 1, 8),
-            TestEdge::new(None, 1, 1),
-        ];
+        let edges = vec![TestEdge::new(None, 1, 8), TestEdge::new(None, 1, 1)];
         let result = ratio_resolve(10, &edges);
         assert_eq!(result, vec![8, 2]);
     }

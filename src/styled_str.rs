@@ -14,8 +14,8 @@
 //! assert_eq!(styled.text, "Hello");
 //! ```
 
-use crate::console::{Console, ConsoleOptions, Renderable};
 use crate::color::Color;
+use crate::console::{Console, ConsoleOptions, Renderable};
 use crate::segment::Segment;
 use crate::style::Style;
 use crate::text::Text;
@@ -123,77 +123,143 @@ pub trait Stylize: Sized {
     // -- Attribute methods --------------------------------------------------
 
     /// Make the text bold.
-    fn bold(self) -> StyledStr { self.styled(attr_style("bold")) }
+    fn bold(self) -> StyledStr {
+        self.styled(attr_style("bold"))
+    }
     /// Make the text dim / faint.
-    fn dim(self) -> StyledStr { self.styled(attr_style("dim")) }
+    fn dim(self) -> StyledStr {
+        self.styled(attr_style("dim"))
+    }
     /// Make the text italic.
-    fn italic(self) -> StyledStr { self.styled(attr_style("italic")) }
+    fn italic(self) -> StyledStr {
+        self.styled(attr_style("italic"))
+    }
     /// Underline the text.
-    fn underline(self) -> StyledStr { self.styled(attr_style("underline")) }
+    fn underline(self) -> StyledStr {
+        self.styled(attr_style("underline"))
+    }
     /// Apply strikethrough to the text.
-    fn strikethrough(self) -> StyledStr { self.styled(attr_style("strike")) }
+    fn strikethrough(self) -> StyledStr {
+        self.styled(attr_style("strike"))
+    }
     /// Make the text blink.
-    fn blink(self) -> StyledStr { self.styled(attr_style("blink")) }
+    fn blink(self) -> StyledStr {
+        self.styled(attr_style("blink"))
+    }
     /// Reverse foreground and background colors.
-    fn reverse(self) -> StyledStr { self.styled(attr_style("reverse")) }
+    fn reverse(self) -> StyledStr {
+        self.styled(attr_style("reverse"))
+    }
     /// Hide / conceal the text.
-    fn conceal(self) -> StyledStr { self.styled(attr_style("conceal")) }
+    fn conceal(self) -> StyledStr {
+        self.styled(attr_style("conceal"))
+    }
     /// Apply double underline.
-    fn underline2(self) -> StyledStr { self.styled(attr_style("underline2")) }
+    fn underline2(self) -> StyledStr {
+        self.styled(attr_style("underline2"))
+    }
     /// Apply overline.
-    fn overline(self) -> StyledStr { self.styled(attr_style("overline")) }
+    fn overline(self) -> StyledStr {
+        self.styled(attr_style("overline"))
+    }
 
     // -- Foreground color methods -------------------------------------------
 
     /// Set foreground to red.
-    fn red(self) -> StyledStr { self.styled(fg_style("red")) }
+    fn red(self) -> StyledStr {
+        self.styled(fg_style("red"))
+    }
     /// Set foreground to green.
-    fn green(self) -> StyledStr { self.styled(fg_style("green")) }
+    fn green(self) -> StyledStr {
+        self.styled(fg_style("green"))
+    }
     /// Set foreground to blue.
-    fn blue(self) -> StyledStr { self.styled(fg_style("blue")) }
+    fn blue(self) -> StyledStr {
+        self.styled(fg_style("blue"))
+    }
     /// Set foreground to yellow.
-    fn yellow(self) -> StyledStr { self.styled(fg_style("yellow")) }
+    fn yellow(self) -> StyledStr {
+        self.styled(fg_style("yellow"))
+    }
     /// Set foreground to magenta.
-    fn magenta(self) -> StyledStr { self.styled(fg_style("magenta")) }
+    fn magenta(self) -> StyledStr {
+        self.styled(fg_style("magenta"))
+    }
     /// Set foreground to cyan.
-    fn cyan(self) -> StyledStr { self.styled(fg_style("cyan")) }
+    fn cyan(self) -> StyledStr {
+        self.styled(fg_style("cyan"))
+    }
     /// Set foreground to white.
-    fn white(self) -> StyledStr { self.styled(fg_style("white")) }
+    fn white(self) -> StyledStr {
+        self.styled(fg_style("white"))
+    }
     /// Set foreground to black.
-    fn black(self) -> StyledStr { self.styled(fg_style("black")) }
+    fn black(self) -> StyledStr {
+        self.styled(fg_style("black"))
+    }
     /// Set foreground to bright red.
-    fn bright_red(self) -> StyledStr { self.styled(fg_style("bright_red")) }
+    fn bright_red(self) -> StyledStr {
+        self.styled(fg_style("bright_red"))
+    }
     /// Set foreground to bright green.
-    fn bright_green(self) -> StyledStr { self.styled(fg_style("bright_green")) }
+    fn bright_green(self) -> StyledStr {
+        self.styled(fg_style("bright_green"))
+    }
     /// Set foreground to bright blue.
-    fn bright_blue(self) -> StyledStr { self.styled(fg_style("bright_blue")) }
+    fn bright_blue(self) -> StyledStr {
+        self.styled(fg_style("bright_blue"))
+    }
     /// Set foreground to bright yellow.
-    fn bright_yellow(self) -> StyledStr { self.styled(fg_style("bright_yellow")) }
+    fn bright_yellow(self) -> StyledStr {
+        self.styled(fg_style("bright_yellow"))
+    }
     /// Set foreground to bright magenta.
-    fn bright_magenta(self) -> StyledStr { self.styled(fg_style("bright_magenta")) }
+    fn bright_magenta(self) -> StyledStr {
+        self.styled(fg_style("bright_magenta"))
+    }
     /// Set foreground to bright cyan.
-    fn bright_cyan(self) -> StyledStr { self.styled(fg_style("bright_cyan")) }
+    fn bright_cyan(self) -> StyledStr {
+        self.styled(fg_style("bright_cyan"))
+    }
     /// Set foreground to bright white.
-    fn bright_white(self) -> StyledStr { self.styled(fg_style("bright_white")) }
+    fn bright_white(self) -> StyledStr {
+        self.styled(fg_style("bright_white"))
+    }
 
     // -- Background color methods -------------------------------------------
 
     /// Set background to red.
-    fn on_red(self) -> StyledStr { self.styled(bg_style("red")) }
+    fn on_red(self) -> StyledStr {
+        self.styled(bg_style("red"))
+    }
     /// Set background to green.
-    fn on_green(self) -> StyledStr { self.styled(bg_style("green")) }
+    fn on_green(self) -> StyledStr {
+        self.styled(bg_style("green"))
+    }
     /// Set background to blue.
-    fn on_blue(self) -> StyledStr { self.styled(bg_style("blue")) }
+    fn on_blue(self) -> StyledStr {
+        self.styled(bg_style("blue"))
+    }
     /// Set background to yellow.
-    fn on_yellow(self) -> StyledStr { self.styled(bg_style("yellow")) }
+    fn on_yellow(self) -> StyledStr {
+        self.styled(bg_style("yellow"))
+    }
     /// Set background to magenta.
-    fn on_magenta(self) -> StyledStr { self.styled(bg_style("magenta")) }
+    fn on_magenta(self) -> StyledStr {
+        self.styled(bg_style("magenta"))
+    }
     /// Set background to cyan.
-    fn on_cyan(self) -> StyledStr { self.styled(bg_style("cyan")) }
+    fn on_cyan(self) -> StyledStr {
+        self.styled(bg_style("cyan"))
+    }
     /// Set background to white.
-    fn on_white(self) -> StyledStr { self.styled(bg_style("white")) }
+    fn on_white(self) -> StyledStr {
+        self.styled(bg_style("white"))
+    }
     /// Set background to black.
-    fn on_black(self) -> StyledStr { self.styled(bg_style("black")) }
+    fn on_black(self) -> StyledStr {
+        self.styled(bg_style("black"))
+    }
 
     // -- Arbitrary color methods --------------------------------------------
 
@@ -234,10 +300,7 @@ impl Stylize for &str {
 
 impl Stylize for String {
     fn styled(self, style: Style) -> StyledStr {
-        StyledStr {
-            text: self,
-            style,
-        }
+        StyledStr { text: self, style }
     }
 }
 
@@ -288,10 +351,7 @@ mod tests {
     #[test]
     fn test_styled_str_renderable() {
         let styled = "Hello".bold().green();
-        let console = ConsoleBuilder::new()
-            .force_terminal(true)
-            .width(80)
-            .build();
+        let console = ConsoleBuilder::new().force_terminal(true).width(80).build();
         let options = console.options();
         let segments = styled.rich_console(&console, &options);
         // Should produce at least one segment containing "Hello"
@@ -346,9 +406,15 @@ mod tests {
         ];
 
         for (name, styled) in colors {
-            let color = styled.style.color()
+            let color = styled
+                .style
+                .color()
                 .unwrap_or_else(|| panic!("color method '{}' should set fg color", name));
-            assert_eq!(color.name, name, "expected color name '{}', got '{}'", name, color.name);
+            assert_eq!(
+                color.name, name,
+                "expected color name '{}', got '{}'",
+                name, color.name
+            );
         }
     }
 
@@ -366,9 +432,15 @@ mod tests {
         ];
 
         for (name, styled) in colors {
-            let bg = styled.style.bgcolor()
+            let bg = styled
+                .style
+                .bgcolor()
                 .unwrap_or_else(|| panic!("on_{} should set bg color", name));
-            assert_eq!(bg.name, name, "expected bg color '{}', got '{}'", name, bg.name);
+            assert_eq!(
+                bg.name, name,
+                "expected bg color '{}', got '{}'",
+                name, bg.name
+            );
         }
     }
 
@@ -387,7 +459,12 @@ mod tests {
 
     #[test]
     fn test_complex_chain() {
-        let s = "fancy".bold().italic().underline().bright_yellow().on_blue();
+        let s = "fancy"
+            .bold()
+            .italic()
+            .underline()
+            .bright_yellow()
+            .on_blue();
         assert_eq!(s.text, "fancy");
         assert_eq!(s.style.bold(), Some(true));
         assert_eq!(s.style.italic(), Some(true));

@@ -40,10 +40,7 @@ fn main() {
 
     // The famous message in large, friendly letters.
     let message = format!("{:^width$}\n", "DON'T PANIC!", width = width);
-    content.append_str(
-        &message,
-        Some(Style::parse("bold yellow on blue").unwrap()),
-    );
+    content.append_str(&message, Some(Style::parse("bold yellow on blue").unwrap()));
 
     content.append_str(&format!("{:^width$}\n", "", width = width), None);
 

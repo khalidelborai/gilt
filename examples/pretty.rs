@@ -33,7 +33,10 @@ fn main() {
 
     let mut settings: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
     settings.insert("colors", vec!["red", "green", "blue", "cyan", "magenta"]);
-    settings.insert("fonts", vec!["Fira Code", "JetBrains Mono", "Cascadia Code"]);
+    settings.insert(
+        "fonts",
+        vec!["Fira Code", "JetBrains Mono", "Cascadia Code"],
+    );
     settings.insert("themes", vec!["monokai", "dracula", "solarized", "nord"]);
     let pretty = Pretty::from_debug(&settings);
     console.print(&pretty);

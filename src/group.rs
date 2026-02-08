@@ -227,9 +227,9 @@ mod tests {
         let console = make_console(80);
         let opts = console.options();
         let items = vec![
-            Text::new("Hi", Style::null()),            // max=2
-            Text::new("Hello World", Style::null()),   // max=11
-            Text::new("Foo", Style::null()),            // max=3
+            Text::new("Hi", Style::null()),          // max=2
+            Text::new("Hello World", Style::null()), // max=11
+            Text::new("Foo", Style::null()),         // max=3
         ];
         let group = Group::fit(items);
         let m = group.measure(&console, &opts);
@@ -252,9 +252,7 @@ mod tests {
     fn test_measure_fit_clamped_to_max_width() {
         let console = make_console(5);
         let opts = console.options();
-        let items = vec![
-            Text::new("A very long line of text", Style::null()),
-        ];
+        let items = vec![Text::new("A very long line of text", Style::null())];
         let group = Group::fit(items);
         let m = group.measure(&console, &opts);
         // Should be clamped to console width of 5
@@ -352,9 +350,7 @@ mod tests {
     #[test]
     fn test_console_render_integration() {
         let console = make_console(80);
-        let items = vec![
-            Text::new("via console render", Style::null()),
-        ];
+        let items = vec![Text::new("via console render", Style::null())];
         let group = Group::new(items);
         let segments = console.render(&group, None);
         let combined: String = segments.iter().map(|s| s.text.as_str()).collect();
@@ -365,9 +361,7 @@ mod tests {
 
     #[test]
     fn test_clone() {
-        let items = vec![
-            Text::new("cloneable", Style::null()),
-        ];
+        let items = vec![Text::new("cloneable", Style::null())];
         let group = Group::fit(items);
         let cloned = group.clone();
         assert_eq!(cloned.len(), group.len());
@@ -402,7 +396,9 @@ mod tests {
         });
         let has_italic = segments.iter().any(|s| {
             s.text.contains("Italic item")
-                && s.style.as_ref().map_or(false, |st| st.italic() == Some(true))
+                && s.style
+                    .as_ref()
+                    .map_or(false, |st| st.italic() == Some(true))
         });
         assert!(has_bold, "Expected bold segment in output");
         assert!(has_italic, "Expected italic segment in output");

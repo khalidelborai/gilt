@@ -62,17 +62,12 @@ fn main() {
         "Emacs".into(),
     ];
 
-    let select_default = Select::new("Choose an editor", editors.clone())
-        .with_default(0); // Default to Neovim (index 0)
+    let select_default = Select::new("Choose an editor", editors.clone()).with_default(0); // Default to Neovim (index 0)
 
     match select_default.ask(&mut console) {
         Ok(index) => {
             console.print_text("");
-            console.print(
-                &format!("You selected: {}", editors[index])
-                    .bold()
-                    .cyan(),
-            );
+            console.print(&format!("You selected: {}", editors[index]).bold().cyan());
         }
         Err(e) => {
             console.print_text(&format!("Error: {}", e));
@@ -95,8 +90,7 @@ fn main() {
         "Extra Cheese".into(),
     ];
 
-    let multi = MultiSelect::new("Select your pizza toppings", toppings.clone())
-        .with_min(1); // At least one topping required
+    let multi = MultiSelect::new("Select your pizza toppings", toppings.clone()).with_min(1); // At least one topping required
 
     match multi.ask(&mut console) {
         Ok(indices) => {

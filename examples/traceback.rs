@@ -19,9 +19,7 @@ fn main() {
     console.print(&Rule::with_title("Error Chain"));
 
     let inner = io::Error::new(io::ErrorKind::ConnectionRefused, "connection refused");
-    let outer = io::Error::other(
-        format!("failed to connect to database: {}", inner),
-    );
+    let outer = io::Error::other(format!("failed to connect to database: {}", inner));
     let tb = Traceback::from_error(&outer);
     console.print(&tb);
 

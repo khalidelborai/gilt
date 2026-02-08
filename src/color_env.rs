@@ -92,10 +92,8 @@ mod tests {
 
         // Save originals & clear all colour vars first.
         let all_keys = ["NO_COLOR", "FORCE_COLOR", "CLICOLOR_FORCE", "CLICOLOR"];
-        let saved: Vec<(&str, Option<String>)> = all_keys
-            .iter()
-            .map(|k| (*k, env::var(k).ok()))
-            .collect();
+        let saved: Vec<(&str, Option<String>)> =
+            all_keys.iter().map(|k| (*k, env::var(k).ok())).collect();
 
         for key in &all_keys {
             env::remove_var(key);
@@ -202,10 +200,7 @@ mod tests {
     #[test]
     fn test_force_color_wins_over_clicolor_force() {
         let r = with_env(
-            &[
-                ("FORCE_COLOR", Some("0")),
-                ("CLICOLOR_FORCE", Some("1")),
-            ],
+            &[("FORCE_COLOR", Some("0")), ("CLICOLOR_FORCE", Some("1"))],
             detect_color_env,
         );
         // FORCE_COLOR=0 → NoColor, even though CLICOLOR_FORCE=1

@@ -94,7 +94,10 @@ impl Padding {
         } else {
             min_w.min(options.max_width)
         };
-        Measurement::new(min_w.min(inner_opts.max_width + self.left + self.right), max_w)
+        Measurement::new(
+            min_w.min(inner_opts.max_width + self.left + self.right),
+            max_w,
+        )
     }
 }
 
@@ -142,10 +145,7 @@ impl Renderable for Padding {
             let line_len = self.left + Segment::get_line_length(line);
             let remaining = width.saturating_sub(line_len);
             if remaining > 0 {
-                segments.push(Segment::styled(
-                    &" ".repeat(remaining),
-                    self.style.clone(),
-                ));
+                segments.push(Segment::styled(&" ".repeat(remaining), self.style.clone()));
             } else if right_pad_base > 0 && remaining == 0 {
                 // Content exactly fills; no extra padding needed
             }
@@ -246,12 +246,7 @@ mod tests {
     fn test_render_no_padding() {
         let console = make_console(20);
         let text = Text::new("Hello", Style::null());
-        let padding = Padding::new(
-            text,
-            PaddingDimensions::Uniform(0),
-            Style::null(),
-            false,
-        );
+        let padding = Padding::new(text, PaddingDimensions::Uniform(0), Style::null(), false);
         let opts = console.options();
         let segments = padding.rich_console(&console, &opts);
         let output = segments_to_text(&segments);
@@ -299,12 +294,7 @@ mod tests {
     fn test_render_expand_fills_width() {
         let console = make_console(30);
         let text = Text::new("Hi", Style::null());
-        let padding = Padding::new(
-            text,
-            PaddingDimensions::Uniform(1),
-            Style::null(),
-            true,
-        );
+        let padding = Padding::new(text, PaddingDimensions::Uniform(1), Style::null(), true);
         let opts = console.options();
         let segments = padding.rich_console(&console, &opts);
         let output = segments_to_text(&segments);
@@ -380,12 +370,7 @@ mod tests {
     fn test_padding_with_styled_content() {
         let console = make_console(20);
         let text = Text::styled("Bold", Style::parse("bold").unwrap());
-        let padding = Padding::new(
-            text,
-            PaddingDimensions::Uniform(1),
-            Style::null(),
-            true,
-        );
+        let padding = Padding::new(text, PaddingDimensions::Uniform(1), Style::null(), true);
         let opts = console.options();
         let segments = padding.rich_console(&console, &opts);
         let plain: String = segments.iter().map(|s| s.text.as_str()).collect();

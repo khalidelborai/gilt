@@ -2,7 +2,7 @@
 //!
 //! Port of Python's `rich/layout.py`. Provides [`Layout`] for dividing a
 //! fixed-height terminal area into rows and columns, with flexible or
-//! fixed sizing via [`ratio_resolve`](crate::ratio::ratio_resolve).
+//! fixed sizing via [`ratio_resolve`].
 
 use std::collections::HashMap;
 
@@ -268,8 +268,7 @@ impl Layout {
             if !visible.is_empty() {
                 let splitter = layout.splitter.make_splitter();
                 // Build a temporary vec of visible children for the splitter
-                let visible_layouts: Vec<Layout> =
-                    visible.iter().map(|c| (*c).clone()).collect();
+                let visible_layouts: Vec<Layout> = visible.iter().map(|c| (*c).clone()).collect();
                 let divisions = splitter.divide(&visible_layouts, region);
                 // Map the child indices back to the actual child references
                 for (child_idx, child_region) in divisions {
@@ -280,9 +279,7 @@ impl Layout {
         }
 
         // Sort by region (y, x) for deterministic order
-        layout_regions.sort_by(|a, b| {
-            (a.1.y, a.1.x).cmp(&(b.1.y, b.1.x))
-        });
+        layout_regions.sort_by(|a, b| (a.1.y, a.1.x).cmp(&(b.1.y, b.1.x)));
 
         layout_regions
     }
@@ -321,13 +318,7 @@ impl Layout {
             };
 
             // Ensure lines match the expected height
-            let lines = Segment::set_shape(
-                &lines,
-                region.width,
-                Some(region.height),
-                None,
-                false,
-            );
+            let lines = Segment::set_shape(&lines, region.width, Some(region.height), None, false);
 
             let key = match &layout.name {
                 Some(n) => n.clone(),
@@ -357,10 +348,8 @@ impl Renderable for Layout {
         let render_map = self.render(console, &opts);
 
         // Collect all (region, lines) sorted by position
-        let mut entries: Vec<(Region, &Vec<Vec<Segment>>)> = render_map
-            .values()
-            .map(|(r, lines)| (*r, lines))
-            .collect();
+        let mut entries: Vec<(Region, &Vec<Vec<Segment>>)> =
+            render_map.values().map(|(r, lines)| (*r, lines)).collect();
         entries.sort_by(|a, b| (a.0.y, a.0.x).cmp(&(b.0.y, b.0.x)));
 
         let mut layout_lines: Vec<Vec<Segment>> = vec![Vec::new(); height];
@@ -737,18 +726,14 @@ mod tests {
         let child = Layout::new(None, Some("child".to_string()), None, None, None, None);
         layout.split_column(vec![child]);
         assert!(layout.get("child").is_some());
-        assert_eq!(
-            layout.get("child").unwrap().name.as_deref(),
-            Some("child")
-        );
+        assert_eq!(layout.get("child").unwrap().name.as_deref(), Some("child"));
     }
 
     #[test]
     fn test_get_nested() {
         let mut layout = Layout::new(None, Some("root".to_string()), None, None, None, None);
         let mut child = Layout::new(None, Some("child".to_string()), None, None, None, None);
-        let grandchild =
-            Layout::new(None, Some("grandchild".to_string()), None, None, None, None);
+        let grandchild = Layout::new(None, Some("grandchild".to_string()), None, None, None, None);
         child.split_column(vec![grandchild]);
         layout.split_column(vec![child]);
 
@@ -858,7 +843,9 @@ mod tests {
 
         // Find the children's regions
         let top = map.iter().find(|(l, _)| l.name.as_deref() == Some("top"));
-        let bottom = map.iter().find(|(l, _)| l.name.as_deref() == Some("bottom"));
+        let bottom = map
+            .iter()
+            .find(|(l, _)| l.name.as_deref() == Some("bottom"));
         assert!(top.is_some());
         assert!(bottom.is_some());
 
@@ -880,12 +867,8 @@ mod tests {
         layout.split_row(vec![child1, child2]);
 
         let map = layout.make_region_map(80, 24);
-        let left = map
-            .iter()
-            .find(|(l, _)| l.name.as_deref() == Some("left"));
-        let right = map
-            .iter()
-            .find(|(l, _)| l.name.as_deref() == Some("right"));
+        let left = map.iter().find(|(l, _)| l.name.as_deref() == Some("left"));
+        let right = map.iter().find(|(l, _)| l.name.as_deref() == Some("right"));
         assert!(left.is_some());
         assert!(right.is_some());
 
@@ -902,10 +885,22 @@ mod tests {
     fn test_make_region_map_nested() {
         let mut layout = Layout::default_layout();
         let mut top = Layout::new(None, Some("top".to_string()), Some(10), None, None, None);
-        let top_left =
-            Layout::new(None, Some("top_left".to_string()), None, None, Some(1), None);
-        let top_right =
-            Layout::new(None, Some("top_right".to_string()), None, None, Some(1), None);
+        let top_left = Layout::new(
+            None,
+            Some("top_left".to_string()),
+            None,
+            None,
+            Some(1),
+            None,
+        );
+        let top_right = Layout::new(
+            None,
+            Some("top_right".to_string()),
+            None,
+            None,
+            Some(1),
+            None,
+        );
         top.split_row(vec![top_left, top_right]);
 
         let bottom = Layout::new(None, Some("bottom".to_string()), None, None, Some(1), None);
@@ -1015,8 +1010,7 @@ mod tests {
         let mut layout = Layout::default_layout();
         let mut top = Layout::new(None, Some("top".to_string()), None, None, Some(1), None);
         top.update("TOP".to_string());
-        let mut bottom =
-            Layout::new(None, Some("bottom".to_string()), None, None, Some(1), None);
+        let mut bottom = Layout::new(None, Some("bottom".to_string()), None, None, Some(1), None);
         bottom.update("BOTTOM".to_string());
         layout.split_column(vec![top, bottom]);
 
@@ -1228,9 +1222,15 @@ mod tests {
 
     #[test]
     fn test_display_trait() {
-        let layout = Layout::new(Some("root".to_string()), Some("root".to_string()), None, None, None, None);
+        let layout = Layout::new(
+            Some("root".to_string()),
+            Some("root".to_string()),
+            None,
+            None,
+            None,
+            None,
+        );
         let s = format!("{}", layout);
         assert!(!s.is_empty());
     }
-
 }

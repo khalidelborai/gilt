@@ -1,7 +1,7 @@
 //! Demonstrates all highlighter types including URL, UUID, ISO date, and JSONPath.
 
-use gilt::prelude::*;
 use gilt::highlighter::*;
+use gilt::prelude::*;
 
 fn main() {
     let mut console = Console::new();

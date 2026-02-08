@@ -26,18 +26,22 @@ fn main() {
 
     // -- Build a styled table --
     let mut table = Table::new(&[
-        "Language", "Paradigm", "Typing", "First Appeared", "TIOBE Rank",
+        "Language",
+        "Paradigm",
+        "Typing",
+        "First Appeared",
+        "TIOBE Rank",
     ]);
     table.title = Some("Top Languages (2025)".to_string());
 
-    table.add_row(&["Rust",       "Multi-paradigm", "Static",  "2010", "#14"]);
-    table.add_row(&["Python",     "Multi-paradigm", "Dynamic", "1991", "#1"]);
-    table.add_row(&["TypeScript", "Multi-paradigm", "Static",  "2012", "#7"]);
-    table.add_row(&["Go",         "Concurrent",     "Static",  "2009", "#8"]);
-    table.add_row(&["C",          "Procedural",     "Static",  "1972", "#2"]);
-    table.add_row(&["Java",       "Object-oriented","Static",  "1995", "#3"]);
-    table.add_row(&["Kotlin",     "Multi-paradigm", "Static",  "2011", "#17"]);
-    table.add_row(&["Swift",      "Multi-paradigm", "Static",  "2014", "#16"]);
+    table.add_row(&["Rust", "Multi-paradigm", "Static", "2010", "#14"]);
+    table.add_row(&["Python", "Multi-paradigm", "Dynamic", "1991", "#1"]);
+    table.add_row(&["TypeScript", "Multi-paradigm", "Static", "2012", "#7"]);
+    table.add_row(&["Go", "Concurrent", "Static", "2009", "#8"]);
+    table.add_row(&["C", "Procedural", "Static", "1972", "#2"]);
+    table.add_row(&["Java", "Object-oriented", "Static", "1995", "#3"]);
+    table.add_row(&["Kotlin", "Multi-paradigm", "Static", "2011", "#17"]);
+    table.add_row(&["Swift", "Multi-paradigm", "Static", "2014", "#16"]);
 
     console.print(&table);
 
@@ -62,7 +66,11 @@ fn main() {
     println!();
     println!("SVG exported successfully!");
     println!("  File: /tmp/gilt_table.svg");
-    println!("  Size: {} bytes ({:.1} KB)", svg_len, svg_len as f64 / 1024.0);
+    println!(
+        "  Size: {} bytes ({:.1} KB)",
+        svg_len,
+        svg_len as f64 / 1024.0
+    );
     println!();
 
     // Show first few lines of the SVG as a preview.

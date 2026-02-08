@@ -30,5 +30,7 @@ fn main() -> Result<(), eyre::Report> {
 
 #[cfg(not(feature = "eyre"))]
 fn main() {
-    eprintln!("This example requires the 'eyre' feature: cargo run --example eyre_demo --features eyre");
+    eprintln!(
+        "This example requires the 'eyre' feature: cargo run --example eyre_demo --features eyre"
+    );
 }

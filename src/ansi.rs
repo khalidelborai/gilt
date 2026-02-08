@@ -277,8 +277,8 @@ impl AnsiDecoder {
                             if color_type == 5 {
                                 if let Some(n) = iter.next() {
                                     let color = Color::from_ansi(n);
-                                    self.style = self.style.clone()
-                                        + Style::from_color(Some(color), None);
+                                    self.style =
+                                        self.style.clone() + Style::from_color(Some(color), None);
                                 }
                             } else if color_type == 2 {
                                 let r = iter.next();
@@ -286,8 +286,8 @@ impl AnsiDecoder {
                                 let b = iter.next();
                                 if let (Some(r), Some(g), Some(b)) = (r, g, b) {
                                     let color = Color::from_rgb(r, g, b);
-                                    self.style = self.style.clone()
-                                        + Style::from_color(Some(color), None);
+                                    self.style =
+                                        self.style.clone() + Style::from_color(Some(color), None);
                                 }
                             }
                         }
@@ -297,8 +297,8 @@ impl AnsiDecoder {
                             if color_type == 5 {
                                 if let Some(n) = iter.next() {
                                     let color = Color::from_ansi(n);
-                                    self.style = self.style.clone()
-                                        + Style::from_color(None, Some(color));
+                                    self.style =
+                                        self.style.clone() + Style::from_color(None, Some(color));
                                 }
                             } else if color_type == 2 {
                                 let r = iter.next();
@@ -306,8 +306,8 @@ impl AnsiDecoder {
                                 let b = iter.next();
                                 if let (Some(r), Some(g), Some(b)) = (r, g, b) {
                                     let color = Color::from_rgb(r, g, b);
-                                    self.style = self.style.clone()
-                                        + Style::from_color(None, Some(color));
+                                    self.style =
+                                        self.style.clone() + Style::from_color(None, Some(color));
                                 }
                             }
                         }
@@ -369,7 +369,10 @@ mod tests {
     fn test_sgr_style_map_foreground_colors() {
         for i in 0..8u8 {
             let expected = format!("color({})", i);
-            assert_eq!(sgr_style(30 + i), Some(expected.as_str()).map(|_| sgr_style(30 + i).unwrap()));
+            assert_eq!(
+                sgr_style(30 + i),
+                Some(expected.as_str()).map(|_| sgr_style(30 + i).unwrap())
+            );
         }
         assert_eq!(sgr_style(39), Some("default"));
     }
@@ -587,14 +590,10 @@ mod tests {
     #[test]
     fn test_decode_line_osc8_hyperlink() {
         let mut decoder = AnsiDecoder::new();
-        let text =
-            decoder.decode_line("\x1b]8;;https://example.com\x1b\\Click\x1b]8;;\x1b\\");
+        let text = decoder.decode_line("\x1b]8;;https://example.com\x1b\\Click\x1b]8;;\x1b\\");
         assert_eq!(text.plain(), "Click");
         assert_eq!(text.spans().len(), 1);
-        assert_eq!(
-            text.spans()[0].style.link(),
-            Some("https://example.com")
-        );
+        assert_eq!(text.spans()[0].style.link(), Some("https://example.com"));
     }
 
     #[test]

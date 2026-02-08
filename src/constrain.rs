@@ -51,7 +51,9 @@ impl Constrain {
     pub fn measure(&self, _console: &Console, options: &ConsoleOptions) -> Measurement {
         let measurement = if let Some(w) = self.width {
             let constrained = options.update_width(w);
-            self.renderable.measure().with_maximum(constrained.max_width)
+            self.renderable
+                .measure()
+                .with_maximum(constrained.max_width)
         } else {
             self.renderable.measure()
         };
@@ -260,11 +262,7 @@ mod tests {
         let c = Constrain::new(text, Some(10));
         let m = c.measure(&console, &opts);
 
-        assert!(
-            m.maximum <= 10,
-            "Expected max <= 10, got {}",
-            m.maximum,
-        );
+        assert!(m.maximum <= 10, "Expected max <= 10, got {}", m.maximum,);
     }
 
     // -- Styled content -----------------------------------------------------
@@ -279,9 +277,9 @@ mod tests {
         let segments = c.rich_console(&console, &opts);
 
         // The styled content should still carry its style through
-        let has_styled = segments.iter().any(|s| {
-            s.text.contains("Bold text") && s.style.is_some()
-        });
+        let has_styled = segments
+            .iter()
+            .any(|s| s.text.contains("Bold text") && s.style.is_some());
         assert!(has_styled, "Expected styled segment in output");
     }
 

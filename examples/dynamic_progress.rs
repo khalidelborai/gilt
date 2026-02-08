@@ -93,11 +93,9 @@ fn main() {
         finished_count = new_finished;
 
         // Check if all jobs are done.
-        let all_done = jobs.iter().all(|job| {
-            progress
-                .get_task(job.task_id)
-                .is_none_or(|t| t.finished())
-        });
+        let all_done = jobs
+            .iter()
+            .all(|job| progress.get_task(job.task_id).is_none_or(|t| t.finished()));
 
         if all_done {
             break;

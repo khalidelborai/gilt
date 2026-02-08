@@ -5,8 +5,8 @@
 //! time, speed), live-updating display, and iterator wrapping.
 
 use std::collections::{HashMap, VecDeque};
-use std::time::SystemTime;
 use std::io::{self, Read};
+use std::time::SystemTime;
 
 use crate::console::{Console, ConsoleOptions, Renderable};
 use crate::filesize;
@@ -117,9 +117,7 @@ impl Task {
     /// Percentage complete (0..100). Returns 0.0 if total is None or zero.
     pub fn percentage(&self) -> f64 {
         match self.total {
-            Some(total) if total > 0.0 => {
-                ((self.completed / total) * 100.0).clamp(0.0, 100.0)
-            }
+            Some(total) if total > 0.0 => ((self.completed / total) * 100.0).clamp(0.0, 100.0),
             _ => 0.0,
         }
     }
@@ -438,7 +436,10 @@ impl SpinnerColumn {
         SpinnerColumn {
             spinner_name: name.to_string(),
             style: None,
-            finished_text: Text::styled("\u{2714}", Style::parse("green").unwrap_or_else(|_| Style::null())),
+            finished_text: Text::styled(
+                "\u{2714}",
+                Style::parse("green").unwrap_or_else(|_| Style::null()),
+            ),
         }
     }
 
@@ -505,7 +506,10 @@ impl ProgressColumn for TimeElapsedColumn {
     fn render(&self, task: &Task) -> Text {
         let elapsed = task.elapsed().unwrap_or(0.0);
         let formatted = format_time(elapsed);
-        Text::new(&formatted, Style::parse("progress.elapsed").unwrap_or_else(|_| Style::null()))
+        Text::new(
+            &formatted,
+            Style::parse("progress.elapsed").unwrap_or_else(|_| Style::null()),
+        )
     }
 }
 
@@ -552,9 +556,7 @@ impl ProgressColumn for TimeRemainingColumn {
         }
 
         match task.time_remaining() {
-            Some(remaining) if remaining.is_finite() => {
-                Text::new(&format_time(remaining), style)
-            }
+            Some(remaining) if remaining.is_finite() => Text::new(&format_time(remaining), style),
             _ => Text::new("-:--:--", style),
         }
     }
@@ -623,7 +625,10 @@ impl ProgressColumn for FileSizeColumn {
     fn render(&self, task: &Task) -> Text {
         let size = task.completed as u64;
         let formatted = filesize::decimal(size, 1, " ");
-        Text::new(&formatted, Style::parse("progress.filesize").unwrap_or_else(|_| Style::null()))
+        Text::new(
+            &formatted,
+            Style::parse("progress.filesize").unwrap_or_else(|_| Style::null()),
+        )
     }
 }
 
@@ -693,10 +698,7 @@ impl ProgressColumn for MofNCompleteColumn {
             None => "?".to_string(),
         };
         let style = Style::parse("progress.percentage").unwrap_or_else(|_| Style::null());
-        Text::new(
-            &format!("{completed}{}{total_str}", self.separator),
-            style,
-        )
+        Text::new(&format!("{completed}{}{total_str}", self.separator), style)
     }
 }
 
@@ -1065,7 +1067,8 @@ impl Progress {
     ///
     /// An empty task list (no visible tasks) returns `true`.
     pub fn all_tasks_finished(&self) -> bool {
-        self.tasks.iter()
+        self.tasks
+            .iter()
             .filter(|t| t.visible)
             .all(|t| t.finished())
     }
@@ -1279,8 +1282,7 @@ where
 {
     /// Create a new TrackIterator wrapping the given iterator.
     pub fn new(iter: I, description: &str, total: Option<f64>) -> Self {
-        let mut progress = Progress::new(Progress::default_columns())
-            .with_auto_refresh(false);
+        let mut progress = Progress::new(Progress::default_columns()).with_auto_refresh(false);
         let task_id = progress.add_task(description, total);
         TrackIterator {
             inner: iter,
@@ -1413,8 +1415,7 @@ pub struct ProgressIter<I> {
 impl<I: Iterator> ProgressIter<I> {
     /// Create a new `ProgressIter` wrapping the given iterator.
     fn new(iter: I, description: &str, total: Option<f64>) -> Self {
-        let mut progress = Progress::new(Progress::default_columns())
-            .with_auto_refresh(true);
+        let mut progress = Progress::new(Progress::default_columns()).with_auto_refresh(true);
         let task_id = progress.add_task(description, total);
         ProgressIter {
             inner: iter,
@@ -1531,7 +1532,6 @@ impl<R: Read> Read for ProgressReader<R> {
         Ok(n)
     }
 }
-
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -1951,7 +1951,8 @@ mod tests {
     fn test_text_column_fields() {
         let col = TextColumn::new("Status: {task.fields.status}");
         let mut task = Task::new(0, "test", Some(100.0));
-        task.fields.insert("status".to_string(), "running".to_string());
+        task.fields
+            .insert("status".to_string(), "running".to_string());
         let text = col.render(&task);
         assert_eq!(text.plain(), "Status: running");
     }
@@ -2323,8 +2324,7 @@ mod tests {
 
     #[test]
     fn test_progress_add_task() {
-        let mut progress = Progress::new(Progress::default_columns())
-            .with_get_time(|| 1.0);
+        let mut progress = Progress::new(Progress::default_columns()).with_get_time(|| 1.0);
         let id = progress.add_task("Test", Some(100.0));
         assert_eq!(id, 0);
         assert_eq!(progress.tasks.len(), 1);
@@ -2335,8 +2335,7 @@ mod tests {
 
     #[test]
     fn test_progress_add_multiple_tasks() {
-        let mut progress = Progress::new(Progress::default_columns())
-            .with_get_time(|| 1.0);
+        let mut progress = Progress::new(Progress::default_columns()).with_get_time(|| 1.0);
         let id1 = progress.add_task("First", Some(100.0));
         let id2 = progress.add_task("Second", Some(200.0));
         assert_eq!(id1, 0);
@@ -2346,8 +2345,7 @@ mod tests {
 
     #[test]
     fn test_progress_update_completed() {
-        let mut progress = Progress::new(Progress::default_columns())
-            .with_get_time(|| 1.0);
+        let mut progress = Progress::new(Progress::default_columns()).with_get_time(|| 1.0);
         let id = progress.add_task("Test", Some(100.0));
         progress.update(id, Some(50.0), None, None, None, None);
         assert!((progress.tasks[0].completed - 50.0).abs() < f64::EPSILON);
@@ -2355,8 +2353,7 @@ mod tests {
 
     #[test]
     fn test_progress_update_total() {
-        let mut progress = Progress::new(Progress::default_columns())
-            .with_get_time(|| 1.0);
+        let mut progress = Progress::new(Progress::default_columns()).with_get_time(|| 1.0);
         let id = progress.add_task("Test", Some(100.0));
         progress.update(id, None, Some(200.0), None, None, None);
         assert_eq!(progress.tasks[0].total, Some(200.0));
@@ -2364,8 +2361,7 @@ mod tests {
 
     #[test]
     fn test_progress_update_advance() {
-        let mut progress = Progress::new(Progress::default_columns())
-            .with_get_time(|| 1.0);
+        let mut progress = Progress::new(Progress::default_columns()).with_get_time(|| 1.0);
         let id = progress.add_task("Test", Some(100.0));
         progress.update(id, None, None, Some(10.0), None, None);
         assert!((progress.tasks[0].completed - 10.0).abs() < f64::EPSILON);
@@ -2375,8 +2371,7 @@ mod tests {
 
     #[test]
     fn test_progress_update_description() {
-        let mut progress = Progress::new(Progress::default_columns())
-            .with_get_time(|| 1.0);
+        let mut progress = Progress::new(Progress::default_columns()).with_get_time(|| 1.0);
         let id = progress.add_task("Old", Some(100.0));
         progress.update(id, None, None, None, Some("New"), None);
         assert_eq!(progress.tasks[0].description, "New");
@@ -2384,8 +2379,7 @@ mod tests {
 
     #[test]
     fn test_progress_update_visible() {
-        let mut progress = Progress::new(Progress::default_columns())
-            .with_get_time(|| 1.0);
+        let mut progress = Progress::new(Progress::default_columns()).with_get_time(|| 1.0);
         let id = progress.add_task("Test", Some(100.0));
         assert!(progress.tasks[0].visible);
         progress.update(id, None, None, None, None, Some(false));
@@ -2394,8 +2388,7 @@ mod tests {
 
     #[test]
     fn test_progress_advance() {
-        let mut progress = Progress::new(Progress::default_columns())
-            .with_get_time(|| 1.0);
+        let mut progress = Progress::new(Progress::default_columns()).with_get_time(|| 1.0);
         let id = progress.add_task("Test", Some(100.0));
         progress.advance(id, 30.0);
         assert!((progress.tasks[0].completed - 30.0).abs() < f64::EPSILON);
@@ -2403,8 +2396,7 @@ mod tests {
 
     #[test]
     fn test_progress_start_task() {
-        let mut progress = Progress::new(Progress::default_columns())
-            .with_get_time(|| 1.0);
+        let mut progress = Progress::new(Progress::default_columns()).with_get_time(|| 1.0);
         let id = progress.add_task("Test", Some(100.0));
         // add_task already starts the task
         assert!(progress.tasks[0].started());
@@ -2415,8 +2407,7 @@ mod tests {
 
     #[test]
     fn test_progress_stop_task() {
-        let mut progress = Progress::new(Progress::default_columns())
-            .with_get_time(|| 1.0);
+        let mut progress = Progress::new(Progress::default_columns()).with_get_time(|| 1.0);
         let id = progress.add_task("Test", Some(100.0));
         progress.stop_task(id);
         assert!(progress.tasks[0].stop_time.is_some());
@@ -2424,8 +2415,7 @@ mod tests {
 
     #[test]
     fn test_progress_remove_task() {
-        let mut progress = Progress::new(Progress::default_columns())
-            .with_get_time(|| 1.0);
+        let mut progress = Progress::new(Progress::default_columns()).with_get_time(|| 1.0);
         let id = progress.add_task("Test", Some(100.0));
         assert_eq!(progress.tasks.len(), 1);
         progress.remove_task(id);
@@ -2434,8 +2424,7 @@ mod tests {
 
     #[test]
     fn test_progress_remove_nonexistent_task() {
-        let mut progress = Progress::new(Progress::default_columns())
-            .with_get_time(|| 1.0);
+        let mut progress = Progress::new(Progress::default_columns()).with_get_time(|| 1.0);
         progress.add_task("Test", Some(100.0));
         progress.remove_task(999);
         assert_eq!(progress.tasks.len(), 1);
@@ -2443,8 +2432,7 @@ mod tests {
 
     #[test]
     fn test_progress_get_task() {
-        let mut progress = Progress::new(Progress::default_columns())
-            .with_get_time(|| 1.0);
+        let mut progress = Progress::new(Progress::default_columns()).with_get_time(|| 1.0);
         let id = progress.add_task("Test", Some(100.0));
         let task = progress.get_task(id).unwrap();
         assert_eq!(task.description, "Test");
@@ -2458,8 +2446,7 @@ mod tests {
 
     #[test]
     fn test_progress_get_task_mut() {
-        let mut progress = Progress::new(Progress::default_columns())
-            .with_get_time(|| 1.0);
+        let mut progress = Progress::new(Progress::default_columns()).with_get_time(|| 1.0);
         let id = progress.add_task("Test", Some(100.0));
         {
             let task = progress.get_task_mut(id).unwrap();
@@ -2470,8 +2457,7 @@ mod tests {
 
     #[test]
     fn test_progress_finished_count() {
-        let mut progress = Progress::new(Progress::default_columns())
-            .with_get_time(|| 1.0);
+        let mut progress = Progress::new(Progress::default_columns()).with_get_time(|| 1.0);
         let id1 = progress.add_task("First", Some(100.0));
         let _id2 = progress.add_task("Second", Some(100.0));
         assert_eq!(progress.finished_count(), 0);
@@ -2481,8 +2467,7 @@ mod tests {
 
     #[test]
     fn test_progress_visible_count() {
-        let mut progress = Progress::new(Progress::default_columns())
-            .with_get_time(|| 1.0);
+        let mut progress = Progress::new(Progress::default_columns()).with_get_time(|| 1.0);
         let id1 = progress.add_task("First", Some(100.0));
         let _id2 = progress.add_task("Second", Some(100.0));
         assert_eq!(progress.visible_count(), 2);
@@ -2494,8 +2479,7 @@ mod tests {
 
     #[test]
     fn test_progress_auto_finish() {
-        let mut progress = Progress::new(Progress::default_columns())
-            .with_get_time(|| 1.0);
+        let mut progress = Progress::new(Progress::default_columns()).with_get_time(|| 1.0);
         let id = progress.add_task("Test", Some(100.0));
         progress.update(id, Some(100.0), None, None, None, None);
         assert!(progress.tasks[0].finished());
@@ -2504,8 +2488,7 @@ mod tests {
 
     #[test]
     fn test_progress_auto_finish_over_total() {
-        let mut progress = Progress::new(Progress::default_columns())
-            .with_get_time(|| 1.0);
+        let mut progress = Progress::new(Progress::default_columns()).with_get_time(|| 1.0);
         let id = progress.add_task("Test", Some(100.0));
         progress.update(id, Some(150.0), None, None, None, None);
         assert!(progress.tasks[0].finished());
@@ -2522,8 +2505,7 @@ mod tests {
 
     #[test]
     fn test_progress_make_tasks_table_with_tasks() {
-        let mut progress = Progress::new(Progress::default_columns())
-            .with_get_time(|| 1.0);
+        let mut progress = Progress::new(Progress::default_columns()).with_get_time(|| 1.0);
         progress.add_task("First", Some(100.0));
         progress.add_task("Second", Some(200.0));
         let table = progress.make_tasks_table();
@@ -2533,8 +2515,7 @@ mod tests {
 
     #[test]
     fn test_progress_make_tasks_table_hidden_tasks() {
-        let mut progress = Progress::new(Progress::default_columns())
-            .with_get_time(|| 1.0);
+        let mut progress = Progress::new(Progress::default_columns()).with_get_time(|| 1.0);
         let _id1 = progress.add_task("Visible", Some(100.0));
         let id2 = progress.add_task("Hidden", Some(100.0));
         progress.update(id2, None, None, None, None, Some(false));
@@ -2546,8 +2527,7 @@ mod tests {
 
     #[test]
     fn test_progress_renderable() {
-        let mut progress = Progress::new(Progress::default_columns())
-            .with_get_time(|| 1.0);
+        let mut progress = Progress::new(Progress::default_columns()).with_get_time(|| 1.0);
         progress.add_task("Test", Some(100.0));
         let console = test_console();
         let opts = console.options();
@@ -2572,29 +2552,25 @@ mod tests {
 
     #[test]
     fn test_progress_with_speed_estimate_period() {
-        let progress = Progress::new(Progress::default_columns())
-            .with_speed_estimate_period(60.0);
+        let progress = Progress::new(Progress::default_columns()).with_speed_estimate_period(60.0);
         assert!((progress.speed_estimate_period - 60.0).abs() < f64::EPSILON);
     }
 
     #[test]
     fn test_progress_with_disable() {
-        let progress = Progress::new(Progress::default_columns())
-            .with_disable(true);
+        let progress = Progress::new(Progress::default_columns()).with_disable(true);
         assert!(progress.disable);
     }
 
     #[test]
     fn test_progress_with_expand() {
-        let progress = Progress::new(Progress::default_columns())
-            .with_expand(true);
+        let progress = Progress::new(Progress::default_columns()).with_expand(true);
         assert!(progress.expand);
     }
 
     #[test]
     fn test_progress_with_get_time() {
-        let progress = Progress::new(Progress::default_columns())
-            .with_get_time(|| 42.0);
+        let progress = Progress::new(Progress::default_columns()).with_get_time(|| 42.0);
         assert!(((progress.get_time)() - 42.0).abs() < f64::EPSILON);
     }
 
@@ -2612,8 +2588,7 @@ mod tests {
 
     #[test]
     fn test_progress_start_stop_disabled() {
-        let mut progress = Progress::new(Progress::default_columns())
-            .with_disable(true);
+        let mut progress = Progress::new(Progress::default_columns()).with_disable(true);
 
         // Should not panic even when disabled
         progress.start();
@@ -2635,8 +2610,7 @@ mod tests {
 
     #[test]
     fn test_progress_refresh_disabled() {
-        let mut progress = Progress::new(Progress::default_columns())
-            .with_disable(true);
+        let mut progress = Progress::new(Progress::default_columns()).with_disable(true);
 
         // Should not panic
         progress.refresh();
@@ -2646,8 +2620,7 @@ mod tests {
 
     #[test]
     fn test_progress_multiple_tasks() {
-        let mut progress = Progress::new(Progress::default_columns())
-            .with_get_time(|| 1.0);
+        let mut progress = Progress::new(Progress::default_columns()).with_get_time(|| 1.0);
 
         let id1 = progress.add_task("Download", Some(1000.0));
         let id2 = progress.add_task("Process", Some(500.0));
@@ -2666,8 +2639,7 @@ mod tests {
 
     #[test]
     fn test_progress_indeterminate_task() {
-        let mut progress = Progress::new(Progress::default_columns())
-            .with_get_time(|| 1.0);
+        let mut progress = Progress::new(Progress::default_columns()).with_get_time(|| 1.0);
 
         let id = progress.add_task("Loading...", None);
         progress.advance(id, 10.0);
@@ -2701,8 +2673,7 @@ mod tests {
 
     #[test]
     fn test_progress_tasks_accessor() {
-        let mut progress = Progress::new(Progress::default_columns())
-            .with_get_time(|| 1.0);
+        let mut progress = Progress::new(Progress::default_columns()).with_get_time(|| 1.0);
         progress.add_task("A", Some(100.0));
         progress.add_task("B", Some(200.0));
 
@@ -2716,8 +2687,7 @@ mod tests {
 
     #[test]
     fn test_progress_update_nonexistent_task() {
-        let mut progress = Progress::new(Progress::default_columns())
-            .with_get_time(|| 1.0);
+        let mut progress = Progress::new(Progress::default_columns()).with_get_time(|| 1.0);
         // Should not panic
         progress.update(999, Some(50.0), None, None, None, None);
         progress.advance(999, 10.0);
@@ -2729,7 +2699,8 @@ mod tests {
     fn test_task_fields_in_render() {
         let col = TextColumn::new("{task.fields.status} - {task.description}");
         let mut task = Task::new(0, "My Task", Some(100.0));
-        task.fields.insert("status".to_string(), "active".to_string());
+        task.fields
+            .insert("status".to_string(), "active".to_string());
         let text = col.render(&task);
         assert_eq!(text.plain(), "active - My Task");
     }
@@ -2744,8 +2715,7 @@ mod tests {
             Box::new(TimeElapsedColumn),
             Box::new(TimeRemainingColumn::default()),
         ];
-        let mut progress = Progress::new(columns)
-            .with_get_time(|| 1.0);
+        let mut progress = Progress::new(columns).with_get_time(|| 1.0);
         let id = progress.add_task("Custom", Some(100.0));
         progress.advance(id, 50.0);
 
@@ -2770,8 +2740,7 @@ mod tests {
             Box::new(TransferSpeedColumn),
         ];
 
-        let mut progress = Progress::new(columns)
-            .with_get_time(|| 1.0);
+        let mut progress = Progress::new(columns).with_get_time(|| 1.0);
         let id = progress.add_task("Full test", Some(100000.0));
         progress.advance(id, 50000.0);
 
@@ -2793,9 +2762,7 @@ mod tests {
 
     #[test]
     fn test_renderable_column_basic() {
-        let col = RenderableColumn::new(|task: &Task| {
-            Text::new(&task.description, Style::null())
-        });
+        let col = RenderableColumn::new(|task: &Task| Text::new(&task.description, Style::null()));
         let task = Task::new(0, "Hello", Some(100.0));
         let text = col.render(&task);
         assert_eq!(text.plain(), "Hello");
@@ -2804,8 +2771,11 @@ mod tests {
     #[test]
     fn test_renderable_column_custom_content() {
         let col = RenderableColumn::new(|task: &Task| {
-            let msg = format!("Step {} of {}", task.completed as u64,
-                task.total.map(|t| t as u64).unwrap_or(0));
+            let msg = format!(
+                "Step {} of {}",
+                task.completed as u64,
+                task.total.map(|t| t as u64).unwrap_or(0)
+            );
             Text::new(&msg, Style::null())
         });
         let mut task = Task::new(0, "test", Some(10.0));
@@ -2817,11 +2787,16 @@ mod tests {
     #[test]
     fn test_renderable_column_uses_task_fields() {
         let col = RenderableColumn::new(|task: &Task| {
-            let status = task.fields.get("status").map(|s| s.as_str()).unwrap_or("unknown");
+            let status = task
+                .fields
+                .get("status")
+                .map(|s| s.as_str())
+                .unwrap_or("unknown");
             Text::new(status, Style::null())
         });
         let mut task = Task::new(0, "test", Some(100.0));
-        task.fields.insert("status".to_string(), "downloading".to_string());
+        task.fields
+            .insert("status".to_string(), "downloading".to_string());
         let text = col.render(&task);
         assert_eq!(text.plain(), "downloading");
     }
@@ -2846,8 +2821,7 @@ mod tests {
                 Text::new(&format!("[{}]", task.completed as u64), Style::null())
             })),
         ];
-        let mut progress = Progress::new(columns)
-            .with_get_time(|| 1.0);
+        let mut progress = Progress::new(columns).with_get_time(|| 1.0);
         let id = progress.add_task("Demo", Some(100.0));
         progress.advance(id, 42.0);
 
@@ -2914,7 +2888,10 @@ mod tests {
             while tracker.next().is_some() {}
         }
         let task = progress.get_task(task_id).unwrap();
-        assert!(task.finished(), "task should be finished after iterating all items");
+        assert!(
+            task.finished(),
+            "task should be finished after iterating all items"
+        );
         assert!((task.percentage() - 100.0).abs() < f64::EPSILON);
     }
 
@@ -2943,9 +2920,9 @@ mod tests {
         let mut progress = Progress::new(Progress::default_columns())
             .with_disable(true)
             .with_get_time(|| 1.0);
-        let items: Vec<i32> = progress.track(
-            std::iter::empty::<i32>(), "Empty", Some(0.0)
-        ).collect();
+        let items: Vec<i32> = progress
+            .track(std::iter::empty::<i32>(), "Empty", Some(0.0))
+            .collect();
         assert!(items.is_empty());
     }
 
@@ -2999,9 +2976,7 @@ mod tests {
     #[test]
     fn test_progress_iter_collects_all() {
         // All items must be yielded unchanged.
-        let items: Vec<i32> = (0..10)
-            .progress("Collecting")
-            .collect();
+        let items: Vec<i32> = (0..10).progress("Collecting").collect();
         assert_eq!(items, (0..10).collect::<Vec<_>>());
     }
 
@@ -3010,8 +2985,7 @@ mod tests {
         // After full iteration the task's completed count must match.
         let mut pi = (0..7).progress("Counting");
         // Disable live display to avoid terminal writes in tests.
-        pi.progress = Progress::new(Progress::default_columns())
-            .with_disable(true);
+        pi.progress = Progress::new(Progress::default_columns()).with_disable(true);
         pi.task_id = pi.progress.add_task("Counting", Some(7.0));
         // Drain the iterator.
         while pi.next().is_some() {}
@@ -3048,8 +3022,7 @@ mod tests {
     fn test_progress_iter_with_total() {
         // progress_with_total sets an explicit total on the task.
         let mut pi = (0..3).progress_with_total("Explicit", 3.0);
-        pi.progress = Progress::new(Progress::default_columns())
-            .with_disable(true);
+        pi.progress = Progress::new(Progress::default_columns()).with_disable(true);
         pi.task_id = pi.progress.add_task("Explicit", Some(3.0));
         while pi.next().is_some() {}
         let task = pi.progress.get_task(pi.task_id).unwrap();
@@ -3060,9 +3033,7 @@ mod tests {
     #[test]
     fn test_progress_iter_empty() {
         // An empty iterator yields nothing and doesn't panic.
-        let result: Vec<i32> = std::iter::empty::<i32>()
-            .progress("Empty")
-            .collect();
+        let result: Vec<i32> = std::iter::empty::<i32>().progress("Empty").collect();
         assert!(result.is_empty());
     }
 
@@ -3145,8 +3116,7 @@ mod tests {
 
     #[test]
     fn test_all_tasks_finished_empty() {
-        let progress = Progress::new(Progress::default_columns())
-            .with_disable(true);
+        let progress = Progress::new(Progress::default_columns()).with_disable(true);
         assert!(progress.all_tasks_finished());
     }
 
@@ -3168,17 +3138,15 @@ mod tests {
 
     #[test]
     fn test_progress_reader_calls_callback() {
-        use std::io::Read;
         use std::cell::RefCell;
+        use std::io::Read;
         use std::rc::Rc;
 
         let counts = Rc::new(RefCell::new(Vec::<usize>::new()));
         let counts_clone = Rc::clone(&counts);
         let data = vec![1u8; 100];
-        let mut reader = ProgressReader::new(
-            data.as_slice(),
-            move |n| counts_clone.borrow_mut().push(n),
-        );
+        let mut reader =
+            ProgressReader::new(data.as_slice(), move |n| counts_clone.borrow_mut().push(n));
         let mut buf = [0u8; 30];
         reader.read(&mut buf).unwrap();
         reader.read(&mut buf).unwrap();

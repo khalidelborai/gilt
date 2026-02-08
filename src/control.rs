@@ -218,10 +218,7 @@ impl Control {
         if x > 0 {
             codes.push(ControlCode::WithParam(ControlType::CursorForward, x));
         } else if x < 0 {
-            codes.push(ControlCode::WithParam(
-                ControlType::CursorBackward,
-                x.abs(),
-            ));
+            codes.push(ControlCode::WithParam(ControlType::CursorBackward, x.abs()));
         }
         if y > 0 {
             codes.push(ControlCode::WithParam(ControlType::CursorDown, y));
@@ -248,10 +245,7 @@ impl Control {
     /// `x` is the 0-indexed column. `y` is a relative row offset
     /// (positive = down, negative = up, 0 = no row movement).
     pub fn move_to_column(x: i32, y: i32) -> Self {
-        let mut codes = vec![ControlCode::WithParam(
-            ControlType::CursorMoveToColumn,
-            x,
-        )];
+        let mut codes = vec![ControlCode::WithParam(ControlType::CursorMoveToColumn, x)];
         if y > 0 {
             codes.push(ControlCode::WithParam(ControlType::CursorDown, y));
         } else if y < 0 {
@@ -337,10 +331,7 @@ mod tests {
     #[test]
     fn test_strip_control_codes_all() {
         // Bell, Backspace, VT, FF, CR
-        assert_eq!(
-            strip_control_codes("a\x07b\x08c\x0Bd\x0Ce\rf"),
-            "abcdef"
-        );
+        assert_eq!(strip_control_codes("a\x07b\x08c\x0Bd\x0Ce\rf"), "abcdef");
     }
 
     #[test]
@@ -440,10 +431,7 @@ mod tests {
 
     #[test]
     fn test_alt_screen() {
-        assert_eq!(
-            Control::alt_screen(true).to_string(),
-            "\x1b[?1049h\x1b[H"
-        );
+        assert_eq!(Control::alt_screen(true).to_string(), "\x1b[?1049h\x1b[H");
         assert_eq!(Control::alt_screen(false).to_string(), "\x1b[?1049l");
     }
 
@@ -485,7 +473,10 @@ mod tests {
             base64_encode(text.as_bytes()) // self-consistent check
         );
         // Known value: "Hello \xf0\x9f\x98\x80"
-        assert_eq!(base64_encode("Hello \u{1F600}".as_bytes()), "SGVsbG8g8J+YgA==");
+        assert_eq!(
+            base64_encode("Hello \u{1F600}".as_bytes()),
+            "SGVsbG8g8J+YgA=="
+        );
     }
 
     // -- Synchronized output ------------------------------------------------
@@ -532,7 +523,7 @@ mod tests {
     #[test]
     fn test_set_clipboard_unicode() {
         let ctrl = Control::set_clipboard("\u{00e9}"); // e-acute
-        // \xc3\xa9 in base64 is "w6k="
+                                                       // \xc3\xa9 in base64 is "w6k="
         assert_eq!(ctrl.to_string(), "\x1b]52;c;w6k=\x07");
     }
 

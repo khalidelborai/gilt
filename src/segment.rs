@@ -490,9 +490,11 @@ impl Segment {
             let padding = height - lines.len();
             let empty_line = vec![Segment::styled(&" ".repeat(width), style.clone())];
             let mut padding_lines = vec![empty_line; padding];
-            padding_lines.extend(lines.iter().map(|line| {
-                Segment::adjust_line_length(line, width, style, true)
-            }));
+            padding_lines.extend(
+                lines
+                    .iter()
+                    .map(|line| Segment::adjust_line_length(line, width, style, true)),
+            );
             shaped = padding_lines;
         }
 
@@ -552,7 +554,12 @@ impl Segment {
                         if !before.is_empty() {
                             line.push(Segment::new(before, seg_style.clone(), None));
                         }
-                        let mut cropped = Segment::adjust_line_length(&line, length, &style.cloned().unwrap_or_else(Style::null), pad);
+                        let mut cropped = Segment::adjust_line_length(
+                            &line,
+                            length,
+                            &style.cloned().unwrap_or_else(Style::null),
+                            pad,
+                        );
                         if include_new_lines {
                             cropped.push(Segment::line());
                         }
@@ -571,7 +578,12 @@ impl Segment {
             }
         }
         if !line.is_empty() {
-            let cropped = Segment::adjust_line_length(&line, length, &style.cloned().unwrap_or_else(Style::null), pad);
+            let cropped = Segment::adjust_line_length(
+                &line,
+                length,
+                &style.cloned().unwrap_or_else(Style::null),
+                pad,
+            );
             result.push(cropped);
         }
         result
@@ -613,7 +625,6 @@ impl Segment {
         }
         result
     }
-
 }
 
 #[cfg(test)]
@@ -676,10 +687,7 @@ mod tests {
 
     #[test]
     fn test_get_shape() {
-        assert_eq!(
-            Segment::get_shape(&[vec![Segment::text("Hello")]]),
-            (5, 1)
-        );
+        assert_eq!(Segment::get_shape(&[vec![Segment::text("Hello")]]), (5, 1));
         assert_eq!(
             Segment::get_shape(&[vec![Segment::text("Hello")], vec![Segment::text("World!")]]),
             (6, 2)
@@ -693,7 +701,10 @@ mod tests {
             Segment::text(" "),
             Segment::text("World!"),
         ];
-        assert_eq!(Segment::simplify(&segments), vec![Segment::text("Hello World!")]);
+        assert_eq!(
+            Segment::simplify(&segments),
+            vec![Segment::text("Hello World!")]
+        );
     }
 
     #[test]
@@ -830,13 +841,7 @@ mod tests {
 
     #[test]
     fn test_set_shape() {
-        let result = Segment::set_shape(
-            &[vec![Segment::text("Hello")]],
-            10,
-            None,
-            None,
-            false,
-        );
+        let result = Segment::set_shape(&[vec![Segment::text("Hello")]], 10, None, None, false);
         assert_eq!(Segment::get_line_length(&result[0]), 10);
     }
 
@@ -845,8 +850,12 @@ mod tests {
         assert_eq!(Segment::text("abc").cell_length(), 3);
         assert_eq!(Segment::text("💩").cell_length(), 2);
         assert_eq!(
-            Segment::new("abc", None, Some(vec![ControlCode::Simple(ControlType::Bell)]))
-                .cell_length(),
+            Segment::new(
+                "abc",
+                None,
+                Some(vec![ControlCode::Simple(ControlType::Bell)])
+            )
+            .cell_length(),
             0
         );
     }
@@ -940,8 +949,7 @@ mod tests {
     #[test]
     fn test_apply_style_post_style() {
         let segments = vec![Segment::styled("foo", Style::parse("bold").unwrap())];
-        let result =
-            Segment::apply_style(&segments, None, Some(Style::parse("italic").unwrap()));
+        let result = Segment::apply_style(&segments, None, Some(Style::parse("italic").unwrap()));
         assert_eq!(result[0].style.as_ref().unwrap().bold(), Some(true));
         assert_eq!(result[0].style.as_ref().unwrap().italic(), Some(true));
     }
@@ -1005,15 +1013,15 @@ mod tests {
         assert_eq!(bottom.len(), height);
 
         // All should preserve the content somewhere
-        assert!(top.iter().any(|line| {
-            line.iter().any(|seg| seg.text.contains("ABC"))
-        }));
-        assert!(middle.iter().any(|line| {
-            line.iter().any(|seg| seg.text.contains("ABC"))
-        }));
-        assert!(bottom.iter().any(|line| {
-            line.iter().any(|seg| seg.text.contains("ABC"))
-        }));
+        assert!(top
+            .iter()
+            .any(|line| { line.iter().any(|seg| seg.text.contains("ABC")) }));
+        assert!(middle
+            .iter()
+            .any(|line| { line.iter().any(|seg| seg.text.contains("ABC")) }));
+        assert!(bottom
+            .iter()
+            .any(|line| { line.iter().any(|seg| seg.text.contains("ABC")) }));
     }
 
     #[test]
@@ -1100,9 +1108,7 @@ mod tests {
 
     #[test]
     fn test_split_and_crop_lines_basic() {
-        let segments = vec![
-            Segment::text("Hello\nWorld"),
-        ];
+        let segments = vec![Segment::text("Hello\nWorld")];
         let lines = Segment::split_and_crop_lines(&segments, 10, None, true, false);
         assert_eq!(lines.len(), 2);
         // First line should be "Hello" padded to 10
@@ -1164,5 +1170,4 @@ mod tests {
         assert_eq!(lines.len(), 1);
         assert_eq!(lines[0].1, true);
     }
-
 }

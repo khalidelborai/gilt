@@ -55,10 +55,7 @@ fn main() {
     // The Console respects env vars automatically, so if NO_COLOR is set,
     // the styled output below will appear without ANSI codes.
 
-    let mut console = Console::builder()
-        .width(72)
-        .force_terminal(true)
-        .build();
+    let mut console = Console::builder().width(72).force_terminal(true).build();
 
     console.print(&Rule::with_title("Styled Output"));
 

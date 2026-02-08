@@ -243,10 +243,7 @@ mod tests {
     #[test]
     fn test_console_error_render_error() {
         let err = ConsoleError::RenderError("width calculation failed".to_string());
-        assert_eq!(
-            err.to_string(),
-            "rendering error: width calculation failed"
-        );
+        assert_eq!(err.to_string(), "rendering error: width calculation failed");
     }
 
     #[test]
@@ -264,12 +261,16 @@ mod tests {
     #[test]
     fn test_console_error_live_error() {
         let err = ConsoleError::LiveError("cannot nest live displays".to_string());
-        assert_eq!(err.to_string(), "live display error: cannot nest live displays");
+        assert_eq!(
+            err.to_string(),
+            "live display error: cannot nest live displays"
+        );
     }
 
     #[test]
     fn test_console_error_no_alt_screen() {
-        let err = ConsoleError::NoAltScreen("terminal does not support alternate screen".to_string());
+        let err =
+            ConsoleError::NoAltScreen("terminal does not support alternate screen".to_string());
         assert_eq!(
             err.to_string(),
             "alternate screen not available: terminal does not support alternate screen"
@@ -348,8 +349,7 @@ mod tests {
 
     #[test]
     fn test_cell_error_is_error_trait() {
-        let err: Box<dyn std::error::Error> =
-            Box::new(CellError::UnicodeError("test".to_string()));
+        let err: Box<dyn std::error::Error> = Box::new(CellError::UnicodeError("test".to_string()));
         assert!(err.to_string().contains("unicode processing"));
     }
 
@@ -399,7 +399,10 @@ mod tests {
     #[test]
     fn test_all_errors_implement_debug() {
         // Verify Debug implementation works for all error types
-        format!("{:?}", ColorParseError::InvalidHexFormat("test".to_string()));
+        format!(
+            "{:?}",
+            ColorParseError::InvalidHexFormat("test".to_string())
+        );
         format!("{:?}", StyleError::InvalidSyntax("test".to_string()));
         format!("{:?}", ConsoleError::Generic("test".to_string()));
         format!("{:?}", SegmentError::InvalidSegment("test".to_string()));
@@ -413,8 +416,9 @@ mod tests {
         let result1: GiltResult<i32> = Ok(42);
         assert!(result1.is_ok());
 
-        let result2: GiltResult<String> =
-            Err(Box::new(ColorParseError::InvalidHexFormat("bad".to_string())));
+        let result2: GiltResult<String> = Err(Box::new(ColorParseError::InvalidHexFormat(
+            "bad".to_string(),
+        )));
         assert!(result2.is_err());
     }
 

@@ -29,13 +29,16 @@ fn main() {
     println!("  base:    {}", base);
     println!("  overlay: {}", overlay);
     println!("  merged:  {}", merged);
-    println!("  render:  {}", merged.render("Hello, gilt!", Some(ColorSystem::TrueColor)));
+    println!(
+        "  render:  {}",
+        merged.render("Hello, gilt!", Some(ColorSystem::TrueColor))
+    );
 
     println!("\n=== Tri-State Attributes ===\n");
 
     let style = Style::parse("bold not italic").unwrap();
-    println!("  bold:      {:?}", style.bold());      // Some(true)
-    println!("  italic:    {:?}", style.italic());    // Some(false)
+    println!("  bold:      {:?}", style.bold()); // Some(true)
+    println!("  italic:    {:?}", style.italic()); // Some(false)
     println!("  underline: {:?}", style.underline()); // None (not set)
 
     println!("\n=== Style Stack ===\n");
@@ -65,5 +68,8 @@ fn main() {
 
     let null = Style::null();
     println!("  is_null: {}", null.is_null());
-    println!("  render:  \"{}\"", null.render("plain text", Some(ColorSystem::TrueColor)));
+    println!(
+        "  render:  \"{}\"",
+        null.render("plain text", Some(ColorSystem::TrueColor))
+    );
 }

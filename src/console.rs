@@ -5,6 +5,7 @@
 
 use crate::cells::cell_len;
 use crate::color::ColorSystem;
+use crate::color_env::{detect_color_env, ColorEnvOverride};
 use crate::control::Control;
 use crate::errors::ConsoleError;
 use crate::export_format::{CONSOLE_HTML_FORMAT, CONSOLE_SVG_FORMAT};
@@ -14,13 +15,12 @@ use crate::measure::Measurement;
 use crate::pager::Pager;
 use crate::rule::Rule;
 use crate::segment::Segment;
+use crate::status::Status;
 use crate::style::Style;
 use crate::terminal_theme::{TerminalTheme, DEFAULT_TERMINAL_THEME, SVG_EXPORT_THEME};
 use crate::text::{JustifyMethod, OverflowMethod, Text};
 use crate::theme::{Theme, ThemeStack};
 use crate::traceback::Traceback;
-use crate::color_env::{detect_color_env, ColorEnvOverride};
-use crate::status::Status;
 
 // ---------------------------------------------------------------------------
 // ConsoleDimensions
@@ -193,12 +193,7 @@ impl Renderable for Text {
 
 impl Renderable for str {
     fn rich_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
-        let text = console.render_str(
-            self,
-            None,
-            options.justify,
-            options.overflow,
-        );
+        let text = console.render_str(self, None, options.justify, options.overflow);
         text.rich_console(console, options)
     }
 }
@@ -370,7 +365,11 @@ impl ConsoleBuilder {
                 ColorEnvOverride::ForceColorTruecolor => Some(ColorSystem::TrueColor),
                 ColorEnvOverride::None => {
                     // (5) Default.
-                    if self.no_color { None } else { Some(ColorSystem::TrueColor) }
+                    if self.no_color {
+                        None
+                    } else {
+                        Some(ColorSystem::TrueColor)
+                    }
                 }
             }
         };
@@ -565,10 +564,7 @@ impl Console {
         }
         // Then try parsing as a style definition
         Style::parse(name).map_err(|e| {
-            ConsoleError::RenderError(format!(
-                "Failed to get style '{}': {}",
-                name, e
-            ))
+            ConsoleError::RenderError(format!("Failed to get style '{}': {}", name, e))
         })
     }
 
@@ -632,8 +628,7 @@ impl Console {
         };
 
         let mut rich_text = if self.markup_enabled {
-            markup::render(text, base_style.clone())
-                .unwrap_or_else(|_| Text::new(text, base_style))
+            markup::render(text, base_style.clone()).unwrap_or_else(|_| Text::new(text, base_style))
         } else {
             Text::new(text, base_style)
         };
@@ -875,11 +870,7 @@ impl Console {
         if full_text.is_empty() {
             return Measurement::new(0, 0);
         }
-        let max_width = full_text
-            .lines()
-            .map(cell_len)
-            .max()
-            .unwrap_or(0);
+        let max_width = full_text.lines().map(cell_len).max().unwrap_or(0);
         let min_width = full_text
             .split_whitespace()
             .map(cell_len)
@@ -931,11 +922,7 @@ impl Console {
     /// Export recorded output as SVG and save it to a file.
     ///
     /// Requires `record` mode to be enabled when the Console was created.
-    pub fn save_svg(
-        &mut self,
-        path: &str,
-        title: Option<&str>,
-    ) -> Result<(), std::io::Error> {
+    pub fn save_svg(&mut self, path: &str, title: Option<&str>) -> Result<(), std::io::Error> {
         let t = title.unwrap_or("gilt");
         let svg = self.export_svg(t, None, false, None, 0.61);
         std::fs::write(path, svg)
@@ -1247,18 +1234,11 @@ impl Console {
                 if css.is_empty() {
                     code.push_str(&escaped);
                 } else if inline_styles {
-                    code.push_str(&format!(
-                        "<span style=\"{}\">{}</span>",
-                        css, escaped
-                    ));
+                    code.push_str(&format!("<span style=\"{}\">{}</span>", css, escaped));
                 } else {
                     // Use class-based styles
-                    let class_name = find_or_insert_class(
-                        &mut style_cache,
-                        &mut stylesheet,
-                        style,
-                        &css,
-                    );
+                    let class_name =
+                        find_or_insert_class(&mut style_cache, &mut stylesheet, style, &css);
                     code.push_str(&format!(
                         "<span class=\"{}\">{}</span>",
                         class_name, escaped
@@ -1350,13 +1330,7 @@ impl Console {
         let terminal_y = margin_top;
 
         // Build the chrome (window decorations)
-        let chrome = build_svg_chrome(
-            terminal_width,
-            terminal_height,
-            theme,
-            title,
-            unique_id,
-        );
+        let chrome = build_svg_chrome(terminal_width, terminal_height, theme, title, unique_id);
 
         // Build the text matrix
         let (matrix, backgrounds, styles, lines_defs) = build_svg_text(
@@ -1438,9 +1412,7 @@ fn build_svg_chrome(
     chrome.push_str(&format!(
         "<rect fill=\"{}\" stroke=\"rgba(255,255,255,0.35)\" stroke-width=\"1\" \
          x=\"0\" y=\"0\" width=\"{}\" height=\"{}\" rx=\"8\"/>\n",
-        bg,
-        width,
-        height,
+        bg, width, height,
     ));
 
     // Window control dots
@@ -1532,12 +1504,8 @@ fn build_svg_text(
                 // Foreground text with style class
                 let css = style.get_html_style(Some(theme));
                 if !css.is_empty() {
-                    let class_name = find_or_insert_svg_class(
-                        &mut style_cache,
-                        &mut styles,
-                        unique_id,
-                        &css,
-                    );
+                    let class_name =
+                        find_or_insert_svg_class(&mut style_cache, &mut styles, unique_id, &css);
                     matrix.push_str(&format!(
                         "    <text class=\"{}\" x=\"{:.1}\" y=\"{:.1}\" \
                          textLength=\"{:.1}\">{}</text>\n",
@@ -1548,7 +1516,10 @@ fn build_svg_text(
                         "    <text fill=\"{}\" x=\"{:.1}\" y=\"{:.1}\" \
                          textLength=\"{:.1}\">{}</text>\n",
                         theme.foreground_color.hex(),
-                        x, y, text_width, escaped
+                        x,
+                        y,
+                        text_width,
+                        escaped
                     ));
                 }
             } else {
@@ -1556,7 +1527,10 @@ fn build_svg_text(
                     "    <text fill=\"{}\" x=\"{:.1}\" y=\"{:.1}\" \
                      textLength=\"{:.1}\">{}</text>\n",
                     theme.foreground_color.hex(),
-                    x, y, text_width, escaped
+                    x,
+                    y,
+                    text_width,
+                    escaped
                 ));
             }
 
@@ -1603,9 +1577,7 @@ fn css_to_svg_style(css: &str) -> String {
                 "color" => svg_parts.push(format!("fill: {}", value)),
                 "font-weight" => svg_parts.push(format!("font-weight: {}", value)),
                 "font-style" => svg_parts.push(format!("font-style: {}", value)),
-                "text-decoration" => {
-                    svg_parts.push(format!("text-decoration: {}", value))
-                }
+                "text-decoration" => svg_parts.push(format!("text-decoration: {}", value)),
                 _ => {} // Skip background-color and other non-SVG properties
             }
         }
@@ -1924,24 +1896,14 @@ mod tests {
     #[test]
     fn test_render_str_with_justify() {
         let console = Console::new();
-        let text = console.render_str(
-            "Hello",
-            None,
-            Some(JustifyMethod::Center),
-            None,
-        );
+        let text = console.render_str("Hello", None, Some(JustifyMethod::Center), None);
         assert_eq!(text.justify, Some(JustifyMethod::Center));
     }
 
     #[test]
     fn test_render_str_with_overflow() {
         let console = Console::new();
-        let text = console.render_str(
-            "Hello",
-            None,
-            None,
-            Some(OverflowMethod::Ellipsis),
-        );
+        let text = console.render_str("Hello", None, None, Some(OverflowMethod::Ellipsis));
         assert_eq!(text.overflow, Some(OverflowMethod::Ellipsis));
     }
 
@@ -2127,10 +2089,7 @@ mod tests {
     #[test]
     fn test_render_buffer_styled() {
         let console = Console::builder().color_system("truecolor").build();
-        let segments = vec![Segment::styled(
-            "Bold",
-            Style::parse("bold").unwrap(),
-        )];
+        let segments = vec![Segment::styled("Bold", Style::parse("bold").unwrap())];
         let output = console.render_buffer(&segments);
         // Should contain ANSI bold code
         assert!(output.contains("\x1b["));
@@ -2140,10 +2099,7 @@ mod tests {
     #[test]
     fn test_render_buffer_no_color() {
         let console = Console::builder().no_color(true).color_system("").build();
-        let segments = vec![Segment::styled(
-            "NoColor",
-            Style::parse("bold").unwrap(),
-        )];
+        let segments = vec![Segment::styled("NoColor", Style::parse("bold").unwrap())];
         let output = console.render_buffer(&segments);
         // Without color system, style.render should return plain text
         assert_eq!(output, "NoColor");
@@ -2232,9 +2188,7 @@ mod tests {
 
     #[test]
     fn test_control_bell() {
-        let mut console = Console::builder()
-            .record(true)
-            .build();
+        let mut console = Console::builder().record(true).build();
         console.bell();
         let text = console.export_text(false, true);
         assert!(text.contains('\x07'));
@@ -2242,9 +2196,7 @@ mod tests {
 
     #[test]
     fn test_control_clear() {
-        let mut console = Console::builder()
-            .record(true)
-            .build();
+        let mut console = Console::builder().record(true).build();
         console.clear();
         let text = console.export_text(false, true);
         assert!(text.contains("\x1b[H"));
@@ -2252,9 +2204,7 @@ mod tests {
 
     #[test]
     fn test_control_show_cursor() {
-        let mut console = Console::builder()
-            .record(true)
-            .build();
+        let mut console = Console::builder().record(true).build();
         console.show_cursor(true);
         let text = console.export_text(true, true);
         assert!(text.contains("\x1b[?25h"));
@@ -2268,9 +2218,7 @@ mod tests {
 
     #[test]
     fn test_alt_screen_enable_disable() {
-        let mut console = Console::builder()
-            .record(true)
-            .build();
+        let mut console = Console::builder().record(true).build();
 
         assert!(!console.is_alt_screen);
         let changed = console.set_alt_screen(true);
@@ -2315,8 +2263,7 @@ mod tests {
         let opts = console.options();
         let segments = text.rich_console(&console, &opts);
         assert!(!segments.is_empty());
-        let combined: String =
-            segments.iter().map(|s| s.text.as_str()).collect();
+        let combined: String = segments.iter().map(|s| s.text.as_str()).collect();
         assert!(combined.contains("Renderable text"));
     }
 
@@ -2324,31 +2271,23 @@ mod tests {
 
     #[test]
     fn test_renderable_str() {
-        let console = Console::builder()
-            .width(80)
-            .markup(false)
-            .build();
+        let console = Console::builder().width(80).markup(false).build();
         let opts = console.options();
         let text = "Hello from str";
         let segments = text.rich_console(&console, &opts);
         assert!(!segments.is_empty());
-        let combined: String =
-            segments.iter().map(|s| s.text.as_str()).collect();
+        let combined: String = segments.iter().map(|s| s.text.as_str()).collect();
         assert!(combined.contains("Hello from str"));
     }
 
     #[test]
     fn test_renderable_string() {
-        let console = Console::builder()
-            .width(80)
-            .markup(false)
-            .build();
+        let console = Console::builder().width(80).markup(false).build();
         let opts = console.options();
         let text = String::from("Hello from String");
         let segments = text.rich_console(&console, &opts);
         assert!(!segments.is_empty());
-        let combined: String =
-            segments.iter().map(|s| s.text.as_str()).collect();
+        let combined: String = segments.iter().map(|s| s.text.as_str()).collect();
         assert!(combined.contains("Hello from String"));
     }
 
@@ -2443,8 +2382,7 @@ mod tests {
         let console = Console::builder().width(80).build();
         let text = Text::new("Render me", Style::null());
         let segments = console.render(&text, None);
-        let combined: String =
-            segments.iter().map(|s| s.text.as_str()).collect();
+        let combined: String = segments.iter().map(|s| s.text.as_str()).collect();
         assert!(combined.contains("Render me"));
     }
 
@@ -2482,19 +2420,14 @@ mod tests {
 
     #[test]
     fn test_set_window_title_non_terminal() {
-        let mut console = Console::builder()
-            .force_terminal(false)
-            .build();
+        let mut console = Console::builder().force_terminal(false).build();
         let result = console.set_window_title("Test");
         assert!(!result);
     }
 
     #[test]
     fn test_set_window_title_terminal() {
-        let mut console = Console::builder()
-            .force_terminal(true)
-            .record(true)
-            .build();
+        let mut console = Console::builder().force_terminal(true).record(true).build();
         let result = console.set_window_title("Test Title");
         assert!(result);
         let exported = console.export_text(false, true);
@@ -2864,10 +2797,7 @@ mod tests {
 
     #[test]
     fn test_enter_exit_screen() {
-        let mut console = Console::builder()
-            .width(80)
-            .record(true)
-            .build();
+        let mut console = Console::builder().width(80).record(true).build();
 
         // Verify enter_screen activates alt screen and hides cursor.
         console.enter_screen(true);
@@ -2880,10 +2810,7 @@ mod tests {
 
     #[test]
     fn test_enter_exit_screen_no_hide_cursor() {
-        let mut console = Console::builder()
-            .width(80)
-            .record(true)
-            .build();
+        let mut console = Console::builder().width(80).record(true).build();
 
         console.enter_screen(false);
         assert!(console.is_alt_screen);
@@ -2918,10 +2845,7 @@ mod tests {
 
     #[test]
     fn test_status_convenience() {
-        let console = Console::builder()
-            .force_terminal(true)
-            .width(80)
-            .build();
+        let console = Console::builder().force_terminal(true).width(80).build();
         let status = console.status("Working...");
         assert_eq!(status.status_text, "Working...");
         assert!(!status.is_started());
@@ -2954,7 +2878,6 @@ mod tests {
         assert!(captured.contains("something went wrong"));
     }
 
-
     // -- input_password method exists and compiles ----------------------------
 
     #[test]
@@ -2965,8 +2888,7 @@ mod tests {
         let _fn_ptr: fn(&mut Console, &str) -> Result<String, std::io::Error> =
             Console::input_password;
         // Also verify Console::input still works
-        let _fn_ptr2: fn(&mut Console, &str) -> Result<String, std::io::Error> =
-            Console::input;
+        let _fn_ptr2: fn(&mut Console, &str) -> Result<String, std::io::Error> = Console::input;
     }
 
     // -- Synchronized output ------------------------------------------------
@@ -2997,7 +2919,10 @@ mod tests {
             c.print_text("hello");
         });
         let output = console.end_capture();
-        assert!(output.starts_with("\x1b[?2026h"), "should start with begin sync");
+        assert!(
+            output.starts_with("\x1b[?2026h"),
+            "should start with begin sync"
+        );
         assert!(output.ends_with("\x1b[?2026l"), "should end with end sync");
         assert!(output.contains("hello"), "should contain the printed text");
     }

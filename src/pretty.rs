@@ -263,7 +263,6 @@ impl Renderable for Pretty {
             text.overflow = Some(overflow);
         }
 
-
         if self.type_annotation {
             let type_name = infer_type_name(self.text.plain());
             let annotation_style = Style::parse("dim italic").unwrap_or_else(|_| Style::null());
@@ -335,7 +334,16 @@ fn format_json_array(
 
     let items: Vec<String> = arr[..display_count]
         .iter()
-        .map(|v| format_json_value(v, depth + 1, indent_size, max_length, max_string, expand_all))
+        .map(|v| {
+            format_json_value(
+                v,
+                depth + 1,
+                indent_size,
+                max_length,
+                max_string,
+                expand_all,
+            )
+        })
         .collect();
 
     let should_expand = if expand_all {
@@ -388,8 +396,14 @@ fn format_json_object(
         .iter()
         .map(|(k, v)| {
             let key_str = format!("\"{}\"", escape_json_string(k));
-            let val_str =
-                format_json_value(v, depth + 1, indent_size, max_length, max_string, expand_all);
+            let val_str = format_json_value(
+                v,
+                depth + 1,
+                indent_size,
+                max_length,
+                max_string,
+                expand_all,
+            );
             format!("{}: {}", key_str, val_str)
         })
         .collect();
@@ -460,7 +474,6 @@ fn infer_type_name(text: &str) -> &'static str {
         }
     }
 }
-
 
 /// Escape special JSON characters in a string.
 fn escape_json_string(s: &str) -> String {
@@ -776,10 +789,9 @@ mod tests {
 
     #[test]
     fn test_from_json_nested_object() {
-        let json: serde_json::Value = serde_json::from_str(
-            r#"{"user": {"name": "Bob", "address": {"city": "NYC"}}}"#,
-        )
-        .unwrap();
+        let json: serde_json::Value =
+            serde_json::from_str(r#"{"user": {"name": "Bob", "address": {"city": "NYC"}}}"#)
+                .unwrap();
         let pretty = Pretty::from_json(&json);
         let plain = pretty.text.plain().to_string();
         assert!(plain.contains("Bob"));
@@ -790,8 +802,7 @@ mod tests {
 
     #[test]
     fn test_from_json_array() {
-        let json: serde_json::Value =
-            serde_json::from_str(r#"[1, 2, 3]"#).unwrap();
+        let json: serde_json::Value = serde_json::from_str(r#"[1, 2, 3]"#).unwrap();
         let pretty = Pretty::from_json(&json);
         let plain = pretty.text.plain().to_string();
         assert!(plain.contains('1'));
@@ -801,8 +812,7 @@ mod tests {
 
     #[test]
     fn test_from_json_highlighting() {
-        let json: serde_json::Value =
-            serde_json::from_str(r#"{"key": true, "num": 42}"#).unwrap();
+        let json: serde_json::Value = serde_json::from_str(r#"{"key": true, "num": 42}"#).unwrap();
         let pretty = Pretty::from_json(&json);
         // JSONHighlighter should have added spans for booleans, numbers, etc.
         assert!(!pretty.text.spans().is_empty());
@@ -950,8 +960,7 @@ mod tests {
     fn test_renderable_with_no_wrap() {
         let console = make_console();
         let opts = console.options();
-        let pretty = Pretty::from_str("a very long line that might wrap")
-            .with_no_wrap(true);
+        let pretty = Pretty::from_str("a very long line that might wrap").with_no_wrap(true);
         let segments = pretty.rich_console(&console, &opts);
         assert!(!segments.is_empty());
     }
@@ -960,8 +969,7 @@ mod tests {
     fn test_renderable_json() {
         let console = make_console();
         let opts = console.options();
-        let json: serde_json::Value =
-            serde_json::from_str(r#"{"key": "value"}"#).unwrap();
+        let json: serde_json::Value = serde_json::from_str(r#"{"key": "value"}"#).unwrap();
         let pretty = Pretty::from_json(&json);
         let segments = pretty.rich_console(&console, &opts);
         assert!(!segments.is_empty());
@@ -995,7 +1003,7 @@ mod tests {
         let pretty = Pretty::from_str("short\na much longer line");
         let m = pretty.measure();
         assert_eq!(m.maximum, 18); // "a much longer line"
-        // minimum is the longest single word
+                                   // minimum is the longest single word
         assert!(m.minimum > 0);
     }
 
@@ -1009,8 +1017,7 @@ mod tests {
 
     #[test]
     fn test_measure_json() {
-        let json: serde_json::Value =
-            serde_json::from_str(r#"{"key": "value"}"#).unwrap();
+        let json: serde_json::Value = serde_json::from_str(r#"{"key": "value"}"#).unwrap();
         let pretty = Pretty::from_json(&json);
         let m = pretty.measure();
         assert!(m.maximum > 0);
@@ -1060,8 +1067,7 @@ mod tests {
 
     #[test]
     fn test_max_length_none_shows_all() {
-        let json: serde_json::Value =
-            serde_json::from_str("[1, 2, 3, 4, 5]").unwrap();
+        let json: serde_json::Value = serde_json::from_str("[1, 2, 3, 4, 5]").unwrap();
         let pretty = Pretty::from_json(&json).rebuild_json(&json);
         let plain = pretty.text.plain().to_string();
         // All items should be present
@@ -1083,10 +1089,8 @@ mod tests {
 
     #[test]
     fn test_max_length_truncates_object() {
-        let json: serde_json::Value = serde_json::from_str(
-            r#"{"a": 1, "b": 2, "c": 3, "d": 4, "e": 5}"#,
-        )
-        .unwrap();
+        let json: serde_json::Value =
+            serde_json::from_str(r#"{"a": 1, "b": 2, "c": 3, "d": 4, "e": 5}"#).unwrap();
         let pretty = Pretty::from_json(&json)
             .with_max_length(2)
             .rebuild_json(&json);
@@ -1128,8 +1132,7 @@ mod tests {
     #[test]
     fn test_max_string_none_shows_full() {
         let long_str = "This is a very long string that should not be truncated";
-        let json: serde_json::Value =
-            serde_json::json!({"message": long_str});
+        let json: serde_json::Value = serde_json::json!({"message": long_str});
         let pretty = Pretty::from_json(&json).rebuild_json(&json);
         let plain = pretty.text.plain().to_string();
         assert!(
@@ -1141,8 +1144,7 @@ mod tests {
 
     #[test]
     fn test_max_string_short_string_not_truncated() {
-        let json: serde_json::Value =
-            serde_json::json!({"name": "Alice"});
+        let json: serde_json::Value = serde_json::json!({"name": "Alice"});
         let pretty = Pretty::from_json(&json)
             .with_max_string(100)
             .rebuild_json(&json);
@@ -1164,8 +1166,7 @@ mod tests {
 
     #[test]
     fn test_expand_all_forces_expansion() {
-        let json: serde_json::Value =
-            serde_json::from_str("[1, 2]").unwrap();
+        let json: serde_json::Value = serde_json::from_str("[1, 2]").unwrap();
         let pretty = Pretty::from_json(&json)
             .with_expand_all(true)
             .rebuild_json(&json);
@@ -1188,8 +1189,7 @@ mod tests {
 
     #[test]
     fn test_expand_all_false_compact() {
-        let json: serde_json::Value =
-            serde_json::from_str("[1, 2]").unwrap();
+        let json: serde_json::Value = serde_json::from_str("[1, 2]").unwrap();
         let pretty = Pretty::from_json(&json)
             .with_expand_all(false)
             .rebuild_json(&json);
@@ -1204,8 +1204,7 @@ mod tests {
 
     #[test]
     fn test_expand_all_object() {
-        let json: serde_json::Value =
-            serde_json::from_str(r#"{"a": 1}"#).unwrap();
+        let json: serde_json::Value = serde_json::from_str(r#"{"a": 1}"#).unwrap();
         let pretty = Pretty::from_json(&json)
             .with_expand_all(true)
             .rebuild_json(&json);
@@ -1256,10 +1255,8 @@ mod tests {
 
     #[test]
     fn test_max_length_with_nested_arrays() {
-        let json: serde_json::Value = serde_json::from_str(
-            r#"{"items": [1, 2, 3, 4, 5, 6, 7, 8]}"#,
-        )
-        .unwrap();
+        let json: serde_json::Value =
+            serde_json::from_str(r#"{"items": [1, 2, 3, 4, 5, 6, 7, 8]}"#).unwrap();
         let pretty = Pretty::from_json(&json)
             .with_max_length(2)
             .with_expand_all(true)
@@ -1336,37 +1333,25 @@ mod tests {
     #[test]
     fn test_format_json_value_null() {
         let v = serde_json::Value::Null;
-        assert_eq!(
-            format_json_value(&v, 0, 2, None, None, false),
-            "null"
-        );
+        assert_eq!(format_json_value(&v, 0, 2, None, None, false), "null");
     }
 
     #[test]
     fn test_format_json_value_bool() {
         let v = serde_json::Value::Bool(true);
-        assert_eq!(
-            format_json_value(&v, 0, 2, None, None, false),
-            "true"
-        );
+        assert_eq!(format_json_value(&v, 0, 2, None, None, false), "true");
     }
 
     #[test]
     fn test_format_json_empty_array() {
         let v: serde_json::Value = serde_json::from_str("[]").unwrap();
-        assert_eq!(
-            format_json_value(&v, 0, 2, None, None, false),
-            "[]"
-        );
+        assert_eq!(format_json_value(&v, 0, 2, None, None, false), "[]");
     }
 
     #[test]
     fn test_format_json_empty_object() {
         let v: serde_json::Value = serde_json::from_str("{}").unwrap();
-        assert_eq!(
-            format_json_value(&v, 0, 2, None, None, false),
-            "{}"
-        );
+        assert_eq!(format_json_value(&v, 0, 2, None, None, false), "{}");
     }
 
     #[test]
@@ -1375,7 +1360,6 @@ mod tests {
         let s = format!("{}", pretty);
         assert!(!s.is_empty());
     }
-
 
     // -- type_annotation tests ----------------------------------------------
 
@@ -1395,8 +1379,7 @@ mod tests {
     fn test_type_annotation_prepends_type_for_json_object() {
         let console = make_console();
         let opts = console.options();
-        let json: serde_json::Value =
-            serde_json::from_str(r#"{"key": "value"}"#).unwrap();
+        let json: serde_json::Value = serde_json::from_str(r#"{"key": "value"}"#).unwrap();
         let pretty = Pretty::from_json(&json).with_type_annotation(true);
         let segments = pretty.rich_console(&console, &opts);
         let combined: String = segments.iter().map(|s| s.text.as_str()).collect();
@@ -1411,8 +1394,7 @@ mod tests {
     fn test_type_annotation_prepends_type_for_json_array() {
         let console = make_console();
         let opts = console.options();
-        let json: serde_json::Value =
-            serde_json::from_str("[1, 2, 3]").unwrap();
+        let json: serde_json::Value = serde_json::from_str("[1, 2, 3]").unwrap();
         let pretty = Pretty::from_json(&json).with_type_annotation(true);
         let segments = pretty.rich_console(&console, &opts);
         let combined: String = segments.iter().map(|s| s.text.as_str()).collect();
@@ -1427,8 +1409,7 @@ mod tests {
     fn test_type_annotation_disabled_no_prefix() {
         let console = make_console();
         let opts = console.options();
-        let json: serde_json::Value =
-            serde_json::from_str(r#"{"key": "value"}"#).unwrap();
+        let json: serde_json::Value = serde_json::from_str(r#"{"key": "value"}"#).unwrap();
         let pretty = Pretty::from_json(&json).with_type_annotation(false);
         let segments = pretty.rich_console(&console, &opts);
         let combined: String = segments.iter().map(|s| s.text.as_str()).collect();

@@ -25,8 +25,7 @@ fn main() {
         "Generating report",
     ];
 
-    let mut status = Status::new("Getting ready...")
-        .with_console(console);
+    let mut status = Status::new("Getting ready...").with_console(console);
     status.start();
 
     for (i, task) in tasks.iter().enumerate() {

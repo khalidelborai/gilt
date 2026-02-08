@@ -29,7 +29,10 @@ fn main() {
 
     console.print(&Rule::with_title("Fit Panel with Title & Subtitle"));
 
-    let content = Text::new("Gilt is a Rust port of Python's rich library.", Style::null());
+    let content = Text::new(
+        "Gilt is a Rust port of Python's rich library.",
+        Style::null(),
+    );
     let mut panel = Panel::fit(content);
     panel.title = Some(Text::new("About Gilt", Style::parse("bold").unwrap()));
     panel.subtitle = Some(Text::new("v0.1.0", Style::parse("dim").unwrap()));
@@ -46,8 +49,7 @@ fn main() {
     styled_text.append_str("italic text", Some(Style::parse("italic").unwrap()));
     styled_text.append_str(" live together.", None);
 
-    let panel = Panel::new(styled_text)
-        .border_style(Style::parse("green").unwrap());
+    let panel = Panel::new(styled_text).border_style(Style::parse("green").unwrap());
 
     console.print(&panel);
 }

@@ -47,9 +47,7 @@ fn run_tracing_demo() {
         .with_show_target(true)
         .with_show_span_path(true);
 
-    tracing_subscriber::registry()
-        .with(layer)
-        .init();
+    tracing_subscriber::registry().with(layer).init();
 
     // ── Print a header (using a separate console) ────────────────────────
     let mut header_console = Console::builder()
@@ -72,7 +70,8 @@ fn run_tracing_demo() {
     // ── Structured fields ────────────────────────────────────────────────
     header_console.print_text("");
     header_console.print(&Rule::with_title("Structured Fields"));
-    header_console.print(&"Events can carry typed key=value fields alongside the message.".italic());
+    header_console
+        .print(&"Events can carry typed key=value fields alongside the message.".italic());
     header_console.print_text("");
 
     tracing::info!(user = "alice", action = "login", "user authenticated");

@@ -100,7 +100,10 @@ mod tests {
 
     #[test]
     fn test_normalized_white() {
-        assert_eq!(ColorTriplet::new(255, 255, 255).normalized(), (1.0, 1.0, 1.0));
+        assert_eq!(
+            ColorTriplet::new(255, 255, 255).normalized(),
+            (1.0, 1.0, 1.0)
+        );
     }
 
     #[test]

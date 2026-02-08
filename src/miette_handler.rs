@@ -50,11 +50,7 @@ impl Default for GiltMietteHandler {
 }
 
 impl ReportHandler for GiltMietteHandler {
-    fn debug(
-        &self,
-        error: &dyn Diagnostic,
-        f: &mut fmt::Formatter<'_>,
-    ) -> fmt::Result {
+    fn debug(&self, error: &dyn Diagnostic, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let width = f.width().unwrap_or(80);
         let mut console = Console::builder()
             .width(width)
@@ -97,8 +93,7 @@ impl ReportHandler for GiltMietteHandler {
             i += 1;
         }
 
-        let text =
-            Text::from_markup(&markup).unwrap_or_else(|_| Text::new(&markup, Style::null()));
+        let text = Text::from_markup(&markup).unwrap_or_else(|_| Text::new(&markup, Style::null()));
         let mut panel = Panel::new(text);
         panel.title = Some(Text::new("Diagnostic", Style::null()));
 

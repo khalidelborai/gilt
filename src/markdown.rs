@@ -186,9 +186,8 @@ impl Renderable for Markdown {
                     text_buffer.end = String::new();
 
                     // Render heading text
-                    let heading_opts = options.update_width(
-                        width.saturating_sub(blockquote_depth * 4),
-                    );
+                    let heading_opts =
+                        options.update_width(width.saturating_sub(blockquote_depth * 4));
                     let heading_segs = text_buffer.rich_console(console, &heading_opts);
                     segments.extend(heading_segs);
                     segments.push(Segment::line());
@@ -198,9 +197,7 @@ impl Renderable for Markdown {
                         let rule_style = console
                             .get_style("markdown.hr")
                             .unwrap_or_else(|_| Style::null());
-                        let rule = Rule::new()
-                            .style(rule_style)
-                            .end("");
+                        let rule = Rule::new().style(rule_style).end("");
                         let rule_segs = rule.rich_console(console, options);
                         segments.extend(rule_segs);
                         segments.push(Segment::line());
@@ -386,22 +383,20 @@ impl Renderable for Markdown {
                 }
 
                 // -- Lists --------------------------------------------------
-                Event::Start(Tag::List(first_item)) => {
-                    match first_item {
-                        Some(start_num) => {
-                            list_stack.push(ListContext {
-                                ordered: true,
-                                item_number: start_num,
-                            });
-                        }
-                        None => {
-                            list_stack.push(ListContext {
-                                ordered: false,
-                                item_number: 0,
-                            });
-                        }
+                Event::Start(Tag::List(first_item)) => match first_item {
+                    Some(start_num) => {
+                        list_stack.push(ListContext {
+                            ordered: true,
+                            item_number: start_num,
+                        });
                     }
-                }
+                    None => {
+                        list_stack.push(ListContext {
+                            ordered: false,
+                            item_number: 0,
+                        });
+                    }
+                },
                 Event::End(TagEnd::List(_ordered)) => {
                     list_stack.pop();
                     if list_stack.is_empty() {
@@ -438,9 +433,8 @@ impl Renderable for Markdown {
                     }
 
                     // Render item text
-                    let item_width = width.saturating_sub(
-                        (list_stack.len().saturating_sub(1)) * 4 + 3
-                    );
+                    let item_width =
+                        width.saturating_sub((list_stack.len().saturating_sub(1)) * 4 + 3);
                     let item_opts = options.update_width(item_width);
                     let item_segs = text_buffer.rich_console(console, &item_opts);
                     segments.extend(item_segs);
@@ -535,9 +529,7 @@ impl Renderable for Markdown {
                     let hr_style = console
                         .get_style("markdown.hr")
                         .unwrap_or_else(|_| Style::parse("dim").unwrap());
-                    let rule = Rule::new()
-                        .style(hr_style)
-                        .end("");
+                    let rule = Rule::new().style(hr_style).end("");
                     let rule_segs = rule.rich_console(console, options);
                     segments.extend(rule_segs);
                     segments.push(Segment::line());
@@ -617,11 +609,7 @@ impl Renderable for Markdown {
 // ---------------------------------------------------------------------------
 
 /// Build and render a gilt `Table` from accumulated table context data.
-fn render_table(
-    console: &Console,
-    options: &ConsoleOptions,
-    ctx: &TableContext,
-) -> Vec<Segment> {
+fn render_table(console: &Console, options: &ConsoleOptions, ctx: &TableContext) -> Vec<Segment> {
     let headers: Vec<&str> = ctx.header_cells.iter().map(|s| s.as_str()).collect();
     let mut table = Table::new(&headers);
 
@@ -833,7 +821,10 @@ mod tests {
         assert!(text.contains("italic"));
 
         let italic_seg = segments.iter().find(|s| s.text == "italic");
-        assert!(italic_seg.is_some(), "Should have a segment with text 'italic'");
+        assert!(
+            italic_seg.is_some(),
+            "Should have a segment with text 'italic'"
+        );
         if let Some(seg) = italic_seg {
             assert!(seg.style.is_some(), "Italic segment should have a style");
         }
@@ -853,7 +844,10 @@ mod tests {
         let combined_seg = segments.iter().find(|s| s.text.contains("bold and italic"));
         assert!(combined_seg.is_some());
         if let Some(seg) = combined_seg {
-            assert!(seg.style.is_some(), "Bold+italic segment should have a style");
+            assert!(
+                seg.style.is_some(),
+                "Bold+italic segment should have a style"
+            );
         }
     }
 
@@ -868,7 +862,10 @@ mod tests {
         assert!(text.contains("println!"));
 
         let code_seg = segments.iter().find(|s| s.text == "println!");
-        assert!(code_seg.is_some(), "Should have a segment with inline code text");
+        assert!(
+            code_seg.is_some(),
+            "Should have a segment with inline code text"
+        );
         if let Some(seg) = code_seg {
             assert!(seg.style.is_some(), "Inline code should have a style");
         }
@@ -907,8 +904,7 @@ mod tests {
     #[test]
     fn test_link_without_url_display() {
         let console = make_console(80);
-        let md = Markdown::new("[Rust](https://www.rust-lang.org)")
-            .with_hyperlinks(false);
+        let md = Markdown::new("[Rust](https://www.rust-lang.org)").with_hyperlinks(false);
         let output = render_markdown(&console, &md);
         assert!(output.contains("Rust"));
         assert!(!output.contains("https://www.rust-lang.org"));
@@ -986,9 +982,7 @@ mod tests {
     #[test]
     fn test_mixed_content() {
         let console = make_console(80);
-        let md = Markdown::new(
-            "# Title\n\nA paragraph.\n\n- Item 1\n- Item 2\n\n```\ncode\n```"
-        );
+        let md = Markdown::new("# Title\n\nA paragraph.\n\n- Item 1\n- Item 2\n\n```\ncode\n```");
         let output = render_markdown(&console, &md);
         assert!(output.contains("Title"));
         assert!(output.contains("A paragraph."));
@@ -1012,9 +1006,7 @@ mod tests {
     #[test]
     fn test_table() {
         let console = make_console(80);
-        let md = Markdown::new(
-            "| Name | Age |\n|------|-----|\n| Alice | 30 |\n| Bob | 25 |"
-        );
+        let md = Markdown::new("| Name | Age |\n|------|-----|\n| Alice | 30 |\n| Bob | 25 |");
         let output = render_markdown(&console, &md);
         assert!(output.contains("Name"));
         assert!(output.contains("Age"));
@@ -1027,9 +1019,8 @@ mod tests {
     #[test]
     fn test_table_with_alignment() {
         let console = make_console(80);
-        let md = Markdown::new(
-            "| Left | Center | Right |\n|:-----|:------:|------:|\n| L | C | R |"
-        );
+        let md =
+            Markdown::new("| Left | Center | Right |\n|:-----|:------:|------:|\n| L | C | R |");
         let output = render_markdown(&console, &md);
         assert!(output.contains("Left"));
         assert!(output.contains("Center"));
@@ -1143,9 +1134,7 @@ mod tests {
     #[test]
     fn test_all_heading_levels() {
         let console = make_console(80);
-        let md = Markdown::new(
-            "# H1\n\n## H2\n\n### H3\n\n#### H4\n\n##### H5\n\n###### H6"
-        );
+        let md = Markdown::new("# H1\n\n## H2\n\n### H3\n\n#### H4\n\n##### H5\n\n###### H6");
         let output = render_markdown(&console, &md);
         assert!(output.contains("H1"));
         assert!(output.contains("H2"));
@@ -1185,7 +1174,8 @@ mod tests {
         let output = render_markdown(&console, &md);
         // Panel uses HEAVY box chars
         assert!(
-            output.contains('\u{2501}') || output.contains('\u{2503}')
+            output.contains('\u{2501}')
+                || output.contains('\u{2503}')
                 || output.contains('\u{250F}'),
             "Code block should be wrapped in a panel border"
         );
@@ -1251,5 +1241,4 @@ mod tests {
         let s = format!("{}", md);
         assert!(!s.is_empty());
     }
-
 }

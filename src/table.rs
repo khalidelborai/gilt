@@ -161,8 +161,7 @@ impl Default for Column {
 // ---------------------------------------------------------------------------
 
 /// Information regarding a row.
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Row {
     /// Optional style to apply to this row.
     pub style: Option<String>,
@@ -324,10 +323,16 @@ impl Table {
         let mut style = Style::null();
         if !self.row_styles.is_empty() {
             let row_style_str = &self.row_styles[index % self.row_styles.len()];
-            style = style + console.get_style(row_style_str).unwrap_or_else(|_| Style::null());
+            style = style
+                + console
+                    .get_style(row_style_str)
+                    .unwrap_or_else(|_| Style::null());
         }
         if let Some(ref row_style_str) = self.rows[index].style {
-            style = style + console.get_style(row_style_str).unwrap_or_else(|_| Style::null());
+            style = style
+                + console
+                    .get_style(row_style_str)
+                    .unwrap_or_else(|_| Style::null());
         }
         style
     }
@@ -363,12 +368,7 @@ impl Table {
     }
 
     /// Add a row of cell values with optional style and end_section.
-    pub fn add_row_styled(
-        &mut self,
-        cells: &[&str],
-        style: Option<&str>,
-        end_section: bool,
-    ) {
+    pub fn add_row_styled(&mut self, cells: &[&str], style: Option<&str>, end_section: bool) {
         let contents: Vec<CellContent> = cells.iter().map(|&s| CellContent::from(s)).collect();
         self.add_row_contents(&contents, style, end_section);
     }
@@ -379,32 +379,24 @@ impl Table {
     }
 
     /// Add a row of pre-styled [`Text`] cells with optional style and end_section.
-    pub fn add_row_text_styled(
-        &mut self,
-        cells: &[Text],
-        style: Option<&str>,
-        end_section: bool,
-    ) {
-        let contents: Vec<CellContent> = cells.iter().map(|t| CellContent::from(t.clone())).collect();
+    pub fn add_row_text_styled(&mut self, cells: &[Text], style: Option<&str>, end_section: bool) {
+        let contents: Vec<CellContent> =
+            cells.iter().map(|t| CellContent::from(t.clone())).collect();
         self.add_row_contents(&contents, style, end_section);
     }
 
     /// Add a row from [`CellContent`] values (internal workhorse).
-    fn add_row_contents(
-        &mut self,
-        cells: &[CellContent],
-        style: Option<&str>,
-        end_section: bool,
-    ) {
+    fn add_row_contents(&mut self, cells: &[CellContent], style: Option<&str>, end_section: bool) {
         let num_columns = self.columns.len();
         let num_cells = cells.len();
 
         // Extend with empty strings if fewer cells than columns
         let mut cell_values: Vec<CellContent> = cells.to_vec();
         if num_cells < num_columns {
-            cell_values.extend(
-                std::iter::repeat_n(CellContent::Plain(String::new()), num_columns - num_cells),
-            );
+            cell_values.extend(std::iter::repeat_n(
+                CellContent::Plain(String::new()),
+                num_columns - num_cells,
+            ));
         }
 
         // Process each cell, auto-creating columns if needed
@@ -478,11 +470,8 @@ impl Table {
         let padding_width = self.get_padding_width(column.index);
 
         if let Some(fixed_width) = column.width {
-            return Measurement::new(
-                fixed_width + padding_width,
-                fixed_width + padding_width,
-            )
-            .with_maximum(max_width);
+            return Measurement::new(fixed_width + padding_width, fixed_width + padding_width)
+                .with_maximum(max_width);
         }
 
         // Measure all cells in the column (header + data + footer)
@@ -508,12 +497,7 @@ impl Table {
     }
 
     /// Get all cells for a column, including header/footer, with styles applied.
-    fn get_cells(
-        &self,
-        console: &Console,
-        column_index: usize,
-        column: &Column,
-    ) -> Vec<CellInfo> {
+    fn get_cells(&self, console: &Console, column_index: usize, column: &Column) -> Vec<CellInfo> {
         let mut cells = Vec::new();
 
         if self.show_header {
@@ -638,21 +622,21 @@ impl Table {
                 let fixed_widths: Vec<usize> = width_ranges
                     .iter()
                     .zip(columns.iter())
-                    .map(|(range, col)| {
-                        if col.flexible() {
-                            0
-                        } else {
-                            range.maximum
-                        }
-                    })
+                    .map(
+                        |(range, col)| {
+                            if col.flexible() {
+                                0
+                            } else {
+                                range.maximum
+                            }
+                        },
+                    )
                     .collect();
 
                 let flex_minimum: Vec<usize> = columns
                     .iter()
                     .filter(|c| c.flexible())
-                    .map(|c| {
-                        (c.width.unwrap_or(1)) + self.get_padding_width(c.index)
-                    })
+                    .map(|c| (c.width.unwrap_or(1)) + self.get_padding_width(c.index))
                     .collect();
 
                 let flexible_width = max_width.saturating_sub(fixed_widths.iter().sum::<usize>());
@@ -696,9 +680,7 @@ impl Table {
             let new_ranges: Vec<Measurement> = widths
                 .iter()
                 .zip(columns.iter())
-                .map(|(&w, col)| {
-                    self.measure_column(console, &options.update_width(w), col)
-                })
+                .map(|(&w, col)| self.measure_column(console, &options.update_width(w), col))
                 .collect();
             widths = new_ranges
                 .iter()
@@ -731,11 +713,7 @@ impl Table {
     }
 
     /// Reduce widths so that the total is under max_width.
-    pub fn collapse_widths(
-        widths: &[usize],
-        wrapable: &[bool],
-        max_width: usize,
-    ) -> Vec<usize> {
+    pub fn collapse_widths(widths: &[usize], wrapable: &[bool], max_width: usize) -> Vec<usize> {
         let mut widths = widths.to_vec();
         let mut total_width: usize = widths.iter().sum();
         let mut excess_width = total_width.saturating_sub(max_width);
@@ -753,13 +731,7 @@ impl Table {
                 let second_max_column = widths
                     .iter()
                     .zip(wrapable.iter())
-                    .map(|(&w, &allow)| {
-                        if allow && w != max_column {
-                            w
-                        } else {
-                            0
-                        }
-                    })
+                    .map(|(&w, &allow)| if allow && w != max_column { w } else { 0 })
                     .max()
                     .unwrap_or(0);
 
@@ -768,13 +740,7 @@ impl Table {
                 let ratios: Vec<usize> = widths
                     .iter()
                     .zip(wrapable.iter())
-                    .map(|(&w, &allow)| {
-                        if w == max_column && allow {
-                            1
-                        } else {
-                            0
-                        }
-                    })
+                    .map(|(&w, &allow)| if w == max_column && allow { 1 } else { 0 })
                     .collect();
 
                 if !ratios.iter().any(|&r| r > 0) || column_difference == 0 {
@@ -828,7 +794,11 @@ impl Table {
         let the_box: Option<&BoxChars> = self.box_chars.map(|b| {
             let safe = self.safe_box.unwrap_or(true);
             let ascii_only = options.ascii_only();
-            let substituted = if ascii_only || safe { b.substitute(ascii_only) } else { b };
+            let substituted = if ascii_only || safe {
+                b.substitute(ascii_only)
+            } else {
+                b
+            };
             if !self.show_header {
                 substituted.get_plain_headed_box()
             } else {
@@ -856,46 +826,19 @@ impl Table {
         let box_segments: Option<[BoxSegs; 3]> = the_box.map(|b| {
             [
                 BoxSegs {
-                    left: Segment::styled(
-                        &b.head_left.to_string(),
-                        border_style.clone(),
-                    ),
-                    right: Segment::styled(
-                        &b.head_right.to_string(),
-                        border_style.clone(),
-                    ),
-                    divider: Segment::styled(
-                        &b.head_vertical.to_string(),
-                        border_style.clone(),
-                    ),
+                    left: Segment::styled(&b.head_left.to_string(), border_style.clone()),
+                    right: Segment::styled(&b.head_right.to_string(), border_style.clone()),
+                    divider: Segment::styled(&b.head_vertical.to_string(), border_style.clone()),
                 },
                 BoxSegs {
-                    left: Segment::styled(
-                        &b.mid_left.to_string(),
-                        border_style.clone(),
-                    ),
-                    right: Segment::styled(
-                        &b.mid_right.to_string(),
-                        border_style.clone(),
-                    ),
-                    divider: Segment::styled(
-                        &b.mid_vertical.to_string(),
-                        border_style.clone(),
-                    ),
+                    left: Segment::styled(&b.mid_left.to_string(), border_style.clone()),
+                    right: Segment::styled(&b.mid_right.to_string(), border_style.clone()),
+                    divider: Segment::styled(&b.mid_vertical.to_string(), border_style.clone()),
                 },
                 BoxSegs {
-                    left: Segment::styled(
-                        &b.foot_left.to_string(),
-                        border_style.clone(),
-                    ),
-                    right: Segment::styled(
-                        &b.foot_right.to_string(),
-                        border_style.clone(),
-                    ),
-                    divider: Segment::styled(
-                        &b.foot_vertical.to_string(),
-                        border_style.clone(),
-                    ),
+                    left: Segment::styled(&b.foot_left.to_string(), border_style.clone()),
+                    right: Segment::styled(&b.foot_right.to_string(), border_style.clone()),
+                    divider: Segment::styled(&b.foot_vertical.to_string(), border_style.clone()),
                 },
             ]
         });
@@ -903,10 +846,7 @@ impl Table {
         // Top edge
         if let Some(b) = the_box {
             if show_edge {
-                segments.push(Segment::styled(
-                    &b.get_top(widths),
-                    border_style.clone(),
-                ));
+                segments.push(Segment::styled(&b.get_top(widths), border_style.clone()));
                 segments.push(new_line.clone());
             }
         }
@@ -939,7 +879,9 @@ impl Table {
                 Style::null()
             } else if let Some(idx) = data_row_index {
                 let style_obj = self.get_row_style(console, idx);
-                console.get_style(&style_obj.to_string()).unwrap_or(style_obj)
+                console
+                    .get_style(&style_obj.to_string())
+                    .unwrap_or(style_obj)
             } else {
                 Style::null()
             };
@@ -1036,27 +978,15 @@ impl Table {
                 };
 
                 let aligned = match vertical {
-                    VerticalAlign::Top => Segment::align_top(
-                        cell_lines,
-                        width,
-                        max_height,
-                        &cell_style,
-                        false,
-                    ),
-                    VerticalAlign::Middle => Segment::align_middle(
-                        cell_lines,
-                        width,
-                        max_height,
-                        &cell_style,
-                        false,
-                    ),
-                    VerticalAlign::Bottom => Segment::align_bottom(
-                        cell_lines,
-                        width,
-                        max_height,
-                        &cell_style,
-                        false,
-                    ),
+                    VerticalAlign::Top => {
+                        Segment::align_top(cell_lines, width, max_height, &cell_style, false)
+                    }
+                    VerticalAlign::Middle => {
+                        Segment::align_middle(cell_lines, width, max_height, &cell_style, false)
+                    }
+                    VerticalAlign::Bottom => {
+                        Segment::align_bottom(cell_lines, width, max_height, &cell_style, false)
+                    }
                 };
 
                 let shaped = Segment::set_shape(&aligned, width, Some(max_height), None, false);
@@ -1090,11 +1020,8 @@ impl Table {
                 // If divider is whitespace, apply row background style
                 let divider = if base_divider.text.trim().is_empty() {
                     let bg_style = row_style.background_style();
-                    let combined = bg_style
-                        + base_divider
-                            .style
-                            .clone()
-                            .unwrap_or_else(Style::null);
+                    let combined =
+                        bg_style + base_divider.style.clone().unwrap_or_else(Style::null);
                     Segment::styled(&base_divider.text, combined)
                 } else {
                     base_divider.clone()
@@ -1154,13 +1081,9 @@ impl Table {
 
                     if !skip {
                         if leading > 0 {
-                            let row_str =
-                                b.get_row(widths, RowLevel::Mid, show_edge);
+                            let row_str = b.get_row(widths, RowLevel::Mid, show_edge);
                             for _ in 0..leading {
-                                segments.push(Segment::styled(
-                                    &row_str,
-                                    border_style.clone(),
-                                ));
+                                segments.push(Segment::styled(&row_str, border_style.clone()));
                                 segments.push(new_line.clone());
                             }
                         } else {
@@ -1178,10 +1101,7 @@ impl Table {
         // Bottom edge
         if let Some(b) = the_box {
             if show_edge {
-                segments.push(Segment::styled(
-                    &b.get_bottom(widths),
-                    border_style.clone(),
-                ));
+                segments.push(Segment::styled(&b.get_bottom(widths), border_style.clone()));
                 segments.push(new_line);
             }
         }
@@ -1206,9 +1126,7 @@ impl Table {
         let measurements: Vec<Measurement> = self
             .columns
             .iter()
-            .map(|col| {
-                self.measure_column(console, &options.update_width(total_max), col)
-            })
+            .map(|col| self.measure_column(console, &options.update_width(total_max), col))
             .collect();
 
         let minimum_width: usize =
@@ -1298,7 +1216,11 @@ impl Renderable for Table {
             let title_segs = title_text.rich_console(console, &title_opts);
             segments.extend(title_segs);
             // Ensure title ends with a newline
-            if segments.last().map(|s| !s.text.ends_with('\n')).unwrap_or(false) {
+            if segments
+                .last()
+                .map(|s| !s.text.ends_with('\n'))
+                .unwrap_or(false)
+            {
                 segments.push(Segment::line());
             }
         }
@@ -1327,7 +1249,11 @@ impl Renderable for Table {
 
             let caption_segs = caption_text.rich_console(console, &caption_opts);
             segments.extend(caption_segs);
-            if segments.last().map(|s| !s.text.ends_with('\n')).unwrap_or(false) {
+            if segments
+                .last()
+                .map(|s| !s.text.ends_with('\n'))
+                .unwrap_or(false)
+            {
                 segments.push(Segment::line());
             }
         }
@@ -2027,7 +1953,9 @@ mod tests {
         assert!(lines.len() >= 3);
         // X should be in the last line
         let last_content_line = lines.last().unwrap_or(&"");
-        assert!(last_content_line.contains('X') || lines[lines.len().saturating_sub(1)].contains('X'));
+        assert!(
+            last_content_line.contains('X') || lines[lines.len().saturating_sub(1)].contains('X')
+        );
     }
 
     // -- Table measure tests ------------------------------------------------
@@ -2384,5 +2312,4 @@ mod tests {
         assert!(wide.contains("x"));
         assert!(narrow.contains("x"));
     }
-
 }

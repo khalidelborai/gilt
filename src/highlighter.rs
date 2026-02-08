@@ -221,9 +221,8 @@ static JSON_HIGHLIGHTS: Lazy<Vec<Regex>> = Lazy::new(|| {
 
 /// Pre-compiled regex for detecting JSON string spans (used for key detection).
 /// Uses a non-capturing version since we only need match positions.
-static JSON_STR_RE: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r#""[^"\\]*(?:\\.[^"\\]*)*""#).expect("invalid json str regex")
-});
+static JSON_STR_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#""[^"\\]*(?:\\.[^"\\]*)*""#).expect("invalid json str regex"));
 
 /// Characters considered whitespace in JSON.
 const JSON_WHITESPACE: &[char] = &[' ', '\n', '\r', '\t'];
@@ -274,11 +273,8 @@ impl Highlighter for JSONHighlighter {
                     cursor += 1;
                     if ch == ':' {
                         // This string is a JSON key
-                        text.spans_mut().push(Span::new(
-                            char_start,
-                            char_end,
-                            key_style.clone(),
-                        ));
+                        text.spans_mut()
+                            .push(Span::new(char_start, char_end, key_style.clone()));
                         break;
                     } else if JSON_WHITESPACE.contains(&ch) {
                         continue;
@@ -395,8 +391,7 @@ impl Default for URLHighlighter {
 
 impl Highlighter for URLHighlighter {
     fn highlight(&self, text: &mut Text) {
-        static RE: Lazy<Regex> =
-            Lazy::new(|| Regex::new(r"https?://[^\s)>\]]+").unwrap());
+        static RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"https?://[^\s)>\]]+").unwrap());
         text.highlight_regex(&RE, self.style.clone());
     }
 }
@@ -432,7 +427,8 @@ impl Default for ISODateHighlighter {
 impl Highlighter for ISODateHighlighter {
     fn highlight(&self, text: &mut Text) {
         static RE: Lazy<Regex> = Lazy::new(|| {
-            Regex::new(r"\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?)?").unwrap()
+            Regex::new(r"\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?)?")
+                .unwrap()
         });
         text.highlight_regex(&RE, self.style.clone());
     }
@@ -469,7 +465,10 @@ impl Default for UUIDHighlighter {
 impl Highlighter for UUIDHighlighter {
     fn highlight(&self, text: &mut Text) {
         static RE: Lazy<Regex> = Lazy::new(|| {
-            Regex::new(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}").unwrap()
+            Regex::new(
+                r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
+            )
+            .unwrap()
         });
         text.highlight_regex(&RE, self.style.clone());
     }
@@ -505,9 +504,8 @@ impl Default for JSONPathHighlighter {
 impl Highlighter for JSONPathHighlighter {
     fn highlight(&self, text: &mut Text) {
         // JSON paths like .foo.bar[0].baz or $.data.users
-        static RE: Lazy<Regex> = Lazy::new(|| {
-            Regex::new(r"\$?(?:\.[a-zA-Z_]\w*(?:\[\d+\])?)+").unwrap()
-        });
+        static RE: Lazy<Regex> =
+            Lazy::new(|| Regex::new(r"\$?(?:\.[a-zA-Z_]\w*(?:\[\d+\])?)+").unwrap());
         text.highlight_regex(&RE, self.style.clone());
     }
 }
@@ -617,14 +615,8 @@ mod tests {
 
         // Check that we have bool_true and bool_false spans
         let plain = text.plain();
-        let has_true = text
-            .spans()
-            .iter()
-            .any(|s| span_text(plain, s) == "true");
-        let has_false = text
-            .spans()
-            .iter()
-            .any(|s| span_text(plain, s) == "false");
+        let has_true = text.spans().iter().any(|s| span_text(plain, s) == "true");
+        let has_false = text.spans().iter().any(|s| span_text(plain, s) == "false");
         assert!(has_true, "expected a span for 'true'");
         assert!(has_false, "expected a span for 'false'");
     }
@@ -666,9 +658,10 @@ mod tests {
         assert!(!text.spans().is_empty());
 
         let plain = text.plain();
-        let has_uuid = text.spans().iter().any(|s| {
-            span_text(plain, s) == "a3db0d5e-66f4-4a29-bfb6-e738b1d3d640"
-        });
+        let has_uuid = text
+            .spans()
+            .iter()
+            .any(|s| span_text(plain, s) == "a3db0d5e-66f4-4a29-bfb6-e738b1d3d640");
         assert!(has_uuid, "expected a span for the UUID");
     }
 
@@ -691,10 +684,7 @@ mod tests {
     fn test_repr_ipv6() {
         let hl = ReprHighlighter::new();
         let text = hl.apply("addr=2001:0db8:85a3:0000:0000:8a2e:0370:7334");
-        assert_eq!(
-            text.plain(),
-            "addr=2001:0db8:85a3:0000:0000:8a2e:0370:7334"
-        );
+        assert_eq!(text.plain(), "addr=2001:0db8:85a3:0000:0000:8a2e:0370:7334");
         assert!(!text.spans().is_empty());
     }
 
@@ -773,18 +763,9 @@ mod tests {
         assert!(!text.spans().is_empty());
 
         let plain = text.plain();
-        let has_true = text
-            .spans()
-            .iter()
-            .any(|s| span_text(plain, s) == "true");
-        let has_false = text
-            .spans()
-            .iter()
-            .any(|s| span_text(plain, s) == "false");
-        let has_null = text
-            .spans()
-            .iter()
-            .any(|s| span_text(plain, s) == "null");
+        let has_true = text.spans().iter().any(|s| span_text(plain, s) == "true");
+        let has_false = text.spans().iter().any(|s| span_text(plain, s) == "false");
+        let has_null = text.spans().iter().any(|s| span_text(plain, s) == "null");
         assert!(has_true, "expected a span for 'true'");
         assert!(has_false, "expected a span for 'false'");
         assert!(has_null, "expected a span for 'null'");
@@ -1062,8 +1043,7 @@ mod tests {
     #[test]
     fn test_uuid_highlighter_valid_uuid() {
         let hl = UUIDHighlighter::new();
-        let text =
-            hl.apply("id: 550e8400-e29b-41d4-a716-446655440000 done");
+        let text = hl.apply("id: 550e8400-e29b-41d4-a716-446655440000 done");
         assert_eq!(
             text.plain(),
             "id: 550e8400-e29b-41d4-a716-446655440000 done"
@@ -1089,8 +1069,7 @@ mod tests {
     #[test]
     fn test_uuid_highlighter_uppercase() {
         let hl = UUIDHighlighter::new();
-        let text =
-            hl.apply("ID=550E8400-E29B-41D4-A716-446655440000");
+        let text = hl.apply("ID=550E8400-E29B-41D4-A716-446655440000");
         let plain = text.plain();
         let has_uuid = text
             .spans()
@@ -1112,10 +1091,7 @@ mod tests {
     fn test_json_path_highlighter_dot_notation() {
         let hl = JSONPathHighlighter::new();
         let text = hl.apply("access .data.users[0].name for the result");
-        assert_eq!(
-            text.plain(),
-            "access .data.users[0].name for the result"
-        );
+        assert_eq!(text.plain(), "access .data.users[0].name for the result");
         let plain = text.plain();
         let has_path = text
             .spans()

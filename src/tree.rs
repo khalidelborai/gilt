@@ -24,9 +24,24 @@ const ASCII_GUIDES: [&str; 4] = ["    ", "|   ", "+-- ", "`-- "];
 
 /// Unicode guide sets: thin, bold, double.
 const TREE_GUIDES: [[&str; 4]; 3] = [
-    ["    ", "\u{2502}   ", "\u{251c}\u{2500}\u{2500} ", "\u{2514}\u{2500}\u{2500} "], // thin
-    ["    ", "\u{2503}   ", "\u{2523}\u{2501}\u{2501} ", "\u{2517}\u{2501}\u{2501} "], // bold
-    ["    ", "\u{2551}   ", "\u{2560}\u{2550}\u{2550} ", "\u{255a}\u{2550}\u{2550} "], // double
+    [
+        "    ",
+        "\u{2502}   ",
+        "\u{251c}\u{2500}\u{2500} ",
+        "\u{2514}\u{2500}\u{2500} ",
+    ], // thin
+    [
+        "    ",
+        "\u{2503}   ",
+        "\u{2523}\u{2501}\u{2501} ",
+        "\u{2517}\u{2501}\u{2501} ",
+    ], // bold
+    [
+        "    ",
+        "\u{2551}   ",
+        "\u{2560}\u{2550}\u{2550} ",
+        "\u{255a}\u{2550}\u{2550} ",
+    ], // double
 ];
 
 // ---------------------------------------------------------------------------
@@ -199,10 +214,7 @@ impl Renderable for Tree {
                 levels.pop();
                 if !levels.is_empty() {
                     let last_idx = levels.len() - 1;
-                    let guide_style = levels[last_idx]
-                        .style
-                        .clone()
-                        .unwrap_or_else(Style::null);
+                    let guide_style = levels[last_idx].style.clone().unwrap_or_else(Style::null);
                     levels[last_idx] = make_guide(FORK, &guide_style, ascii_only);
                 }
                 depth = depth.saturating_sub(1);
@@ -217,10 +229,7 @@ impl Renderable for Tree {
 
             if last {
                 let last_level = levels.len() - 1;
-                let guide_style = levels[last_level]
-                    .style
-                    .clone()
-                    .unwrap_or_else(Style::null);
+                let guide_style = levels[last_level].style.clone().unwrap_or_else(Style::null);
                 levels[last_level] = make_guide(END, &guide_style, ascii_only);
             }
 
@@ -264,11 +273,8 @@ impl Renderable for Tree {
                             .style
                             .clone()
                             .unwrap_or_else(Style::null);
-                        current_prefix[last_idx] = make_guide(
-                            if last { SPACE } else { CONTINUE },
-                            &pstyle,
-                            ascii_only,
-                        );
+                        current_prefix[last_idx] =
+                            make_guide(if last { SPACE } else { CONTINUE }, &pstyle, ascii_only);
                     }
                 }
             }
@@ -277,10 +283,7 @@ impl Renderable for Tree {
             if node.expanded && !node.children.is_empty() {
                 // Update the current level's guide to continuation.
                 let last_level = levels.len() - 1;
-                let guide_style = levels[last_level]
-                    .style
-                    .clone()
-                    .unwrap_or_else(Style::null);
+                let guide_style = levels[last_level].style.clone().unwrap_or_else(Style::null);
                 levels[last_level] = make_guide(
                     if last { SPACE } else { CONTINUE },
                     &guide_style,
@@ -407,10 +410,9 @@ mod tests {
     fn test_nested_children() {
         let mut tree = Tree::new(Text::new("root", Style::null()));
         let child = tree.add(Text::new("child", Style::null()));
-        child.children.push(Tree::new(Text::new(
-            "grandchild",
-            Style::null(),
-        )));
+        child
+            .children
+            .push(Tree::new(Text::new("grandchild", Style::null())));
         let output = render_tree(&tree, 80);
         let lines: Vec<&str> = output.lines().collect();
         assert_eq!(lines.len(), 3);
@@ -440,10 +442,8 @@ mod tests {
     #[test]
     fn test_collapsed_node() {
         let mut tree = Tree::new(Text::new("root", Style::null()));
-        tree.children.push(
-            Tree::new(Text::new("branch", Style::null()))
-                .expanded(false),
-        );
+        tree.children
+            .push(Tree::new(Text::new("branch", Style::null())).expanded(false));
         // Add a child to the branch that should NOT be rendered.
         tree.children[0]
             .children
@@ -559,16 +559,12 @@ mod tests {
         let mut tree = Tree::new(Text::new("root", Style::null()));
         let child = tree.add(Text::new("child", Style::null()));
         // We can modify the child through the returned ref.
-        child.children.push(Tree::new(Text::new(
-            "grandchild",
-            Style::null(),
-        )));
+        child
+            .children
+            .push(Tree::new(Text::new("grandchild", Style::null())));
         assert_eq!(tree.children.len(), 1);
         assert_eq!(tree.children[0].children.len(), 1);
-        assert_eq!(
-            tree.children[0].children[0].label.plain(),
-            "grandchild"
-        );
+        assert_eq!(tree.children[0].children[0].label.plain(), "grandchild");
     }
 
     // -- 13. Deep nesting (3+ levels) --
@@ -692,8 +688,7 @@ mod tests {
     fn test_measure_deep() {
         let mut tree = Tree::new(Text::new("r", Style::null()));
         let c = tree.add(Text::new("cc", Style::null()));
-        c.children
-            .push(Tree::new(Text::new("ggg", Style::null())));
+        c.children.push(Tree::new(Text::new("ggg", Style::null())));
 
         let console = test_console(80);
         let opts = console.options();
@@ -709,14 +704,11 @@ mod tests {
     #[test]
     fn test_measure_collapsed() {
         let mut tree = Tree::new(Text::new("r", Style::null()));
-        let mut branch =
-            Tree::new(Text::new("branch", Style::null())).expanded(false);
-        branch
-            .children
-            .push(Tree::new(Text::new(
-                "very_very_very_long_hidden_label",
-                Style::null(),
-            )));
+        let mut branch = Tree::new(Text::new("branch", Style::null())).expanded(false);
+        branch.children.push(Tree::new(Text::new(
+            "very_very_very_long_hidden_label",
+            Style::null(),
+        )));
         tree.children.push(branch);
 
         let console = test_console(80);
@@ -814,5 +806,4 @@ mod tests {
         assert!(s.contains("child1"));
         assert!(s.contains("child2"));
     }
-
 }

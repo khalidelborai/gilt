@@ -24,9 +24,17 @@ fn main() {
     // Inspect a custom struct
     #[derive(Debug)]
     #[allow(dead_code)]
-    struct Point { x: f64, y: f64, z: f64 }
+    struct Point {
+        x: f64,
+        y: f64,
+        z: f64,
+    }
 
-    let origin = Point { x: 0.0, y: 0.0, z: 0.0 };
+    let origin = Point {
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+    };
     let inspect = Inspect::new(&origin)
         .with_label("origin")
         .with_title("3D Point");

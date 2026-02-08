@@ -180,8 +180,7 @@ impl RichHandler {
 
         // Keyword highlighting
         if !self.keywords.is_empty() {
-            let kw_style =
-                Style::parse("bold on dark_green").unwrap_or_else(|_| Style::null());
+            let kw_style = Style::parse("bold on dark_green").unwrap_or_else(|_| Style::null());
             let words: Vec<&str> = self.keywords.iter().map(|s| s.as_str()).collect();
             text.highlight_words(&words, kw_style, false);
         }
@@ -326,8 +325,7 @@ mod tests {
 
     #[test]
     fn test_builder_keywords() {
-        let handler =
-            RichHandler::new().with_keywords(vec!["FOO".to_string(), "BAR".to_string()]);
+        let handler = RichHandler::new().with_keywords(vec!["FOO".to_string(), "BAR".to_string()]);
         assert_eq!(handler.keywords, vec!["FOO", "BAR"]);
     }
 
@@ -622,9 +620,7 @@ mod tests {
 
     #[test]
     fn test_render_message_plain() {
-        let handler = RichHandler::new()
-            .with_markup(false)
-            .with_keywords(vec![]);
+        let handler = RichHandler::new().with_markup(false).with_keywords(vec![]);
         let record = log::Record::builder()
             .args(format_args!("simple message"))
             .level(log::Level::Info)
@@ -635,9 +631,7 @@ mod tests {
 
     #[test]
     fn test_render_message_with_markup() {
-        let handler = RichHandler::new()
-            .with_markup(true)
-            .with_keywords(vec![]);
+        let handler = RichHandler::new().with_markup(true).with_keywords(vec![]);
         let record = log::Record::builder()
             .args(format_args!("[bold]hello[/bold] world"))
             .level(log::Level::Info)
@@ -708,17 +702,12 @@ mod tests {
         let text = handler.render_message(&record);
         assert_eq!(text.plain(), "GET /index.html 200");
         // Should have at least one span for the keyword "GET"
-        assert!(
-            !text.spans().is_empty(),
-            "expected keyword span for GET"
-        );
+        assert!(!text.spans().is_empty(), "expected keyword span for GET");
     }
 
     #[test]
     fn test_no_keyword_highlighting_when_empty() {
-        let handler = RichHandler::new()
-            .with_markup(false)
-            .with_keywords(vec![]);
+        let handler = RichHandler::new().with_markup(false).with_keywords(vec![]);
 
         let record = log::Record::builder()
             .args(format_args!("GET /index.html 200"))

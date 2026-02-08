@@ -249,17 +249,15 @@ impl Live {
             let vertical_overflow = self.vertical_overflow;
             let interval = Duration::from_secs_f64(1.0 / self.refresh_per_second);
 
-            let handle = thread::spawn(move || {
-                loop {
-                    let (lock, cvar) = &*flag;
-                    let stopped = lock.lock().unwrap();
-                    let result = cvar.wait_timeout(stopped, interval).unwrap();
-                    if *result.0 {
-                        break;
-                    }
-                    drop(result);
-                    Self::do_refresh(&state, vertical_overflow);
+            let handle = thread::spawn(move || loop {
+                let (lock, cvar) = &*flag;
+                let stopped = lock.lock().unwrap();
+                let result = cvar.wait_timeout(stopped, interval).unwrap();
+                if *result.0 {
+                    break;
                 }
+                drop(result);
+                Self::do_refresh(&state, vertical_overflow);
             });
             self.refresh_thread = Some(handle);
         }
@@ -516,11 +514,13 @@ mod tests {
 
     #[test]
     fn test_with_vertical_overflow() {
-        let live = Live::new(Text::empty())
-            .with_vertical_overflow(VerticalOverflowMethod::Crop);
+        let live = Live::new(Text::empty()).with_vertical_overflow(VerticalOverflowMethod::Crop);
         assert_eq!(live.vertical_overflow, VerticalOverflowMethod::Crop);
         let s = live.state.lock().unwrap();
-        assert_eq!(s.live_render.vertical_overflow, VerticalOverflowMethod::Crop);
+        assert_eq!(
+            s.live_render.vertical_overflow,
+            VerticalOverflowMethod::Crop
+        );
     }
 
     #[test]
@@ -532,8 +532,8 @@ mod tests {
 
     #[test]
     fn test_with_get_renderable() {
-        let live = Live::new(Text::empty())
-            .with_get_renderable(|| Text::new("dynamic", Style::null()));
+        let live =
+            Live::new(Text::empty()).with_get_renderable(|| Text::new("dynamic", Style::null()));
         let s = live.state.lock().unwrap();
         assert!(s.get_renderable.is_some());
     }
@@ -880,8 +880,7 @@ mod tests {
 
     #[test]
     fn test_vertical_overflow_visible() {
-        let live = Live::new(Text::empty())
-            .with_vertical_overflow(VerticalOverflowMethod::Visible);
+        let live = Live::new(Text::empty()).with_vertical_overflow(VerticalOverflowMethod::Visible);
         assert_eq!(live.vertical_overflow, VerticalOverflowMethod::Visible);
     }
 
@@ -900,8 +899,7 @@ mod tests {
 
     #[test]
     fn test_console_mut_accessor() {
-        let live = Live::new(Text::new("test", Style::null()))
-            .with_console(test_console());
+        let live = Live::new(Text::new("test", Style::null())).with_console(test_console());
         let _console = live.console_mut();
     }
 }

@@ -149,8 +149,7 @@ impl Renderable for Bar {
 
         // -- prefix (space before the bar) ----------------------------------
 
-        let prefix_complete_eights =
-            (width as f64 * 8.0 * self.begin / self.size) as usize;
+        let prefix_complete_eights = (width as f64 * 8.0 * self.begin / self.size) as usize;
         let prefix_bar_count = prefix_complete_eights / 8;
         let prefix_eights_count = prefix_complete_eights % 8;
 
@@ -161,8 +160,7 @@ impl Renderable for Bar {
 
         // -- body (filled portion) ------------------------------------------
 
-        let body_complete_eights =
-            (width as f64 * 8.0 * self.end / self.size) as usize;
+        let body_complete_eights = (width as f64 * 8.0 * self.end / self.size) as usize;
         let body_bar_count = body_complete_eights / 8;
         let body_eights_count = body_complete_eights % 8;
 
@@ -200,7 +198,6 @@ impl Renderable for Bar {
 mod tests {
     use super::*;
     use crate::console::{Console, ConsoleDimensions, ConsoleOptions};
-
 
     /// Build a `ConsoleOptions` with a given `max_width`.
     fn make_options(max_width: usize) -> ConsoleOptions {
@@ -274,15 +271,13 @@ mod tests {
 
     #[test]
     fn test_with_color() {
-        let bar = Bar::new(100.0, 0.0, 50.0)
-            .with_color(Color::parse("red").unwrap());
+        let bar = Bar::new(100.0, 0.0, 50.0).with_color(Color::parse("red").unwrap());
         assert_eq!(bar.style.color().unwrap().name, "red");
     }
 
     #[test]
     fn test_with_bgcolor() {
-        let bar = Bar::new(100.0, 0.0, 50.0)
-            .with_bgcolor(Color::parse("blue").unwrap());
+        let bar = Bar::new(100.0, 0.0, 50.0).with_bgcolor(Color::parse("blue").unwrap());
         assert_eq!(bar.style.bgcolor().unwrap().name, "blue");
     }
 
@@ -487,12 +482,7 @@ mod tests {
             let bar = Bar::new(100.0, 0.0, pct as f64).with_width(20);
             let text = render_bar_text(&bar, 20);
             let line = text.trim_end_matches('\n');
-            assert_eq!(
-                line.chars().count(),
-                20,
-                "width mismatch at {}%",
-                pct
-            );
+            assert_eq!(line.chars().count(), 20, "width mismatch at {}%", pct);
         }
     }
 

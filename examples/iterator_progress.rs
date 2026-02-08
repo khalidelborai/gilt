@@ -23,10 +23,11 @@ fn main() {
     // ── Vec iterator with .progress() ────────────────────────────────────
     println!("=== Vec iterator: vec.iter().progress() ===\n");
 
-    let data = vec!["alpha", "bravo", "charlie", "delta", "echo",
-                    "foxtrot", "golf", "hotel", "india", "juliet",
-                    "kilo", "lima", "mike", "november", "oscar",
-                    "papa", "quebec", "romeo", "sierra", "tango"];
+    let data = vec![
+        "alpha", "bravo", "charlie", "delta", "echo", "foxtrot", "golf", "hotel", "india",
+        "juliet", "kilo", "lima", "mike", "november", "oscar", "papa", "quebec", "romeo", "sierra",
+        "tango",
+    ];
 
     let collected: Vec<&str> = data
         .iter()
@@ -37,7 +38,11 @@ fn main() {
         })
         .collect();
 
-    println!("\nCollected {} items: {:?}\n", collected.len(), &collected[..5]);
+    println!(
+        "\nCollected {} items: {:?}\n",
+        collected.len(),
+        &collected[..5]
+    );
 
     // ── Explicit total with .progress_with_total() ───────────────────────
     println!("=== Explicit total: .progress_with_total() ===\n");

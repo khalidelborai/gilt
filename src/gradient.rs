@@ -90,13 +90,13 @@ impl Gradient {
         Self::new(
             text,
             vec![
-                Color::from_rgb(255, 0, 0),     // red
-                Color::from_rgb(255, 165, 0),   // orange
-                Color::from_rgb(255, 255, 0),   // yellow
-                Color::from_rgb(0, 255, 0),     // green
-                Color::from_rgb(0, 255, 255),   // cyan
-                Color::from_rgb(0, 0, 255),     // blue
-                Color::from_rgb(148, 0, 211),   // violet
+                Color::from_rgb(255, 0, 0),   // red
+                Color::from_rgb(255, 165, 0), // orange
+                Color::from_rgb(255, 255, 0), // yellow
+                Color::from_rgb(0, 255, 0),   // green
+                Color::from_rgb(0, 255, 255), // cyan
+                Color::from_rgb(0, 0, 255),   // blue
+                Color::from_rgb(148, 0, 211), // violet
             ],
         )
     }
@@ -179,31 +179,22 @@ impl Renderable for Gradient {
                         JustifyMethod::Center => {
                             let left = padding / 2;
                             let right = padding - left;
-                            let mut padded = vec![Segment::styled(
-                                &" ".repeat(left),
-                                self.style.clone(),
-                            )];
+                            let mut padded =
+                                vec![Segment::styled(&" ".repeat(left), self.style.clone())];
                             padded.append(&mut line_segs);
-                            padded.push(Segment::styled(
-                                &" ".repeat(right),
-                                self.style.clone(),
-                            ));
+                            padded.push(Segment::styled(&" ".repeat(right), self.style.clone()));
                             line_segs = padded;
                         }
                         JustifyMethod::Right => {
-                            let mut padded = vec![Segment::styled(
-                                &" ".repeat(padding),
-                                self.style.clone(),
-                            )];
+                            let mut padded =
+                                vec![Segment::styled(&" ".repeat(padding), self.style.clone())];
                             padded.append(&mut line_segs);
                             line_segs = padded;
                         }
                         JustifyMethod::Left | JustifyMethod::Full | JustifyMethod::Default => {
                             // Left-align: pad on the right
-                            line_segs.push(Segment::styled(
-                                &" ".repeat(padding),
-                                self.style.clone(),
-                            ));
+                            line_segs
+                                .push(Segment::styled(&" ".repeat(padding), self.style.clone()));
                         }
                     }
                 }
@@ -258,10 +249,7 @@ mod tests {
             Color::from_rgb(255, 0, 0),
             Color::from_rgb(0, 0, 255),
         );
-        let console = Console::builder()
-            .width(80)
-            .force_terminal(true)
-            .build();
+        let console = Console::builder().width(80).force_terminal(true).build();
         let options = console.options();
         let segments = g.rich_console(&console, &options);
         // 5 char segments + 1 trailing newline
@@ -275,10 +263,7 @@ mod tests {
     #[test]
     fn test_rainbow_gradient_works() {
         let g = Gradient::rainbow("Rainbow!");
-        let console = Console::builder()
-            .width(80)
-            .force_terminal(true)
-            .build();
+        let console = Console::builder().width(80).force_terminal(true).build();
         let options = console.options();
         let segments = g.rich_console(&console, &options);
         // 8 characters + 1 trailing newline
@@ -323,10 +308,7 @@ mod tests {
                 Color::from_rgb(0, 0, 255),
             ],
         );
-        let console = Console::builder()
-            .width(80)
-            .force_terminal(true)
-            .build();
+        let console = Console::builder().width(80).force_terminal(true).build();
         let options = console.options();
         let segments = g.rich_console(&console, &options);
 
@@ -348,15 +330,8 @@ mod tests {
 
     #[test]
     fn test_empty_text_produces_empty_segments() {
-        let g = Gradient::two_color(
-            "",
-            Color::from_rgb(255, 0, 0),
-            Color::from_rgb(0, 0, 255),
-        );
-        let console = Console::builder()
-            .width(80)
-            .force_terminal(true)
-            .build();
+        let g = Gradient::two_color("", Color::from_rgb(255, 0, 0), Color::from_rgb(0, 0, 255));
+        let console = Console::builder().width(80).force_terminal(true).build();
         let options = console.options();
         let segments = g.rich_console(&console, &options);
         // Only the trailing newline
@@ -371,10 +346,7 @@ mod tests {
             Color::from_rgb(100, 200, 50),
             Color::from_rgb(0, 0, 255),
         );
-        let console = Console::builder()
-            .width(80)
-            .force_terminal(true)
-            .build();
+        let console = Console::builder().width(80).force_terminal(true).build();
         let options = console.options();
         let segments = g.rich_console(&console, &options);
         // 1 char segment + 1 trailing newline
@@ -398,10 +370,7 @@ mod tests {
             Color::from_rgb(255, 0, 0),
             Color::from_rgb(0, 0, 255),
         );
-        let console = Console::builder()
-            .width(80)
-            .force_terminal(true)
-            .build();
+        let console = Console::builder().width(80).force_terminal(true).build();
         let options = console.options();
         let segments = g.rich_console(&console, &options);
 
@@ -436,11 +405,7 @@ mod tests {
 
     #[test]
     fn test_display_trait_works() {
-        let g = Gradient::two_color(
-            "Hi",
-            Color::from_rgb(255, 0, 0),
-            Color::from_rgb(0, 0, 255),
-        );
+        let g = Gradient::two_color("Hi", Color::from_rgb(255, 0, 0), Color::from_rgb(0, 0, 255));
         // Display with no_color=true via the fmt implementation
         let output = format!("{}", g);
         assert_eq!(output, "Hi");
@@ -481,10 +446,7 @@ mod tests {
     #[test]
     fn test_no_colors_uses_default() {
         let g = Gradient::new("Hi", vec![]);
-        let console = Console::builder()
-            .width(80)
-            .force_terminal(true)
-            .build();
+        let console = Console::builder().width(80).force_terminal(true).build();
         let options = console.options();
         let segments = g.rich_console(&console, &options);
         // 2 chars + trailing newline
@@ -494,10 +456,7 @@ mod tests {
     #[test]
     fn test_single_color_stop() {
         let g = Gradient::new("ABC", vec![Color::from_rgb(0, 128, 255)]);
-        let console = Console::builder()
-            .width(80)
-            .force_terminal(true)
-            .build();
+        let console = Console::builder().width(80).force_terminal(true).build();
         let options = console.options();
         let segments = g.rich_console(&console, &options);
         // All chars get the same color
@@ -520,7 +479,13 @@ mod tests {
         // Out-of-range t values should be clamped
         let below = interpolate_color(&c1, &c2, -0.5);
         let above = interpolate_color(&c1, &c2, 1.5);
-        assert_eq!(below.get_truecolor(None, true), ColorTriplet::new(255, 0, 0));
-        assert_eq!(above.get_truecolor(None, true), ColorTriplet::new(0, 0, 255));
+        assert_eq!(
+            below.get_truecolor(None, true),
+            ColorTriplet::new(255, 0, 0)
+        );
+        assert_eq!(
+            above.get_truecolor(None, true),
+            ColorTriplet::new(0, 0, 255)
+        );
     }
 }

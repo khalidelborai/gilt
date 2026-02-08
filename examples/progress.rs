@@ -12,10 +12,7 @@ use gilt::console::Console;
 use gilt::progress::Progress;
 
 fn main() {
-    let console = Console::builder()
-        .width(80)
-        .force_terminal(true)
-        .build();
+    let console = Console::builder().width(80).force_terminal(true).build();
 
     let mut progress = Progress::new(Progress::default_columns())
         .with_console(console)

@@ -68,7 +68,10 @@ fn main() {
     console.print(&Rule::with_title("Verbose vs Ergonomic"));
 
     // Verbose: explicit style
-    let verbose = Text::new("The verbose way: Text::new(s, Style::null())", Style::null());
+    let verbose = Text::new(
+        "The verbose way: Text::new(s, Style::null())",
+        Style::null(),
+    );
     console.print(&verbose);
 
     // Ergonomic: just use From

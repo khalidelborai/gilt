@@ -5,12 +5,12 @@
 use crate::align_widget::HorizontalAlign;
 use crate::box_chars::{BoxChars, ROUNDED};
 use crate::console::{Console, ConsoleOptions, Renderable};
+use crate::highlighter::{Highlighter, ReprHighlighter};
 use crate::measure::Measurement;
 use crate::padding::PaddingDimensions;
 use crate::segment::Segment;
 use crate::style::Style;
 use crate::text::Text;
-use crate::highlighter::{Highlighter, ReprHighlighter};
 
 // ---------------------------------------------------------------------------
 // Panel
@@ -332,24 +332,13 @@ impl Renderable for Panel {
             } else {
                 line_segments
             };
-            let adjusted = Segment::adjust_line_length(
-                &styled,
-                inner_width,
-                &self.style,
-                true,
-            );
+            let adjusted = Segment::adjust_line_length(&styled, inner_width, &self.style, true);
             lines.push(adjusted);
         }
 
         // Apply fixed height if specified
         if let Some(h) = self.height {
-            lines = Segment::set_shape(
-                &lines,
-                inner_width,
-                Some(h),
-                Some(&self.style),
-                false,
-            );
+            lines = Segment::set_shape(&lines, inner_width, Some(h), Some(&self.style), false);
         }
 
         let mut segments = Vec::new();
@@ -557,7 +546,13 @@ mod tests {
 
         // All lines should be 20 cells wide
         for line in &lines {
-            assert_eq!(cell_len(line), 20, "Line '{}' is {} cells, expected 20", line, cell_len(line));
+            assert_eq!(
+                cell_len(line),
+                20,
+                "Line '{}' is {} cells, expected 20",
+                line,
+                cell_len(line)
+            );
         }
     }
 
@@ -582,8 +577,7 @@ mod tests {
     #[test]
     fn test_centered_title_padded_with_spaces() {
         let console = make_console(30);
-        let panel = Panel::new(Text::new("X", Style::null()))
-            .title(Text::new("T", Style::null()));
+        let panel = Panel::new(Text::new("X", Style::null())).title(Text::new("T", Style::null()));
         let output = render_panel(&console, &panel);
         let lines = content_lines(&output);
 
@@ -606,7 +600,7 @@ mod tests {
         // Pattern: ╭─ Left ─────...─╮
         assert!(lines[0].starts_with('╭'));
         let _after_anchor = &lines[0][3..]; // skip "╭─" (two chars, but unicode)
-        // The title " Left " should appear early
+                                            // The title " Left " should appear early
         assert!(lines[0].contains(" Left "));
         assert_eq!(cell_len(lines[0]), 30);
     }
@@ -667,8 +661,12 @@ mod tests {
         let expected_width = 6;
         for line in &lines {
             assert_eq!(
-                cell_len(line), expected_width,
-                "Line '{}' is {} cells, expected {}", line, cell_len(line), expected_width
+                cell_len(line),
+                expected_width,
+                "Line '{}' is {} cells, expected {}",
+                line,
+                cell_len(line),
+                expected_width
             );
         }
     }
@@ -695,8 +693,7 @@ mod tests {
     #[test]
     fn test_double_box() {
         let console = make_console(20);
-        let panel = Panel::new(Text::new("X", Style::null()))
-            .box_chars(&DOUBLE);
+        let panel = Panel::new(Text::new("X", Style::null())).box_chars(&DOUBLE);
         let output = render_panel(&console, &panel);
         let lines = content_lines(&output);
 
@@ -711,8 +708,7 @@ mod tests {
     #[test]
     fn test_heavy_box() {
         let console = make_console(20);
-        let panel = Panel::new(Text::new("X", Style::null()))
-            .box_chars(&HEAVY);
+        let panel = Panel::new(Text::new("X", Style::null())).box_chars(&HEAVY);
         let output = render_panel(&console, &panel);
         let lines = content_lines(&output);
 
@@ -727,8 +723,7 @@ mod tests {
     #[test]
     fn test_ascii_box() {
         let console = make_console(20);
-        let panel = Panel::new(Text::new("X", Style::null()))
-            .box_chars(&ASCII);
+        let panel = Panel::new(Text::new("X", Style::null())).box_chars(&ASCII);
         let output = render_panel(&console, &panel);
         let lines = content_lines(&output);
 
@@ -743,8 +738,7 @@ mod tests {
     #[test]
     fn test_square_box() {
         let console = make_console(20);
-        let panel = Panel::new(Text::new("X", Style::null()))
-            .box_chars(&SQUARE);
+        let panel = Panel::new(Text::new("X", Style::null())).box_chars(&SQUARE);
         let output = render_panel(&console, &panel);
         let lines = content_lines(&output);
 
@@ -757,8 +751,8 @@ mod tests {
     #[test]
     fn test_custom_padding() {
         let console = make_console(30);
-        let panel = Panel::new(Text::new("X", Style::null()))
-            .padding(PaddingDimensions::Full(1, 2, 1, 2));
+        let panel =
+            Panel::new(Text::new("X", Style::null())).padding(PaddingDimensions::Full(1, 2, 1, 2));
         let output = render_panel(&console, &panel);
         let lines = content_lines(&output);
 
@@ -775,8 +769,8 @@ mod tests {
     #[test]
     fn test_zero_padding() {
         let console = make_console(20);
-        let panel = Panel::new(Text::new("Hello", Style::null()))
-            .padding(PaddingDimensions::Uniform(0));
+        let panel =
+            Panel::new(Text::new("Hello", Style::null())).padding(PaddingDimensions::Uniform(0));
         let output = render_panel(&console, &panel);
         let lines = content_lines(&output);
 
@@ -794,13 +788,17 @@ mod tests {
     #[test]
     fn test_custom_width() {
         let console = make_console(80);
-        let panel = Panel::new(Text::new("X", Style::null()))
-            .width(25);
+        let panel = Panel::new(Text::new("X", Style::null())).width(25);
         let output = render_panel(&console, &panel);
         let lines = content_lines(&output);
 
         for line in &lines {
-            assert_eq!(cell_len(line), 25, "Expected width 25, got {}", cell_len(line));
+            assert_eq!(
+                cell_len(line),
+                25,
+                "Expected width 25, got {}",
+                cell_len(line)
+            );
         }
     }
 
@@ -808,8 +806,7 @@ mod tests {
     fn test_custom_width_clamped() {
         // width larger than console should be clamped
         let console = make_console(20);
-        let panel = Panel::new(Text::new("X", Style::null()))
-            .width(50);
+        let panel = Panel::new(Text::new("X", Style::null())).width(50);
         let output = render_panel(&console, &panel);
         let lines = content_lines(&output);
 
@@ -865,8 +862,7 @@ mod tests {
     #[test]
     fn test_measure_with_fixed_width() {
         let console = make_console(80);
-        let panel = Panel::new(Text::new("Hello", Style::null()))
-            .width(30);
+        let panel = Panel::new(Text::new("Hello", Style::null())).width(30);
         let opts = console.options();
         let m = panel.measure(&console, &opts);
 
@@ -877,8 +873,8 @@ mod tests {
     #[test]
     fn test_measure_with_padding() {
         let console = make_console(80);
-        let panel = Panel::new(Text::new("Hi", Style::null()))
-            .padding(PaddingDimensions::Full(0, 3, 0, 3));
+        let panel =
+            Panel::new(Text::new("Hi", Style::null())).padding(PaddingDimensions::Full(0, 3, 0, 3));
         let opts = console.options();
         let m = panel.measure(&console, &opts);
 
@@ -898,7 +894,12 @@ mod tests {
 
         // All lines should be exactly 15 cells wide
         for line in &lines {
-            assert_eq!(cell_len(line), 15, "Line width should be 15, got {}", cell_len(line));
+            assert_eq!(
+                cell_len(line),
+                15,
+                "Line width should be 15, got {}",
+                cell_len(line)
+            );
         }
     }
 
@@ -965,8 +966,7 @@ mod tests {
     #[test]
     fn test_fixed_height() {
         let console = make_console(20);
-        let panel = Panel::new(Text::new("Short", Style::null()))
-            .height(5);
+        let panel = Panel::new(Text::new("Short", Style::null())).height(5);
         let output = render_panel(&console, &panel);
         let lines = content_lines(&output);
 
@@ -986,9 +986,12 @@ mod tests {
         let expected_width = 40;
         for (i, line) in lines.iter().enumerate() {
             assert_eq!(
-                cell_len(line), expected_width,
+                cell_len(line),
+                expected_width,
                 "Line {} has width {}, expected {}",
-                i, cell_len(line), expected_width
+                i,
+                cell_len(line),
+                expected_width
             );
         }
     }
@@ -1015,8 +1018,7 @@ mod tests {
             .markup(false)
             .build();
         let border_style = Style::parse("bold").unwrap();
-        let panel = Panel::new(Text::new("X", Style::null()))
-            .border_style(border_style.clone());
+        let panel = Panel::new(Text::new("X", Style::null())).border_style(border_style.clone());
         let opts = console.options();
         let segments = panel.rich_console(&console, &opts);
 
@@ -1027,12 +1029,20 @@ mod tests {
                 let t = s.text.trim();
                 !t.is_empty()
                     && s.text != "\n"
-                    && (t.contains('╭') || t.contains('╮') || t.contains('│') || t.contains('╰') || t.contains('╯'))
+                    && (t.contains('╭')
+                        || t.contains('╮')
+                        || t.contains('│')
+                        || t.contains('╰')
+                        || t.contains('╯'))
             })
             .collect();
         assert!(!border_segs.is_empty());
         for seg in border_segs {
-            assert!(seg.style.is_some(), "Border segment '{}' should have a style", seg.text);
+            assert!(
+                seg.style.is_some(),
+                "Border segment '{}' should have a style",
+                seg.text
+            );
         }
     }
 
@@ -1052,12 +1062,10 @@ mod tests {
 
     #[test]
     fn test_panel_highlight_builder() {
-        let panel = Panel::new(Text::new("hello 123", Style::null()))
-            .highlight(true);
+        let panel = Panel::new(Text::new("hello 123", Style::null())).highlight(true);
         assert!(panel.highlight);
 
-        let panel2 = Panel::new(Text::new("hello 123", Style::null()))
-            .highlight(false);
+        let panel2 = Panel::new(Text::new("hello 123", Style::null())).highlight(false);
         assert!(!panel2.highlight);
     }
 
@@ -1066,8 +1074,7 @@ mod tests {
         // When highlight is true, the rendered output should contain styled
         // segments (the ReprHighlighter adds styles to numbers, strings, etc.)
         let console = make_console(40);
-        let panel = Panel::new(Text::new("value=42 name='hello'", Style::null()))
-            .highlight(true);
+        let panel = Panel::new(Text::new("value=42 name='hello'", Style::null())).highlight(true);
         let opts = console.options();
         let segments = panel.rich_console(&console, &opts);
         // The content should still contain the text
@@ -1091,7 +1098,10 @@ mod tests {
             })
             .collect();
         let has_styled = content_segments.iter().any(|s| s.style.is_some());
-        assert!(has_styled, "highlight=true should produce styled segments for repr patterns");
+        assert!(
+            has_styled,
+            "highlight=true should produce styled segments for repr patterns"
+        );
     }
 
     #[test]
@@ -1108,5 +1118,4 @@ mod tests {
         let s = format!("{:60}", panel);
         assert!(s.contains("content"));
     }
-
 }

@@ -325,7 +325,10 @@ impl Renderable for ProgressBar {
         let mut segments = Vec::new();
 
         if bar_count > 0 {
-            segments.push(Segment::styled(&bar.repeat(bar_count), complete_style.clone()));
+            segments.push(Segment::styled(
+                &bar.repeat(bar_count),
+                complete_style.clone(),
+            ));
         }
         if half_bar_count > 0 {
             segments.push(Segment::styled(half_bar_right, complete_style.clone()));
@@ -610,9 +613,7 @@ mod tests {
 
     #[test]
     fn test_render_empty_bar() {
-        let bar = ProgressBar::new()
-            .with_completed(0.0)
-            .with_width(Some(10));
+        let bar = ProgressBar::new().with_completed(0.0).with_width(Some(10));
         let text = render_text(&bar, 10);
         // At 0%, the entire bar should be remaining (back style)
         // Should use ━ characters for the remaining portion
@@ -623,9 +624,7 @@ mod tests {
 
     #[test]
     fn test_render_half_bar() {
-        let bar = ProgressBar::new()
-            .with_completed(50.0)
-            .with_width(Some(10));
+        let bar = ProgressBar::new().with_completed(50.0).with_width(Some(10));
         let text = render_text(&bar, 10);
         // Half complete: 5 complete chars + 5 remaining chars = 10 total
         assert_eq!(text.chars().count(), 10);
@@ -658,9 +657,7 @@ mod tests {
 
     #[test]
     fn test_bar_uses_correct_characters() {
-        let bar = ProgressBar::new()
-            .with_completed(50.0)
-            .with_width(Some(20));
+        let bar = ProgressBar::new().with_completed(50.0).with_width(Some(20));
         let text = render_text(&bar, 20);
         // Should use ━ (U+2501), and possibly ╸ (U+257A) and ╺ (U+2578)
         for ch in text.chars() {
@@ -677,9 +674,7 @@ mod tests {
     fn test_half_bar_right_character() {
         // With an odd number of complete halves, we should get a ╸ character
         // 25% of 10 = 2.5 bars = 5 halves => 2 full + 1 half
-        let bar = ProgressBar::new()
-            .with_completed(25.0)
-            .with_width(Some(10));
+        let bar = ProgressBar::new().with_completed(25.0).with_width(Some(10));
         let text = render_text(&bar, 10);
         assert!(text.contains('\u{257A}'), "expected ╸ in output: {text}");
     }
@@ -690,9 +685,7 @@ mod tests {
         // 40% of 10 = 4 bars = 8 halves => 4 full + 0 half
         // With bar_count=4, half_bar_count=0, and bar_count>0,
         // the first remaining char should be ╺
-        let bar = ProgressBar::new()
-            .with_completed(40.0)
-            .with_width(Some(10));
+        let bar = ProgressBar::new().with_completed(40.0).with_width(Some(10));
         let text = render_text(&bar, 10);
         assert!(text.contains('\u{2578}'), "expected ╺ in output: {text}");
     }
@@ -818,16 +811,17 @@ mod tests {
         // Different animation times should produce different segment ordering
         let styles1: Vec<_> = seg1.iter().map(|s| s.style.clone()).collect();
         let styles2: Vec<_> = seg2.iter().map(|s| s.style.clone()).collect();
-        assert_ne!(styles1, styles2, "different animation times should produce different patterns");
+        assert_ne!(
+            styles1, styles2,
+            "different animation times should produce different patterns"
+        );
     }
 
     // -- Fixed width vs max_width -------------------------------------------
 
     #[test]
     fn test_fixed_width() {
-        let bar = ProgressBar::new()
-            .with_completed(50.0)
-            .with_width(Some(15));
+        let bar = ProgressBar::new().with_completed(50.0).with_width(Some(15));
         let text = render_text(&bar, 80);
         assert_eq!(text.chars().count(), 15);
     }
@@ -882,9 +876,7 @@ mod tests {
 
     #[test]
     fn test_renderable_trait() {
-        let bar = ProgressBar::new()
-            .with_completed(50.0)
-            .with_width(Some(10));
+        let bar = ProgressBar::new().with_completed(50.0).with_width(Some(10));
         let console = Console::builder()
             .width(80)
             .color_system("truecolor")
@@ -904,12 +896,7 @@ mod tests {
                 .with_completed(pct as f64)
                 .with_width(Some(20));
             let text = render_text(&bar, 20);
-            assert_eq!(
-                text.chars().count(),
-                20,
-                "width mismatch at {}%",
-                pct
-            );
+            assert_eq!(text.chars().count(), 20, "width mismatch at {}%", pct);
         }
     }
 
@@ -933,9 +920,7 @@ mod tests {
 
     #[test]
     fn test_clone() {
-        let bar = ProgressBar::new()
-            .with_completed(42.0)
-            .with_width(Some(30));
+        let bar = ProgressBar::new().with_completed(42.0).with_width(Some(30));
         let cloned = bar.clone();
         assert_eq!(cloned.total, bar.total);
         assert_eq!(cloned.completed, bar.completed);
@@ -976,9 +961,7 @@ mod tests {
 
     #[test]
     fn test_width_one() {
-        let bar = ProgressBar::new()
-            .with_completed(50.0)
-            .with_width(Some(1));
+        let bar = ProgressBar::new().with_completed(50.0).with_width(Some(1));
         let text = render_text(&bar, 1);
         assert_eq!(text.chars().count(), 1);
     }
@@ -1006,5 +989,4 @@ mod tests {
         let s = format!("{:40}", bar);
         assert!(!s.is_empty());
     }
-
 }

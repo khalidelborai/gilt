@@ -2,8 +2,8 @@
 //!
 //! This is a data file — auto-generated from Python rich's `_emoji_codes.py`.
 
-use std::collections::HashMap;
 use once_cell::sync::Lazy;
+use std::collections::HashMap;
 
 pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     let mut m = HashMap::with_capacity(3608);
@@ -95,7 +95,10 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("ecuador", "\u{1F1EA}\u{1F1E8}");
     m.insert("egypt", "\u{1F1EA}\u{1F1EC}");
     m.insert("el_salvador", "\u{1F1F8}\u{1F1FB}");
-    m.insert("england", "\u{1F3F4}\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}");
+    m.insert(
+        "england",
+        "\u{1F3F4}\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}",
+    );
     m.insert("equatorial_guinea", "\u{1F1EC}\u{1F1F6}");
     m.insert("eritrea", "\u{1F1EA}\u{1F1F7}");
     m.insert("estonia", "\u{1F1EA}\u{1F1EA}");
@@ -272,7 +275,10 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("santa_claus_medium_skin_tone", "\u{1F385}\u{1F3FD}");
     m.insert("saudi_arabia", "\u{1F1F8}\u{1F1E6}");
     m.insert("scorpio", "\u{264F}");
-    m.insert("scotland", "\u{1F3F4}\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F}");
+    m.insert(
+        "scotland",
+        "\u{1F3F4}\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F}",
+    );
     m.insert("senegal", "\u{1F1F8}\u{1F1F3}");
     m.insert("serbia", "\u{1F1F7}\u{1F1F8}");
     m.insert("seychelles", "\u{1F1F8}\u{1F1E8}");
@@ -284,7 +290,10 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("solomon_islands", "\u{1F1F8}\u{1F1E7}");
     m.insert("somalia", "\u{1F1F8}\u{1F1F4}");
     m.insert("south_africa", "\u{1F1FF}\u{1F1E6}");
-    m.insert("south_georgia_&_south_sandwich_islands", "\u{1F1EC}\u{1F1F8}");
+    m.insert(
+        "south_georgia_&_south_sandwich_islands",
+        "\u{1F1EC}\u{1F1F8}",
+    );
     m.insert("south_korea", "\u{1F1F0}\u{1F1F7}");
     m.insert("south_sudan", "\u{1F1F8}\u{1F1F8}");
     m.insert("spain", "\u{1F1EA}\u{1F1F8}");
@@ -341,7 +350,10 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("venezuela", "\u{1F1FB}\u{1F1EA}");
     m.insert("vietnam", "\u{1F1FB}\u{1F1F3}");
     m.insert("virgo", "\u{264D}");
-    m.insert("wales", "\u{1F3F4}\u{E0067}\u{E0062}\u{E0077}\u{E006C}\u{E0073}\u{E007F}");
+    m.insert(
+        "wales",
+        "\u{1F3F4}\u{E0067}\u{E0062}\u{E0077}\u{E006C}\u{E0073}\u{E007F}",
+    );
     m.insert("wallis_&_futuna", "\u{1F1FC}\u{1F1EB}");
     m.insert("western_sahara", "\u{1F1EA}\u{1F1ED}");
     m.insert("yemen", "\u{1F1FE}\u{1F1EA}");
@@ -399,29 +411,89 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("baby_medium_skin_tone", "\u{1F476}\u{1F3FD}");
     m.insert("baby_symbol", "\u{1F6BC}");
     m.insert("backhand_index_pointing_down", "\u{1F447}");
-    m.insert("backhand_index_pointing_down_dark_skin_tone", "\u{1F447}\u{1F3FF}");
-    m.insert("backhand_index_pointing_down_light_skin_tone", "\u{1F447}\u{1F3FB}");
-    m.insert("backhand_index_pointing_down_medium-dark_skin_tone", "\u{1F447}\u{1F3FE}");
-    m.insert("backhand_index_pointing_down_medium-light_skin_tone", "\u{1F447}\u{1F3FC}");
-    m.insert("backhand_index_pointing_down_medium_skin_tone", "\u{1F447}\u{1F3FD}");
+    m.insert(
+        "backhand_index_pointing_down_dark_skin_tone",
+        "\u{1F447}\u{1F3FF}",
+    );
+    m.insert(
+        "backhand_index_pointing_down_light_skin_tone",
+        "\u{1F447}\u{1F3FB}",
+    );
+    m.insert(
+        "backhand_index_pointing_down_medium-dark_skin_tone",
+        "\u{1F447}\u{1F3FE}",
+    );
+    m.insert(
+        "backhand_index_pointing_down_medium-light_skin_tone",
+        "\u{1F447}\u{1F3FC}",
+    );
+    m.insert(
+        "backhand_index_pointing_down_medium_skin_tone",
+        "\u{1F447}\u{1F3FD}",
+    );
     m.insert("backhand_index_pointing_left", "\u{1F448}");
-    m.insert("backhand_index_pointing_left_dark_skin_tone", "\u{1F448}\u{1F3FF}");
-    m.insert("backhand_index_pointing_left_light_skin_tone", "\u{1F448}\u{1F3FB}");
-    m.insert("backhand_index_pointing_left_medium-dark_skin_tone", "\u{1F448}\u{1F3FE}");
-    m.insert("backhand_index_pointing_left_medium-light_skin_tone", "\u{1F448}\u{1F3FC}");
-    m.insert("backhand_index_pointing_left_medium_skin_tone", "\u{1F448}\u{1F3FD}");
+    m.insert(
+        "backhand_index_pointing_left_dark_skin_tone",
+        "\u{1F448}\u{1F3FF}",
+    );
+    m.insert(
+        "backhand_index_pointing_left_light_skin_tone",
+        "\u{1F448}\u{1F3FB}",
+    );
+    m.insert(
+        "backhand_index_pointing_left_medium-dark_skin_tone",
+        "\u{1F448}\u{1F3FE}",
+    );
+    m.insert(
+        "backhand_index_pointing_left_medium-light_skin_tone",
+        "\u{1F448}\u{1F3FC}",
+    );
+    m.insert(
+        "backhand_index_pointing_left_medium_skin_tone",
+        "\u{1F448}\u{1F3FD}",
+    );
     m.insert("backhand_index_pointing_right", "\u{1F449}");
-    m.insert("backhand_index_pointing_right_dark_skin_tone", "\u{1F449}\u{1F3FF}");
-    m.insert("backhand_index_pointing_right_light_skin_tone", "\u{1F449}\u{1F3FB}");
-    m.insert("backhand_index_pointing_right_medium-dark_skin_tone", "\u{1F449}\u{1F3FE}");
-    m.insert("backhand_index_pointing_right_medium-light_skin_tone", "\u{1F449}\u{1F3FC}");
-    m.insert("backhand_index_pointing_right_medium_skin_tone", "\u{1F449}\u{1F3FD}");
+    m.insert(
+        "backhand_index_pointing_right_dark_skin_tone",
+        "\u{1F449}\u{1F3FF}",
+    );
+    m.insert(
+        "backhand_index_pointing_right_light_skin_tone",
+        "\u{1F449}\u{1F3FB}",
+    );
+    m.insert(
+        "backhand_index_pointing_right_medium-dark_skin_tone",
+        "\u{1F449}\u{1F3FE}",
+    );
+    m.insert(
+        "backhand_index_pointing_right_medium-light_skin_tone",
+        "\u{1F449}\u{1F3FC}",
+    );
+    m.insert(
+        "backhand_index_pointing_right_medium_skin_tone",
+        "\u{1F449}\u{1F3FD}",
+    );
     m.insert("backhand_index_pointing_up", "\u{1F446}");
-    m.insert("backhand_index_pointing_up_dark_skin_tone", "\u{1F446}\u{1F3FF}");
-    m.insert("backhand_index_pointing_up_light_skin_tone", "\u{1F446}\u{1F3FB}");
-    m.insert("backhand_index_pointing_up_medium-dark_skin_tone", "\u{1F446}\u{1F3FE}");
-    m.insert("backhand_index_pointing_up_medium-light_skin_tone", "\u{1F446}\u{1F3FC}");
-    m.insert("backhand_index_pointing_up_medium_skin_tone", "\u{1F446}\u{1F3FD}");
+    m.insert(
+        "backhand_index_pointing_up_dark_skin_tone",
+        "\u{1F446}\u{1F3FF}",
+    );
+    m.insert(
+        "backhand_index_pointing_up_light_skin_tone",
+        "\u{1F446}\u{1F3FB}",
+    );
+    m.insert(
+        "backhand_index_pointing_up_medium-dark_skin_tone",
+        "\u{1F446}\u{1F3FE}",
+    );
+    m.insert(
+        "backhand_index_pointing_up_medium-light_skin_tone",
+        "\u{1F446}\u{1F3FC}",
+    );
+    m.insert(
+        "backhand_index_pointing_up_medium_skin_tone",
+        "\u{1F446}\u{1F3FD}",
+    );
     m.insert("bacon", "\u{1F953}");
     m.insert("badger", "\u{1F9A1}");
     m.insert("badminton", "\u{1F3F8}");
@@ -454,7 +526,10 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("bearded_person_dark_skin_tone", "\u{1F9D4}\u{1F3FF}");
     m.insert("bearded_person_light_skin_tone", "\u{1F9D4}\u{1F3FB}");
     m.insert("bearded_person_medium-dark_skin_tone", "\u{1F9D4}\u{1F3FE}");
-    m.insert("bearded_person_medium-light_skin_tone", "\u{1F9D4}\u{1F3FC}");
+    m.insert(
+        "bearded_person_medium-light_skin_tone",
+        "\u{1F9D4}\u{1F3FC}",
+    );
     m.insert("bearded_person_medium_skin_tone", "\u{1F9D4}\u{1F3FD}");
     m.insert("beating_heart", "\u{1F493}");
     m.insert("bed", "\u{1F6CF}");
@@ -480,23 +555,59 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("black_small_square", "\u{25AA}");
     m.insert("black_square_button", "\u{1F532}");
     m.insert("blond-haired_man", "\u{1F471}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("blond-haired_man_dark_skin_tone", "\u{1F471}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("blond-haired_man_light_skin_tone", "\u{1F471}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("blond-haired_man_medium-dark_skin_tone", "\u{1F471}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("blond-haired_man_medium-light_skin_tone", "\u{1F471}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("blond-haired_man_medium_skin_tone", "\u{1F471}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
+    m.insert(
+        "blond-haired_man_dark_skin_tone",
+        "\u{1F471}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "blond-haired_man_light_skin_tone",
+        "\u{1F471}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "blond-haired_man_medium-dark_skin_tone",
+        "\u{1F471}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "blond-haired_man_medium-light_skin_tone",
+        "\u{1F471}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "blond-haired_man_medium_skin_tone",
+        "\u{1F471}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
     m.insert("blond-haired_person", "\u{1F471}");
     m.insert("blond-haired_person_dark_skin_tone", "\u{1F471}\u{1F3FF}");
     m.insert("blond-haired_person_light_skin_tone", "\u{1F471}\u{1F3FB}");
-    m.insert("blond-haired_person_medium-dark_skin_tone", "\u{1F471}\u{1F3FE}");
-    m.insert("blond-haired_person_medium-light_skin_tone", "\u{1F471}\u{1F3FC}");
+    m.insert(
+        "blond-haired_person_medium-dark_skin_tone",
+        "\u{1F471}\u{1F3FE}",
+    );
+    m.insert(
+        "blond-haired_person_medium-light_skin_tone",
+        "\u{1F471}\u{1F3FC}",
+    );
     m.insert("blond-haired_person_medium_skin_tone", "\u{1F471}\u{1F3FD}");
     m.insert("blond-haired_woman", "\u{1F471}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("blond-haired_woman_dark_skin_tone", "\u{1F471}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("blond-haired_woman_light_skin_tone", "\u{1F471}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("blond-haired_woman_medium-dark_skin_tone", "\u{1F471}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("blond-haired_woman_medium-light_skin_tone", "\u{1F471}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("blond-haired_woman_medium_skin_tone", "\u{1F471}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
+    m.insert(
+        "blond-haired_woman_dark_skin_tone",
+        "\u{1F471}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "blond-haired_woman_light_skin_tone",
+        "\u{1F471}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "blond-haired_woman_medium-dark_skin_tone",
+        "\u{1F471}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "blond-haired_woman_medium-light_skin_tone",
+        "\u{1F471}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "blond-haired_woman_medium_skin_tone",
+        "\u{1F471}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
     m.insert("blossom", "\u{1F33C}");
     m.insert("blowfish", "\u{1F421}");
     m.insert("blue_book", "\u{1F4D8}");
@@ -527,14 +638,23 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("breast-feeding_dark_skin_tone", "\u{1F931}\u{1F3FF}");
     m.insert("breast-feeding_light_skin_tone", "\u{1F931}\u{1F3FB}");
     m.insert("breast-feeding_medium-dark_skin_tone", "\u{1F931}\u{1F3FE}");
-    m.insert("breast-feeding_medium-light_skin_tone", "\u{1F931}\u{1F3FC}");
+    m.insert(
+        "breast-feeding_medium-light_skin_tone",
+        "\u{1F931}\u{1F3FC}",
+    );
     m.insert("breast-feeding_medium_skin_tone", "\u{1F931}\u{1F3FD}");
     m.insert("brick", "\u{1F9F1}");
     m.insert("bride_with_veil", "\u{1F470}");
     m.insert("bride_with_veil_dark_skin_tone", "\u{1F470}\u{1F3FF}");
     m.insert("bride_with_veil_light_skin_tone", "\u{1F470}\u{1F3FB}");
-    m.insert("bride_with_veil_medium-dark_skin_tone", "\u{1F470}\u{1F3FE}");
-    m.insert("bride_with_veil_medium-light_skin_tone", "\u{1F470}\u{1F3FC}");
+    m.insert(
+        "bride_with_veil_medium-dark_skin_tone",
+        "\u{1F470}\u{1F3FE}",
+    );
+    m.insert(
+        "bride_with_veil_medium-light_skin_tone",
+        "\u{1F470}\u{1F3FC}",
+    );
     m.insert("bride_with_veil_medium_skin_tone", "\u{1F470}\u{1F3FD}");
     m.insert("bridge_at_night", "\u{1F309}");
     m.insert("briefcase", "\u{1F4BC}");
@@ -618,7 +738,10 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("clapping_hands_dark_skin_tone", "\u{1F44F}\u{1F3FF}");
     m.insert("clapping_hands_light_skin_tone", "\u{1F44F}\u{1F3FB}");
     m.insert("clapping_hands_medium-dark_skin_tone", "\u{1F44F}\u{1F3FE}");
-    m.insert("clapping_hands_medium-light_skin_tone", "\u{1F44F}\u{1F3FC}");
+    m.insert(
+        "clapping_hands_medium-light_skin_tone",
+        "\u{1F44F}\u{1F3FC}",
+    );
     m.insert("clapping_hands_medium_skin_tone", "\u{1F44F}\u{1F3FD}");
     m.insert("classical_building", "\u{1F3DB}");
     m.insert("clinking_beer_mugs", "\u{1F37B}");
@@ -654,8 +777,14 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("construction_worker", "\u{1F477}");
     m.insert("construction_worker_dark_skin_tone", "\u{1F477}\u{1F3FF}");
     m.insert("construction_worker_light_skin_tone", "\u{1F477}\u{1F3FB}");
-    m.insert("construction_worker_medium-dark_skin_tone", "\u{1F477}\u{1F3FE}");
-    m.insert("construction_worker_medium-light_skin_tone", "\u{1F477}\u{1F3FC}");
+    m.insert(
+        "construction_worker_medium-dark_skin_tone",
+        "\u{1F477}\u{1F3FE}",
+    );
+    m.insert(
+        "construction_worker_medium-light_skin_tone",
+        "\u{1F477}\u{1F3FC}",
+    );
     m.insert("construction_worker_medium_skin_tone", "\u{1F477}\u{1F3FD}");
     m.insert("control_knobs", "\u{1F39B}");
     m.insert("convenience_store", "\u{1F3EA}");
@@ -666,9 +795,18 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("couch_and_lamp", "\u{1F6CB}");
     m.insert("counterclockwise_arrows_button", "\u{1F504}");
     m.insert("couple_with_heart", "\u{1F491}");
-    m.insert("couple_with_heart_man_man", "\u{1F468}\u{200D}\u{2764}\u{FE0F}\u{200D}\u{1F468}");
-    m.insert("couple_with_heart_woman_man", "\u{1F469}\u{200D}\u{2764}\u{FE0F}\u{200D}\u{1F468}");
-    m.insert("couple_with_heart_woman_woman", "\u{1F469}\u{200D}\u{2764}\u{FE0F}\u{200D}\u{1F469}");
+    m.insert(
+        "couple_with_heart_man_man",
+        "\u{1F468}\u{200D}\u{2764}\u{FE0F}\u{200D}\u{1F468}",
+    );
+    m.insert(
+        "couple_with_heart_woman_man",
+        "\u{1F469}\u{200D}\u{2764}\u{FE0F}\u{200D}\u{1F468}",
+    );
+    m.insert(
+        "couple_with_heart_woman_woman",
+        "\u{1F469}\u{200D}\u{2764}\u{FE0F}\u{200D}\u{1F469}",
+    );
     m.insert("cow", "\u{1F42E}");
     m.insert("cow_face", "\u{1F42E}");
     m.insert("cowboy_hat_face", "\u{1F920}");
@@ -685,8 +823,14 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("crossed_fingers", "\u{1F91E}");
     m.insert("crossed_fingers_dark_skin_tone", "\u{1F91E}\u{1F3FF}");
     m.insert("crossed_fingers_light_skin_tone", "\u{1F91E}\u{1F3FB}");
-    m.insert("crossed_fingers_medium-dark_skin_tone", "\u{1F91E}\u{1F3FE}");
-    m.insert("crossed_fingers_medium-light_skin_tone", "\u{1F91E}\u{1F3FC}");
+    m.insert(
+        "crossed_fingers_medium-dark_skin_tone",
+        "\u{1F91E}\u{1F3FE}",
+    );
+    m.insert(
+        "crossed_fingers_medium-light_skin_tone",
+        "\u{1F91E}\u{1F3FC}",
+    );
     m.insert("crossed_fingers_medium_skin_tone", "\u{1F91E}\u{1F3FD}");
     m.insert("crossed_flags", "\u{1F38C}");
     m.insert("crossed_swords", "\u{2694}");
@@ -798,7 +942,10 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("exploding_head", "\u{1F92F}");
     m.insert("expressionless_face", "\u{1F611}");
     m.insert("eye", "\u{1F441}");
-    m.insert("eye_in_speech_bubble", "\u{1F441}\u{FE0F}\u{200D}\u{1F5E8}\u{FE0F}");
+    m.insert(
+        "eye_in_speech_bubble",
+        "\u{1F441}\u{FE0F}\u{200D}\u{1F5E8}\u{FE0F}",
+    );
     m.insert("eyes", "\u{1F440}");
     m.insert("face_blowing_a_kiss", "\u{1F618}");
     m.insert("face_savoring_food", "\u{1F60B}");
@@ -828,30 +975,93 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("fallen_leaf", "\u{1F342}");
     m.insert("family", "\u{1F46A}");
     m.insert("family_man_boy", "\u{1F468}\u{200D}\u{1F466}");
-    m.insert("family_man_boy_boy", "\u{1F468}\u{200D}\u{1F466}\u{200D}\u{1F466}");
+    m.insert(
+        "family_man_boy_boy",
+        "\u{1F468}\u{200D}\u{1F466}\u{200D}\u{1F466}",
+    );
     m.insert("family_man_girl", "\u{1F468}\u{200D}\u{1F467}");
-    m.insert("family_man_girl_boy", "\u{1F468}\u{200D}\u{1F467}\u{200D}\u{1F466}");
-    m.insert("family_man_girl_girl", "\u{1F468}\u{200D}\u{1F467}\u{200D}\u{1F467}");
-    m.insert("family_man_man_boy", "\u{1F468}\u{200D}\u{1F468}\u{200D}\u{1F466}");
-    m.insert("family_man_man_boy_boy", "\u{1F468}\u{200D}\u{1F468}\u{200D}\u{1F466}\u{200D}\u{1F466}");
-    m.insert("family_man_man_girl", "\u{1F468}\u{200D}\u{1F468}\u{200D}\u{1F467}");
-    m.insert("family_man_man_girl_boy", "\u{1F468}\u{200D}\u{1F468}\u{200D}\u{1F467}\u{200D}\u{1F466}");
-    m.insert("family_man_man_girl_girl", "\u{1F468}\u{200D}\u{1F468}\u{200D}\u{1F467}\u{200D}\u{1F467}");
-    m.insert("family_man_woman_boy", "\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F466}");
-    m.insert("family_man_woman_boy_boy", "\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F466}\u{200D}\u{1F466}");
-    m.insert("family_man_woman_girl", "\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}");
-    m.insert("family_man_woman_girl_boy", "\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}\u{200D}\u{1F466}");
-    m.insert("family_man_woman_girl_girl", "\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}\u{200D}\u{1F467}");
+    m.insert(
+        "family_man_girl_boy",
+        "\u{1F468}\u{200D}\u{1F467}\u{200D}\u{1F466}",
+    );
+    m.insert(
+        "family_man_girl_girl",
+        "\u{1F468}\u{200D}\u{1F467}\u{200D}\u{1F467}",
+    );
+    m.insert(
+        "family_man_man_boy",
+        "\u{1F468}\u{200D}\u{1F468}\u{200D}\u{1F466}",
+    );
+    m.insert(
+        "family_man_man_boy_boy",
+        "\u{1F468}\u{200D}\u{1F468}\u{200D}\u{1F466}\u{200D}\u{1F466}",
+    );
+    m.insert(
+        "family_man_man_girl",
+        "\u{1F468}\u{200D}\u{1F468}\u{200D}\u{1F467}",
+    );
+    m.insert(
+        "family_man_man_girl_boy",
+        "\u{1F468}\u{200D}\u{1F468}\u{200D}\u{1F467}\u{200D}\u{1F466}",
+    );
+    m.insert(
+        "family_man_man_girl_girl",
+        "\u{1F468}\u{200D}\u{1F468}\u{200D}\u{1F467}\u{200D}\u{1F467}",
+    );
+    m.insert(
+        "family_man_woman_boy",
+        "\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F466}",
+    );
+    m.insert(
+        "family_man_woman_boy_boy",
+        "\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F466}\u{200D}\u{1F466}",
+    );
+    m.insert(
+        "family_man_woman_girl",
+        "\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}",
+    );
+    m.insert(
+        "family_man_woman_girl_boy",
+        "\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}\u{200D}\u{1F466}",
+    );
+    m.insert(
+        "family_man_woman_girl_girl",
+        "\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}\u{200D}\u{1F467}",
+    );
     m.insert("family_woman_boy", "\u{1F469}\u{200D}\u{1F466}");
-    m.insert("family_woman_boy_boy", "\u{1F469}\u{200D}\u{1F466}\u{200D}\u{1F466}");
+    m.insert(
+        "family_woman_boy_boy",
+        "\u{1F469}\u{200D}\u{1F466}\u{200D}\u{1F466}",
+    );
     m.insert("family_woman_girl", "\u{1F469}\u{200D}\u{1F467}");
-    m.insert("family_woman_girl_boy", "\u{1F469}\u{200D}\u{1F467}\u{200D}\u{1F466}");
-    m.insert("family_woman_girl_girl", "\u{1F469}\u{200D}\u{1F467}\u{200D}\u{1F467}");
-    m.insert("family_woman_woman_boy", "\u{1F469}\u{200D}\u{1F469}\u{200D}\u{1F466}");
-    m.insert("family_woman_woman_boy_boy", "\u{1F469}\u{200D}\u{1F469}\u{200D}\u{1F466}\u{200D}\u{1F466}");
-    m.insert("family_woman_woman_girl", "\u{1F469}\u{200D}\u{1F469}\u{200D}\u{1F467}");
-    m.insert("family_woman_woman_girl_boy", "\u{1F469}\u{200D}\u{1F469}\u{200D}\u{1F467}\u{200D}\u{1F466}");
-    m.insert("family_woman_woman_girl_girl", "\u{1F469}\u{200D}\u{1F469}\u{200D}\u{1F467}\u{200D}\u{1F467}");
+    m.insert(
+        "family_woman_girl_boy",
+        "\u{1F469}\u{200D}\u{1F467}\u{200D}\u{1F466}",
+    );
+    m.insert(
+        "family_woman_girl_girl",
+        "\u{1F469}\u{200D}\u{1F467}\u{200D}\u{1F467}",
+    );
+    m.insert(
+        "family_woman_woman_boy",
+        "\u{1F469}\u{200D}\u{1F469}\u{200D}\u{1F466}",
+    );
+    m.insert(
+        "family_woman_woman_boy_boy",
+        "\u{1F469}\u{200D}\u{1F469}\u{200D}\u{1F466}\u{200D}\u{1F466}",
+    );
+    m.insert(
+        "family_woman_woman_girl",
+        "\u{1F469}\u{200D}\u{1F469}\u{200D}\u{1F467}",
+    );
+    m.insert(
+        "family_woman_woman_girl_boy",
+        "\u{1F469}\u{200D}\u{1F469}\u{200D}\u{1F467}\u{200D}\u{1F466}",
+    );
+    m.insert(
+        "family_woman_woman_girl_girl",
+        "\u{1F469}\u{200D}\u{1F469}\u{200D}\u{1F467}\u{200D}\u{1F467}",
+    );
     m.insert("fast-forward_button", "\u{23E9}");
     m.insert("fast_down_button", "\u{23EC}");
     m.insert("fast_reverse_button", "\u{23EA}");
@@ -981,11 +1191,26 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("hammer_and_wrench", "\u{1F6E0}");
     m.insert("hamster_face", "\u{1F439}");
     m.insert("hand_with_fingers_splayed", "\u{1F590}");
-    m.insert("hand_with_fingers_splayed_dark_skin_tone", "\u{1F590}\u{1F3FF}");
-    m.insert("hand_with_fingers_splayed_light_skin_tone", "\u{1F590}\u{1F3FB}");
-    m.insert("hand_with_fingers_splayed_medium-dark_skin_tone", "\u{1F590}\u{1F3FE}");
-    m.insert("hand_with_fingers_splayed_medium-light_skin_tone", "\u{1F590}\u{1F3FC}");
-    m.insert("hand_with_fingers_splayed_medium_skin_tone", "\u{1F590}\u{1F3FD}");
+    m.insert(
+        "hand_with_fingers_splayed_dark_skin_tone",
+        "\u{1F590}\u{1F3FF}",
+    );
+    m.insert(
+        "hand_with_fingers_splayed_light_skin_tone",
+        "\u{1F590}\u{1F3FB}",
+    );
+    m.insert(
+        "hand_with_fingers_splayed_medium-dark_skin_tone",
+        "\u{1F590}\u{1F3FE}",
+    );
+    m.insert(
+        "hand_with_fingers_splayed_medium-light_skin_tone",
+        "\u{1F590}\u{1F3FC}",
+    );
+    m.insert(
+        "hand_with_fingers_splayed_medium_skin_tone",
+        "\u{1F590}\u{1F3FD}",
+    );
     m.insert("handbag", "\u{1F45C}");
     m.insert("handshake", "\u{1F91D}");
     m.insert("hatching_chick", "\u{1F423}");
@@ -1049,8 +1274,14 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("index_pointing_up", "\u{261D}");
     m.insert("index_pointing_up_dark_skin_tone", "\u{261D}\u{1F3FF}");
     m.insert("index_pointing_up_light_skin_tone", "\u{261D}\u{1F3FB}");
-    m.insert("index_pointing_up_medium-dark_skin_tone", "\u{261D}\u{1F3FE}");
-    m.insert("index_pointing_up_medium-light_skin_tone", "\u{261D}\u{1F3FC}");
+    m.insert(
+        "index_pointing_up_medium-dark_skin_tone",
+        "\u{261D}\u{1F3FE}",
+    );
+    m.insert(
+        "index_pointing_up_medium-light_skin_tone",
+        "\u{261D}\u{1F3FC}",
+    );
     m.insert("index_pointing_up_medium_skin_tone", "\u{261D}\u{1F3FD}");
     m.insert("infinity", "\u{267E}");
     m.insert("information", "\u{2139}");
@@ -1084,10 +1315,19 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("kick_scooter", "\u{1F6F4}");
     m.insert("kimono", "\u{1F458}");
     m.insert("kiss", "\u{1F48B}");
-    m.insert("kiss_man_man", "\u{1F468}\u{200D}\u{2764}\u{FE0F}\u{200D}\u{1F48B}\u{200D}\u{1F468}");
+    m.insert(
+        "kiss_man_man",
+        "\u{1F468}\u{200D}\u{2764}\u{FE0F}\u{200D}\u{1F48B}\u{200D}\u{1F468}",
+    );
     m.insert("kiss_mark", "\u{1F48B}");
-    m.insert("kiss_woman_man", "\u{1F469}\u{200D}\u{2764}\u{FE0F}\u{200D}\u{1F48B}\u{200D}\u{1F468}");
-    m.insert("kiss_woman_woman", "\u{1F469}\u{200D}\u{2764}\u{FE0F}\u{200D}\u{1F48B}\u{200D}\u{1F469}");
+    m.insert(
+        "kiss_woman_man",
+        "\u{1F469}\u{200D}\u{2764}\u{FE0F}\u{200D}\u{1F48B}\u{200D}\u{1F468}",
+    );
+    m.insert(
+        "kiss_woman_woman",
+        "\u{1F469}\u{200D}\u{2764}\u{FE0F}\u{200D}\u{1F48B}\u{200D}\u{1F469}",
+    );
     m.insert("kissing_cat_face", "\u{1F63D}");
     m.insert("kissing_face", "\u{1F617}");
     m.insert("kissing_face_with_closed_eyes", "\u{1F61A}");
@@ -1113,8 +1353,14 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("left-facing_fist", "\u{1F91B}");
     m.insert("left-facing_fist_dark_skin_tone", "\u{1F91B}\u{1F3FF}");
     m.insert("left-facing_fist_light_skin_tone", "\u{1F91B}\u{1F3FB}");
-    m.insert("left-facing_fist_medium-dark_skin_tone", "\u{1F91B}\u{1F3FE}");
-    m.insert("left-facing_fist_medium-light_skin_tone", "\u{1F91B}\u{1F3FC}");
+    m.insert(
+        "left-facing_fist_medium-dark_skin_tone",
+        "\u{1F91B}\u{1F3FE}",
+    );
+    m.insert(
+        "left-facing_fist_medium-light_skin_tone",
+        "\u{1F91B}\u{1F3FC}",
+    );
     m.insert("left-facing_fist_medium_skin_tone", "\u{1F91B}\u{1F3FD}");
     m.insert("left-right_arrow", "\u{2194}");
     m.insert("left_arrow", "\u{2B05}");
@@ -1146,8 +1392,14 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("love-you_gesture", "\u{1F91F}");
     m.insert("love-you_gesture_dark_skin_tone", "\u{1F91F}\u{1F3FF}");
     m.insert("love-you_gesture_light_skin_tone", "\u{1F91F}\u{1F3FB}");
-    m.insert("love-you_gesture_medium-dark_skin_tone", "\u{1F91F}\u{1F3FE}");
-    m.insert("love-you_gesture_medium-light_skin_tone", "\u{1F91F}\u{1F3FC}");
+    m.insert(
+        "love-you_gesture_medium-dark_skin_tone",
+        "\u{1F91F}\u{1F3FE}",
+    );
+    m.insert(
+        "love-you_gesture_medium-light_skin_tone",
+        "\u{1F91F}\u{1F3FC}",
+    );
     m.insert("love-you_gesture_medium_skin_tone", "\u{1F91F}\u{1F3FD}");
     m.insert("love_hotel", "\u{1F3E9}");
     m.insert("love_letter", "\u{1F48C}");
@@ -1167,59 +1419,200 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("man", "\u{1F468}");
     m.insert("man_and_woman_holding_hands", "\u{1F46B}");
     m.insert("man_artist", "\u{1F468}\u{200D}\u{1F3A8}");
-    m.insert("man_artist_dark_skin_tone", "\u{1F468}\u{1F3FF}\u{200D}\u{1F3A8}");
-    m.insert("man_artist_light_skin_tone", "\u{1F468}\u{1F3FB}\u{200D}\u{1F3A8}");
-    m.insert("man_artist_medium-dark_skin_tone", "\u{1F468}\u{1F3FE}\u{200D}\u{1F3A8}");
-    m.insert("man_artist_medium-light_skin_tone", "\u{1F468}\u{1F3FC}\u{200D}\u{1F3A8}");
-    m.insert("man_artist_medium_skin_tone", "\u{1F468}\u{1F3FD}\u{200D}\u{1F3A8}");
+    m.insert(
+        "man_artist_dark_skin_tone",
+        "\u{1F468}\u{1F3FF}\u{200D}\u{1F3A8}",
+    );
+    m.insert(
+        "man_artist_light_skin_tone",
+        "\u{1F468}\u{1F3FB}\u{200D}\u{1F3A8}",
+    );
+    m.insert(
+        "man_artist_medium-dark_skin_tone",
+        "\u{1F468}\u{1F3FE}\u{200D}\u{1F3A8}",
+    );
+    m.insert(
+        "man_artist_medium-light_skin_tone",
+        "\u{1F468}\u{1F3FC}\u{200D}\u{1F3A8}",
+    );
+    m.insert(
+        "man_artist_medium_skin_tone",
+        "\u{1F468}\u{1F3FD}\u{200D}\u{1F3A8}",
+    );
     m.insert("man_astronaut", "\u{1F468}\u{200D}\u{1F680}");
-    m.insert("man_astronaut_dark_skin_tone", "\u{1F468}\u{1F3FF}\u{200D}\u{1F680}");
-    m.insert("man_astronaut_light_skin_tone", "\u{1F468}\u{1F3FB}\u{200D}\u{1F680}");
-    m.insert("man_astronaut_medium-dark_skin_tone", "\u{1F468}\u{1F3FE}\u{200D}\u{1F680}");
-    m.insert("man_astronaut_medium-light_skin_tone", "\u{1F468}\u{1F3FC}\u{200D}\u{1F680}");
-    m.insert("man_astronaut_medium_skin_tone", "\u{1F468}\u{1F3FD}\u{200D}\u{1F680}");
+    m.insert(
+        "man_astronaut_dark_skin_tone",
+        "\u{1F468}\u{1F3FF}\u{200D}\u{1F680}",
+    );
+    m.insert(
+        "man_astronaut_light_skin_tone",
+        "\u{1F468}\u{1F3FB}\u{200D}\u{1F680}",
+    );
+    m.insert(
+        "man_astronaut_medium-dark_skin_tone",
+        "\u{1F468}\u{1F3FE}\u{200D}\u{1F680}",
+    );
+    m.insert(
+        "man_astronaut_medium-light_skin_tone",
+        "\u{1F468}\u{1F3FC}\u{200D}\u{1F680}",
+    );
+    m.insert(
+        "man_astronaut_medium_skin_tone",
+        "\u{1F468}\u{1F3FD}\u{200D}\u{1F680}",
+    );
     m.insert("man_biking", "\u{1F6B4}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_biking_dark_skin_tone", "\u{1F6B4}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_biking_light_skin_tone", "\u{1F6B4}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_biking_medium-dark_skin_tone", "\u{1F6B4}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_biking_medium-light_skin_tone", "\u{1F6B4}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_biking_medium_skin_tone", "\u{1F6B4}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_bouncing_ball", "\u{26F9}\u{FE0F}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_bouncing_ball_dark_skin_tone", "\u{26F9}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_bouncing_ball_light_skin_tone", "\u{26F9}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_bouncing_ball_medium-dark_skin_tone", "\u{26F9}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_bouncing_ball_medium-light_skin_tone", "\u{26F9}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_bouncing_ball_medium_skin_tone", "\u{26F9}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
+    m.insert(
+        "man_biking_dark_skin_tone",
+        "\u{1F6B4}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_biking_light_skin_tone",
+        "\u{1F6B4}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_biking_medium-dark_skin_tone",
+        "\u{1F6B4}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_biking_medium-light_skin_tone",
+        "\u{1F6B4}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_biking_medium_skin_tone",
+        "\u{1F6B4}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_bouncing_ball",
+        "\u{26F9}\u{FE0F}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_bouncing_ball_dark_skin_tone",
+        "\u{26F9}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_bouncing_ball_light_skin_tone",
+        "\u{26F9}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_bouncing_ball_medium-dark_skin_tone",
+        "\u{26F9}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_bouncing_ball_medium-light_skin_tone",
+        "\u{26F9}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_bouncing_ball_medium_skin_tone",
+        "\u{26F9}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
     m.insert("man_bowing", "\u{1F647}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_bowing_dark_skin_tone", "\u{1F647}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_bowing_light_skin_tone", "\u{1F647}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_bowing_medium-dark_skin_tone", "\u{1F647}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_bowing_medium-light_skin_tone", "\u{1F647}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_bowing_medium_skin_tone", "\u{1F647}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
+    m.insert(
+        "man_bowing_dark_skin_tone",
+        "\u{1F647}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_bowing_light_skin_tone",
+        "\u{1F647}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_bowing_medium-dark_skin_tone",
+        "\u{1F647}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_bowing_medium-light_skin_tone",
+        "\u{1F647}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_bowing_medium_skin_tone",
+        "\u{1F647}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
     m.insert("man_cartwheeling", "\u{1F938}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_cartwheeling_dark_skin_tone", "\u{1F938}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_cartwheeling_light_skin_tone", "\u{1F938}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_cartwheeling_medium-dark_skin_tone", "\u{1F938}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_cartwheeling_medium-light_skin_tone", "\u{1F938}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_cartwheeling_medium_skin_tone", "\u{1F938}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
+    m.insert(
+        "man_cartwheeling_dark_skin_tone",
+        "\u{1F938}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_cartwheeling_light_skin_tone",
+        "\u{1F938}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_cartwheeling_medium-dark_skin_tone",
+        "\u{1F938}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_cartwheeling_medium-light_skin_tone",
+        "\u{1F938}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_cartwheeling_medium_skin_tone",
+        "\u{1F938}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
     m.insert("man_climbing", "\u{1F9D7}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_climbing_dark_skin_tone", "\u{1F9D7}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_climbing_light_skin_tone", "\u{1F9D7}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_climbing_medium-dark_skin_tone", "\u{1F9D7}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_climbing_medium-light_skin_tone", "\u{1F9D7}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_climbing_medium_skin_tone", "\u{1F9D7}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_construction_worker", "\u{1F477}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_construction_worker_dark_skin_tone", "\u{1F477}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_construction_worker_light_skin_tone", "\u{1F477}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_construction_worker_medium-dark_skin_tone", "\u{1F477}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_construction_worker_medium-light_skin_tone", "\u{1F477}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_construction_worker_medium_skin_tone", "\u{1F477}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
+    m.insert(
+        "man_climbing_dark_skin_tone",
+        "\u{1F9D7}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_climbing_light_skin_tone",
+        "\u{1F9D7}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_climbing_medium-dark_skin_tone",
+        "\u{1F9D7}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_climbing_medium-light_skin_tone",
+        "\u{1F9D7}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_climbing_medium_skin_tone",
+        "\u{1F9D7}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_construction_worker",
+        "\u{1F477}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_construction_worker_dark_skin_tone",
+        "\u{1F477}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_construction_worker_light_skin_tone",
+        "\u{1F477}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_construction_worker_medium-dark_skin_tone",
+        "\u{1F477}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_construction_worker_medium-light_skin_tone",
+        "\u{1F477}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_construction_worker_medium_skin_tone",
+        "\u{1F477}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
     m.insert("man_cook", "\u{1F468}\u{200D}\u{1F373}");
-    m.insert("man_cook_dark_skin_tone", "\u{1F468}\u{1F3FF}\u{200D}\u{1F373}");
-    m.insert("man_cook_light_skin_tone", "\u{1F468}\u{1F3FB}\u{200D}\u{1F373}");
-    m.insert("man_cook_medium-dark_skin_tone", "\u{1F468}\u{1F3FE}\u{200D}\u{1F373}");
-    m.insert("man_cook_medium-light_skin_tone", "\u{1F468}\u{1F3FC}\u{200D}\u{1F373}");
-    m.insert("man_cook_medium_skin_tone", "\u{1F468}\u{1F3FD}\u{200D}\u{1F373}");
+    m.insert(
+        "man_cook_dark_skin_tone",
+        "\u{1F468}\u{1F3FF}\u{200D}\u{1F373}",
+    );
+    m.insert(
+        "man_cook_light_skin_tone",
+        "\u{1F468}\u{1F3FB}\u{200D}\u{1F373}",
+    );
+    m.insert(
+        "man_cook_medium-dark_skin_tone",
+        "\u{1F468}\u{1F3FE}\u{200D}\u{1F373}",
+    );
+    m.insert(
+        "man_cook_medium-light_skin_tone",
+        "\u{1F468}\u{1F3FC}\u{200D}\u{1F373}",
+    );
+    m.insert(
+        "man_cook_medium_skin_tone",
+        "\u{1F468}\u{1F3FD}\u{200D}\u{1F373}",
+    );
     m.insert("man_dancing", "\u{1F57A}");
     m.insert("man_dancing_dark_skin_tone", "\u{1F57A}\u{1F3FF}");
     m.insert("man_dancing_light_skin_tone", "\u{1F57A}\u{1F3FB}");
@@ -1228,116 +1621,386 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("man_dancing_medium_skin_tone", "\u{1F57A}\u{1F3FD}");
     m.insert("man_dark_skin_tone", "\u{1F468}\u{1F3FF}");
     m.insert("man_detective", "\u{1F575}\u{FE0F}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_detective_dark_skin_tone", "\u{1F575}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_detective_light_skin_tone", "\u{1F575}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_detective_medium-dark_skin_tone", "\u{1F575}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_detective_medium-light_skin_tone", "\u{1F575}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_detective_medium_skin_tone", "\u{1F575}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
+    m.insert(
+        "man_detective_dark_skin_tone",
+        "\u{1F575}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_detective_light_skin_tone",
+        "\u{1F575}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_detective_medium-dark_skin_tone",
+        "\u{1F575}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_detective_medium-light_skin_tone",
+        "\u{1F575}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_detective_medium_skin_tone",
+        "\u{1F575}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
     m.insert("man_elf", "\u{1F9DD}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_elf_dark_skin_tone", "\u{1F9DD}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_elf_light_skin_tone", "\u{1F9DD}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_elf_medium-dark_skin_tone", "\u{1F9DD}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_elf_medium-light_skin_tone", "\u{1F9DD}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_elf_medium_skin_tone", "\u{1F9DD}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
+    m.insert(
+        "man_elf_dark_skin_tone",
+        "\u{1F9DD}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_elf_light_skin_tone",
+        "\u{1F9DD}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_elf_medium-dark_skin_tone",
+        "\u{1F9DD}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_elf_medium-light_skin_tone",
+        "\u{1F9DD}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_elf_medium_skin_tone",
+        "\u{1F9DD}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
     m.insert("man_facepalming", "\u{1F926}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_facepalming_dark_skin_tone", "\u{1F926}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_facepalming_light_skin_tone", "\u{1F926}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_facepalming_medium-dark_skin_tone", "\u{1F926}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_facepalming_medium-light_skin_tone", "\u{1F926}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_facepalming_medium_skin_tone", "\u{1F926}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
+    m.insert(
+        "man_facepalming_dark_skin_tone",
+        "\u{1F926}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_facepalming_light_skin_tone",
+        "\u{1F926}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_facepalming_medium-dark_skin_tone",
+        "\u{1F926}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_facepalming_medium-light_skin_tone",
+        "\u{1F926}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_facepalming_medium_skin_tone",
+        "\u{1F926}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
     m.insert("man_factory_worker", "\u{1F468}\u{200D}\u{1F3ED}");
-    m.insert("man_factory_worker_dark_skin_tone", "\u{1F468}\u{1F3FF}\u{200D}\u{1F3ED}");
-    m.insert("man_factory_worker_light_skin_tone", "\u{1F468}\u{1F3FB}\u{200D}\u{1F3ED}");
-    m.insert("man_factory_worker_medium-dark_skin_tone", "\u{1F468}\u{1F3FE}\u{200D}\u{1F3ED}");
-    m.insert("man_factory_worker_medium-light_skin_tone", "\u{1F468}\u{1F3FC}\u{200D}\u{1F3ED}");
-    m.insert("man_factory_worker_medium_skin_tone", "\u{1F468}\u{1F3FD}\u{200D}\u{1F3ED}");
+    m.insert(
+        "man_factory_worker_dark_skin_tone",
+        "\u{1F468}\u{1F3FF}\u{200D}\u{1F3ED}",
+    );
+    m.insert(
+        "man_factory_worker_light_skin_tone",
+        "\u{1F468}\u{1F3FB}\u{200D}\u{1F3ED}",
+    );
+    m.insert(
+        "man_factory_worker_medium-dark_skin_tone",
+        "\u{1F468}\u{1F3FE}\u{200D}\u{1F3ED}",
+    );
+    m.insert(
+        "man_factory_worker_medium-light_skin_tone",
+        "\u{1F468}\u{1F3FC}\u{200D}\u{1F3ED}",
+    );
+    m.insert(
+        "man_factory_worker_medium_skin_tone",
+        "\u{1F468}\u{1F3FD}\u{200D}\u{1F3ED}",
+    );
     m.insert("man_fairy", "\u{1F9DA}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_fairy_dark_skin_tone", "\u{1F9DA}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_fairy_light_skin_tone", "\u{1F9DA}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_fairy_medium-dark_skin_tone", "\u{1F9DA}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_fairy_medium-light_skin_tone", "\u{1F9DA}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_fairy_medium_skin_tone", "\u{1F9DA}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
+    m.insert(
+        "man_fairy_dark_skin_tone",
+        "\u{1F9DA}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_fairy_light_skin_tone",
+        "\u{1F9DA}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_fairy_medium-dark_skin_tone",
+        "\u{1F9DA}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_fairy_medium-light_skin_tone",
+        "\u{1F9DA}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_fairy_medium_skin_tone",
+        "\u{1F9DA}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
     m.insert("man_farmer", "\u{1F468}\u{200D}\u{1F33E}");
-    m.insert("man_farmer_dark_skin_tone", "\u{1F468}\u{1F3FF}\u{200D}\u{1F33E}");
-    m.insert("man_farmer_light_skin_tone", "\u{1F468}\u{1F3FB}\u{200D}\u{1F33E}");
-    m.insert("man_farmer_medium-dark_skin_tone", "\u{1F468}\u{1F3FE}\u{200D}\u{1F33E}");
-    m.insert("man_farmer_medium-light_skin_tone", "\u{1F468}\u{1F3FC}\u{200D}\u{1F33E}");
-    m.insert("man_farmer_medium_skin_tone", "\u{1F468}\u{1F3FD}\u{200D}\u{1F33E}");
+    m.insert(
+        "man_farmer_dark_skin_tone",
+        "\u{1F468}\u{1F3FF}\u{200D}\u{1F33E}",
+    );
+    m.insert(
+        "man_farmer_light_skin_tone",
+        "\u{1F468}\u{1F3FB}\u{200D}\u{1F33E}",
+    );
+    m.insert(
+        "man_farmer_medium-dark_skin_tone",
+        "\u{1F468}\u{1F3FE}\u{200D}\u{1F33E}",
+    );
+    m.insert(
+        "man_farmer_medium-light_skin_tone",
+        "\u{1F468}\u{1F3FC}\u{200D}\u{1F33E}",
+    );
+    m.insert(
+        "man_farmer_medium_skin_tone",
+        "\u{1F468}\u{1F3FD}\u{200D}\u{1F33E}",
+    );
     m.insert("man_firefighter", "\u{1F468}\u{200D}\u{1F692}");
-    m.insert("man_firefighter_dark_skin_tone", "\u{1F468}\u{1F3FF}\u{200D}\u{1F692}");
-    m.insert("man_firefighter_light_skin_tone", "\u{1F468}\u{1F3FB}\u{200D}\u{1F692}");
-    m.insert("man_firefighter_medium-dark_skin_tone", "\u{1F468}\u{1F3FE}\u{200D}\u{1F692}");
-    m.insert("man_firefighter_medium-light_skin_tone", "\u{1F468}\u{1F3FC}\u{200D}\u{1F692}");
-    m.insert("man_firefighter_medium_skin_tone", "\u{1F468}\u{1F3FD}\u{200D}\u{1F692}");
+    m.insert(
+        "man_firefighter_dark_skin_tone",
+        "\u{1F468}\u{1F3FF}\u{200D}\u{1F692}",
+    );
+    m.insert(
+        "man_firefighter_light_skin_tone",
+        "\u{1F468}\u{1F3FB}\u{200D}\u{1F692}",
+    );
+    m.insert(
+        "man_firefighter_medium-dark_skin_tone",
+        "\u{1F468}\u{1F3FE}\u{200D}\u{1F692}",
+    );
+    m.insert(
+        "man_firefighter_medium-light_skin_tone",
+        "\u{1F468}\u{1F3FC}\u{200D}\u{1F692}",
+    );
+    m.insert(
+        "man_firefighter_medium_skin_tone",
+        "\u{1F468}\u{1F3FD}\u{200D}\u{1F692}",
+    );
     m.insert("man_frowning", "\u{1F64D}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_frowning_dark_skin_tone", "\u{1F64D}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_frowning_light_skin_tone", "\u{1F64D}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_frowning_medium-dark_skin_tone", "\u{1F64D}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_frowning_medium-light_skin_tone", "\u{1F64D}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_frowning_medium_skin_tone", "\u{1F64D}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
+    m.insert(
+        "man_frowning_dark_skin_tone",
+        "\u{1F64D}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_frowning_light_skin_tone",
+        "\u{1F64D}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_frowning_medium-dark_skin_tone",
+        "\u{1F64D}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_frowning_medium-light_skin_tone",
+        "\u{1F64D}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_frowning_medium_skin_tone",
+        "\u{1F64D}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
     m.insert("man_genie", "\u{1F9DE}\u{200D}\u{2642}\u{FE0F}");
     m.insert("man_gesturing_no", "\u{1F645}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_gesturing_no_dark_skin_tone", "\u{1F645}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_gesturing_no_light_skin_tone", "\u{1F645}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_gesturing_no_medium-dark_skin_tone", "\u{1F645}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_gesturing_no_medium-light_skin_tone", "\u{1F645}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_gesturing_no_medium_skin_tone", "\u{1F645}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
+    m.insert(
+        "man_gesturing_no_dark_skin_tone",
+        "\u{1F645}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_gesturing_no_light_skin_tone",
+        "\u{1F645}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_gesturing_no_medium-dark_skin_tone",
+        "\u{1F645}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_gesturing_no_medium-light_skin_tone",
+        "\u{1F645}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_gesturing_no_medium_skin_tone",
+        "\u{1F645}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
     m.insert("man_gesturing_ok", "\u{1F646}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_gesturing_ok_dark_skin_tone", "\u{1F646}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_gesturing_ok_light_skin_tone", "\u{1F646}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_gesturing_ok_medium-dark_skin_tone", "\u{1F646}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_gesturing_ok_medium-light_skin_tone", "\u{1F646}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_gesturing_ok_medium_skin_tone", "\u{1F646}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
+    m.insert(
+        "man_gesturing_ok_dark_skin_tone",
+        "\u{1F646}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_gesturing_ok_light_skin_tone",
+        "\u{1F646}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_gesturing_ok_medium-dark_skin_tone",
+        "\u{1F646}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_gesturing_ok_medium-light_skin_tone",
+        "\u{1F646}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_gesturing_ok_medium_skin_tone",
+        "\u{1F646}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
     m.insert("man_getting_haircut", "\u{1F487}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_getting_haircut_dark_skin_tone", "\u{1F487}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_getting_haircut_light_skin_tone", "\u{1F487}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_getting_haircut_medium-dark_skin_tone", "\u{1F487}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_getting_haircut_medium-light_skin_tone", "\u{1F487}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_getting_haircut_medium_skin_tone", "\u{1F487}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
+    m.insert(
+        "man_getting_haircut_dark_skin_tone",
+        "\u{1F487}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_getting_haircut_light_skin_tone",
+        "\u{1F487}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_getting_haircut_medium-dark_skin_tone",
+        "\u{1F487}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_getting_haircut_medium-light_skin_tone",
+        "\u{1F487}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_getting_haircut_medium_skin_tone",
+        "\u{1F487}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
     m.insert("man_getting_massage", "\u{1F486}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_getting_massage_dark_skin_tone", "\u{1F486}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_getting_massage_light_skin_tone", "\u{1F486}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_getting_massage_medium-dark_skin_tone", "\u{1F486}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_getting_massage_medium-light_skin_tone", "\u{1F486}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_getting_massage_medium_skin_tone", "\u{1F486}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
+    m.insert(
+        "man_getting_massage_dark_skin_tone",
+        "\u{1F486}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_getting_massage_light_skin_tone",
+        "\u{1F486}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_getting_massage_medium-dark_skin_tone",
+        "\u{1F486}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_getting_massage_medium-light_skin_tone",
+        "\u{1F486}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_getting_massage_medium_skin_tone",
+        "\u{1F486}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
     m.insert("man_golfing", "\u{1F3CC}\u{FE0F}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_golfing_dark_skin_tone", "\u{1F3CC}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_golfing_light_skin_tone", "\u{1F3CC}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_golfing_medium-dark_skin_tone", "\u{1F3CC}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_golfing_medium-light_skin_tone", "\u{1F3CC}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_golfing_medium_skin_tone", "\u{1F3CC}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
+    m.insert(
+        "man_golfing_dark_skin_tone",
+        "\u{1F3CC}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_golfing_light_skin_tone",
+        "\u{1F3CC}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_golfing_medium-dark_skin_tone",
+        "\u{1F3CC}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_golfing_medium-light_skin_tone",
+        "\u{1F3CC}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_golfing_medium_skin_tone",
+        "\u{1F3CC}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
     m.insert("man_guard", "\u{1F482}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_guard_dark_skin_tone", "\u{1F482}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_guard_light_skin_tone", "\u{1F482}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_guard_medium-dark_skin_tone", "\u{1F482}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_guard_medium-light_skin_tone", "\u{1F482}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_guard_medium_skin_tone", "\u{1F482}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
+    m.insert(
+        "man_guard_dark_skin_tone",
+        "\u{1F482}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_guard_light_skin_tone",
+        "\u{1F482}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_guard_medium-dark_skin_tone",
+        "\u{1F482}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_guard_medium-light_skin_tone",
+        "\u{1F482}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_guard_medium_skin_tone",
+        "\u{1F482}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
     m.insert("man_health_worker", "\u{1F468}\u{200D}\u{2695}\u{FE0F}");
-    m.insert("man_health_worker_dark_skin_tone", "\u{1F468}\u{1F3FF}\u{200D}\u{2695}\u{FE0F}");
-    m.insert("man_health_worker_light_skin_tone", "\u{1F468}\u{1F3FB}\u{200D}\u{2695}\u{FE0F}");
-    m.insert("man_health_worker_medium-dark_skin_tone", "\u{1F468}\u{1F3FE}\u{200D}\u{2695}\u{FE0F}");
-    m.insert("man_health_worker_medium-light_skin_tone", "\u{1F468}\u{1F3FC}\u{200D}\u{2695}\u{FE0F}");
-    m.insert("man_health_worker_medium_skin_tone", "\u{1F468}\u{1F3FD}\u{200D}\u{2695}\u{FE0F}");
+    m.insert(
+        "man_health_worker_dark_skin_tone",
+        "\u{1F468}\u{1F3FF}\u{200D}\u{2695}\u{FE0F}",
+    );
+    m.insert(
+        "man_health_worker_light_skin_tone",
+        "\u{1F468}\u{1F3FB}\u{200D}\u{2695}\u{FE0F}",
+    );
+    m.insert(
+        "man_health_worker_medium-dark_skin_tone",
+        "\u{1F468}\u{1F3FE}\u{200D}\u{2695}\u{FE0F}",
+    );
+    m.insert(
+        "man_health_worker_medium-light_skin_tone",
+        "\u{1F468}\u{1F3FC}\u{200D}\u{2695}\u{FE0F}",
+    );
+    m.insert(
+        "man_health_worker_medium_skin_tone",
+        "\u{1F468}\u{1F3FD}\u{200D}\u{2695}\u{FE0F}",
+    );
     m.insert("man_in_lotus_position", "\u{1F9D8}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_in_lotus_position_dark_skin_tone", "\u{1F9D8}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_in_lotus_position_light_skin_tone", "\u{1F9D8}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_in_lotus_position_medium-dark_skin_tone", "\u{1F9D8}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_in_lotus_position_medium-light_skin_tone", "\u{1F9D8}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_in_lotus_position_medium_skin_tone", "\u{1F9D8}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
+    m.insert(
+        "man_in_lotus_position_dark_skin_tone",
+        "\u{1F9D8}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_in_lotus_position_light_skin_tone",
+        "\u{1F9D8}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_in_lotus_position_medium-dark_skin_tone",
+        "\u{1F9D8}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_in_lotus_position_medium-light_skin_tone",
+        "\u{1F9D8}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_in_lotus_position_medium_skin_tone",
+        "\u{1F9D8}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
     m.insert("man_in_manual_wheelchair", "\u{1F468}\u{200D}\u{1F9BD}");
     m.insert("man_in_motorized_wheelchair", "\u{1F468}\u{200D}\u{1F9BC}");
     m.insert("man_in_steamy_room", "\u{1F9D6}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_in_steamy_room_dark_skin_tone", "\u{1F9D6}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_in_steamy_room_light_skin_tone", "\u{1F9D6}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_in_steamy_room_medium-dark_skin_tone", "\u{1F9D6}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_in_steamy_room_medium-light_skin_tone", "\u{1F9D6}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_in_steamy_room_medium_skin_tone", "\u{1F9D6}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
+    m.insert(
+        "man_in_steamy_room_dark_skin_tone",
+        "\u{1F9D6}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_in_steamy_room_light_skin_tone",
+        "\u{1F9D6}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_in_steamy_room_medium-dark_skin_tone",
+        "\u{1F9D6}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_in_steamy_room_medium-light_skin_tone",
+        "\u{1F9D6}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_in_steamy_room_medium_skin_tone",
+        "\u{1F9D6}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
     m.insert("man_in_suit_levitating", "\u{1F574}");
-    m.insert("man_in_suit_levitating_dark_skin_tone", "\u{1F574}\u{1F3FF}");
-    m.insert("man_in_suit_levitating_light_skin_tone", "\u{1F574}\u{1F3FB}");
-    m.insert("man_in_suit_levitating_medium-dark_skin_tone", "\u{1F574}\u{1F3FE}");
-    m.insert("man_in_suit_levitating_medium-light_skin_tone", "\u{1F574}\u{1F3FC}");
-    m.insert("man_in_suit_levitating_medium_skin_tone", "\u{1F574}\u{1F3FD}");
+    m.insert(
+        "man_in_suit_levitating_dark_skin_tone",
+        "\u{1F574}\u{1F3FF}",
+    );
+    m.insert(
+        "man_in_suit_levitating_light_skin_tone",
+        "\u{1F574}\u{1F3FB}",
+    );
+    m.insert(
+        "man_in_suit_levitating_medium-dark_skin_tone",
+        "\u{1F574}\u{1F3FE}",
+    );
+    m.insert(
+        "man_in_suit_levitating_medium-light_skin_tone",
+        "\u{1F574}\u{1F3FC}",
+    );
+    m.insert(
+        "man_in_suit_levitating_medium_skin_tone",
+        "\u{1F574}\u{1F3FD}",
+    );
     m.insert("man_in_tuxedo", "\u{1F935}");
     m.insert("man_in_tuxedo_dark_skin_tone", "\u{1F935}\u{1F3FF}");
     m.insert("man_in_tuxedo_light_skin_tone", "\u{1F935}\u{1F3FB}");
@@ -1345,178 +2008,598 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("man_in_tuxedo_medium-light_skin_tone", "\u{1F935}\u{1F3FC}");
     m.insert("man_in_tuxedo_medium_skin_tone", "\u{1F935}\u{1F3FD}");
     m.insert("man_judge", "\u{1F468}\u{200D}\u{2696}\u{FE0F}");
-    m.insert("man_judge_dark_skin_tone", "\u{1F468}\u{1F3FF}\u{200D}\u{2696}\u{FE0F}");
-    m.insert("man_judge_light_skin_tone", "\u{1F468}\u{1F3FB}\u{200D}\u{2696}\u{FE0F}");
-    m.insert("man_judge_medium-dark_skin_tone", "\u{1F468}\u{1F3FE}\u{200D}\u{2696}\u{FE0F}");
-    m.insert("man_judge_medium-light_skin_tone", "\u{1F468}\u{1F3FC}\u{200D}\u{2696}\u{FE0F}");
-    m.insert("man_judge_medium_skin_tone", "\u{1F468}\u{1F3FD}\u{200D}\u{2696}\u{FE0F}");
+    m.insert(
+        "man_judge_dark_skin_tone",
+        "\u{1F468}\u{1F3FF}\u{200D}\u{2696}\u{FE0F}",
+    );
+    m.insert(
+        "man_judge_light_skin_tone",
+        "\u{1F468}\u{1F3FB}\u{200D}\u{2696}\u{FE0F}",
+    );
+    m.insert(
+        "man_judge_medium-dark_skin_tone",
+        "\u{1F468}\u{1F3FE}\u{200D}\u{2696}\u{FE0F}",
+    );
+    m.insert(
+        "man_judge_medium-light_skin_tone",
+        "\u{1F468}\u{1F3FC}\u{200D}\u{2696}\u{FE0F}",
+    );
+    m.insert(
+        "man_judge_medium_skin_tone",
+        "\u{1F468}\u{1F3FD}\u{200D}\u{2696}\u{FE0F}",
+    );
     m.insert("man_juggling", "\u{1F939}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_juggling_dark_skin_tone", "\u{1F939}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_juggling_light_skin_tone", "\u{1F939}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_juggling_medium-dark_skin_tone", "\u{1F939}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_juggling_medium-light_skin_tone", "\u{1F939}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_juggling_medium_skin_tone", "\u{1F939}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_lifting_weights", "\u{1F3CB}\u{FE0F}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_lifting_weights_dark_skin_tone", "\u{1F3CB}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_lifting_weights_light_skin_tone", "\u{1F3CB}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_lifting_weights_medium-dark_skin_tone", "\u{1F3CB}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_lifting_weights_medium-light_skin_tone", "\u{1F3CB}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_lifting_weights_medium_skin_tone", "\u{1F3CB}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
+    m.insert(
+        "man_juggling_dark_skin_tone",
+        "\u{1F939}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_juggling_light_skin_tone",
+        "\u{1F939}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_juggling_medium-dark_skin_tone",
+        "\u{1F939}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_juggling_medium-light_skin_tone",
+        "\u{1F939}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_juggling_medium_skin_tone",
+        "\u{1F939}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_lifting_weights",
+        "\u{1F3CB}\u{FE0F}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_lifting_weights_dark_skin_tone",
+        "\u{1F3CB}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_lifting_weights_light_skin_tone",
+        "\u{1F3CB}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_lifting_weights_medium-dark_skin_tone",
+        "\u{1F3CB}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_lifting_weights_medium-light_skin_tone",
+        "\u{1F3CB}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_lifting_weights_medium_skin_tone",
+        "\u{1F3CB}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
     m.insert("man_light_skin_tone", "\u{1F468}\u{1F3FB}");
     m.insert("man_mage", "\u{1F9D9}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_mage_dark_skin_tone", "\u{1F9D9}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_mage_light_skin_tone", "\u{1F9D9}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_mage_medium-dark_skin_tone", "\u{1F9D9}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_mage_medium-light_skin_tone", "\u{1F9D9}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_mage_medium_skin_tone", "\u{1F9D9}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
+    m.insert(
+        "man_mage_dark_skin_tone",
+        "\u{1F9D9}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_mage_light_skin_tone",
+        "\u{1F9D9}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_mage_medium-dark_skin_tone",
+        "\u{1F9D9}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_mage_medium-light_skin_tone",
+        "\u{1F9D9}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_mage_medium_skin_tone",
+        "\u{1F9D9}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
     m.insert("man_mechanic", "\u{1F468}\u{200D}\u{1F527}");
-    m.insert("man_mechanic_dark_skin_tone", "\u{1F468}\u{1F3FF}\u{200D}\u{1F527}");
-    m.insert("man_mechanic_light_skin_tone", "\u{1F468}\u{1F3FB}\u{200D}\u{1F527}");
-    m.insert("man_mechanic_medium-dark_skin_tone", "\u{1F468}\u{1F3FE}\u{200D}\u{1F527}");
-    m.insert("man_mechanic_medium-light_skin_tone", "\u{1F468}\u{1F3FC}\u{200D}\u{1F527}");
-    m.insert("man_mechanic_medium_skin_tone", "\u{1F468}\u{1F3FD}\u{200D}\u{1F527}");
+    m.insert(
+        "man_mechanic_dark_skin_tone",
+        "\u{1F468}\u{1F3FF}\u{200D}\u{1F527}",
+    );
+    m.insert(
+        "man_mechanic_light_skin_tone",
+        "\u{1F468}\u{1F3FB}\u{200D}\u{1F527}",
+    );
+    m.insert(
+        "man_mechanic_medium-dark_skin_tone",
+        "\u{1F468}\u{1F3FE}\u{200D}\u{1F527}",
+    );
+    m.insert(
+        "man_mechanic_medium-light_skin_tone",
+        "\u{1F468}\u{1F3FC}\u{200D}\u{1F527}",
+    );
+    m.insert(
+        "man_mechanic_medium_skin_tone",
+        "\u{1F468}\u{1F3FD}\u{200D}\u{1F527}",
+    );
     m.insert("man_medium-dark_skin_tone", "\u{1F468}\u{1F3FE}");
     m.insert("man_medium-light_skin_tone", "\u{1F468}\u{1F3FC}");
     m.insert("man_medium_skin_tone", "\u{1F468}\u{1F3FD}");
     m.insert("man_mountain_biking", "\u{1F6B5}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_mountain_biking_dark_skin_tone", "\u{1F6B5}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_mountain_biking_light_skin_tone", "\u{1F6B5}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_mountain_biking_medium-dark_skin_tone", "\u{1F6B5}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_mountain_biking_medium-light_skin_tone", "\u{1F6B5}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_mountain_biking_medium_skin_tone", "\u{1F6B5}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
+    m.insert(
+        "man_mountain_biking_dark_skin_tone",
+        "\u{1F6B5}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_mountain_biking_light_skin_tone",
+        "\u{1F6B5}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_mountain_biking_medium-dark_skin_tone",
+        "\u{1F6B5}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_mountain_biking_medium-light_skin_tone",
+        "\u{1F6B5}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_mountain_biking_medium_skin_tone",
+        "\u{1F6B5}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
     m.insert("man_office_worker", "\u{1F468}\u{200D}\u{1F4BC}");
-    m.insert("man_office_worker_dark_skin_tone", "\u{1F468}\u{1F3FF}\u{200D}\u{1F4BC}");
-    m.insert("man_office_worker_light_skin_tone", "\u{1F468}\u{1F3FB}\u{200D}\u{1F4BC}");
-    m.insert("man_office_worker_medium-dark_skin_tone", "\u{1F468}\u{1F3FE}\u{200D}\u{1F4BC}");
-    m.insert("man_office_worker_medium-light_skin_tone", "\u{1F468}\u{1F3FC}\u{200D}\u{1F4BC}");
-    m.insert("man_office_worker_medium_skin_tone", "\u{1F468}\u{1F3FD}\u{200D}\u{1F4BC}");
+    m.insert(
+        "man_office_worker_dark_skin_tone",
+        "\u{1F468}\u{1F3FF}\u{200D}\u{1F4BC}",
+    );
+    m.insert(
+        "man_office_worker_light_skin_tone",
+        "\u{1F468}\u{1F3FB}\u{200D}\u{1F4BC}",
+    );
+    m.insert(
+        "man_office_worker_medium-dark_skin_tone",
+        "\u{1F468}\u{1F3FE}\u{200D}\u{1F4BC}",
+    );
+    m.insert(
+        "man_office_worker_medium-light_skin_tone",
+        "\u{1F468}\u{1F3FC}\u{200D}\u{1F4BC}",
+    );
+    m.insert(
+        "man_office_worker_medium_skin_tone",
+        "\u{1F468}\u{1F3FD}\u{200D}\u{1F4BC}",
+    );
     m.insert("man_pilot", "\u{1F468}\u{200D}\u{2708}\u{FE0F}");
-    m.insert("man_pilot_dark_skin_tone", "\u{1F468}\u{1F3FF}\u{200D}\u{2708}\u{FE0F}");
-    m.insert("man_pilot_light_skin_tone", "\u{1F468}\u{1F3FB}\u{200D}\u{2708}\u{FE0F}");
-    m.insert("man_pilot_medium-dark_skin_tone", "\u{1F468}\u{1F3FE}\u{200D}\u{2708}\u{FE0F}");
-    m.insert("man_pilot_medium-light_skin_tone", "\u{1F468}\u{1F3FC}\u{200D}\u{2708}\u{FE0F}");
-    m.insert("man_pilot_medium_skin_tone", "\u{1F468}\u{1F3FD}\u{200D}\u{2708}\u{FE0F}");
+    m.insert(
+        "man_pilot_dark_skin_tone",
+        "\u{1F468}\u{1F3FF}\u{200D}\u{2708}\u{FE0F}",
+    );
+    m.insert(
+        "man_pilot_light_skin_tone",
+        "\u{1F468}\u{1F3FB}\u{200D}\u{2708}\u{FE0F}",
+    );
+    m.insert(
+        "man_pilot_medium-dark_skin_tone",
+        "\u{1F468}\u{1F3FE}\u{200D}\u{2708}\u{FE0F}",
+    );
+    m.insert(
+        "man_pilot_medium-light_skin_tone",
+        "\u{1F468}\u{1F3FC}\u{200D}\u{2708}\u{FE0F}",
+    );
+    m.insert(
+        "man_pilot_medium_skin_tone",
+        "\u{1F468}\u{1F3FD}\u{200D}\u{2708}\u{FE0F}",
+    );
     m.insert("man_playing_handball", "\u{1F93E}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_playing_handball_dark_skin_tone", "\u{1F93E}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_playing_handball_light_skin_tone", "\u{1F93E}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_playing_handball_medium-dark_skin_tone", "\u{1F93E}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_playing_handball_medium-light_skin_tone", "\u{1F93E}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_playing_handball_medium_skin_tone", "\u{1F93E}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_playing_water_polo", "\u{1F93D}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_playing_water_polo_dark_skin_tone", "\u{1F93D}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_playing_water_polo_light_skin_tone", "\u{1F93D}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_playing_water_polo_medium-dark_skin_tone", "\u{1F93D}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_playing_water_polo_medium-light_skin_tone", "\u{1F93D}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_playing_water_polo_medium_skin_tone", "\u{1F93D}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
+    m.insert(
+        "man_playing_handball_dark_skin_tone",
+        "\u{1F93E}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_playing_handball_light_skin_tone",
+        "\u{1F93E}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_playing_handball_medium-dark_skin_tone",
+        "\u{1F93E}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_playing_handball_medium-light_skin_tone",
+        "\u{1F93E}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_playing_handball_medium_skin_tone",
+        "\u{1F93E}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_playing_water_polo",
+        "\u{1F93D}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_playing_water_polo_dark_skin_tone",
+        "\u{1F93D}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_playing_water_polo_light_skin_tone",
+        "\u{1F93D}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_playing_water_polo_medium-dark_skin_tone",
+        "\u{1F93D}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_playing_water_polo_medium-light_skin_tone",
+        "\u{1F93D}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_playing_water_polo_medium_skin_tone",
+        "\u{1F93D}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
     m.insert("man_police_officer", "\u{1F46E}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_police_officer_dark_skin_tone", "\u{1F46E}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_police_officer_light_skin_tone", "\u{1F46E}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_police_officer_medium-dark_skin_tone", "\u{1F46E}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_police_officer_medium-light_skin_tone", "\u{1F46E}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_police_officer_medium_skin_tone", "\u{1F46E}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
+    m.insert(
+        "man_police_officer_dark_skin_tone",
+        "\u{1F46E}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_police_officer_light_skin_tone",
+        "\u{1F46E}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_police_officer_medium-dark_skin_tone",
+        "\u{1F46E}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_police_officer_medium-light_skin_tone",
+        "\u{1F46E}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_police_officer_medium_skin_tone",
+        "\u{1F46E}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
     m.insert("man_pouting", "\u{1F64E}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_pouting_dark_skin_tone", "\u{1F64E}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_pouting_light_skin_tone", "\u{1F64E}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_pouting_medium-dark_skin_tone", "\u{1F64E}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_pouting_medium-light_skin_tone", "\u{1F64E}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_pouting_medium_skin_tone", "\u{1F64E}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
+    m.insert(
+        "man_pouting_dark_skin_tone",
+        "\u{1F64E}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_pouting_light_skin_tone",
+        "\u{1F64E}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_pouting_medium-dark_skin_tone",
+        "\u{1F64E}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_pouting_medium-light_skin_tone",
+        "\u{1F64E}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_pouting_medium_skin_tone",
+        "\u{1F64E}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
     m.insert("man_raising_hand", "\u{1F64B}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_raising_hand_dark_skin_tone", "\u{1F64B}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_raising_hand_light_skin_tone", "\u{1F64B}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_raising_hand_medium-dark_skin_tone", "\u{1F64B}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_raising_hand_medium-light_skin_tone", "\u{1F64B}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_raising_hand_medium_skin_tone", "\u{1F64B}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
+    m.insert(
+        "man_raising_hand_dark_skin_tone",
+        "\u{1F64B}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_raising_hand_light_skin_tone",
+        "\u{1F64B}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_raising_hand_medium-dark_skin_tone",
+        "\u{1F64B}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_raising_hand_medium-light_skin_tone",
+        "\u{1F64B}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_raising_hand_medium_skin_tone",
+        "\u{1F64B}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
     m.insert("man_rowing_boat", "\u{1F6A3}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_rowing_boat_dark_skin_tone", "\u{1F6A3}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_rowing_boat_light_skin_tone", "\u{1F6A3}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_rowing_boat_medium-dark_skin_tone", "\u{1F6A3}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_rowing_boat_medium-light_skin_tone", "\u{1F6A3}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_rowing_boat_medium_skin_tone", "\u{1F6A3}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
+    m.insert(
+        "man_rowing_boat_dark_skin_tone",
+        "\u{1F6A3}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_rowing_boat_light_skin_tone",
+        "\u{1F6A3}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_rowing_boat_medium-dark_skin_tone",
+        "\u{1F6A3}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_rowing_boat_medium-light_skin_tone",
+        "\u{1F6A3}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_rowing_boat_medium_skin_tone",
+        "\u{1F6A3}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
     m.insert("man_running", "\u{1F3C3}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_running_dark_skin_tone", "\u{1F3C3}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_running_light_skin_tone", "\u{1F3C3}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_running_medium-dark_skin_tone", "\u{1F3C3}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_running_medium-light_skin_tone", "\u{1F3C3}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_running_medium_skin_tone", "\u{1F3C3}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
+    m.insert(
+        "man_running_dark_skin_tone",
+        "\u{1F3C3}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_running_light_skin_tone",
+        "\u{1F3C3}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_running_medium-dark_skin_tone",
+        "\u{1F3C3}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_running_medium-light_skin_tone",
+        "\u{1F3C3}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_running_medium_skin_tone",
+        "\u{1F3C3}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
     m.insert("man_scientist", "\u{1F468}\u{200D}\u{1F52C}");
-    m.insert("man_scientist_dark_skin_tone", "\u{1F468}\u{1F3FF}\u{200D}\u{1F52C}");
-    m.insert("man_scientist_light_skin_tone", "\u{1F468}\u{1F3FB}\u{200D}\u{1F52C}");
-    m.insert("man_scientist_medium-dark_skin_tone", "\u{1F468}\u{1F3FE}\u{200D}\u{1F52C}");
-    m.insert("man_scientist_medium-light_skin_tone", "\u{1F468}\u{1F3FC}\u{200D}\u{1F52C}");
-    m.insert("man_scientist_medium_skin_tone", "\u{1F468}\u{1F3FD}\u{200D}\u{1F52C}");
+    m.insert(
+        "man_scientist_dark_skin_tone",
+        "\u{1F468}\u{1F3FF}\u{200D}\u{1F52C}",
+    );
+    m.insert(
+        "man_scientist_light_skin_tone",
+        "\u{1F468}\u{1F3FB}\u{200D}\u{1F52C}",
+    );
+    m.insert(
+        "man_scientist_medium-dark_skin_tone",
+        "\u{1F468}\u{1F3FE}\u{200D}\u{1F52C}",
+    );
+    m.insert(
+        "man_scientist_medium-light_skin_tone",
+        "\u{1F468}\u{1F3FC}\u{200D}\u{1F52C}",
+    );
+    m.insert(
+        "man_scientist_medium_skin_tone",
+        "\u{1F468}\u{1F3FD}\u{200D}\u{1F52C}",
+    );
     m.insert("man_shrugging", "\u{1F937}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_shrugging_dark_skin_tone", "\u{1F937}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_shrugging_light_skin_tone", "\u{1F937}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_shrugging_medium-dark_skin_tone", "\u{1F937}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_shrugging_medium-light_skin_tone", "\u{1F937}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_shrugging_medium_skin_tone", "\u{1F937}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
+    m.insert(
+        "man_shrugging_dark_skin_tone",
+        "\u{1F937}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_shrugging_light_skin_tone",
+        "\u{1F937}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_shrugging_medium-dark_skin_tone",
+        "\u{1F937}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_shrugging_medium-light_skin_tone",
+        "\u{1F937}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_shrugging_medium_skin_tone",
+        "\u{1F937}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
     m.insert("man_singer", "\u{1F468}\u{200D}\u{1F3A4}");
-    m.insert("man_singer_dark_skin_tone", "\u{1F468}\u{1F3FF}\u{200D}\u{1F3A4}");
-    m.insert("man_singer_light_skin_tone", "\u{1F468}\u{1F3FB}\u{200D}\u{1F3A4}");
-    m.insert("man_singer_medium-dark_skin_tone", "\u{1F468}\u{1F3FE}\u{200D}\u{1F3A4}");
-    m.insert("man_singer_medium-light_skin_tone", "\u{1F468}\u{1F3FC}\u{200D}\u{1F3A4}");
-    m.insert("man_singer_medium_skin_tone", "\u{1F468}\u{1F3FD}\u{200D}\u{1F3A4}");
+    m.insert(
+        "man_singer_dark_skin_tone",
+        "\u{1F468}\u{1F3FF}\u{200D}\u{1F3A4}",
+    );
+    m.insert(
+        "man_singer_light_skin_tone",
+        "\u{1F468}\u{1F3FB}\u{200D}\u{1F3A4}",
+    );
+    m.insert(
+        "man_singer_medium-dark_skin_tone",
+        "\u{1F468}\u{1F3FE}\u{200D}\u{1F3A4}",
+    );
+    m.insert(
+        "man_singer_medium-light_skin_tone",
+        "\u{1F468}\u{1F3FC}\u{200D}\u{1F3A4}",
+    );
+    m.insert(
+        "man_singer_medium_skin_tone",
+        "\u{1F468}\u{1F3FD}\u{200D}\u{1F3A4}",
+    );
     m.insert("man_student", "\u{1F468}\u{200D}\u{1F393}");
-    m.insert("man_student_dark_skin_tone", "\u{1F468}\u{1F3FF}\u{200D}\u{1F393}");
-    m.insert("man_student_light_skin_tone", "\u{1F468}\u{1F3FB}\u{200D}\u{1F393}");
-    m.insert("man_student_medium-dark_skin_tone", "\u{1F468}\u{1F3FE}\u{200D}\u{1F393}");
-    m.insert("man_student_medium-light_skin_tone", "\u{1F468}\u{1F3FC}\u{200D}\u{1F393}");
-    m.insert("man_student_medium_skin_tone", "\u{1F468}\u{1F3FD}\u{200D}\u{1F393}");
+    m.insert(
+        "man_student_dark_skin_tone",
+        "\u{1F468}\u{1F3FF}\u{200D}\u{1F393}",
+    );
+    m.insert(
+        "man_student_light_skin_tone",
+        "\u{1F468}\u{1F3FB}\u{200D}\u{1F393}",
+    );
+    m.insert(
+        "man_student_medium-dark_skin_tone",
+        "\u{1F468}\u{1F3FE}\u{200D}\u{1F393}",
+    );
+    m.insert(
+        "man_student_medium-light_skin_tone",
+        "\u{1F468}\u{1F3FC}\u{200D}\u{1F393}",
+    );
+    m.insert(
+        "man_student_medium_skin_tone",
+        "\u{1F468}\u{1F3FD}\u{200D}\u{1F393}",
+    );
     m.insert("man_surfing", "\u{1F3C4}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_surfing_dark_skin_tone", "\u{1F3C4}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_surfing_light_skin_tone", "\u{1F3C4}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_surfing_medium-dark_skin_tone", "\u{1F3C4}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_surfing_medium-light_skin_tone", "\u{1F3C4}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_surfing_medium_skin_tone", "\u{1F3C4}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
+    m.insert(
+        "man_surfing_dark_skin_tone",
+        "\u{1F3C4}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_surfing_light_skin_tone",
+        "\u{1F3C4}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_surfing_medium-dark_skin_tone",
+        "\u{1F3C4}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_surfing_medium-light_skin_tone",
+        "\u{1F3C4}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_surfing_medium_skin_tone",
+        "\u{1F3C4}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
     m.insert("man_swimming", "\u{1F3CA}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_swimming_dark_skin_tone", "\u{1F3CA}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_swimming_light_skin_tone", "\u{1F3CA}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_swimming_medium-dark_skin_tone", "\u{1F3CA}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_swimming_medium-light_skin_tone", "\u{1F3CA}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_swimming_medium_skin_tone", "\u{1F3CA}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
+    m.insert(
+        "man_swimming_dark_skin_tone",
+        "\u{1F3CA}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_swimming_light_skin_tone",
+        "\u{1F3CA}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_swimming_medium-dark_skin_tone",
+        "\u{1F3CA}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_swimming_medium-light_skin_tone",
+        "\u{1F3CA}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_swimming_medium_skin_tone",
+        "\u{1F3CA}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
     m.insert("man_teacher", "\u{1F468}\u{200D}\u{1F3EB}");
-    m.insert("man_teacher_dark_skin_tone", "\u{1F468}\u{1F3FF}\u{200D}\u{1F3EB}");
-    m.insert("man_teacher_light_skin_tone", "\u{1F468}\u{1F3FB}\u{200D}\u{1F3EB}");
-    m.insert("man_teacher_medium-dark_skin_tone", "\u{1F468}\u{1F3FE}\u{200D}\u{1F3EB}");
-    m.insert("man_teacher_medium-light_skin_tone", "\u{1F468}\u{1F3FC}\u{200D}\u{1F3EB}");
-    m.insert("man_teacher_medium_skin_tone", "\u{1F468}\u{1F3FD}\u{200D}\u{1F3EB}");
+    m.insert(
+        "man_teacher_dark_skin_tone",
+        "\u{1F468}\u{1F3FF}\u{200D}\u{1F3EB}",
+    );
+    m.insert(
+        "man_teacher_light_skin_tone",
+        "\u{1F468}\u{1F3FB}\u{200D}\u{1F3EB}",
+    );
+    m.insert(
+        "man_teacher_medium-dark_skin_tone",
+        "\u{1F468}\u{1F3FE}\u{200D}\u{1F3EB}",
+    );
+    m.insert(
+        "man_teacher_medium-light_skin_tone",
+        "\u{1F468}\u{1F3FC}\u{200D}\u{1F3EB}",
+    );
+    m.insert(
+        "man_teacher_medium_skin_tone",
+        "\u{1F468}\u{1F3FD}\u{200D}\u{1F3EB}",
+    );
     m.insert("man_technologist", "\u{1F468}\u{200D}\u{1F4BB}");
-    m.insert("man_technologist_dark_skin_tone", "\u{1F468}\u{1F3FF}\u{200D}\u{1F4BB}");
-    m.insert("man_technologist_light_skin_tone", "\u{1F468}\u{1F3FB}\u{200D}\u{1F4BB}");
-    m.insert("man_technologist_medium-dark_skin_tone", "\u{1F468}\u{1F3FE}\u{200D}\u{1F4BB}");
-    m.insert("man_technologist_medium-light_skin_tone", "\u{1F468}\u{1F3FC}\u{200D}\u{1F4BB}");
-    m.insert("man_technologist_medium_skin_tone", "\u{1F468}\u{1F3FD}\u{200D}\u{1F4BB}");
+    m.insert(
+        "man_technologist_dark_skin_tone",
+        "\u{1F468}\u{1F3FF}\u{200D}\u{1F4BB}",
+    );
+    m.insert(
+        "man_technologist_light_skin_tone",
+        "\u{1F468}\u{1F3FB}\u{200D}\u{1F4BB}",
+    );
+    m.insert(
+        "man_technologist_medium-dark_skin_tone",
+        "\u{1F468}\u{1F3FE}\u{200D}\u{1F4BB}",
+    );
+    m.insert(
+        "man_technologist_medium-light_skin_tone",
+        "\u{1F468}\u{1F3FC}\u{200D}\u{1F4BB}",
+    );
+    m.insert(
+        "man_technologist_medium_skin_tone",
+        "\u{1F468}\u{1F3FD}\u{200D}\u{1F4BB}",
+    );
     m.insert("man_tipping_hand", "\u{1F481}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_tipping_hand_dark_skin_tone", "\u{1F481}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_tipping_hand_light_skin_tone", "\u{1F481}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_tipping_hand_medium-dark_skin_tone", "\u{1F481}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_tipping_hand_medium-light_skin_tone", "\u{1F481}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_tipping_hand_medium_skin_tone", "\u{1F481}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
+    m.insert(
+        "man_tipping_hand_dark_skin_tone",
+        "\u{1F481}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_tipping_hand_light_skin_tone",
+        "\u{1F481}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_tipping_hand_medium-dark_skin_tone",
+        "\u{1F481}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_tipping_hand_medium-light_skin_tone",
+        "\u{1F481}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_tipping_hand_medium_skin_tone",
+        "\u{1F481}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
     m.insert("man_vampire", "\u{1F9DB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_vampire_dark_skin_tone", "\u{1F9DB}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_vampire_light_skin_tone", "\u{1F9DB}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_vampire_medium-dark_skin_tone", "\u{1F9DB}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_vampire_medium-light_skin_tone", "\u{1F9DB}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_vampire_medium_skin_tone", "\u{1F9DB}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
+    m.insert(
+        "man_vampire_dark_skin_tone",
+        "\u{1F9DB}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_vampire_light_skin_tone",
+        "\u{1F9DB}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_vampire_medium-dark_skin_tone",
+        "\u{1F9DB}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_vampire_medium-light_skin_tone",
+        "\u{1F9DB}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_vampire_medium_skin_tone",
+        "\u{1F9DB}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
     m.insert("man_walking", "\u{1F6B6}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_walking_dark_skin_tone", "\u{1F6B6}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_walking_light_skin_tone", "\u{1F6B6}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_walking_medium-dark_skin_tone", "\u{1F6B6}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_walking_medium-light_skin_tone", "\u{1F6B6}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_walking_medium_skin_tone", "\u{1F6B6}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
+    m.insert(
+        "man_walking_dark_skin_tone",
+        "\u{1F6B6}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_walking_light_skin_tone",
+        "\u{1F6B6}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_walking_medium-dark_skin_tone",
+        "\u{1F6B6}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_walking_medium-light_skin_tone",
+        "\u{1F6B6}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_walking_medium_skin_tone",
+        "\u{1F6B6}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
     m.insert("man_wearing_turban", "\u{1F473}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_wearing_turban_dark_skin_tone", "\u{1F473}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_wearing_turban_light_skin_tone", "\u{1F473}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_wearing_turban_medium-dark_skin_tone", "\u{1F473}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_wearing_turban_medium-light_skin_tone", "\u{1F473}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("man_wearing_turban_medium_skin_tone", "\u{1F473}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
+    m.insert(
+        "man_wearing_turban_dark_skin_tone",
+        "\u{1F473}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_wearing_turban_light_skin_tone",
+        "\u{1F473}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_wearing_turban_medium-dark_skin_tone",
+        "\u{1F473}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_wearing_turban_medium-light_skin_tone",
+        "\u{1F473}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "man_wearing_turban_medium_skin_tone",
+        "\u{1F473}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
     m.insert("man_with_probing_cane", "\u{1F468}\u{200D}\u{1F9AF}");
     m.insert("man_with_chinese_cap", "\u{1F472}");
     m.insert("man_with_chinese_cap_dark_skin_tone", "\u{1F472}\u{1F3FF}");
     m.insert("man_with_chinese_cap_light_skin_tone", "\u{1F472}\u{1F3FB}");
-    m.insert("man_with_chinese_cap_medium-dark_skin_tone", "\u{1F472}\u{1F3FE}");
-    m.insert("man_with_chinese_cap_medium-light_skin_tone", "\u{1F472}\u{1F3FC}");
-    m.insert("man_with_chinese_cap_medium_skin_tone", "\u{1F472}\u{1F3FD}");
+    m.insert(
+        "man_with_chinese_cap_medium-dark_skin_tone",
+        "\u{1F472}\u{1F3FE}",
+    );
+    m.insert(
+        "man_with_chinese_cap_medium-light_skin_tone",
+        "\u{1F472}\u{1F3FC}",
+    );
+    m.insert(
+        "man_with_chinese_cap_medium_skin_tone",
+        "\u{1F472}\u{1F3FD}",
+    );
     m.insert("man_zombie", "\u{1F9DF}\u{200D}\u{2642}\u{FE0F}");
     m.insert("mango", "\u{1F96D}");
     m.insert("mantelpiece_clock", "\u{1F570}");
@@ -1538,17 +2621,47 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("menorah", "\u{1F54E}");
     m.insert("men’s_room", "\u{1F6B9}");
     m.insert("mermaid", "\u{1F9DC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("mermaid_dark_skin_tone", "\u{1F9DC}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("mermaid_light_skin_tone", "\u{1F9DC}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("mermaid_medium-dark_skin_tone", "\u{1F9DC}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("mermaid_medium-light_skin_tone", "\u{1F9DC}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("mermaid_medium_skin_tone", "\u{1F9DC}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
+    m.insert(
+        "mermaid_dark_skin_tone",
+        "\u{1F9DC}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "mermaid_light_skin_tone",
+        "\u{1F9DC}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "mermaid_medium-dark_skin_tone",
+        "\u{1F9DC}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "mermaid_medium-light_skin_tone",
+        "\u{1F9DC}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "mermaid_medium_skin_tone",
+        "\u{1F9DC}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
     m.insert("merman", "\u{1F9DC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("merman_dark_skin_tone", "\u{1F9DC}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("merman_light_skin_tone", "\u{1F9DC}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("merman_medium-dark_skin_tone", "\u{1F9DC}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("merman_medium-light_skin_tone", "\u{1F9DC}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}");
-    m.insert("merman_medium_skin_tone", "\u{1F9DC}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}");
+    m.insert(
+        "merman_dark_skin_tone",
+        "\u{1F9DC}\u{1F3FF}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "merman_light_skin_tone",
+        "\u{1F9DC}\u{1F3FB}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "merman_medium-dark_skin_tone",
+        "\u{1F9DC}\u{1F3FE}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "merman_medium-light_skin_tone",
+        "\u{1F9DC}\u{1F3FC}\u{200D}\u{2642}\u{FE0F}",
+    );
+    m.insert(
+        "merman_medium_skin_tone",
+        "\u{1F9DC}\u{1F3FD}\u{200D}\u{2642}\u{FE0F}",
+    );
     m.insert("merperson", "\u{1F9DC}");
     m.insert("merperson_dark_skin_tone", "\u{1F9DC}\u{1F3FF}");
     m.insert("merperson_light_skin_tone", "\u{1F9DC}\u{1F3FB}");
@@ -1708,8 +2821,14 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("palms_up_together", "\u{1F932}");
     m.insert("palms_up_together_dark_skin_tone", "\u{1F932}\u{1F3FF}");
     m.insert("palms_up_together_light_skin_tone", "\u{1F932}\u{1F3FB}");
-    m.insert("palms_up_together_medium-dark_skin_tone", "\u{1F932}\u{1F3FE}");
-    m.insert("palms_up_together_medium-light_skin_tone", "\u{1F932}\u{1F3FC}");
+    m.insert(
+        "palms_up_together_medium-dark_skin_tone",
+        "\u{1F932}\u{1F3FE}",
+    );
+    m.insert(
+        "palms_up_together_medium-light_skin_tone",
+        "\u{1F932}\u{1F3FC}",
+    );
     m.insert("palms_up_together_medium_skin_tone", "\u{1F932}\u{1F3FD}");
     m.insert("pancakes", "\u{1F95E}");
     m.insert("panda_face", "\u{1F43C}");
@@ -1731,7 +2850,10 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("pencil", "\u{1F4DD}");
     m.insert("penguin", "\u{1F427}");
     m.insert("pensive_face", "\u{1F614}");
-    m.insert("people_holding_hands", "\u{1F9D1}\u{200D}\u{1F91D}\u{200D}\u{1F9D1}");
+    m.insert(
+        "people_holding_hands",
+        "\u{1F9D1}\u{200D}\u{1F91D}\u{200D}\u{1F9D1}",
+    );
     m.insert("people_with_bunny_ears", "\u{1F46F}");
     m.insert("people_wrestling", "\u{1F93C}");
     m.insert("performing_arts", "\u{1F3AD}");
@@ -1745,8 +2867,14 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("person_bouncing_ball", "\u{26F9}");
     m.insert("person_bouncing_ball_dark_skin_tone", "\u{26F9}\u{1F3FF}");
     m.insert("person_bouncing_ball_light_skin_tone", "\u{26F9}\u{1F3FB}");
-    m.insert("person_bouncing_ball_medium-dark_skin_tone", "\u{26F9}\u{1F3FE}");
-    m.insert("person_bouncing_ball_medium-light_skin_tone", "\u{26F9}\u{1F3FC}");
+    m.insert(
+        "person_bouncing_ball_medium-dark_skin_tone",
+        "\u{26F9}\u{1F3FE}",
+    );
+    m.insert(
+        "person_bouncing_ball_medium-light_skin_tone",
+        "\u{26F9}\u{1F3FC}",
+    );
     m.insert("person_bouncing_ball_medium_skin_tone", "\u{26F9}\u{1F3FD}");
     m.insert("person_bowing", "\u{1F647}");
     m.insert("person_bowing_dark_skin_tone", "\u{1F647}\u{1F3FF}");
@@ -1757,57 +2885,126 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("person_cartwheeling", "\u{1F938}");
     m.insert("person_cartwheeling_dark_skin_tone", "\u{1F938}\u{1F3FF}");
     m.insert("person_cartwheeling_light_skin_tone", "\u{1F938}\u{1F3FB}");
-    m.insert("person_cartwheeling_medium-dark_skin_tone", "\u{1F938}\u{1F3FE}");
-    m.insert("person_cartwheeling_medium-light_skin_tone", "\u{1F938}\u{1F3FC}");
+    m.insert(
+        "person_cartwheeling_medium-dark_skin_tone",
+        "\u{1F938}\u{1F3FE}",
+    );
+    m.insert(
+        "person_cartwheeling_medium-light_skin_tone",
+        "\u{1F938}\u{1F3FC}",
+    );
     m.insert("person_cartwheeling_medium_skin_tone", "\u{1F938}\u{1F3FD}");
     m.insert("person_climbing", "\u{1F9D7}");
     m.insert("person_climbing_dark_skin_tone", "\u{1F9D7}\u{1F3FF}");
     m.insert("person_climbing_light_skin_tone", "\u{1F9D7}\u{1F3FB}");
-    m.insert("person_climbing_medium-dark_skin_tone", "\u{1F9D7}\u{1F3FE}");
-    m.insert("person_climbing_medium-light_skin_tone", "\u{1F9D7}\u{1F3FC}");
+    m.insert(
+        "person_climbing_medium-dark_skin_tone",
+        "\u{1F9D7}\u{1F3FE}",
+    );
+    m.insert(
+        "person_climbing_medium-light_skin_tone",
+        "\u{1F9D7}\u{1F3FC}",
+    );
     m.insert("person_climbing_medium_skin_tone", "\u{1F9D7}\u{1F3FD}");
     m.insert("person_facepalming", "\u{1F926}");
     m.insert("person_facepalming_dark_skin_tone", "\u{1F926}\u{1F3FF}");
     m.insert("person_facepalming_light_skin_tone", "\u{1F926}\u{1F3FB}");
-    m.insert("person_facepalming_medium-dark_skin_tone", "\u{1F926}\u{1F3FE}");
-    m.insert("person_facepalming_medium-light_skin_tone", "\u{1F926}\u{1F3FC}");
+    m.insert(
+        "person_facepalming_medium-dark_skin_tone",
+        "\u{1F926}\u{1F3FE}",
+    );
+    m.insert(
+        "person_facepalming_medium-light_skin_tone",
+        "\u{1F926}\u{1F3FC}",
+    );
     m.insert("person_facepalming_medium_skin_tone", "\u{1F926}\u{1F3FD}");
     m.insert("person_fencing", "\u{1F93A}");
     m.insert("person_frowning", "\u{1F64D}");
     m.insert("person_frowning_dark_skin_tone", "\u{1F64D}\u{1F3FF}");
     m.insert("person_frowning_light_skin_tone", "\u{1F64D}\u{1F3FB}");
-    m.insert("person_frowning_medium-dark_skin_tone", "\u{1F64D}\u{1F3FE}");
-    m.insert("person_frowning_medium-light_skin_tone", "\u{1F64D}\u{1F3FC}");
+    m.insert(
+        "person_frowning_medium-dark_skin_tone",
+        "\u{1F64D}\u{1F3FE}",
+    );
+    m.insert(
+        "person_frowning_medium-light_skin_tone",
+        "\u{1F64D}\u{1F3FC}",
+    );
     m.insert("person_frowning_medium_skin_tone", "\u{1F64D}\u{1F3FD}");
     m.insert("person_gesturing_no", "\u{1F645}");
     m.insert("person_gesturing_no_dark_skin_tone", "\u{1F645}\u{1F3FF}");
     m.insert("person_gesturing_no_light_skin_tone", "\u{1F645}\u{1F3FB}");
-    m.insert("person_gesturing_no_medium-dark_skin_tone", "\u{1F645}\u{1F3FE}");
-    m.insert("person_gesturing_no_medium-light_skin_tone", "\u{1F645}\u{1F3FC}");
+    m.insert(
+        "person_gesturing_no_medium-dark_skin_tone",
+        "\u{1F645}\u{1F3FE}",
+    );
+    m.insert(
+        "person_gesturing_no_medium-light_skin_tone",
+        "\u{1F645}\u{1F3FC}",
+    );
     m.insert("person_gesturing_no_medium_skin_tone", "\u{1F645}\u{1F3FD}");
     m.insert("person_gesturing_ok", "\u{1F646}");
     m.insert("person_gesturing_ok_dark_skin_tone", "\u{1F646}\u{1F3FF}");
     m.insert("person_gesturing_ok_light_skin_tone", "\u{1F646}\u{1F3FB}");
-    m.insert("person_gesturing_ok_medium-dark_skin_tone", "\u{1F646}\u{1F3FE}");
-    m.insert("person_gesturing_ok_medium-light_skin_tone", "\u{1F646}\u{1F3FC}");
+    m.insert(
+        "person_gesturing_ok_medium-dark_skin_tone",
+        "\u{1F646}\u{1F3FE}",
+    );
+    m.insert(
+        "person_gesturing_ok_medium-light_skin_tone",
+        "\u{1F646}\u{1F3FC}",
+    );
     m.insert("person_gesturing_ok_medium_skin_tone", "\u{1F646}\u{1F3FD}");
     m.insert("person_getting_haircut", "\u{1F487}");
-    m.insert("person_getting_haircut_dark_skin_tone", "\u{1F487}\u{1F3FF}");
-    m.insert("person_getting_haircut_light_skin_tone", "\u{1F487}\u{1F3FB}");
-    m.insert("person_getting_haircut_medium-dark_skin_tone", "\u{1F487}\u{1F3FE}");
-    m.insert("person_getting_haircut_medium-light_skin_tone", "\u{1F487}\u{1F3FC}");
-    m.insert("person_getting_haircut_medium_skin_tone", "\u{1F487}\u{1F3FD}");
+    m.insert(
+        "person_getting_haircut_dark_skin_tone",
+        "\u{1F487}\u{1F3FF}",
+    );
+    m.insert(
+        "person_getting_haircut_light_skin_tone",
+        "\u{1F487}\u{1F3FB}",
+    );
+    m.insert(
+        "person_getting_haircut_medium-dark_skin_tone",
+        "\u{1F487}\u{1F3FE}",
+    );
+    m.insert(
+        "person_getting_haircut_medium-light_skin_tone",
+        "\u{1F487}\u{1F3FC}",
+    );
+    m.insert(
+        "person_getting_haircut_medium_skin_tone",
+        "\u{1F487}\u{1F3FD}",
+    );
     m.insert("person_getting_massage", "\u{1F486}");
-    m.insert("person_getting_massage_dark_skin_tone", "\u{1F486}\u{1F3FF}");
-    m.insert("person_getting_massage_light_skin_tone", "\u{1F486}\u{1F3FB}");
-    m.insert("person_getting_massage_medium-dark_skin_tone", "\u{1F486}\u{1F3FE}");
-    m.insert("person_getting_massage_medium-light_skin_tone", "\u{1F486}\u{1F3FC}");
-    m.insert("person_getting_massage_medium_skin_tone", "\u{1F486}\u{1F3FD}");
+    m.insert(
+        "person_getting_massage_dark_skin_tone",
+        "\u{1F486}\u{1F3FF}",
+    );
+    m.insert(
+        "person_getting_massage_light_skin_tone",
+        "\u{1F486}\u{1F3FB}",
+    );
+    m.insert(
+        "person_getting_massage_medium-dark_skin_tone",
+        "\u{1F486}\u{1F3FE}",
+    );
+    m.insert(
+        "person_getting_massage_medium-light_skin_tone",
+        "\u{1F486}\u{1F3FC}",
+    );
+    m.insert(
+        "person_getting_massage_medium_skin_tone",
+        "\u{1F486}\u{1F3FD}",
+    );
     m.insert("person_golfing", "\u{1F3CC}");
     m.insert("person_golfing_dark_skin_tone", "\u{1F3CC}\u{1F3FF}");
     m.insert("person_golfing_light_skin_tone", "\u{1F3CC}\u{1F3FB}");
     m.insert("person_golfing_medium-dark_skin_tone", "\u{1F3CC}\u{1F3FE}");
-    m.insert("person_golfing_medium-light_skin_tone", "\u{1F3CC}\u{1F3FC}");
+    m.insert(
+        "person_golfing_medium-light_skin_tone",
+        "\u{1F3CC}\u{1F3FC}",
+    );
     m.insert("person_golfing_medium_skin_tone", "\u{1F3CC}\u{1F3FD}");
     m.insert("person_in_bed", "\u{1F6CC}");
     m.insert("person_in_bed_dark_skin_tone", "\u{1F6CC}\u{1F3FF}");
@@ -1816,115 +3013,268 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("person_in_bed_medium-light_skin_tone", "\u{1F6CC}\u{1F3FC}");
     m.insert("person_in_bed_medium_skin_tone", "\u{1F6CC}\u{1F3FD}");
     m.insert("person_in_lotus_position", "\u{1F9D8}");
-    m.insert("person_in_lotus_position_dark_skin_tone", "\u{1F9D8}\u{1F3FF}");
-    m.insert("person_in_lotus_position_light_skin_tone", "\u{1F9D8}\u{1F3FB}");
-    m.insert("person_in_lotus_position_medium-dark_skin_tone", "\u{1F9D8}\u{1F3FE}");
-    m.insert("person_in_lotus_position_medium-light_skin_tone", "\u{1F9D8}\u{1F3FC}");
-    m.insert("person_in_lotus_position_medium_skin_tone", "\u{1F9D8}\u{1F3FD}");
+    m.insert(
+        "person_in_lotus_position_dark_skin_tone",
+        "\u{1F9D8}\u{1F3FF}",
+    );
+    m.insert(
+        "person_in_lotus_position_light_skin_tone",
+        "\u{1F9D8}\u{1F3FB}",
+    );
+    m.insert(
+        "person_in_lotus_position_medium-dark_skin_tone",
+        "\u{1F9D8}\u{1F3FE}",
+    );
+    m.insert(
+        "person_in_lotus_position_medium-light_skin_tone",
+        "\u{1F9D8}\u{1F3FC}",
+    );
+    m.insert(
+        "person_in_lotus_position_medium_skin_tone",
+        "\u{1F9D8}\u{1F3FD}",
+    );
     m.insert("person_in_steamy_room", "\u{1F9D6}");
     m.insert("person_in_steamy_room_dark_skin_tone", "\u{1F9D6}\u{1F3FF}");
-    m.insert("person_in_steamy_room_light_skin_tone", "\u{1F9D6}\u{1F3FB}");
-    m.insert("person_in_steamy_room_medium-dark_skin_tone", "\u{1F9D6}\u{1F3FE}");
-    m.insert("person_in_steamy_room_medium-light_skin_tone", "\u{1F9D6}\u{1F3FC}");
-    m.insert("person_in_steamy_room_medium_skin_tone", "\u{1F9D6}\u{1F3FD}");
+    m.insert(
+        "person_in_steamy_room_light_skin_tone",
+        "\u{1F9D6}\u{1F3FB}",
+    );
+    m.insert(
+        "person_in_steamy_room_medium-dark_skin_tone",
+        "\u{1F9D6}\u{1F3FE}",
+    );
+    m.insert(
+        "person_in_steamy_room_medium-light_skin_tone",
+        "\u{1F9D6}\u{1F3FC}",
+    );
+    m.insert(
+        "person_in_steamy_room_medium_skin_tone",
+        "\u{1F9D6}\u{1F3FD}",
+    );
     m.insert("person_juggling", "\u{1F939}");
     m.insert("person_juggling_dark_skin_tone", "\u{1F939}\u{1F3FF}");
     m.insert("person_juggling_light_skin_tone", "\u{1F939}\u{1F3FB}");
-    m.insert("person_juggling_medium-dark_skin_tone", "\u{1F939}\u{1F3FE}");
-    m.insert("person_juggling_medium-light_skin_tone", "\u{1F939}\u{1F3FC}");
+    m.insert(
+        "person_juggling_medium-dark_skin_tone",
+        "\u{1F939}\u{1F3FE}",
+    );
+    m.insert(
+        "person_juggling_medium-light_skin_tone",
+        "\u{1F939}\u{1F3FC}",
+    );
     m.insert("person_juggling_medium_skin_tone", "\u{1F939}\u{1F3FD}");
     m.insert("person_kneeling", "\u{1F9CE}");
     m.insert("person_lifting_weights", "\u{1F3CB}");
-    m.insert("person_lifting_weights_dark_skin_tone", "\u{1F3CB}\u{1F3FF}");
-    m.insert("person_lifting_weights_light_skin_tone", "\u{1F3CB}\u{1F3FB}");
-    m.insert("person_lifting_weights_medium-dark_skin_tone", "\u{1F3CB}\u{1F3FE}");
-    m.insert("person_lifting_weights_medium-light_skin_tone", "\u{1F3CB}\u{1F3FC}");
-    m.insert("person_lifting_weights_medium_skin_tone", "\u{1F3CB}\u{1F3FD}");
+    m.insert(
+        "person_lifting_weights_dark_skin_tone",
+        "\u{1F3CB}\u{1F3FF}",
+    );
+    m.insert(
+        "person_lifting_weights_light_skin_tone",
+        "\u{1F3CB}\u{1F3FB}",
+    );
+    m.insert(
+        "person_lifting_weights_medium-dark_skin_tone",
+        "\u{1F3CB}\u{1F3FE}",
+    );
+    m.insert(
+        "person_lifting_weights_medium-light_skin_tone",
+        "\u{1F3CB}\u{1F3FC}",
+    );
+    m.insert(
+        "person_lifting_weights_medium_skin_tone",
+        "\u{1F3CB}\u{1F3FD}",
+    );
     m.insert("person_mountain_biking", "\u{1F6B5}");
-    m.insert("person_mountain_biking_dark_skin_tone", "\u{1F6B5}\u{1F3FF}");
-    m.insert("person_mountain_biking_light_skin_tone", "\u{1F6B5}\u{1F3FB}");
-    m.insert("person_mountain_biking_medium-dark_skin_tone", "\u{1F6B5}\u{1F3FE}");
-    m.insert("person_mountain_biking_medium-light_skin_tone", "\u{1F6B5}\u{1F3FC}");
-    m.insert("person_mountain_biking_medium_skin_tone", "\u{1F6B5}\u{1F3FD}");
+    m.insert(
+        "person_mountain_biking_dark_skin_tone",
+        "\u{1F6B5}\u{1F3FF}",
+    );
+    m.insert(
+        "person_mountain_biking_light_skin_tone",
+        "\u{1F6B5}\u{1F3FB}",
+    );
+    m.insert(
+        "person_mountain_biking_medium-dark_skin_tone",
+        "\u{1F6B5}\u{1F3FE}",
+    );
+    m.insert(
+        "person_mountain_biking_medium-light_skin_tone",
+        "\u{1F6B5}\u{1F3FC}",
+    );
+    m.insert(
+        "person_mountain_biking_medium_skin_tone",
+        "\u{1F6B5}\u{1F3FD}",
+    );
     m.insert("person_playing_handball", "\u{1F93E}");
-    m.insert("person_playing_handball_dark_skin_tone", "\u{1F93E}\u{1F3FF}");
-    m.insert("person_playing_handball_light_skin_tone", "\u{1F93E}\u{1F3FB}");
-    m.insert("person_playing_handball_medium-dark_skin_tone", "\u{1F93E}\u{1F3FE}");
-    m.insert("person_playing_handball_medium-light_skin_tone", "\u{1F93E}\u{1F3FC}");
-    m.insert("person_playing_handball_medium_skin_tone", "\u{1F93E}\u{1F3FD}");
+    m.insert(
+        "person_playing_handball_dark_skin_tone",
+        "\u{1F93E}\u{1F3FF}",
+    );
+    m.insert(
+        "person_playing_handball_light_skin_tone",
+        "\u{1F93E}\u{1F3FB}",
+    );
+    m.insert(
+        "person_playing_handball_medium-dark_skin_tone",
+        "\u{1F93E}\u{1F3FE}",
+    );
+    m.insert(
+        "person_playing_handball_medium-light_skin_tone",
+        "\u{1F93E}\u{1F3FC}",
+    );
+    m.insert(
+        "person_playing_handball_medium_skin_tone",
+        "\u{1F93E}\u{1F3FD}",
+    );
     m.insert("person_playing_water_polo", "\u{1F93D}");
-    m.insert("person_playing_water_polo_dark_skin_tone", "\u{1F93D}\u{1F3FF}");
-    m.insert("person_playing_water_polo_light_skin_tone", "\u{1F93D}\u{1F3FB}");
-    m.insert("person_playing_water_polo_medium-dark_skin_tone", "\u{1F93D}\u{1F3FE}");
-    m.insert("person_playing_water_polo_medium-light_skin_tone", "\u{1F93D}\u{1F3FC}");
-    m.insert("person_playing_water_polo_medium_skin_tone", "\u{1F93D}\u{1F3FD}");
+    m.insert(
+        "person_playing_water_polo_dark_skin_tone",
+        "\u{1F93D}\u{1F3FF}",
+    );
+    m.insert(
+        "person_playing_water_polo_light_skin_tone",
+        "\u{1F93D}\u{1F3FB}",
+    );
+    m.insert(
+        "person_playing_water_polo_medium-dark_skin_tone",
+        "\u{1F93D}\u{1F3FE}",
+    );
+    m.insert(
+        "person_playing_water_polo_medium-light_skin_tone",
+        "\u{1F93D}\u{1F3FC}",
+    );
+    m.insert(
+        "person_playing_water_polo_medium_skin_tone",
+        "\u{1F93D}\u{1F3FD}",
+    );
     m.insert("person_pouting", "\u{1F64E}");
     m.insert("person_pouting_dark_skin_tone", "\u{1F64E}\u{1F3FF}");
     m.insert("person_pouting_light_skin_tone", "\u{1F64E}\u{1F3FB}");
     m.insert("person_pouting_medium-dark_skin_tone", "\u{1F64E}\u{1F3FE}");
-    m.insert("person_pouting_medium-light_skin_tone", "\u{1F64E}\u{1F3FC}");
+    m.insert(
+        "person_pouting_medium-light_skin_tone",
+        "\u{1F64E}\u{1F3FC}",
+    );
     m.insert("person_pouting_medium_skin_tone", "\u{1F64E}\u{1F3FD}");
     m.insert("person_raising_hand", "\u{1F64B}");
     m.insert("person_raising_hand_dark_skin_tone", "\u{1F64B}\u{1F3FF}");
     m.insert("person_raising_hand_light_skin_tone", "\u{1F64B}\u{1F3FB}");
-    m.insert("person_raising_hand_medium-dark_skin_tone", "\u{1F64B}\u{1F3FE}");
-    m.insert("person_raising_hand_medium-light_skin_tone", "\u{1F64B}\u{1F3FC}");
+    m.insert(
+        "person_raising_hand_medium-dark_skin_tone",
+        "\u{1F64B}\u{1F3FE}",
+    );
+    m.insert(
+        "person_raising_hand_medium-light_skin_tone",
+        "\u{1F64B}\u{1F3FC}",
+    );
     m.insert("person_raising_hand_medium_skin_tone", "\u{1F64B}\u{1F3FD}");
     m.insert("person_rowing_boat", "\u{1F6A3}");
     m.insert("person_rowing_boat_dark_skin_tone", "\u{1F6A3}\u{1F3FF}");
     m.insert("person_rowing_boat_light_skin_tone", "\u{1F6A3}\u{1F3FB}");
-    m.insert("person_rowing_boat_medium-dark_skin_tone", "\u{1F6A3}\u{1F3FE}");
-    m.insert("person_rowing_boat_medium-light_skin_tone", "\u{1F6A3}\u{1F3FC}");
+    m.insert(
+        "person_rowing_boat_medium-dark_skin_tone",
+        "\u{1F6A3}\u{1F3FE}",
+    );
+    m.insert(
+        "person_rowing_boat_medium-light_skin_tone",
+        "\u{1F6A3}\u{1F3FC}",
+    );
     m.insert("person_rowing_boat_medium_skin_tone", "\u{1F6A3}\u{1F3FD}");
     m.insert("person_running", "\u{1F3C3}");
     m.insert("person_running_dark_skin_tone", "\u{1F3C3}\u{1F3FF}");
     m.insert("person_running_light_skin_tone", "\u{1F3C3}\u{1F3FB}");
     m.insert("person_running_medium-dark_skin_tone", "\u{1F3C3}\u{1F3FE}");
-    m.insert("person_running_medium-light_skin_tone", "\u{1F3C3}\u{1F3FC}");
+    m.insert(
+        "person_running_medium-light_skin_tone",
+        "\u{1F3C3}\u{1F3FC}",
+    );
     m.insert("person_running_medium_skin_tone", "\u{1F3C3}\u{1F3FD}");
     m.insert("person_shrugging", "\u{1F937}");
     m.insert("person_shrugging_dark_skin_tone", "\u{1F937}\u{1F3FF}");
     m.insert("person_shrugging_light_skin_tone", "\u{1F937}\u{1F3FB}");
-    m.insert("person_shrugging_medium-dark_skin_tone", "\u{1F937}\u{1F3FE}");
-    m.insert("person_shrugging_medium-light_skin_tone", "\u{1F937}\u{1F3FC}");
+    m.insert(
+        "person_shrugging_medium-dark_skin_tone",
+        "\u{1F937}\u{1F3FE}",
+    );
+    m.insert(
+        "person_shrugging_medium-light_skin_tone",
+        "\u{1F937}\u{1F3FC}",
+    );
     m.insert("person_shrugging_medium_skin_tone", "\u{1F937}\u{1F3FD}");
     m.insert("person_standing", "\u{1F9CD}");
     m.insert("person_surfing", "\u{1F3C4}");
     m.insert("person_surfing_dark_skin_tone", "\u{1F3C4}\u{1F3FF}");
     m.insert("person_surfing_light_skin_tone", "\u{1F3C4}\u{1F3FB}");
     m.insert("person_surfing_medium-dark_skin_tone", "\u{1F3C4}\u{1F3FE}");
-    m.insert("person_surfing_medium-light_skin_tone", "\u{1F3C4}\u{1F3FC}");
+    m.insert(
+        "person_surfing_medium-light_skin_tone",
+        "\u{1F3C4}\u{1F3FC}",
+    );
     m.insert("person_surfing_medium_skin_tone", "\u{1F3C4}\u{1F3FD}");
     m.insert("person_swimming", "\u{1F3CA}");
     m.insert("person_swimming_dark_skin_tone", "\u{1F3CA}\u{1F3FF}");
     m.insert("person_swimming_light_skin_tone", "\u{1F3CA}\u{1F3FB}");
-    m.insert("person_swimming_medium-dark_skin_tone", "\u{1F3CA}\u{1F3FE}");
-    m.insert("person_swimming_medium-light_skin_tone", "\u{1F3CA}\u{1F3FC}");
+    m.insert(
+        "person_swimming_medium-dark_skin_tone",
+        "\u{1F3CA}\u{1F3FE}",
+    );
+    m.insert(
+        "person_swimming_medium-light_skin_tone",
+        "\u{1F3CA}\u{1F3FC}",
+    );
     m.insert("person_swimming_medium_skin_tone", "\u{1F3CA}\u{1F3FD}");
     m.insert("person_taking_bath", "\u{1F6C0}");
     m.insert("person_taking_bath_dark_skin_tone", "\u{1F6C0}\u{1F3FF}");
     m.insert("person_taking_bath_light_skin_tone", "\u{1F6C0}\u{1F3FB}");
-    m.insert("person_taking_bath_medium-dark_skin_tone", "\u{1F6C0}\u{1F3FE}");
-    m.insert("person_taking_bath_medium-light_skin_tone", "\u{1F6C0}\u{1F3FC}");
+    m.insert(
+        "person_taking_bath_medium-dark_skin_tone",
+        "\u{1F6C0}\u{1F3FE}",
+    );
+    m.insert(
+        "person_taking_bath_medium-light_skin_tone",
+        "\u{1F6C0}\u{1F3FC}",
+    );
     m.insert("person_taking_bath_medium_skin_tone", "\u{1F6C0}\u{1F3FD}");
     m.insert("person_tipping_hand", "\u{1F481}");
     m.insert("person_tipping_hand_dark_skin_tone", "\u{1F481}\u{1F3FF}");
     m.insert("person_tipping_hand_light_skin_tone", "\u{1F481}\u{1F3FB}");
-    m.insert("person_tipping_hand_medium-dark_skin_tone", "\u{1F481}\u{1F3FE}");
-    m.insert("person_tipping_hand_medium-light_skin_tone", "\u{1F481}\u{1F3FC}");
+    m.insert(
+        "person_tipping_hand_medium-dark_skin_tone",
+        "\u{1F481}\u{1F3FE}",
+    );
+    m.insert(
+        "person_tipping_hand_medium-light_skin_tone",
+        "\u{1F481}\u{1F3FC}",
+    );
     m.insert("person_tipping_hand_medium_skin_tone", "\u{1F481}\u{1F3FD}");
     m.insert("person_walking", "\u{1F6B6}");
     m.insert("person_walking_dark_skin_tone", "\u{1F6B6}\u{1F3FF}");
     m.insert("person_walking_light_skin_tone", "\u{1F6B6}\u{1F3FB}");
     m.insert("person_walking_medium-dark_skin_tone", "\u{1F6B6}\u{1F3FE}");
-    m.insert("person_walking_medium-light_skin_tone", "\u{1F6B6}\u{1F3FC}");
+    m.insert(
+        "person_walking_medium-light_skin_tone",
+        "\u{1F6B6}\u{1F3FC}",
+    );
     m.insert("person_walking_medium_skin_tone", "\u{1F6B6}\u{1F3FD}");
     m.insert("person_wearing_turban", "\u{1F473}");
     m.insert("person_wearing_turban_dark_skin_tone", "\u{1F473}\u{1F3FF}");
-    m.insert("person_wearing_turban_light_skin_tone", "\u{1F473}\u{1F3FB}");
-    m.insert("person_wearing_turban_medium-dark_skin_tone", "\u{1F473}\u{1F3FE}");
-    m.insert("person_wearing_turban_medium-light_skin_tone", "\u{1F473}\u{1F3FC}");
-    m.insert("person_wearing_turban_medium_skin_tone", "\u{1F473}\u{1F3FD}");
+    m.insert(
+        "person_wearing_turban_light_skin_tone",
+        "\u{1F473}\u{1F3FB}",
+    );
+    m.insert(
+        "person_wearing_turban_medium-dark_skin_tone",
+        "\u{1F473}\u{1F3FE}",
+    );
+    m.insert(
+        "person_wearing_turban_medium-light_skin_tone",
+        "\u{1F473}\u{1F3FC}",
+    );
+    m.insert(
+        "person_wearing_turban_medium_skin_tone",
+        "\u{1F473}\u{1F3FD}",
+    );
     m.insert("petri_dish", "\u{1F9EB}");
     m.insert("pick", "\u{26CF}");
     m.insert("pie", "\u{1F967}");
@@ -1950,7 +3300,10 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("police_officer_dark_skin_tone", "\u{1F46E}\u{1F3FF}");
     m.insert("police_officer_light_skin_tone", "\u{1F46E}\u{1F3FB}");
     m.insert("police_officer_medium-dark_skin_tone", "\u{1F46E}\u{1F3FE}");
-    m.insert("police_officer_medium-light_skin_tone", "\u{1F46E}\u{1F3FC}");
+    m.insert(
+        "police_officer_medium-light_skin_tone",
+        "\u{1F46E}\u{1F3FC}",
+    );
     m.insert("police_officer_medium_skin_tone", "\u{1F46E}\u{1F3FD}");
     m.insert("poodle", "\u{1F429}");
     m.insert("pool_8_ball", "\u{1F3B1}");
@@ -1970,7 +3323,10 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("pregnant_woman_dark_skin_tone", "\u{1F930}\u{1F3FF}");
     m.insert("pregnant_woman_light_skin_tone", "\u{1F930}\u{1F3FB}");
     m.insert("pregnant_woman_medium-dark_skin_tone", "\u{1F930}\u{1F3FE}");
-    m.insert("pregnant_woman_medium-light_skin_tone", "\u{1F930}\u{1F3FC}");
+    m.insert(
+        "pregnant_woman_medium-light_skin_tone",
+        "\u{1F930}\u{1F3FC}",
+    );
     m.insert("pregnant_woman_medium_skin_tone", "\u{1F930}\u{1F3FD}");
     m.insert("pretzel", "\u{1F968}");
     m.insert("probing_cane", "\u{1F9AF}");
@@ -2008,8 +3364,14 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("raised_back_of_hand", "\u{1F91A}");
     m.insert("raised_back_of_hand_dark_skin_tone", "\u{1F91A}\u{1F3FF}");
     m.insert("raised_back_of_hand_light_skin_tone", "\u{1F91A}\u{1F3FB}");
-    m.insert("raised_back_of_hand_medium-dark_skin_tone", "\u{1F91A}\u{1F3FE}");
-    m.insert("raised_back_of_hand_medium-light_skin_tone", "\u{1F91A}\u{1F3FC}");
+    m.insert(
+        "raised_back_of_hand_medium-dark_skin_tone",
+        "\u{1F91A}\u{1F3FE}",
+    );
+    m.insert(
+        "raised_back_of_hand_medium-light_skin_tone",
+        "\u{1F91A}\u{1F3FC}",
+    );
     m.insert("raised_back_of_hand_medium_skin_tone", "\u{1F91A}\u{1F3FD}");
     m.insert("raised_fist", "\u{270A}");
     m.insert("raised_fist_dark_skin_tone", "\u{270A}\u{1F3FF}");
@@ -2063,8 +3425,14 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("right-facing_fist", "\u{1F91C}");
     m.insert("right-facing_fist_dark_skin_tone", "\u{1F91C}\u{1F3FF}");
     m.insert("right-facing_fist_light_skin_tone", "\u{1F91C}\u{1F3FB}");
-    m.insert("right-facing_fist_medium-dark_skin_tone", "\u{1F91C}\u{1F3FE}");
-    m.insert("right-facing_fist_medium-light_skin_tone", "\u{1F91C}\u{1F3FC}");
+    m.insert(
+        "right-facing_fist_medium-dark_skin_tone",
+        "\u{1F91C}\u{1F3FE}",
+    );
+    m.insert(
+        "right-facing_fist_medium-light_skin_tone",
+        "\u{1F91C}\u{1F3FC}",
+    );
     m.insert("right-facing_fist_medium_skin_tone", "\u{1F91C}\u{1F3FD}");
     m.insert("right_anger_bubble", "\u{1F5EF}");
     m.insert("right_arrow", "\u{27A1}");
@@ -2136,8 +3504,14 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("sign_of_the_horns", "\u{1F918}");
     m.insert("sign_of_the_horns_dark_skin_tone", "\u{1F918}\u{1F3FF}");
     m.insert("sign_of_the_horns_light_skin_tone", "\u{1F918}\u{1F3FB}");
-    m.insert("sign_of_the_horns_medium-dark_skin_tone", "\u{1F918}\u{1F3FE}");
-    m.insert("sign_of_the_horns_medium-light_skin_tone", "\u{1F918}\u{1F3FC}");
+    m.insert(
+        "sign_of_the_horns_medium-dark_skin_tone",
+        "\u{1F918}\u{1F3FE}",
+    );
+    m.insert(
+        "sign_of_the_horns_medium-light_skin_tone",
+        "\u{1F918}\u{1F3FC}",
+    );
     m.insert("sign_of_the_horns_medium_skin_tone", "\u{1F918}\u{1F3FD}");
     m.insert("six-thirty", "\u{1F561}");
     m.insert("six_o’clock", "\u{1F555}");
@@ -2403,59 +3777,200 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("wolf_face", "\u{1F43A}");
     m.insert("woman", "\u{1F469}");
     m.insert("woman_artist", "\u{1F469}\u{200D}\u{1F3A8}");
-    m.insert("woman_artist_dark_skin_tone", "\u{1F469}\u{1F3FF}\u{200D}\u{1F3A8}");
-    m.insert("woman_artist_light_skin_tone", "\u{1F469}\u{1F3FB}\u{200D}\u{1F3A8}");
-    m.insert("woman_artist_medium-dark_skin_tone", "\u{1F469}\u{1F3FE}\u{200D}\u{1F3A8}");
-    m.insert("woman_artist_medium-light_skin_tone", "\u{1F469}\u{1F3FC}\u{200D}\u{1F3A8}");
-    m.insert("woman_artist_medium_skin_tone", "\u{1F469}\u{1F3FD}\u{200D}\u{1F3A8}");
+    m.insert(
+        "woman_artist_dark_skin_tone",
+        "\u{1F469}\u{1F3FF}\u{200D}\u{1F3A8}",
+    );
+    m.insert(
+        "woman_artist_light_skin_tone",
+        "\u{1F469}\u{1F3FB}\u{200D}\u{1F3A8}",
+    );
+    m.insert(
+        "woman_artist_medium-dark_skin_tone",
+        "\u{1F469}\u{1F3FE}\u{200D}\u{1F3A8}",
+    );
+    m.insert(
+        "woman_artist_medium-light_skin_tone",
+        "\u{1F469}\u{1F3FC}\u{200D}\u{1F3A8}",
+    );
+    m.insert(
+        "woman_artist_medium_skin_tone",
+        "\u{1F469}\u{1F3FD}\u{200D}\u{1F3A8}",
+    );
     m.insert("woman_astronaut", "\u{1F469}\u{200D}\u{1F680}");
-    m.insert("woman_astronaut_dark_skin_tone", "\u{1F469}\u{1F3FF}\u{200D}\u{1F680}");
-    m.insert("woman_astronaut_light_skin_tone", "\u{1F469}\u{1F3FB}\u{200D}\u{1F680}");
-    m.insert("woman_astronaut_medium-dark_skin_tone", "\u{1F469}\u{1F3FE}\u{200D}\u{1F680}");
-    m.insert("woman_astronaut_medium-light_skin_tone", "\u{1F469}\u{1F3FC}\u{200D}\u{1F680}");
-    m.insert("woman_astronaut_medium_skin_tone", "\u{1F469}\u{1F3FD}\u{200D}\u{1F680}");
+    m.insert(
+        "woman_astronaut_dark_skin_tone",
+        "\u{1F469}\u{1F3FF}\u{200D}\u{1F680}",
+    );
+    m.insert(
+        "woman_astronaut_light_skin_tone",
+        "\u{1F469}\u{1F3FB}\u{200D}\u{1F680}",
+    );
+    m.insert(
+        "woman_astronaut_medium-dark_skin_tone",
+        "\u{1F469}\u{1F3FE}\u{200D}\u{1F680}",
+    );
+    m.insert(
+        "woman_astronaut_medium-light_skin_tone",
+        "\u{1F469}\u{1F3FC}\u{200D}\u{1F680}",
+    );
+    m.insert(
+        "woman_astronaut_medium_skin_tone",
+        "\u{1F469}\u{1F3FD}\u{200D}\u{1F680}",
+    );
     m.insert("woman_biking", "\u{1F6B4}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_biking_dark_skin_tone", "\u{1F6B4}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_biking_light_skin_tone", "\u{1F6B4}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_biking_medium-dark_skin_tone", "\u{1F6B4}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_biking_medium-light_skin_tone", "\u{1F6B4}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_biking_medium_skin_tone", "\u{1F6B4}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_bouncing_ball", "\u{26F9}\u{FE0F}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_bouncing_ball_dark_skin_tone", "\u{26F9}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_bouncing_ball_light_skin_tone", "\u{26F9}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_bouncing_ball_medium-dark_skin_tone", "\u{26F9}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_bouncing_ball_medium-light_skin_tone", "\u{26F9}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_bouncing_ball_medium_skin_tone", "\u{26F9}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
+    m.insert(
+        "woman_biking_dark_skin_tone",
+        "\u{1F6B4}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_biking_light_skin_tone",
+        "\u{1F6B4}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_biking_medium-dark_skin_tone",
+        "\u{1F6B4}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_biking_medium-light_skin_tone",
+        "\u{1F6B4}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_biking_medium_skin_tone",
+        "\u{1F6B4}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_bouncing_ball",
+        "\u{26F9}\u{FE0F}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_bouncing_ball_dark_skin_tone",
+        "\u{26F9}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_bouncing_ball_light_skin_tone",
+        "\u{26F9}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_bouncing_ball_medium-dark_skin_tone",
+        "\u{26F9}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_bouncing_ball_medium-light_skin_tone",
+        "\u{26F9}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_bouncing_ball_medium_skin_tone",
+        "\u{26F9}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
     m.insert("woman_bowing", "\u{1F647}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_bowing_dark_skin_tone", "\u{1F647}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_bowing_light_skin_tone", "\u{1F647}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_bowing_medium-dark_skin_tone", "\u{1F647}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_bowing_medium-light_skin_tone", "\u{1F647}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_bowing_medium_skin_tone", "\u{1F647}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
+    m.insert(
+        "woman_bowing_dark_skin_tone",
+        "\u{1F647}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_bowing_light_skin_tone",
+        "\u{1F647}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_bowing_medium-dark_skin_tone",
+        "\u{1F647}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_bowing_medium-light_skin_tone",
+        "\u{1F647}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_bowing_medium_skin_tone",
+        "\u{1F647}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
     m.insert("woman_cartwheeling", "\u{1F938}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_cartwheeling_dark_skin_tone", "\u{1F938}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_cartwheeling_light_skin_tone", "\u{1F938}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_cartwheeling_medium-dark_skin_tone", "\u{1F938}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_cartwheeling_medium-light_skin_tone", "\u{1F938}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_cartwheeling_medium_skin_tone", "\u{1F938}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
+    m.insert(
+        "woman_cartwheeling_dark_skin_tone",
+        "\u{1F938}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_cartwheeling_light_skin_tone",
+        "\u{1F938}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_cartwheeling_medium-dark_skin_tone",
+        "\u{1F938}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_cartwheeling_medium-light_skin_tone",
+        "\u{1F938}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_cartwheeling_medium_skin_tone",
+        "\u{1F938}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
     m.insert("woman_climbing", "\u{1F9D7}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_climbing_dark_skin_tone", "\u{1F9D7}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_climbing_light_skin_tone", "\u{1F9D7}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_climbing_medium-dark_skin_tone", "\u{1F9D7}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_climbing_medium-light_skin_tone", "\u{1F9D7}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_climbing_medium_skin_tone", "\u{1F9D7}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_construction_worker", "\u{1F477}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_construction_worker_dark_skin_tone", "\u{1F477}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_construction_worker_light_skin_tone", "\u{1F477}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_construction_worker_medium-dark_skin_tone", "\u{1F477}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_construction_worker_medium-light_skin_tone", "\u{1F477}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_construction_worker_medium_skin_tone", "\u{1F477}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
+    m.insert(
+        "woman_climbing_dark_skin_tone",
+        "\u{1F9D7}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_climbing_light_skin_tone",
+        "\u{1F9D7}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_climbing_medium-dark_skin_tone",
+        "\u{1F9D7}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_climbing_medium-light_skin_tone",
+        "\u{1F9D7}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_climbing_medium_skin_tone",
+        "\u{1F9D7}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_construction_worker",
+        "\u{1F477}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_construction_worker_dark_skin_tone",
+        "\u{1F477}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_construction_worker_light_skin_tone",
+        "\u{1F477}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_construction_worker_medium-dark_skin_tone",
+        "\u{1F477}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_construction_worker_medium-light_skin_tone",
+        "\u{1F477}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_construction_worker_medium_skin_tone",
+        "\u{1F477}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
     m.insert("woman_cook", "\u{1F469}\u{200D}\u{1F373}");
-    m.insert("woman_cook_dark_skin_tone", "\u{1F469}\u{1F3FF}\u{200D}\u{1F373}");
-    m.insert("woman_cook_light_skin_tone", "\u{1F469}\u{1F3FB}\u{200D}\u{1F373}");
-    m.insert("woman_cook_medium-dark_skin_tone", "\u{1F469}\u{1F3FE}\u{200D}\u{1F373}");
-    m.insert("woman_cook_medium-light_skin_tone", "\u{1F469}\u{1F3FC}\u{200D}\u{1F373}");
-    m.insert("woman_cook_medium_skin_tone", "\u{1F469}\u{1F3FD}\u{200D}\u{1F373}");
+    m.insert(
+        "woman_cook_dark_skin_tone",
+        "\u{1F469}\u{1F3FF}\u{200D}\u{1F373}",
+    );
+    m.insert(
+        "woman_cook_light_skin_tone",
+        "\u{1F469}\u{1F3FB}\u{200D}\u{1F373}",
+    );
+    m.insert(
+        "woman_cook_medium-dark_skin_tone",
+        "\u{1F469}\u{1F3FE}\u{200D}\u{1F373}",
+    );
+    m.insert(
+        "woman_cook_medium-light_skin_tone",
+        "\u{1F469}\u{1F3FC}\u{200D}\u{1F373}",
+    );
+    m.insert(
+        "woman_cook_medium_skin_tone",
+        "\u{1F469}\u{1F3FD}\u{200D}\u{1F373}",
+    );
     m.insert("woman_dancing", "\u{1F483}");
     m.insert("woman_dancing_dark_skin_tone", "\u{1F483}\u{1F3FF}");
     m.insert("woman_dancing_light_skin_tone", "\u{1F483}\u{1F3FB}");
@@ -2463,283 +3978,970 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("woman_dancing_medium-light_skin_tone", "\u{1F483}\u{1F3FC}");
     m.insert("woman_dancing_medium_skin_tone", "\u{1F483}\u{1F3FD}");
     m.insert("woman_dark_skin_tone", "\u{1F469}\u{1F3FF}");
-    m.insert("woman_detective", "\u{1F575}\u{FE0F}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_detective_dark_skin_tone", "\u{1F575}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_detective_light_skin_tone", "\u{1F575}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_detective_medium-dark_skin_tone", "\u{1F575}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_detective_medium-light_skin_tone", "\u{1F575}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_detective_medium_skin_tone", "\u{1F575}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
+    m.insert(
+        "woman_detective",
+        "\u{1F575}\u{FE0F}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_detective_dark_skin_tone",
+        "\u{1F575}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_detective_light_skin_tone",
+        "\u{1F575}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_detective_medium-dark_skin_tone",
+        "\u{1F575}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_detective_medium-light_skin_tone",
+        "\u{1F575}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_detective_medium_skin_tone",
+        "\u{1F575}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
     m.insert("woman_elf", "\u{1F9DD}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_elf_dark_skin_tone", "\u{1F9DD}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_elf_light_skin_tone", "\u{1F9DD}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_elf_medium-dark_skin_tone", "\u{1F9DD}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_elf_medium-light_skin_tone", "\u{1F9DD}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_elf_medium_skin_tone", "\u{1F9DD}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
+    m.insert(
+        "woman_elf_dark_skin_tone",
+        "\u{1F9DD}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_elf_light_skin_tone",
+        "\u{1F9DD}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_elf_medium-dark_skin_tone",
+        "\u{1F9DD}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_elf_medium-light_skin_tone",
+        "\u{1F9DD}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_elf_medium_skin_tone",
+        "\u{1F9DD}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
     m.insert("woman_facepalming", "\u{1F926}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_facepalming_dark_skin_tone", "\u{1F926}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_facepalming_light_skin_tone", "\u{1F926}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_facepalming_medium-dark_skin_tone", "\u{1F926}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_facepalming_medium-light_skin_tone", "\u{1F926}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_facepalming_medium_skin_tone", "\u{1F926}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
+    m.insert(
+        "woman_facepalming_dark_skin_tone",
+        "\u{1F926}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_facepalming_light_skin_tone",
+        "\u{1F926}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_facepalming_medium-dark_skin_tone",
+        "\u{1F926}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_facepalming_medium-light_skin_tone",
+        "\u{1F926}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_facepalming_medium_skin_tone",
+        "\u{1F926}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
     m.insert("woman_factory_worker", "\u{1F469}\u{200D}\u{1F3ED}");
-    m.insert("woman_factory_worker_dark_skin_tone", "\u{1F469}\u{1F3FF}\u{200D}\u{1F3ED}");
-    m.insert("woman_factory_worker_light_skin_tone", "\u{1F469}\u{1F3FB}\u{200D}\u{1F3ED}");
-    m.insert("woman_factory_worker_medium-dark_skin_tone", "\u{1F469}\u{1F3FE}\u{200D}\u{1F3ED}");
-    m.insert("woman_factory_worker_medium-light_skin_tone", "\u{1F469}\u{1F3FC}\u{200D}\u{1F3ED}");
-    m.insert("woman_factory_worker_medium_skin_tone", "\u{1F469}\u{1F3FD}\u{200D}\u{1F3ED}");
+    m.insert(
+        "woman_factory_worker_dark_skin_tone",
+        "\u{1F469}\u{1F3FF}\u{200D}\u{1F3ED}",
+    );
+    m.insert(
+        "woman_factory_worker_light_skin_tone",
+        "\u{1F469}\u{1F3FB}\u{200D}\u{1F3ED}",
+    );
+    m.insert(
+        "woman_factory_worker_medium-dark_skin_tone",
+        "\u{1F469}\u{1F3FE}\u{200D}\u{1F3ED}",
+    );
+    m.insert(
+        "woman_factory_worker_medium-light_skin_tone",
+        "\u{1F469}\u{1F3FC}\u{200D}\u{1F3ED}",
+    );
+    m.insert(
+        "woman_factory_worker_medium_skin_tone",
+        "\u{1F469}\u{1F3FD}\u{200D}\u{1F3ED}",
+    );
     m.insert("woman_fairy", "\u{1F9DA}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_fairy_dark_skin_tone", "\u{1F9DA}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_fairy_light_skin_tone", "\u{1F9DA}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_fairy_medium-dark_skin_tone", "\u{1F9DA}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_fairy_medium-light_skin_tone", "\u{1F9DA}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_fairy_medium_skin_tone", "\u{1F9DA}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
+    m.insert(
+        "woman_fairy_dark_skin_tone",
+        "\u{1F9DA}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_fairy_light_skin_tone",
+        "\u{1F9DA}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_fairy_medium-dark_skin_tone",
+        "\u{1F9DA}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_fairy_medium-light_skin_tone",
+        "\u{1F9DA}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_fairy_medium_skin_tone",
+        "\u{1F9DA}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
     m.insert("woman_farmer", "\u{1F469}\u{200D}\u{1F33E}");
-    m.insert("woman_farmer_dark_skin_tone", "\u{1F469}\u{1F3FF}\u{200D}\u{1F33E}");
-    m.insert("woman_farmer_light_skin_tone", "\u{1F469}\u{1F3FB}\u{200D}\u{1F33E}");
-    m.insert("woman_farmer_medium-dark_skin_tone", "\u{1F469}\u{1F3FE}\u{200D}\u{1F33E}");
-    m.insert("woman_farmer_medium-light_skin_tone", "\u{1F469}\u{1F3FC}\u{200D}\u{1F33E}");
-    m.insert("woman_farmer_medium_skin_tone", "\u{1F469}\u{1F3FD}\u{200D}\u{1F33E}");
+    m.insert(
+        "woman_farmer_dark_skin_tone",
+        "\u{1F469}\u{1F3FF}\u{200D}\u{1F33E}",
+    );
+    m.insert(
+        "woman_farmer_light_skin_tone",
+        "\u{1F469}\u{1F3FB}\u{200D}\u{1F33E}",
+    );
+    m.insert(
+        "woman_farmer_medium-dark_skin_tone",
+        "\u{1F469}\u{1F3FE}\u{200D}\u{1F33E}",
+    );
+    m.insert(
+        "woman_farmer_medium-light_skin_tone",
+        "\u{1F469}\u{1F3FC}\u{200D}\u{1F33E}",
+    );
+    m.insert(
+        "woman_farmer_medium_skin_tone",
+        "\u{1F469}\u{1F3FD}\u{200D}\u{1F33E}",
+    );
     m.insert("woman_firefighter", "\u{1F469}\u{200D}\u{1F692}");
-    m.insert("woman_firefighter_dark_skin_tone", "\u{1F469}\u{1F3FF}\u{200D}\u{1F692}");
-    m.insert("woman_firefighter_light_skin_tone", "\u{1F469}\u{1F3FB}\u{200D}\u{1F692}");
-    m.insert("woman_firefighter_medium-dark_skin_tone", "\u{1F469}\u{1F3FE}\u{200D}\u{1F692}");
-    m.insert("woman_firefighter_medium-light_skin_tone", "\u{1F469}\u{1F3FC}\u{200D}\u{1F692}");
-    m.insert("woman_firefighter_medium_skin_tone", "\u{1F469}\u{1F3FD}\u{200D}\u{1F692}");
+    m.insert(
+        "woman_firefighter_dark_skin_tone",
+        "\u{1F469}\u{1F3FF}\u{200D}\u{1F692}",
+    );
+    m.insert(
+        "woman_firefighter_light_skin_tone",
+        "\u{1F469}\u{1F3FB}\u{200D}\u{1F692}",
+    );
+    m.insert(
+        "woman_firefighter_medium-dark_skin_tone",
+        "\u{1F469}\u{1F3FE}\u{200D}\u{1F692}",
+    );
+    m.insert(
+        "woman_firefighter_medium-light_skin_tone",
+        "\u{1F469}\u{1F3FC}\u{200D}\u{1F692}",
+    );
+    m.insert(
+        "woman_firefighter_medium_skin_tone",
+        "\u{1F469}\u{1F3FD}\u{200D}\u{1F692}",
+    );
     m.insert("woman_frowning", "\u{1F64D}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_frowning_dark_skin_tone", "\u{1F64D}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_frowning_light_skin_tone", "\u{1F64D}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_frowning_medium-dark_skin_tone", "\u{1F64D}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_frowning_medium-light_skin_tone", "\u{1F64D}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_frowning_medium_skin_tone", "\u{1F64D}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
+    m.insert(
+        "woman_frowning_dark_skin_tone",
+        "\u{1F64D}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_frowning_light_skin_tone",
+        "\u{1F64D}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_frowning_medium-dark_skin_tone",
+        "\u{1F64D}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_frowning_medium-light_skin_tone",
+        "\u{1F64D}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_frowning_medium_skin_tone",
+        "\u{1F64D}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
     m.insert("woman_genie", "\u{1F9DE}\u{200D}\u{2640}\u{FE0F}");
     m.insert("woman_gesturing_no", "\u{1F645}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_gesturing_no_dark_skin_tone", "\u{1F645}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_gesturing_no_light_skin_tone", "\u{1F645}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_gesturing_no_medium-dark_skin_tone", "\u{1F645}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_gesturing_no_medium-light_skin_tone", "\u{1F645}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_gesturing_no_medium_skin_tone", "\u{1F645}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
+    m.insert(
+        "woman_gesturing_no_dark_skin_tone",
+        "\u{1F645}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_gesturing_no_light_skin_tone",
+        "\u{1F645}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_gesturing_no_medium-dark_skin_tone",
+        "\u{1F645}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_gesturing_no_medium-light_skin_tone",
+        "\u{1F645}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_gesturing_no_medium_skin_tone",
+        "\u{1F645}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
     m.insert("woman_gesturing_ok", "\u{1F646}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_gesturing_ok_dark_skin_tone", "\u{1F646}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_gesturing_ok_light_skin_tone", "\u{1F646}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_gesturing_ok_medium-dark_skin_tone", "\u{1F646}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_gesturing_ok_medium-light_skin_tone", "\u{1F646}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_gesturing_ok_medium_skin_tone", "\u{1F646}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
+    m.insert(
+        "woman_gesturing_ok_dark_skin_tone",
+        "\u{1F646}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_gesturing_ok_light_skin_tone",
+        "\u{1F646}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_gesturing_ok_medium-dark_skin_tone",
+        "\u{1F646}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_gesturing_ok_medium-light_skin_tone",
+        "\u{1F646}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_gesturing_ok_medium_skin_tone",
+        "\u{1F646}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
     m.insert("woman_getting_haircut", "\u{1F487}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_getting_haircut_dark_skin_tone", "\u{1F487}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_getting_haircut_light_skin_tone", "\u{1F487}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_getting_haircut_medium-dark_skin_tone", "\u{1F487}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_getting_haircut_medium-light_skin_tone", "\u{1F487}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_getting_haircut_medium_skin_tone", "\u{1F487}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
+    m.insert(
+        "woman_getting_haircut_dark_skin_tone",
+        "\u{1F487}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_getting_haircut_light_skin_tone",
+        "\u{1F487}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_getting_haircut_medium-dark_skin_tone",
+        "\u{1F487}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_getting_haircut_medium-light_skin_tone",
+        "\u{1F487}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_getting_haircut_medium_skin_tone",
+        "\u{1F487}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
     m.insert("woman_getting_massage", "\u{1F486}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_getting_massage_dark_skin_tone", "\u{1F486}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_getting_massage_light_skin_tone", "\u{1F486}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_getting_massage_medium-dark_skin_tone", "\u{1F486}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_getting_massage_medium-light_skin_tone", "\u{1F486}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_getting_massage_medium_skin_tone", "\u{1F486}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
+    m.insert(
+        "woman_getting_massage_dark_skin_tone",
+        "\u{1F486}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_getting_massage_light_skin_tone",
+        "\u{1F486}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_getting_massage_medium-dark_skin_tone",
+        "\u{1F486}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_getting_massage_medium-light_skin_tone",
+        "\u{1F486}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_getting_massage_medium_skin_tone",
+        "\u{1F486}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
     m.insert("woman_golfing", "\u{1F3CC}\u{FE0F}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_golfing_dark_skin_tone", "\u{1F3CC}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_golfing_light_skin_tone", "\u{1F3CC}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_golfing_medium-dark_skin_tone", "\u{1F3CC}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_golfing_medium-light_skin_tone", "\u{1F3CC}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_golfing_medium_skin_tone", "\u{1F3CC}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
+    m.insert(
+        "woman_golfing_dark_skin_tone",
+        "\u{1F3CC}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_golfing_light_skin_tone",
+        "\u{1F3CC}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_golfing_medium-dark_skin_tone",
+        "\u{1F3CC}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_golfing_medium-light_skin_tone",
+        "\u{1F3CC}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_golfing_medium_skin_tone",
+        "\u{1F3CC}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
     m.insert("woman_guard", "\u{1F482}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_guard_dark_skin_tone", "\u{1F482}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_guard_light_skin_tone", "\u{1F482}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_guard_medium-dark_skin_tone", "\u{1F482}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_guard_medium-light_skin_tone", "\u{1F482}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_guard_medium_skin_tone", "\u{1F482}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
+    m.insert(
+        "woman_guard_dark_skin_tone",
+        "\u{1F482}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_guard_light_skin_tone",
+        "\u{1F482}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_guard_medium-dark_skin_tone",
+        "\u{1F482}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_guard_medium-light_skin_tone",
+        "\u{1F482}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_guard_medium_skin_tone",
+        "\u{1F482}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
     m.insert("woman_health_worker", "\u{1F469}\u{200D}\u{2695}\u{FE0F}");
-    m.insert("woman_health_worker_dark_skin_tone", "\u{1F469}\u{1F3FF}\u{200D}\u{2695}\u{FE0F}");
-    m.insert("woman_health_worker_light_skin_tone", "\u{1F469}\u{1F3FB}\u{200D}\u{2695}\u{FE0F}");
-    m.insert("woman_health_worker_medium-dark_skin_tone", "\u{1F469}\u{1F3FE}\u{200D}\u{2695}\u{FE0F}");
-    m.insert("woman_health_worker_medium-light_skin_tone", "\u{1F469}\u{1F3FC}\u{200D}\u{2695}\u{FE0F}");
-    m.insert("woman_health_worker_medium_skin_tone", "\u{1F469}\u{1F3FD}\u{200D}\u{2695}\u{FE0F}");
-    m.insert("woman_in_lotus_position", "\u{1F9D8}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_in_lotus_position_dark_skin_tone", "\u{1F9D8}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_in_lotus_position_light_skin_tone", "\u{1F9D8}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_in_lotus_position_medium-dark_skin_tone", "\u{1F9D8}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_in_lotus_position_medium-light_skin_tone", "\u{1F9D8}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_in_lotus_position_medium_skin_tone", "\u{1F9D8}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
+    m.insert(
+        "woman_health_worker_dark_skin_tone",
+        "\u{1F469}\u{1F3FF}\u{200D}\u{2695}\u{FE0F}",
+    );
+    m.insert(
+        "woman_health_worker_light_skin_tone",
+        "\u{1F469}\u{1F3FB}\u{200D}\u{2695}\u{FE0F}",
+    );
+    m.insert(
+        "woman_health_worker_medium-dark_skin_tone",
+        "\u{1F469}\u{1F3FE}\u{200D}\u{2695}\u{FE0F}",
+    );
+    m.insert(
+        "woman_health_worker_medium-light_skin_tone",
+        "\u{1F469}\u{1F3FC}\u{200D}\u{2695}\u{FE0F}",
+    );
+    m.insert(
+        "woman_health_worker_medium_skin_tone",
+        "\u{1F469}\u{1F3FD}\u{200D}\u{2695}\u{FE0F}",
+    );
+    m.insert(
+        "woman_in_lotus_position",
+        "\u{1F9D8}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_in_lotus_position_dark_skin_tone",
+        "\u{1F9D8}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_in_lotus_position_light_skin_tone",
+        "\u{1F9D8}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_in_lotus_position_medium-dark_skin_tone",
+        "\u{1F9D8}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_in_lotus_position_medium-light_skin_tone",
+        "\u{1F9D8}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_in_lotus_position_medium_skin_tone",
+        "\u{1F9D8}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
     m.insert("woman_in_manual_wheelchair", "\u{1F469}\u{200D}\u{1F9BD}");
-    m.insert("woman_in_motorized_wheelchair", "\u{1F469}\u{200D}\u{1F9BC}");
+    m.insert(
+        "woman_in_motorized_wheelchair",
+        "\u{1F469}\u{200D}\u{1F9BC}",
+    );
     m.insert("woman_in_steamy_room", "\u{1F9D6}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_in_steamy_room_dark_skin_tone", "\u{1F9D6}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_in_steamy_room_light_skin_tone", "\u{1F9D6}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_in_steamy_room_medium-dark_skin_tone", "\u{1F9D6}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_in_steamy_room_medium-light_skin_tone", "\u{1F9D6}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_in_steamy_room_medium_skin_tone", "\u{1F9D6}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
+    m.insert(
+        "woman_in_steamy_room_dark_skin_tone",
+        "\u{1F9D6}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_in_steamy_room_light_skin_tone",
+        "\u{1F9D6}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_in_steamy_room_medium-dark_skin_tone",
+        "\u{1F9D6}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_in_steamy_room_medium-light_skin_tone",
+        "\u{1F9D6}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_in_steamy_room_medium_skin_tone",
+        "\u{1F9D6}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
     m.insert("woman_judge", "\u{1F469}\u{200D}\u{2696}\u{FE0F}");
-    m.insert("woman_judge_dark_skin_tone", "\u{1F469}\u{1F3FF}\u{200D}\u{2696}\u{FE0F}");
-    m.insert("woman_judge_light_skin_tone", "\u{1F469}\u{1F3FB}\u{200D}\u{2696}\u{FE0F}");
-    m.insert("woman_judge_medium-dark_skin_tone", "\u{1F469}\u{1F3FE}\u{200D}\u{2696}\u{FE0F}");
-    m.insert("woman_judge_medium-light_skin_tone", "\u{1F469}\u{1F3FC}\u{200D}\u{2696}\u{FE0F}");
-    m.insert("woman_judge_medium_skin_tone", "\u{1F469}\u{1F3FD}\u{200D}\u{2696}\u{FE0F}");
+    m.insert(
+        "woman_judge_dark_skin_tone",
+        "\u{1F469}\u{1F3FF}\u{200D}\u{2696}\u{FE0F}",
+    );
+    m.insert(
+        "woman_judge_light_skin_tone",
+        "\u{1F469}\u{1F3FB}\u{200D}\u{2696}\u{FE0F}",
+    );
+    m.insert(
+        "woman_judge_medium-dark_skin_tone",
+        "\u{1F469}\u{1F3FE}\u{200D}\u{2696}\u{FE0F}",
+    );
+    m.insert(
+        "woman_judge_medium-light_skin_tone",
+        "\u{1F469}\u{1F3FC}\u{200D}\u{2696}\u{FE0F}",
+    );
+    m.insert(
+        "woman_judge_medium_skin_tone",
+        "\u{1F469}\u{1F3FD}\u{200D}\u{2696}\u{FE0F}",
+    );
     m.insert("woman_juggling", "\u{1F939}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_juggling_dark_skin_tone", "\u{1F939}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_juggling_light_skin_tone", "\u{1F939}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_juggling_medium-dark_skin_tone", "\u{1F939}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_juggling_medium-light_skin_tone", "\u{1F939}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_juggling_medium_skin_tone", "\u{1F939}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_lifting_weights", "\u{1F3CB}\u{FE0F}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_lifting_weights_dark_skin_tone", "\u{1F3CB}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_lifting_weights_light_skin_tone", "\u{1F3CB}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_lifting_weights_medium-dark_skin_tone", "\u{1F3CB}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_lifting_weights_medium-light_skin_tone", "\u{1F3CB}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_lifting_weights_medium_skin_tone", "\u{1F3CB}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
+    m.insert(
+        "woman_juggling_dark_skin_tone",
+        "\u{1F939}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_juggling_light_skin_tone",
+        "\u{1F939}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_juggling_medium-dark_skin_tone",
+        "\u{1F939}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_juggling_medium-light_skin_tone",
+        "\u{1F939}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_juggling_medium_skin_tone",
+        "\u{1F939}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_lifting_weights",
+        "\u{1F3CB}\u{FE0F}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_lifting_weights_dark_skin_tone",
+        "\u{1F3CB}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_lifting_weights_light_skin_tone",
+        "\u{1F3CB}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_lifting_weights_medium-dark_skin_tone",
+        "\u{1F3CB}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_lifting_weights_medium-light_skin_tone",
+        "\u{1F3CB}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_lifting_weights_medium_skin_tone",
+        "\u{1F3CB}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
     m.insert("woman_light_skin_tone", "\u{1F469}\u{1F3FB}");
     m.insert("woman_mage", "\u{1F9D9}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_mage_dark_skin_tone", "\u{1F9D9}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_mage_light_skin_tone", "\u{1F9D9}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_mage_medium-dark_skin_tone", "\u{1F9D9}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_mage_medium-light_skin_tone", "\u{1F9D9}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_mage_medium_skin_tone", "\u{1F9D9}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
+    m.insert(
+        "woman_mage_dark_skin_tone",
+        "\u{1F9D9}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_mage_light_skin_tone",
+        "\u{1F9D9}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_mage_medium-dark_skin_tone",
+        "\u{1F9D9}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_mage_medium-light_skin_tone",
+        "\u{1F9D9}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_mage_medium_skin_tone",
+        "\u{1F9D9}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
     m.insert("woman_mechanic", "\u{1F469}\u{200D}\u{1F527}");
-    m.insert("woman_mechanic_dark_skin_tone", "\u{1F469}\u{1F3FF}\u{200D}\u{1F527}");
-    m.insert("woman_mechanic_light_skin_tone", "\u{1F469}\u{1F3FB}\u{200D}\u{1F527}");
-    m.insert("woman_mechanic_medium-dark_skin_tone", "\u{1F469}\u{1F3FE}\u{200D}\u{1F527}");
-    m.insert("woman_mechanic_medium-light_skin_tone", "\u{1F469}\u{1F3FC}\u{200D}\u{1F527}");
-    m.insert("woman_mechanic_medium_skin_tone", "\u{1F469}\u{1F3FD}\u{200D}\u{1F527}");
+    m.insert(
+        "woman_mechanic_dark_skin_tone",
+        "\u{1F469}\u{1F3FF}\u{200D}\u{1F527}",
+    );
+    m.insert(
+        "woman_mechanic_light_skin_tone",
+        "\u{1F469}\u{1F3FB}\u{200D}\u{1F527}",
+    );
+    m.insert(
+        "woman_mechanic_medium-dark_skin_tone",
+        "\u{1F469}\u{1F3FE}\u{200D}\u{1F527}",
+    );
+    m.insert(
+        "woman_mechanic_medium-light_skin_tone",
+        "\u{1F469}\u{1F3FC}\u{200D}\u{1F527}",
+    );
+    m.insert(
+        "woman_mechanic_medium_skin_tone",
+        "\u{1F469}\u{1F3FD}\u{200D}\u{1F527}",
+    );
     m.insert("woman_medium-dark_skin_tone", "\u{1F469}\u{1F3FE}");
     m.insert("woman_medium-light_skin_tone", "\u{1F469}\u{1F3FC}");
     m.insert("woman_medium_skin_tone", "\u{1F469}\u{1F3FD}");
     m.insert("woman_mountain_biking", "\u{1F6B5}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_mountain_biking_dark_skin_tone", "\u{1F6B5}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_mountain_biking_light_skin_tone", "\u{1F6B5}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_mountain_biking_medium-dark_skin_tone", "\u{1F6B5}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_mountain_biking_medium-light_skin_tone", "\u{1F6B5}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_mountain_biking_medium_skin_tone", "\u{1F6B5}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
+    m.insert(
+        "woman_mountain_biking_dark_skin_tone",
+        "\u{1F6B5}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_mountain_biking_light_skin_tone",
+        "\u{1F6B5}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_mountain_biking_medium-dark_skin_tone",
+        "\u{1F6B5}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_mountain_biking_medium-light_skin_tone",
+        "\u{1F6B5}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_mountain_biking_medium_skin_tone",
+        "\u{1F6B5}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
     m.insert("woman_office_worker", "\u{1F469}\u{200D}\u{1F4BC}");
-    m.insert("woman_office_worker_dark_skin_tone", "\u{1F469}\u{1F3FF}\u{200D}\u{1F4BC}");
-    m.insert("woman_office_worker_light_skin_tone", "\u{1F469}\u{1F3FB}\u{200D}\u{1F4BC}");
-    m.insert("woman_office_worker_medium-dark_skin_tone", "\u{1F469}\u{1F3FE}\u{200D}\u{1F4BC}");
-    m.insert("woman_office_worker_medium-light_skin_tone", "\u{1F469}\u{1F3FC}\u{200D}\u{1F4BC}");
-    m.insert("woman_office_worker_medium_skin_tone", "\u{1F469}\u{1F3FD}\u{200D}\u{1F4BC}");
+    m.insert(
+        "woman_office_worker_dark_skin_tone",
+        "\u{1F469}\u{1F3FF}\u{200D}\u{1F4BC}",
+    );
+    m.insert(
+        "woman_office_worker_light_skin_tone",
+        "\u{1F469}\u{1F3FB}\u{200D}\u{1F4BC}",
+    );
+    m.insert(
+        "woman_office_worker_medium-dark_skin_tone",
+        "\u{1F469}\u{1F3FE}\u{200D}\u{1F4BC}",
+    );
+    m.insert(
+        "woman_office_worker_medium-light_skin_tone",
+        "\u{1F469}\u{1F3FC}\u{200D}\u{1F4BC}",
+    );
+    m.insert(
+        "woman_office_worker_medium_skin_tone",
+        "\u{1F469}\u{1F3FD}\u{200D}\u{1F4BC}",
+    );
     m.insert("woman_pilot", "\u{1F469}\u{200D}\u{2708}\u{FE0F}");
-    m.insert("woman_pilot_dark_skin_tone", "\u{1F469}\u{1F3FF}\u{200D}\u{2708}\u{FE0F}");
-    m.insert("woman_pilot_light_skin_tone", "\u{1F469}\u{1F3FB}\u{200D}\u{2708}\u{FE0F}");
-    m.insert("woman_pilot_medium-dark_skin_tone", "\u{1F469}\u{1F3FE}\u{200D}\u{2708}\u{FE0F}");
-    m.insert("woman_pilot_medium-light_skin_tone", "\u{1F469}\u{1F3FC}\u{200D}\u{2708}\u{FE0F}");
-    m.insert("woman_pilot_medium_skin_tone", "\u{1F469}\u{1F3FD}\u{200D}\u{2708}\u{FE0F}");
-    m.insert("woman_playing_handball", "\u{1F93E}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_playing_handball_dark_skin_tone", "\u{1F93E}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_playing_handball_light_skin_tone", "\u{1F93E}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_playing_handball_medium-dark_skin_tone", "\u{1F93E}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_playing_handball_medium-light_skin_tone", "\u{1F93E}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_playing_handball_medium_skin_tone", "\u{1F93E}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_playing_water_polo", "\u{1F93D}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_playing_water_polo_dark_skin_tone", "\u{1F93D}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_playing_water_polo_light_skin_tone", "\u{1F93D}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_playing_water_polo_medium-dark_skin_tone", "\u{1F93D}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_playing_water_polo_medium-light_skin_tone", "\u{1F93D}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_playing_water_polo_medium_skin_tone", "\u{1F93D}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
+    m.insert(
+        "woman_pilot_dark_skin_tone",
+        "\u{1F469}\u{1F3FF}\u{200D}\u{2708}\u{FE0F}",
+    );
+    m.insert(
+        "woman_pilot_light_skin_tone",
+        "\u{1F469}\u{1F3FB}\u{200D}\u{2708}\u{FE0F}",
+    );
+    m.insert(
+        "woman_pilot_medium-dark_skin_tone",
+        "\u{1F469}\u{1F3FE}\u{200D}\u{2708}\u{FE0F}",
+    );
+    m.insert(
+        "woman_pilot_medium-light_skin_tone",
+        "\u{1F469}\u{1F3FC}\u{200D}\u{2708}\u{FE0F}",
+    );
+    m.insert(
+        "woman_pilot_medium_skin_tone",
+        "\u{1F469}\u{1F3FD}\u{200D}\u{2708}\u{FE0F}",
+    );
+    m.insert(
+        "woman_playing_handball",
+        "\u{1F93E}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_playing_handball_dark_skin_tone",
+        "\u{1F93E}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_playing_handball_light_skin_tone",
+        "\u{1F93E}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_playing_handball_medium-dark_skin_tone",
+        "\u{1F93E}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_playing_handball_medium-light_skin_tone",
+        "\u{1F93E}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_playing_handball_medium_skin_tone",
+        "\u{1F93E}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_playing_water_polo",
+        "\u{1F93D}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_playing_water_polo_dark_skin_tone",
+        "\u{1F93D}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_playing_water_polo_light_skin_tone",
+        "\u{1F93D}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_playing_water_polo_medium-dark_skin_tone",
+        "\u{1F93D}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_playing_water_polo_medium-light_skin_tone",
+        "\u{1F93D}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_playing_water_polo_medium_skin_tone",
+        "\u{1F93D}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
     m.insert("woman_police_officer", "\u{1F46E}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_police_officer_dark_skin_tone", "\u{1F46E}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_police_officer_light_skin_tone", "\u{1F46E}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_police_officer_medium-dark_skin_tone", "\u{1F46E}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_police_officer_medium-light_skin_tone", "\u{1F46E}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_police_officer_medium_skin_tone", "\u{1F46E}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
+    m.insert(
+        "woman_police_officer_dark_skin_tone",
+        "\u{1F46E}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_police_officer_light_skin_tone",
+        "\u{1F46E}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_police_officer_medium-dark_skin_tone",
+        "\u{1F46E}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_police_officer_medium-light_skin_tone",
+        "\u{1F46E}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_police_officer_medium_skin_tone",
+        "\u{1F46E}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
     m.insert("woman_pouting", "\u{1F64E}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_pouting_dark_skin_tone", "\u{1F64E}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_pouting_light_skin_tone", "\u{1F64E}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_pouting_medium-dark_skin_tone", "\u{1F64E}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_pouting_medium-light_skin_tone", "\u{1F64E}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_pouting_medium_skin_tone", "\u{1F64E}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
+    m.insert(
+        "woman_pouting_dark_skin_tone",
+        "\u{1F64E}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_pouting_light_skin_tone",
+        "\u{1F64E}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_pouting_medium-dark_skin_tone",
+        "\u{1F64E}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_pouting_medium-light_skin_tone",
+        "\u{1F64E}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_pouting_medium_skin_tone",
+        "\u{1F64E}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
     m.insert("woman_raising_hand", "\u{1F64B}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_raising_hand_dark_skin_tone", "\u{1F64B}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_raising_hand_light_skin_tone", "\u{1F64B}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_raising_hand_medium-dark_skin_tone", "\u{1F64B}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_raising_hand_medium-light_skin_tone", "\u{1F64B}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_raising_hand_medium_skin_tone", "\u{1F64B}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
+    m.insert(
+        "woman_raising_hand_dark_skin_tone",
+        "\u{1F64B}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_raising_hand_light_skin_tone",
+        "\u{1F64B}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_raising_hand_medium-dark_skin_tone",
+        "\u{1F64B}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_raising_hand_medium-light_skin_tone",
+        "\u{1F64B}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_raising_hand_medium_skin_tone",
+        "\u{1F64B}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
     m.insert("woman_rowing_boat", "\u{1F6A3}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_rowing_boat_dark_skin_tone", "\u{1F6A3}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_rowing_boat_light_skin_tone", "\u{1F6A3}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_rowing_boat_medium-dark_skin_tone", "\u{1F6A3}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_rowing_boat_medium-light_skin_tone", "\u{1F6A3}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_rowing_boat_medium_skin_tone", "\u{1F6A3}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
+    m.insert(
+        "woman_rowing_boat_dark_skin_tone",
+        "\u{1F6A3}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_rowing_boat_light_skin_tone",
+        "\u{1F6A3}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_rowing_boat_medium-dark_skin_tone",
+        "\u{1F6A3}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_rowing_boat_medium-light_skin_tone",
+        "\u{1F6A3}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_rowing_boat_medium_skin_tone",
+        "\u{1F6A3}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
     m.insert("woman_running", "\u{1F3C3}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_running_dark_skin_tone", "\u{1F3C3}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_running_light_skin_tone", "\u{1F3C3}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_running_medium-dark_skin_tone", "\u{1F3C3}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_running_medium-light_skin_tone", "\u{1F3C3}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_running_medium_skin_tone", "\u{1F3C3}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
+    m.insert(
+        "woman_running_dark_skin_tone",
+        "\u{1F3C3}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_running_light_skin_tone",
+        "\u{1F3C3}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_running_medium-dark_skin_tone",
+        "\u{1F3C3}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_running_medium-light_skin_tone",
+        "\u{1F3C3}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_running_medium_skin_tone",
+        "\u{1F3C3}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
     m.insert("woman_scientist", "\u{1F469}\u{200D}\u{1F52C}");
-    m.insert("woman_scientist_dark_skin_tone", "\u{1F469}\u{1F3FF}\u{200D}\u{1F52C}");
-    m.insert("woman_scientist_light_skin_tone", "\u{1F469}\u{1F3FB}\u{200D}\u{1F52C}");
-    m.insert("woman_scientist_medium-dark_skin_tone", "\u{1F469}\u{1F3FE}\u{200D}\u{1F52C}");
-    m.insert("woman_scientist_medium-light_skin_tone", "\u{1F469}\u{1F3FC}\u{200D}\u{1F52C}");
-    m.insert("woman_scientist_medium_skin_tone", "\u{1F469}\u{1F3FD}\u{200D}\u{1F52C}");
+    m.insert(
+        "woman_scientist_dark_skin_tone",
+        "\u{1F469}\u{1F3FF}\u{200D}\u{1F52C}",
+    );
+    m.insert(
+        "woman_scientist_light_skin_tone",
+        "\u{1F469}\u{1F3FB}\u{200D}\u{1F52C}",
+    );
+    m.insert(
+        "woman_scientist_medium-dark_skin_tone",
+        "\u{1F469}\u{1F3FE}\u{200D}\u{1F52C}",
+    );
+    m.insert(
+        "woman_scientist_medium-light_skin_tone",
+        "\u{1F469}\u{1F3FC}\u{200D}\u{1F52C}",
+    );
+    m.insert(
+        "woman_scientist_medium_skin_tone",
+        "\u{1F469}\u{1F3FD}\u{200D}\u{1F52C}",
+    );
     m.insert("woman_shrugging", "\u{1F937}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_shrugging_dark_skin_tone", "\u{1F937}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_shrugging_light_skin_tone", "\u{1F937}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_shrugging_medium-dark_skin_tone", "\u{1F937}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_shrugging_medium-light_skin_tone", "\u{1F937}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_shrugging_medium_skin_tone", "\u{1F937}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
+    m.insert(
+        "woman_shrugging_dark_skin_tone",
+        "\u{1F937}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_shrugging_light_skin_tone",
+        "\u{1F937}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_shrugging_medium-dark_skin_tone",
+        "\u{1F937}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_shrugging_medium-light_skin_tone",
+        "\u{1F937}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_shrugging_medium_skin_tone",
+        "\u{1F937}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
     m.insert("woman_singer", "\u{1F469}\u{200D}\u{1F3A4}");
-    m.insert("woman_singer_dark_skin_tone", "\u{1F469}\u{1F3FF}\u{200D}\u{1F3A4}");
-    m.insert("woman_singer_light_skin_tone", "\u{1F469}\u{1F3FB}\u{200D}\u{1F3A4}");
-    m.insert("woman_singer_medium-dark_skin_tone", "\u{1F469}\u{1F3FE}\u{200D}\u{1F3A4}");
-    m.insert("woman_singer_medium-light_skin_tone", "\u{1F469}\u{1F3FC}\u{200D}\u{1F3A4}");
-    m.insert("woman_singer_medium_skin_tone", "\u{1F469}\u{1F3FD}\u{200D}\u{1F3A4}");
+    m.insert(
+        "woman_singer_dark_skin_tone",
+        "\u{1F469}\u{1F3FF}\u{200D}\u{1F3A4}",
+    );
+    m.insert(
+        "woman_singer_light_skin_tone",
+        "\u{1F469}\u{1F3FB}\u{200D}\u{1F3A4}",
+    );
+    m.insert(
+        "woman_singer_medium-dark_skin_tone",
+        "\u{1F469}\u{1F3FE}\u{200D}\u{1F3A4}",
+    );
+    m.insert(
+        "woman_singer_medium-light_skin_tone",
+        "\u{1F469}\u{1F3FC}\u{200D}\u{1F3A4}",
+    );
+    m.insert(
+        "woman_singer_medium_skin_tone",
+        "\u{1F469}\u{1F3FD}\u{200D}\u{1F3A4}",
+    );
     m.insert("woman_student", "\u{1F469}\u{200D}\u{1F393}");
-    m.insert("woman_student_dark_skin_tone", "\u{1F469}\u{1F3FF}\u{200D}\u{1F393}");
-    m.insert("woman_student_light_skin_tone", "\u{1F469}\u{1F3FB}\u{200D}\u{1F393}");
-    m.insert("woman_student_medium-dark_skin_tone", "\u{1F469}\u{1F3FE}\u{200D}\u{1F393}");
-    m.insert("woman_student_medium-light_skin_tone", "\u{1F469}\u{1F3FC}\u{200D}\u{1F393}");
-    m.insert("woman_student_medium_skin_tone", "\u{1F469}\u{1F3FD}\u{200D}\u{1F393}");
+    m.insert(
+        "woman_student_dark_skin_tone",
+        "\u{1F469}\u{1F3FF}\u{200D}\u{1F393}",
+    );
+    m.insert(
+        "woman_student_light_skin_tone",
+        "\u{1F469}\u{1F3FB}\u{200D}\u{1F393}",
+    );
+    m.insert(
+        "woman_student_medium-dark_skin_tone",
+        "\u{1F469}\u{1F3FE}\u{200D}\u{1F393}",
+    );
+    m.insert(
+        "woman_student_medium-light_skin_tone",
+        "\u{1F469}\u{1F3FC}\u{200D}\u{1F393}",
+    );
+    m.insert(
+        "woman_student_medium_skin_tone",
+        "\u{1F469}\u{1F3FD}\u{200D}\u{1F393}",
+    );
     m.insert("woman_surfing", "\u{1F3C4}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_surfing_dark_skin_tone", "\u{1F3C4}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_surfing_light_skin_tone", "\u{1F3C4}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_surfing_medium-dark_skin_tone", "\u{1F3C4}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_surfing_medium-light_skin_tone", "\u{1F3C4}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_surfing_medium_skin_tone", "\u{1F3C4}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
+    m.insert(
+        "woman_surfing_dark_skin_tone",
+        "\u{1F3C4}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_surfing_light_skin_tone",
+        "\u{1F3C4}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_surfing_medium-dark_skin_tone",
+        "\u{1F3C4}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_surfing_medium-light_skin_tone",
+        "\u{1F3C4}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_surfing_medium_skin_tone",
+        "\u{1F3C4}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
     m.insert("woman_swimming", "\u{1F3CA}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_swimming_dark_skin_tone", "\u{1F3CA}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_swimming_light_skin_tone", "\u{1F3CA}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_swimming_medium-dark_skin_tone", "\u{1F3CA}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_swimming_medium-light_skin_tone", "\u{1F3CA}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_swimming_medium_skin_tone", "\u{1F3CA}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
+    m.insert(
+        "woman_swimming_dark_skin_tone",
+        "\u{1F3CA}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_swimming_light_skin_tone",
+        "\u{1F3CA}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_swimming_medium-dark_skin_tone",
+        "\u{1F3CA}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_swimming_medium-light_skin_tone",
+        "\u{1F3CA}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_swimming_medium_skin_tone",
+        "\u{1F3CA}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
     m.insert("woman_teacher", "\u{1F469}\u{200D}\u{1F3EB}");
-    m.insert("woman_teacher_dark_skin_tone", "\u{1F469}\u{1F3FF}\u{200D}\u{1F3EB}");
-    m.insert("woman_teacher_light_skin_tone", "\u{1F469}\u{1F3FB}\u{200D}\u{1F3EB}");
-    m.insert("woman_teacher_medium-dark_skin_tone", "\u{1F469}\u{1F3FE}\u{200D}\u{1F3EB}");
-    m.insert("woman_teacher_medium-light_skin_tone", "\u{1F469}\u{1F3FC}\u{200D}\u{1F3EB}");
-    m.insert("woman_teacher_medium_skin_tone", "\u{1F469}\u{1F3FD}\u{200D}\u{1F3EB}");
+    m.insert(
+        "woman_teacher_dark_skin_tone",
+        "\u{1F469}\u{1F3FF}\u{200D}\u{1F3EB}",
+    );
+    m.insert(
+        "woman_teacher_light_skin_tone",
+        "\u{1F469}\u{1F3FB}\u{200D}\u{1F3EB}",
+    );
+    m.insert(
+        "woman_teacher_medium-dark_skin_tone",
+        "\u{1F469}\u{1F3FE}\u{200D}\u{1F3EB}",
+    );
+    m.insert(
+        "woman_teacher_medium-light_skin_tone",
+        "\u{1F469}\u{1F3FC}\u{200D}\u{1F3EB}",
+    );
+    m.insert(
+        "woman_teacher_medium_skin_tone",
+        "\u{1F469}\u{1F3FD}\u{200D}\u{1F3EB}",
+    );
     m.insert("woman_technologist", "\u{1F469}\u{200D}\u{1F4BB}");
-    m.insert("woman_technologist_dark_skin_tone", "\u{1F469}\u{1F3FF}\u{200D}\u{1F4BB}");
-    m.insert("woman_technologist_light_skin_tone", "\u{1F469}\u{1F3FB}\u{200D}\u{1F4BB}");
-    m.insert("woman_technologist_medium-dark_skin_tone", "\u{1F469}\u{1F3FE}\u{200D}\u{1F4BB}");
-    m.insert("woman_technologist_medium-light_skin_tone", "\u{1F469}\u{1F3FC}\u{200D}\u{1F4BB}");
-    m.insert("woman_technologist_medium_skin_tone", "\u{1F469}\u{1F3FD}\u{200D}\u{1F4BB}");
+    m.insert(
+        "woman_technologist_dark_skin_tone",
+        "\u{1F469}\u{1F3FF}\u{200D}\u{1F4BB}",
+    );
+    m.insert(
+        "woman_technologist_light_skin_tone",
+        "\u{1F469}\u{1F3FB}\u{200D}\u{1F4BB}",
+    );
+    m.insert(
+        "woman_technologist_medium-dark_skin_tone",
+        "\u{1F469}\u{1F3FE}\u{200D}\u{1F4BB}",
+    );
+    m.insert(
+        "woman_technologist_medium-light_skin_tone",
+        "\u{1F469}\u{1F3FC}\u{200D}\u{1F4BB}",
+    );
+    m.insert(
+        "woman_technologist_medium_skin_tone",
+        "\u{1F469}\u{1F3FD}\u{200D}\u{1F4BB}",
+    );
     m.insert("woman_tipping_hand", "\u{1F481}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_tipping_hand_dark_skin_tone", "\u{1F481}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_tipping_hand_light_skin_tone", "\u{1F481}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_tipping_hand_medium-dark_skin_tone", "\u{1F481}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_tipping_hand_medium-light_skin_tone", "\u{1F481}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_tipping_hand_medium_skin_tone", "\u{1F481}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
+    m.insert(
+        "woman_tipping_hand_dark_skin_tone",
+        "\u{1F481}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_tipping_hand_light_skin_tone",
+        "\u{1F481}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_tipping_hand_medium-dark_skin_tone",
+        "\u{1F481}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_tipping_hand_medium-light_skin_tone",
+        "\u{1F481}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_tipping_hand_medium_skin_tone",
+        "\u{1F481}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
     m.insert("woman_vampire", "\u{1F9DB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_vampire_dark_skin_tone", "\u{1F9DB}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_vampire_light_skin_tone", "\u{1F9DB}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_vampire_medium-dark_skin_tone", "\u{1F9DB}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_vampire_medium-light_skin_tone", "\u{1F9DB}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_vampire_medium_skin_tone", "\u{1F9DB}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
+    m.insert(
+        "woman_vampire_dark_skin_tone",
+        "\u{1F9DB}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_vampire_light_skin_tone",
+        "\u{1F9DB}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_vampire_medium-dark_skin_tone",
+        "\u{1F9DB}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_vampire_medium-light_skin_tone",
+        "\u{1F9DB}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_vampire_medium_skin_tone",
+        "\u{1F9DB}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
     m.insert("woman_walking", "\u{1F6B6}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_walking_dark_skin_tone", "\u{1F6B6}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_walking_light_skin_tone", "\u{1F6B6}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_walking_medium-dark_skin_tone", "\u{1F6B6}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_walking_medium-light_skin_tone", "\u{1F6B6}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_walking_medium_skin_tone", "\u{1F6B6}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
+    m.insert(
+        "woman_walking_dark_skin_tone",
+        "\u{1F6B6}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_walking_light_skin_tone",
+        "\u{1F6B6}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_walking_medium-dark_skin_tone",
+        "\u{1F6B6}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_walking_medium-light_skin_tone",
+        "\u{1F6B6}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_walking_medium_skin_tone",
+        "\u{1F6B6}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
     m.insert("woman_wearing_turban", "\u{1F473}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_wearing_turban_dark_skin_tone", "\u{1F473}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_wearing_turban_light_skin_tone", "\u{1F473}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_wearing_turban_medium-dark_skin_tone", "\u{1F473}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_wearing_turban_medium-light_skin_tone", "\u{1F473}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}");
-    m.insert("woman_wearing_turban_medium_skin_tone", "\u{1F473}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}");
+    m.insert(
+        "woman_wearing_turban_dark_skin_tone",
+        "\u{1F473}\u{1F3FF}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_wearing_turban_light_skin_tone",
+        "\u{1F473}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_wearing_turban_medium-dark_skin_tone",
+        "\u{1F473}\u{1F3FE}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_wearing_turban_medium-light_skin_tone",
+        "\u{1F473}\u{1F3FC}\u{200D}\u{2640}\u{FE0F}",
+    );
+    m.insert(
+        "woman_wearing_turban_medium_skin_tone",
+        "\u{1F473}\u{1F3FD}\u{200D}\u{2640}\u{FE0F}",
+    );
     m.insert("woman_with_headscarf", "\u{1F9D5}");
     m.insert("woman_with_headscarf_dark_skin_tone", "\u{1F9D5}\u{1F3FF}");
     m.insert("woman_with_headscarf_light_skin_tone", "\u{1F9D5}\u{1F3FB}");
-    m.insert("woman_with_headscarf_medium-dark_skin_tone", "\u{1F9D5}\u{1F3FE}");
-    m.insert("woman_with_headscarf_medium-light_skin_tone", "\u{1F9D5}\u{1F3FC}");
-    m.insert("woman_with_headscarf_medium_skin_tone", "\u{1F9D5}\u{1F3FD}");
+    m.insert(
+        "woman_with_headscarf_medium-dark_skin_tone",
+        "\u{1F9D5}\u{1F3FE}",
+    );
+    m.insert(
+        "woman_with_headscarf_medium-light_skin_tone",
+        "\u{1F9D5}\u{1F3FC}",
+    );
+    m.insert(
+        "woman_with_headscarf_medium_skin_tone",
+        "\u{1F9D5}\u{1F3FD}",
+    );
     m.insert("woman_with_probing_cane", "\u{1F469}\u{200D}\u{1F9AF}");
     m.insert("woman_zombie", "\u{1F9DF}\u{200D}\u{2640}\u{FE0F}");
     m.insert("woman’s_boot", "\u{1F462}");
@@ -2858,14 +5060,23 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("arrow_double_down", "\u{23EC}");
     m.insert("hearts", "\u{2665}");
     m.insert("rewind", "\u{23EA}");
-    m.insert("black_left__pointing_double_triangle_with_vertical_bar", "\u{23EE}");
+    m.insert(
+        "black_left__pointing_double_triangle_with_vertical_bar",
+        "\u{23EE}",
+    );
     m.insert("arrow_backward", "\u{25C0}");
     m.insert("black_medium_small_square", "\u{25FE}");
     m.insert("question", "\u{2753}");
     m.insert("fast_forward", "\u{23E9}");
-    m.insert("black_right__pointing_double_triangle_with_vertical_bar", "\u{23ED}");
+    m.insert(
+        "black_right__pointing_double_triangle_with_vertical_bar",
+        "\u{23ED}",
+    );
     m.insert("arrow_forward", "\u{25B6}");
-    m.insert("black_right__pointing_triangle_with_double_vertical_bar", "\u{23EF}");
+    m.insert(
+        "black_right__pointing_triangle_with_double_vertical_bar",
+        "\u{23EF}",
+    );
     m.insert("arrow_right", "\u{27A1}");
     m.insert("spades", "\u{2660}");
     m.insert("black_square_for_stop", "\u{23F9}");
@@ -3035,7 +5246,10 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("flag_for_botswana", "\u{1F1E7}\u{1F1FC}");
     m.insert("flag_for_bouvet_island", "\u{1F1E7}\u{1F1FB}");
     m.insert("flag_for_brazil", "\u{1F1E7}\u{1F1F7}");
-    m.insert("flag_for_british_indian_ocean_territory", "\u{1F1EE}\u{1F1F4}");
+    m.insert(
+        "flag_for_british_indian_ocean_territory",
+        "\u{1F1EE}\u{1F1F4}",
+    );
     m.insert("flag_for_british_virgin_islands", "\u{1F1FB}\u{1F1EC}");
     m.insert("flag_for_brunei", "\u{1F1E7}\u{1F1F3}");
     m.insert("flag_for_bulgaria", "\u{1F1E7}\u{1F1EC}");
@@ -3207,7 +5421,10 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("flag_for_solomon_islands", "\u{1F1F8}\u{1F1E7}");
     m.insert("flag_for_somalia", "\u{1F1F8}\u{1F1F4}");
     m.insert("flag_for_south_africa", "\u{1F1FF}\u{1F1E6}");
-    m.insert("flag_for_south_georgia_&_south_sandwich_islands", "\u{1F1EC}\u{1F1F8}");
+    m.insert(
+        "flag_for_south_georgia_&_south_sandwich_islands",
+        "\u{1F1EC}\u{1F1F8}",
+    );
     m.insert("flag_for_south_korea", "\u{1F1F0}\u{1F1F7}");
     m.insert("flag_for_south_sudan", "\u{1F1F8}\u{1F1F8}");
     m.insert("flag_for_spain", "\u{1F1EA}\u{1F1F8}");
@@ -3437,7 +5654,10 @@ pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("fist", "\u{270A}");
     m.insert("hand", "\u{270B}");
     m.insert("raised_hand_with_fingers_splayed", "\u{1F590}");
-    m.insert("raised_hand_with_part_between_middle_and_ring_fingers", "\u{1F596}");
+    m.insert(
+        "raised_hand_with_part_between_middle_and_ring_fingers",
+        "\u{1F596}",
+    );
     m.insert("blue_car", "\u{1F699}");
     m.insert("apple", "\u{1F34E}");
     m.insert("relieved", "\u{1F60C}");

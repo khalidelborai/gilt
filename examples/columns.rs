@@ -19,8 +19,18 @@ fn main() {
     console.print(&Rule::with_title("Programming Languages (Columns)"));
 
     let languages = [
-        "Rust", "Python", "Go", "TypeScript", "Java", "C++",
-        "Ruby", "Swift", "Kotlin", "Haskell", "Elixir", "Zig",
+        "Rust",
+        "Python",
+        "Go",
+        "TypeScript",
+        "Java",
+        "C++",
+        "Ruby",
+        "Swift",
+        "Kotlin",
+        "Haskell",
+        "Elixir",
+        "Zig",
     ];
 
     let mut cols = Columns::new();
@@ -50,30 +60,29 @@ fn main() {
     // with descriptive labels, then show a separate panel grid below.
 
     let descriptions: &[(&str, &str)] = &[
-        ("Rust",       "Systems programming with safety guarantees"),
-        ("Python",     "Versatile scripting and data science"),
-        ("Go",         "Concurrent server software made simple"),
+        ("Rust", "Systems programming with safety guarantees"),
+        ("Python", "Versatile scripting and data science"),
+        ("Go", "Concurrent server software made simple"),
         ("TypeScript", "JavaScript with static types"),
-        ("Java",       "Enterprise & Android powerhouse"),
-        ("C++",        "High-performance systems & games"),
+        ("Java", "Enterprise & Android powerhouse"),
+        ("C++", "High-performance systems & games"),
     ];
 
     // Print each description inside its own panel
     for (name, desc) in descriptions {
         let content = Text::new(desc, Style::null());
-        let panel = Panel::fit(content)
-            .title(Text::new(name, Style::null()));
+        let panel = Panel::fit(content).title(Text::new(name, Style::null()));
 
         console.print(&panel);
     }
 
     // -- Column-first ordering ---------------------------------------------
 
-    console.print(&Rule::with_title("Column-First Ordering (fill top-to-bottom)"));
+    console.print(&Rule::with_title(
+        "Column-First Ordering (fill top-to-bottom)",
+    ));
 
-    let mut cols = Columns::new()
-        .with_column_first(true)
-        .with_width(12);
+    let mut cols = Columns::new().with_column_first(true).with_width(12);
     for lang in &languages {
         cols.add_renderable(lang);
     }

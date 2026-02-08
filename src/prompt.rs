@@ -141,8 +141,7 @@ impl Prompt {
         if self.show_choices {
             if let Some(ref choices) = self.choices {
                 let choices_str = format!("[{}]", choices.join("/"));
-                let choices_style =
-                    Style::parse("magenta bold").unwrap_or_else(|_| Style::null());
+                let choices_style = Style::parse("magenta bold").unwrap_or_else(|_| Style::null());
                 prompt.append_str(" ", None);
                 prompt.append_str(&choices_str, Some(choices_style));
             }
@@ -151,8 +150,7 @@ impl Prompt {
         if self.show_default {
             if let Some(ref default) = self.default {
                 let default_str = format!("({})", default);
-                let default_style =
-                    Style::parse("cyan bold").unwrap_or_else(|_| Style::null());
+                let default_style = Style::parse("cyan bold").unwrap_or_else(|_| Style::null());
                 prompt.append_str(" ", None);
                 prompt.append_str(&default_str, Some(default_style));
             }
@@ -427,7 +425,6 @@ pub fn ask_float_with_input<R: BufRead>(prompt: &str, input: &mut R) -> f64 {
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
-
 
 // ---------------------------------------------------------------------------
 // Select
@@ -971,8 +968,11 @@ mod tests {
 
     #[test]
     fn test_prompt_with_choices_valid() {
-        let p = Prompt::new("Pick fruit")
-            .with_choices(vec!["apple".into(), "orange".into(), "pear".into()]);
+        let p = Prompt::new("Pick fruit").with_choices(vec![
+            "apple".into(),
+            "orange".into(),
+            "pear".into(),
+        ]);
         let mut input = Cursor::new(b"apple\n" as &[u8]);
         let result = p.ask_with_input(&mut input);
         assert_eq!(result, "apple");
@@ -982,8 +982,11 @@ mod tests {
 
     #[test]
     fn test_prompt_with_choices_invalid_then_valid() {
-        let p = Prompt::new("Pick fruit")
-            .with_choices(vec!["apple".into(), "orange".into(), "pear".into()]);
+        let p = Prompt::new("Pick fruit").with_choices(vec![
+            "apple".into(),
+            "orange".into(),
+            "pear".into(),
+        ]);
         // First "banana" is invalid, then "orange" is valid
         let mut input = Cursor::new(b"banana\norange\n" as &[u8]);
         let result = p.ask_with_input(&mut input);
@@ -1168,8 +1171,7 @@ mod tests {
 
     #[test]
     fn test_builder_with_choices() {
-        let p = Prompt::new("test")
-            .with_choices(vec!["a".into(), "b".into()]);
+        let p = Prompt::new("test").with_choices(vec!["a".into(), "b".into()]);
         assert_eq!(p.choices, Some(vec!["a".to_string(), "b".to_string()]));
     }
 
@@ -1408,8 +1410,7 @@ mod tests {
 
     #[test]
     fn test_select_default_on_empty() {
-        let s = Select::new("Pick", vec!["A".into(), "B".into(), "C".into()])
-            .with_default(1);
+        let s = Select::new("Pick", vec!["A".into(), "B".into(), "C".into()]).with_default(1);
         assert_eq!(s.parse_input(""), Ok(1));
     }
 
@@ -1445,7 +1446,10 @@ mod tests {
 
     #[test]
     fn test_select_format_choices() {
-        let s = Select::new("Select a color", vec!["Red".into(), "Green".into(), "Blue".into()]);
+        let s = Select::new(
+            "Select a color",
+            vec!["Red".into(), "Green".into(), "Blue".into()],
+        );
         let output = s.format_choices();
         assert!(output.contains("? Select a color:"));
         assert!(output.contains("  1) Red"));
@@ -1462,8 +1466,7 @@ mod tests {
 
     #[test]
     fn test_select_format_input_prompt_with_default() {
-        let s = Select::new("Pick", vec!["A".into(), "B".into(), "C".into()])
-            .with_default(1);
+        let s = Select::new("Pick", vec!["A".into(), "B".into(), "C".into()]).with_default(1);
         let prompt = s.format_input_prompt();
         assert_eq!(prompt, "Enter choice [1-3] (2): ");
     }
@@ -1503,8 +1506,7 @@ mod tests {
 
     #[test]
     fn test_select_default_on_eof() {
-        let s = Select::new("Pick", vec!["A".into(), "B".into()])
-            .with_default(0);
+        let s = Select::new("Pick", vec!["A".into(), "B".into()]).with_default(0);
         let mut console = Console::builder().quiet(true).build();
         let mut input = Cursor::new(b"" as &[u8]);
         let result = s.ask_with_input(&mut console, &mut input);
@@ -1593,8 +1595,7 @@ mod tests {
 
     #[test]
     fn test_multiselect_min_validation() {
-        let ms = MultiSelect::new("Pick", vec!["A".into(), "B".into(), "C".into()])
-            .with_min(2);
+        let ms = MultiSelect::new("Pick", vec!["A".into(), "B".into(), "C".into()]).with_min(2);
         let result = ms.parse_input("1");
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("at least 2"));
@@ -1602,15 +1603,13 @@ mod tests {
 
     #[test]
     fn test_multiselect_min_satisfied() {
-        let ms = MultiSelect::new("Pick", vec!["A".into(), "B".into(), "C".into()])
-            .with_min(2);
+        let ms = MultiSelect::new("Pick", vec!["A".into(), "B".into(), "C".into()]).with_min(2);
         assert_eq!(ms.parse_input("1,2"), Ok(vec![0, 1]));
     }
 
     #[test]
     fn test_multiselect_max_validation() {
-        let ms = MultiSelect::new("Pick", vec!["A".into(), "B".into(), "C".into()])
-            .with_max(1);
+        let ms = MultiSelect::new("Pick", vec!["A".into(), "B".into(), "C".into()]).with_max(1);
         let result = ms.parse_input("1,2");
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("at most 1"));
@@ -1618,8 +1617,7 @@ mod tests {
 
     #[test]
     fn test_multiselect_max_satisfied() {
-        let ms = MultiSelect::new("Pick", vec!["A".into(), "B".into(), "C".into()])
-            .with_max(2);
+        let ms = MultiSelect::new("Pick", vec!["A".into(), "B".into(), "C".into()]).with_max(2);
         assert_eq!(ms.parse_input("1,3"), Ok(vec![0, 2]));
     }
 
@@ -1706,8 +1704,7 @@ mod tests {
 
     #[test]
     fn test_multiselect_ask_with_input_invalid_then_valid() {
-        let ms = MultiSelect::new("Pick", vec!["A".into(), "B".into()])
-            .with_min(1);
+        let ms = MultiSelect::new("Pick", vec!["A".into(), "B".into()]).with_min(1);
         let mut console = Console::builder().quiet(true).build();
         // First line is empty (fails min), then "2" succeeds
         let mut input = Cursor::new(b"\n2\n" as &[u8]);
@@ -1746,22 +1743,19 @@ mod tests {
 
     #[test]
     fn test_multiselect_builder_with_defaults() {
-        let ms = MultiSelect::new("Pick", vec!["A".into()])
-            .with_defaults(vec![0]);
+        let ms = MultiSelect::new("Pick", vec!["A".into()]).with_defaults(vec![0]);
         assert_eq!(ms.defaults, vec![0]);
     }
 
     #[test]
     fn test_multiselect_builder_with_min() {
-        let ms = MultiSelect::new("Pick", vec!["A".into()])
-            .with_min(1);
+        let ms = MultiSelect::new("Pick", vec!["A".into()]).with_min(1);
         assert_eq!(ms.min_selections, 1);
     }
 
     #[test]
     fn test_multiselect_builder_with_max() {
-        let ms = MultiSelect::new("Pick", vec!["A".into()])
-            .with_max(3);
+        let ms = MultiSelect::new("Pick", vec!["A".into()]).with_max(3);
         assert_eq!(ms.max_selections, Some(3));
     }
 
@@ -1783,7 +1777,10 @@ mod tests {
 
     #[test]
     fn test_select_display_via_capture() {
-        let s = Select::new("Pick a fruit", vec!["Apple".into(), "Banana".into(), "Cherry".into()]);
+        let s = Select::new(
+            "Pick a fruit",
+            vec!["Apple".into(), "Banana".into(), "Cherry".into()],
+        );
         let mut console = Console::builder().width(80).force_terminal(true).build();
         console.begin_capture();
         console.print_text(&s.format_choices());
@@ -1817,8 +1814,7 @@ mod tests {
 
     #[test]
     fn test_multiselect_all_with_max() {
-        let ms = MultiSelect::new("Pick", vec!["A".into(), "B".into(), "C".into()])
-            .with_max(2);
+        let ms = MultiSelect::new("Pick", vec!["A".into(), "B".into(), "C".into()]).with_max(2);
         let result = ms.parse_input("all");
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("at most 2"));
@@ -1842,5 +1838,4 @@ mod tests {
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("not a valid number"));
     }
-
 }

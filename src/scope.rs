@@ -189,11 +189,7 @@ impl Renderable for Scope {
 /// # Returns
 ///
 /// A `Vec<Segment>` ready for console output.
-pub fn render_scope(
-    scope: &[(&str, &str)],
-    title: Option<&str>,
-    sort_keys: bool,
-) -> Vec<Segment> {
+pub fn render_scope(scope: &[(&str, &str)], title: Option<&str>, sort_keys: bool) -> Vec<Segment> {
     let console = Console::builder()
         .width(80)
         .force_terminal(true)
@@ -439,9 +435,7 @@ mod tests {
 
     #[test]
     fn test_builder_chain() {
-        let scope = Scope::from_pairs(&[("k", "v")])
-            .title("T")
-            .sort_keys(false);
+        let scope = Scope::from_pairs(&[("k", "v")]).title("T").sort_keys(false);
         assert_eq!(scope.title, Some("T".to_string()));
         assert!(!scope.sort_keys);
     }
@@ -522,11 +516,7 @@ mod tests {
 
     #[test]
     fn test_ordered_items_dunders_first() {
-        let scope = Scope::from_pairs(&[
-            ("normal", "n"),
-            ("__dunder__", "d"),
-            ("alpha", "a"),
-        ]);
+        let scope = Scope::from_pairs(&[("normal", "n"), ("__dunder__", "d"), ("alpha", "a")]);
         let ordered = scope.ordered_items();
         assert_eq!(ordered[0].0, "__dunder__");
         assert_eq!(ordered[1].0, "alpha");

@@ -29,8 +29,16 @@ fn main() {
     // Debug struct
     #[derive(Debug)]
     #[allow(dead_code)]
-    struct Config { host: String, port: u16, debug: bool }
-    let cfg = Config { host: "localhost".into(), port: 8080, debug: true };
+    struct Config {
+        host: String,
+        port: u16,
+        debug: bool,
+    }
+    let cfg = Config {
+        host: "localhost".into(),
+        port: 8080,
+        debug: true,
+    };
     let pretty = Pretty::from_debug(&cfg).with_type_annotation(true);
     console.print_text("[dim]Debug struct:[/dim]");
     console.print(&pretty);

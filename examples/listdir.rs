@@ -61,10 +61,7 @@ fn main() {
             cols.add_renderable(&styled);
         } else {
             // Files: highlight extension with color
-            let styled = match Path::new(&*name_str)
-                .extension()
-                .and_then(|e| e.to_str())
-            {
+            let styled = match Path::new(&*name_str).extension().and_then(|e| e.to_str()) {
                 Some("rs") => format!("[green]{}[/green]", name_str),
                 Some("toml") | Some("yaml") | Some("yml") | Some("json") => {
                     format!("[yellow]{}[/yellow]", name_str)

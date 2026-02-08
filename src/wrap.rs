@@ -285,10 +285,7 @@ mod tests {
         // "abracadabra" width=4, fold=false
         // word_length=11 > 4, fold=false
         // start=0, no append. cell_offset=11
-        assert_eq!(
-            divide_line("abracadabra", 4, false),
-            Vec::<usize>::new()
-        );
+        assert_eq!(divide_line("abracadabra", 4, false), Vec::<usize>::new());
     }
 
     #[test]

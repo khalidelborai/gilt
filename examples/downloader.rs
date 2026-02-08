@@ -10,7 +10,7 @@ use std::time::Duration;
 
 use gilt::console::Console;
 use gilt::progress::{
-    BarColumn, DownloadColumn, Progress, TextColumn, TransferSpeedColumn, TimeRemainingColumn,
+    BarColumn, DownloadColumn, Progress, TextColumn, TimeRemainingColumn, TransferSpeedColumn,
 };
 
 /// Simulated file with a name and size in bytes.

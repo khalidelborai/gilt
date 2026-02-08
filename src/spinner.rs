@@ -69,9 +69,9 @@ impl Spinner {
     ///
     /// Returns `Err(SpinnerError)` if the name is not found in the SPINNERS map.
     pub fn new(name: &str) -> Result<Spinner, SpinnerError> {
-        let spinner_data = SPINNERS.get(name).ok_or_else(|| {
-            SpinnerError(format!("no spinner called {:?}", name))
-        })?;
+        let spinner_data = SPINNERS
+            .get(name)
+            .ok_or_else(|| SpinnerError(format!("no spinner called {:?}", name)))?;
 
         Ok(Spinner {
             name: name.to_string(),
@@ -149,12 +149,7 @@ impl Spinner {
     /// - `text`: new text to display (if non-empty).
     /// - `style`: new style for the spinner frame.
     /// - `speed`: new speed multiplier (applied smoothly on next render).
-    pub fn update(
-        &mut self,
-        text: Option<Text>,
-        style: Option<Style>,
-        speed: Option<f64>,
-    ) {
+    pub fn update(&mut self, text: Option<Text>, style: Option<Style>, speed: Option<f64>) {
         if let Some(t) = text {
             if !t.is_empty() {
                 self.text = Some(t);
@@ -337,11 +332,7 @@ mod tests {
         let mut spinner = Spinner::new("dots").unwrap();
         assert!(spinner.text.is_none());
 
-        spinner.update(
-            Some(Text::new("New text", Style::null())),
-            None,
-            None,
-        );
+        spinner.update(Some(Text::new("New text", Style::null())), None, None);
         assert!(spinner.text.is_some());
         assert_eq!(spinner.text.as_ref().unwrap().plain(), "New text");
     }
@@ -466,13 +457,19 @@ mod tests {
     fn test_various_spinners() {
         // Verify that several different spinners can be created and rendered
         let spinner_names = [
-            "dots", "line", "arc", "bouncingBar", "star",
-            "bounce", "toggle", "arrow", "circle",
+            "dots",
+            "line",
+            "arc",
+            "bouncingBar",
+            "star",
+            "bounce",
+            "toggle",
+            "arrow",
+            "circle",
         ];
         for name in &spinner_names {
-            let mut spinner = Spinner::new(name).unwrap_or_else(|e| {
-                panic!("failed to create spinner '{}': {}", name, e)
-            });
+            let mut spinner = Spinner::new(name)
+                .unwrap_or_else(|e| panic!("failed to create spinner '{}': {}", name, e));
             let text = spinner.render(0.0);
             assert!(
                 !text.plain().is_empty(),

@@ -85,7 +85,9 @@ fn main() {
         live.update(display, true);
 
         // Check if all tasks are complete.
-        let all_done = tasks.iter().all(|(_, completed, total)| *completed >= *total);
+        let all_done = tasks
+            .iter()
+            .all(|(_, completed, total)| *completed >= *total);
         if all_done {
             break;
         }

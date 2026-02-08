@@ -176,8 +176,7 @@ impl Renderable for Rule {
                     HorizontalAlign::Center => {
                         // Center: "rule_chars  title  rule_chars"
                         // Need at least min_side + 1 + title + 1 + min_side
-                        let title_max_width =
-                            width.saturating_sub(min_side * 2 + 2);
+                        let title_max_width = width.saturating_sub(min_side * 2 + 2);
                         if title_max_width == 0 || title_text.cell_len() == 0 {
                             // Title doesn't fit, just draw line
                             let line_text = rule_with_chars.rule_line(width);
@@ -193,8 +192,7 @@ impl Renderable for Rule {
                         let title_width = title_text.cell_len();
                         let side_width = (width.saturating_sub(title_width + 2)) / 2;
                         let left_width = side_width;
-                        let right_width =
-                            width.saturating_sub(left_width + title_width + 2);
+                        let right_width = width.saturating_sub(left_width + title_width + 2);
 
                         // Left rule
                         let left_line = rule_with_chars.rule_line(left_width);
@@ -215,8 +213,7 @@ impl Renderable for Rule {
                     }
                     HorizontalAlign::Left => {
                         // Left: "title  rule_chars..."
-                        let title_max_width =
-                            width.saturating_sub(min_side + 2);
+                        let title_max_width = width.saturating_sub(min_side + 2);
                         if title_max_width == 0 || title_text.cell_len() == 0 {
                             let line_text = rule_with_chars.rule_line(width);
                             let exact = set_cell_size(&line_text, width);
@@ -228,8 +225,7 @@ impl Renderable for Rule {
                         title_text.truncate(title_max_width, Some(OverflowMethod::Ellipsis), false);
 
                         let title_width = title_text.cell_len();
-                        let rule_width =
-                            width.saturating_sub(title_width + 2);
+                        let rule_width = width.saturating_sub(title_width + 2);
 
                         // Title + space
                         segments.extend(title_text.render().into_iter().filter(|s| s.text != "\n"));
@@ -244,8 +240,7 @@ impl Renderable for Rule {
                     }
                     HorizontalAlign::Right => {
                         // Right: "rule_chars...  title"
-                        let title_max_width =
-                            width.saturating_sub(min_side + 2);
+                        let title_max_width = width.saturating_sub(min_side + 2);
                         if title_max_width == 0 || title_text.cell_len() == 0 {
                             let line_text = rule_with_chars.rule_line(width);
                             let exact = set_cell_size(&line_text, width);
@@ -257,8 +252,7 @@ impl Renderable for Rule {
                         title_text.truncate(title_max_width, Some(OverflowMethod::Ellipsis), false);
 
                         let title_width = title_text.cell_len();
-                        let rule_width =
-                            width.saturating_sub(title_width + 2);
+                        let rule_width = width.saturating_sub(title_width + 2);
 
                         // Rule line + space
                         let line = rule_with_chars.rule_line(rule_width + 1);
@@ -513,8 +507,7 @@ mod tests {
     #[test]
     fn test_title_truncation() {
         let console = make_console(10);
-        let rule =
-            Rule::with_title("This is a very long title").characters("-");
+        let rule = Rule::with_title("This is a very long title").characters("-");
         let output = render_rule(&console, &rule);
         let line = output.trim_end_matches('\n');
         assert_eq!(cell_len(line), 10);
@@ -560,5 +553,4 @@ mod tests {
         let s = format!("{}", rule);
         assert!(s.contains("Section"));
     }
-
 }

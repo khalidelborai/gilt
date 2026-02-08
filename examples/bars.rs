@@ -38,9 +38,9 @@ fn main() {
     console.print(&Rule::with_title("Colored Bars"));
 
     let colors: &[(&str, &str, f64)] = &[
-        ("Red   ", "red",    15.0),
-        ("Green ", "green",  25.0),
-        ("Blue  ", "blue",   35.0),
+        ("Red   ", "red", 15.0),
+        ("Green ", "green", 25.0),
+        ("Blue  ", "blue", 35.0),
         ("Yellow", "yellow", 40.0),
     ];
 
@@ -56,11 +56,7 @@ fn main() {
 
     console.print(&Rule::with_title("Offset Bars (partial fill)"));
 
-    let offsets: &[(&str, f64, f64)] = &[
-        ("A ", 0.0,  20.0),
-        ("B ", 10.0, 30.0),
-        ("C ", 20.0, 40.0),
-    ];
+    let offsets: &[(&str, f64, f64)] = &[("A ", 0.0, 20.0), ("B ", 10.0, 30.0), ("C ", 20.0, 40.0)];
 
     for (label, begin, end) in offsets {
         print!("{}", label);

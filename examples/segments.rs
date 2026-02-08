@@ -51,11 +51,17 @@ fn main() {
 
     let line = vec![Segment::text("Hi")];
     let padded = Segment::adjust_line_length(&line, 10, &Style::null(), true);
-    println!("  pad 'Hi' to 10: {:?}", padded.iter().map(|s| &s.text).collect::<Vec<_>>());
+    println!(
+        "  pad 'Hi' to 10: {:?}",
+        padded.iter().map(|s| &s.text).collect::<Vec<_>>()
+    );
 
     let line = vec![Segment::text("Hello, World!")];
     let cropped = Segment::adjust_line_length(&line, 5, &Style::null(), false);
-    println!("  crop to 5:      {:?}", cropped.iter().map(|s| &s.text).collect::<Vec<_>>());
+    println!(
+        "  crop to 5:      {:?}",
+        cropped.iter().map(|s| &s.text).collect::<Vec<_>>()
+    );
 
     println!("\n=== Simplify (merge adjacent) ===\n");
 

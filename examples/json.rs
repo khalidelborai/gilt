@@ -7,10 +7,7 @@ use gilt::json::{Json, JsonOptions};
 use gilt::rule::Rule;
 
 fn main() {
-    let mut console = Console::builder()
-        .width(80)
-        .force_terminal(true)
-        .build();
+    let mut console = Console::builder().width(80).force_terminal(true).build();
 
     let json_str = r#"{
         "name": "Gilt",

@@ -315,81 +315,62 @@ impl BoxChars {
 // Box constant definitions
 // ──────────────────────────────────────────────────────────
 
-pub static ASCII: Lazy<BoxChars> = Lazy::new(|| {
-    BoxChars::new("+--+\n| ||\n|-+|\n| ||\n|-+|\n|-+|\n| ||\n+--+", true)
-});
+pub static ASCII: Lazy<BoxChars> =
+    Lazy::new(|| BoxChars::new("+--+\n| ||\n|-+|\n| ||\n|-+|\n|-+|\n| ||\n+--+", true));
 
-pub static ASCII2: Lazy<BoxChars> = Lazy::new(|| {
-    BoxChars::new("+-++\n| ||\n+-++\n| ||\n+-++\n+-++\n| ||\n+-++", true)
-});
+pub static ASCII2: Lazy<BoxChars> =
+    Lazy::new(|| BoxChars::new("+-++\n| ||\n+-++\n| ||\n+-++\n+-++\n| ||\n+-++", true));
 
-pub static ASCII_DOUBLE_HEAD: Lazy<BoxChars> = Lazy::new(|| {
-    BoxChars::new("+-++\n| ||\n+=++\n| ||\n+-++\n+-++\n| ||\n+-++", true)
-});
+pub static ASCII_DOUBLE_HEAD: Lazy<BoxChars> =
+    Lazy::new(|| BoxChars::new("+-++\n| ||\n+=++\n| ||\n+-++\n+-++\n| ||\n+-++", true));
 
-pub static SQUARE: Lazy<BoxChars> = Lazy::new(|| {
-    BoxChars::new("┌─┬┐\n│ ││\n├─┼┤\n│ ││\n├─┼┤\n├─┼┤\n│ ││\n└─┴┘", false)
-});
+pub static SQUARE: Lazy<BoxChars> =
+    Lazy::new(|| BoxChars::new("┌─┬┐\n│ ││\n├─┼┤\n│ ││\n├─┼┤\n├─┼┤\n│ ││\n└─┴┘", false));
 
-pub static SQUARE_DOUBLE_HEAD: Lazy<BoxChars> = Lazy::new(|| {
-    BoxChars::new("┌─┬┐\n│ ││\n╞═╪╡\n│ ││\n├─┼┤\n├─┼┤\n│ ││\n└─┴┘", false)
-});
+pub static SQUARE_DOUBLE_HEAD: Lazy<BoxChars> =
+    Lazy::new(|| BoxChars::new("┌─┬┐\n│ ││\n╞═╪╡\n│ ││\n├─┼┤\n├─┼┤\n│ ││\n└─┴┘", false));
 
-pub static MINIMAL: Lazy<BoxChars> = Lazy::new(|| {
-    BoxChars::new("  ╷ \n  │ \n╶─┼╴\n  │ \n╶─┼╴\n╶─┼╴\n  │ \n  ╵ ", false)
-});
+pub static MINIMAL: Lazy<BoxChars> =
+    Lazy::new(|| BoxChars::new("  ╷ \n  │ \n╶─┼╴\n  │ \n╶─┼╴\n╶─┼╴\n  │ \n  ╵ ", false));
 
-pub static MINIMAL_HEAVY_HEAD: Lazy<BoxChars> = Lazy::new(|| {
-    BoxChars::new("  ╷ \n  │ \n╺━┿╸\n  │ \n╶─┼╴\n╶─┼╴\n  │ \n  ╵ ", false)
-});
+pub static MINIMAL_HEAVY_HEAD: Lazy<BoxChars> =
+    Lazy::new(|| BoxChars::new("  ╷ \n  │ \n╺━┿╸\n  │ \n╶─┼╴\n╶─┼╴\n  │ \n  ╵ ", false));
 
-pub static MINIMAL_DOUBLE_HEAD: Lazy<BoxChars> = Lazy::new(|| {
-    BoxChars::new("  ╷ \n  │ \n ═╪ \n  │ \n ─┼ \n ─┼ \n  │ \n  ╵ ", false)
-});
+pub static MINIMAL_DOUBLE_HEAD: Lazy<BoxChars> =
+    Lazy::new(|| BoxChars::new("  ╷ \n  │ \n ═╪ \n  │ \n ─┼ \n ─┼ \n  │ \n  ╵ ", false));
 
-pub static SIMPLE: Lazy<BoxChars> = Lazy::new(|| {
-    BoxChars::new("    \n    \n ── \n    \n    \n ── \n    \n    ", false)
-});
+pub static SIMPLE: Lazy<BoxChars> =
+    Lazy::new(|| BoxChars::new("    \n    \n ── \n    \n    \n ── \n    \n    ", false));
 
-pub static SIMPLE_HEAD: Lazy<BoxChars> = Lazy::new(|| {
-    BoxChars::new("    \n    \n ── \n    \n    \n    \n    \n    ", false)
-});
+pub static SIMPLE_HEAD: Lazy<BoxChars> =
+    Lazy::new(|| BoxChars::new("    \n    \n ── \n    \n    \n    \n    \n    ", false));
 
-pub static SIMPLE_HEAVY: Lazy<BoxChars> = Lazy::new(|| {
-    BoxChars::new("    \n    \n ━━ \n    \n    \n ━━ \n    \n    ", false)
-});
+pub static SIMPLE_HEAVY: Lazy<BoxChars> =
+    Lazy::new(|| BoxChars::new("    \n    \n ━━ \n    \n    \n ━━ \n    \n    ", false));
 
-pub static HORIZONTALS: Lazy<BoxChars> = Lazy::new(|| {
-    BoxChars::new(" ── \n    \n ── \n    \n ── \n ── \n    \n ── ", false)
-});
+pub static HORIZONTALS: Lazy<BoxChars> =
+    Lazy::new(|| BoxChars::new(" ── \n    \n ── \n    \n ── \n ── \n    \n ── ", false));
 
-pub static ROUNDED: Lazy<BoxChars> = Lazy::new(|| {
-    BoxChars::new("╭─┬╮\n│ ││\n├─┼┤\n│ ││\n├─┼┤\n├─┼┤\n│ ││\n╰─┴╯", false)
-});
+pub static ROUNDED: Lazy<BoxChars> =
+    Lazy::new(|| BoxChars::new("╭─┬╮\n│ ││\n├─┼┤\n│ ││\n├─┼┤\n├─┼┤\n│ ││\n╰─┴╯", false));
 
-pub static HEAVY: Lazy<BoxChars> = Lazy::new(|| {
-    BoxChars::new("┏━┳┓\n┃ ┃┃\n┣━╋┫\n┃ ┃┃\n┣━╋┫\n┣━╋┫\n┃ ┃┃\n┗━┻┛", false)
-});
+pub static HEAVY: Lazy<BoxChars> =
+    Lazy::new(|| BoxChars::new("┏━┳┓\n┃ ┃┃\n┣━╋┫\n┃ ┃┃\n┣━╋┫\n┣━╋┫\n┃ ┃┃\n┗━┻┛", false));
 
-pub static HEAVY_EDGE: Lazy<BoxChars> = Lazy::new(|| {
-    BoxChars::new("┏━┯┓\n┃ │┃\n┠─┼┨\n┃ │┃\n┠─┼┨\n┠─┼┨\n┃ │┃\n┗━┷┛", false)
-});
+pub static HEAVY_EDGE: Lazy<BoxChars> =
+    Lazy::new(|| BoxChars::new("┏━┯┓\n┃ │┃\n┠─┼┨\n┃ │┃\n┠─┼┨\n┠─┼┨\n┃ │┃\n┗━┷┛", false));
 
-pub static HEAVY_HEAD: Lazy<BoxChars> = Lazy::new(|| {
-    BoxChars::new("┏━┳┓\n┃ ┃┃\n┡━╇┩\n│ ││\n├─┼┤\n├─┼┤\n│ ││\n└─┴┘", false)
-});
+pub static HEAVY_HEAD: Lazy<BoxChars> =
+    Lazy::new(|| BoxChars::new("┏━┳┓\n┃ ┃┃\n┡━╇┩\n│ ││\n├─┼┤\n├─┼┤\n│ ││\n└─┴┘", false));
 
-pub static DOUBLE: Lazy<BoxChars> = Lazy::new(|| {
-    BoxChars::new("╔═╦╗\n║ ║║\n╠═╬╣\n║ ║║\n╠═╬╣\n╠═╬╣\n║ ║║\n╚═╩╝", false)
-});
+pub static DOUBLE: Lazy<BoxChars> =
+    Lazy::new(|| BoxChars::new("╔═╦╗\n║ ║║\n╠═╬╣\n║ ║║\n╠═╬╣\n╠═╬╣\n║ ║║\n╚═╩╝", false));
 
-pub static DOUBLE_EDGE: Lazy<BoxChars> = Lazy::new(|| {
-    BoxChars::new("╔═╤╗\n║ │║\n╟─┼╢\n║ │║\n╟─┼╢\n╟─┼╢\n║ │║\n╚═╧╝", false)
-});
+pub static DOUBLE_EDGE: Lazy<BoxChars> =
+    Lazy::new(|| BoxChars::new("╔═╤╗\n║ │║\n╟─┼╢\n║ │║\n╟─┼╢\n╟─┼╢\n║ │║\n╚═╧╝", false));
 
-pub static MARKDOWN: Lazy<BoxChars> = Lazy::new(|| {
-    BoxChars::new("    \n| ||\n|-||\n| ||\n|-||\n|-||\n| ||\n    ", true)
-});
+pub static MARKDOWN: Lazy<BoxChars> =
+    Lazy::new(|| BoxChars::new("    \n| ||\n|-||\n| ||\n|-||\n|-||\n| ||\n    ", true));
 
 #[cfg(test)]
 mod tests {

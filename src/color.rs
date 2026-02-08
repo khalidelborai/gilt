@@ -396,13 +396,11 @@ pub fn parse_rgb_hex(hex: &str) -> Result<ColorTriplet, ColorParseError> {
 /// * `color2` - Second color
 /// * `cross_fade` - Blend factor (0.0 = color1, 1.0 = color2)
 pub fn blend_rgb(color1: ColorTriplet, color2: ColorTriplet, cross_fade: f64) -> ColorTriplet {
-    let r = (color1.red as f64 * (1.0 - cross_fade) + color2.red as f64 * cross_fade).round()
-        as u8;
+    let r = (color1.red as f64 * (1.0 - cross_fade) + color2.red as f64 * cross_fade).round() as u8;
     let g =
-        (color1.green as f64 * (1.0 - cross_fade) + color2.green as f64 * cross_fade).round()
-            as u8;
-    let b = (color1.blue as f64 * (1.0 - cross_fade) + color2.blue as f64 * cross_fade).round()
-        as u8;
+        (color1.green as f64 * (1.0 - cross_fade) + color2.green as f64 * cross_fade).round() as u8;
+    let b =
+        (color1.blue as f64 * (1.0 - cross_fade) + color2.blue as f64 * cross_fade).round() as u8;
     ColorTriplet::new(r, g, b)
 }
 
@@ -706,10 +704,7 @@ mod tests {
         assert_eq!(color.name, "#112233");
         assert_eq!(color.color_type, ColorType::TrueColor);
         assert_eq!(color.number, None);
-        assert_eq!(
-            color.triplet,
-            Some(ColorTriplet::new(0x11, 0x22, 0x33))
-        );
+        assert_eq!(color.triplet, Some(ColorTriplet::new(0x11, 0x22, 0x33)));
     }
 
     #[test]
@@ -809,10 +804,7 @@ mod tests {
     #[test]
     fn test_get_ansi_codes_truecolor_foreground() {
         let color = Color::parse("#ff0000").unwrap();
-        assert_eq!(
-            color.get_ansi_codes(true),
-            vec!["38", "2", "255", "0", "0"]
-        );
+        assert_eq!(color.get_ansi_codes(true), vec!["38", "2", "255", "0", "0"]);
     }
 
     #[test]
@@ -972,10 +964,19 @@ mod tests {
     // System and query tests
     #[test]
     fn test_system() {
-        assert_eq!(Color::parse("default").unwrap().system(), ColorSystem::Standard);
+        assert_eq!(
+            Color::parse("default").unwrap().system(),
+            ColorSystem::Standard
+        );
         assert_eq!(Color::parse("red").unwrap().system(), ColorSystem::Standard);
-        assert_eq!(Color::parse("color(100)").unwrap().system(), ColorSystem::EightBit);
-        assert_eq!(Color::parse("#ff0000").unwrap().system(), ColorSystem::TrueColor);
+        assert_eq!(
+            Color::parse("color(100)").unwrap().system(),
+            ColorSystem::EightBit
+        );
+        assert_eq!(
+            Color::parse("#ff0000").unwrap().system(),
+            ColorSystem::TrueColor
+        );
     }
 
     #[test]

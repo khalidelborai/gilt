@@ -680,8 +680,22 @@ mod tests {
     #[test]
     fn test_display_not_bold() {
         let style = Style::new(
-            None, None, Some(false), None, None, None, None, None, None, None, None, None, None,
-            None, None, None,
+            None,
+            None,
+            Some(false),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
         )
         .unwrap();
         assert_eq!(style.to_string(), "not bold");
@@ -720,8 +734,22 @@ mod tests {
     #[test]
     fn test_display_bold() {
         let style = Style::new(
-            None, None, Some(true), None, None, None, None, None, None, None, None, None, None,
-            None, None, None,
+            None,
+            None,
+            Some(true),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
         )
         .unwrap();
         assert_eq!(style.to_string(), "bold");
@@ -754,8 +782,22 @@ mod tests {
     #[test]
     fn test_display_link() {
         let style = Style::new(
-            None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-            None, Some("foo"),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some("foo"),
         )
         .unwrap();
         assert_eq!(style.to_string(), "link foo");
@@ -897,8 +939,22 @@ mod tests {
     #[test]
     fn test_is_null_false_with_bold() {
         let style = Style::new(
-            None, None, Some(true), None, None, None, None, None, None, None, None, None, None,
-            None, None, None,
+            None,
+            None,
+            Some(true),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
         )
         .unwrap();
         assert!(!style.is_null());
@@ -1088,8 +1144,8 @@ mod tests {
     // HTML style tests
     #[test]
     fn test_get_html_style_complex() {
-        let style = Style::parse("reverse dim red on blue bold italic underline strike overline")
-            .unwrap();
+        let style =
+            Style::parse("reverse dim red on blue bold italic underline strike overline").unwrap();
         let html = style.get_html_style(None);
         // With reverse: blue becomes fg, red becomes bg
         // With dim: blend blue (0,0,128) with red (128,0,0) at 50% = (64,0,64) = #400040

@@ -61,14 +61,7 @@ fn main() {
     );
 
     // Body splits into sidebar + main (row split = side by side).
-    let mut body = Layout::new(
-        None,
-        Some("body".to_string()),
-        None,
-        None,
-        None,
-        None,
-    );
+    let mut body = Layout::new(None, Some("body".to_string()), None, None, None, None);
     body.split_row(vec![sidebar, main_content]);
 
     let footer = Layout::new(
@@ -81,14 +74,7 @@ fn main() {
     );
 
     // Root splits into header / body / footer (column split = stacked).
-    let mut root = Layout::new(
-        None,
-        Some("root".to_string()),
-        None,
-        None,
-        None,
-        None,
-    );
+    let mut root = Layout::new(None, Some("root".to_string()), None, None, None, None);
     root.split_column(vec![header, body, footer]);
 
     console.print(&root);

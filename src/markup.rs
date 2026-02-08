@@ -49,16 +49,14 @@ impl fmt::Display for Tag {
 
 /// Regex for `escape()`: find potential tag sequences, capturing preceding
 /// backslashes.  Group 1 = backslashes, Group 2 = the tag (with brackets).
-static RE_ESCAPE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"(\\*)(\[[a-z#/@][^\[]*?\])").unwrap());
+static RE_ESCAPE: Lazy<Regex> = Lazy::new(|| Regex::new(r"(\\*)(\[[a-z#/@][^\[]*?\])").unwrap());
 
 /// Regex for `parse_markup()`: captures the whole match, backslashes, and the
 /// inner tag text (without brackets).
 /// Group 1 = full match (backslashes + bracketed tag)
 /// Group 2 = backslashes before the `[`
 /// Group 3 = tag content inside brackets
-static RE_MARKUP: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"(\\*)(\[[a-z#/@][^\[]*?\])").unwrap());
+static RE_MARKUP: Lazy<Regex> = Lazy::new(|| Regex::new(r"(\\*)(\[[a-z#/@][^\[]*?\])").unwrap());
 
 // ---------------------------------------------------------------------------
 // escape
@@ -402,10 +400,7 @@ mod tests {
         let elements = parse_markup("[link=https://example.com]click[/link]");
         let tag = elements[0].2.as_ref().unwrap();
         assert_eq!(tag.name, "link");
-        assert_eq!(
-            tag.parameters,
-            Some("https://example.com".to_string())
-        );
+        assert_eq!(tag.parameters, Some("https://example.com".to_string()));
     }
 
     #[test]
@@ -450,8 +445,7 @@ mod tests {
 
     #[test]
     fn test_render_overlap() {
-        let result =
-            render("[green]X[bold]Y[/green]Z[/bold]", Style::null()).unwrap();
+        let result = render("[green]X[bold]Y[/green]Z[/bold]", Style::null()).unwrap();
         assert_eq!(result.plain(), "XYZ");
         assert_eq!(result.spans().len(), 2);
         // Sorted by start: green(0,2), bold(1,3)
@@ -475,8 +469,7 @@ mod tests {
 
     #[test]
     fn test_render_close_ambiguous() {
-        let result =
-            render("[green]X[bold]Y[/]Z[/]", Style::null()).unwrap();
+        let result = render("[green]X[bold]Y[/]Z[/]", Style::null()).unwrap();
         assert_eq!(result.plain(), "XYZ");
         assert_eq!(result.spans().len(), 2);
         // Sorted by start: green(0,3), bold(1,2)
@@ -617,11 +610,18 @@ mod tests {
 
     #[test]
     fn test_render_link_with_style() {
-        let result = render("[bold][link=https://example.com]click[/link][/bold]", Style::null()).unwrap();
+        let result = render(
+            "[bold][link=https://example.com]click[/link][/bold]",
+            Style::null(),
+        )
+        .unwrap();
         assert_eq!(result.plain(), "click");
         assert_eq!(result.spans().len(), 2);
         // Both spans cover the same text range
-        let has_link = result.spans().iter().any(|s| s.style.link() == Some("https://example.com"));
+        let has_link = result
+            .spans()
+            .iter()
+            .any(|s| s.style.link() == Some("https://example.com"));
         let has_bold = result.spans().iter().any(|s| s.style.bold() == Some(true));
         assert!(has_link);
         assert!(has_bold);

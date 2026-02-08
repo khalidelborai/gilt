@@ -28,20 +28,35 @@ fn strs_to_frames(v: &[&str]) -> Vec<String> {
 pub static SPINNERS: Lazy<HashMap<&'static str, SpinnerData>> = Lazy::new(|| {
     let mut m = HashMap::new();
 
-    m.insert("dots", SpinnerData {
-        interval: 80.0,
-        frames: chars_to_frames("\u{280b}\u{2819}\u{2839}\u{2838}\u{283c}\u{2834}\u{2826}\u{2827}\u{2807}\u{280f}"),
-    });
+    m.insert(
+        "dots",
+        SpinnerData {
+            interval: 80.0,
+            frames: chars_to_frames(
+                "\u{280b}\u{2819}\u{2839}\u{2838}\u{283c}\u{2834}\u{2826}\u{2827}\u{2807}\u{280f}",
+            ),
+        },
+    );
 
-    m.insert("dots2", SpinnerData {
-        interval: 80.0,
-        frames: chars_to_frames("\u{28fe}\u{28fd}\u{28fb}\u{28bf}\u{287f}\u{28df}\u{28ef}\u{28f7}"),
-    });
+    m.insert(
+        "dots2",
+        SpinnerData {
+            interval: 80.0,
+            frames: chars_to_frames(
+                "\u{28fe}\u{28fd}\u{28fb}\u{28bf}\u{287f}\u{28df}\u{28ef}\u{28f7}",
+            ),
+        },
+    );
 
-    m.insert("dots3", SpinnerData {
-        interval: 80.0,
-        frames: chars_to_frames("\u{280b}\u{2819}\u{281a}\u{281e}\u{2816}\u{2826}\u{2834}\u{2832}\u{2833}\u{2813}"),
-    });
+    m.insert(
+        "dots3",
+        SpinnerData {
+            interval: 80.0,
+            frames: chars_to_frames(
+                "\u{280b}\u{2819}\u{281a}\u{281e}\u{2816}\u{2826}\u{2834}\u{2832}\u{2833}\u{2813}",
+            ),
+        },
+    );
 
     m.insert("dots4", SpinnerData {
         interval: 80.0,
@@ -68,45 +83,105 @@ pub static SPINNERS: Lazy<HashMap<&'static str, SpinnerData>> = Lazy::new(|| {
         frames: chars_to_frames("\u{2801}\u{2801}\u{2809}\u{2819}\u{281a}\u{2812}\u{2802}\u{2802}\u{2812}\u{2832}\u{2834}\u{2824}\u{2804}\u{2804}\u{2824}\u{2820}\u{2820}\u{2824}\u{2826}\u{2816}\u{2812}\u{2810}\u{2810}\u{2812}\u{2813}\u{280b}\u{2809}\u{2808}\u{2808}"),
     });
 
-    m.insert("dots9", SpinnerData {
-        interval: 80.0,
-        frames: chars_to_frames("\u{2839}\u{283a}\u{283c}\u{28f8}\u{28c7}\u{2867}\u{2857}\u{280f}"),
-    });
+    m.insert(
+        "dots9",
+        SpinnerData {
+            interval: 80.0,
+            frames: chars_to_frames(
+                "\u{2839}\u{283a}\u{283c}\u{28f8}\u{28c7}\u{2867}\u{2857}\u{280f}",
+            ),
+        },
+    );
 
-    m.insert("dots10", SpinnerData {
-        interval: 80.0,
-        frames: chars_to_frames("\u{2844}\u{2842}\u{2841}\u{2841}\u{2848}\u{2850}\u{2860}"),
-    });
+    m.insert(
+        "dots10",
+        SpinnerData {
+            interval: 80.0,
+            frames: chars_to_frames("\u{2844}\u{2842}\u{2841}\u{2841}\u{2848}\u{2850}\u{2860}"),
+        },
+    );
 
-    m.insert("dots11", SpinnerData {
-        interval: 100.0,
-        frames: chars_to_frames("\u{2801}\u{2802}\u{2804}\u{2840}\u{2880}\u{2820}\u{2810}\u{2808}"),
-    });
+    m.insert(
+        "dots11",
+        SpinnerData {
+            interval: 100.0,
+            frames: chars_to_frames(
+                "\u{2801}\u{2802}\u{2804}\u{2840}\u{2880}\u{2820}\u{2810}\u{2808}",
+            ),
+        },
+    );
 
-    m.insert("dots12", SpinnerData {
-        interval: 80.0,
-        frames: strs_to_frames(&[
-            "\u{2880}\u{2800}", "\u{2840}\u{2800}", "\u{2804}\u{2800}", "\u{2882}\u{2800}",
-            "\u{2842}\u{2800}", "\u{2805}\u{2800}", "\u{2883}\u{2800}", "\u{2843}\u{2800}",
-            "\u{280d}\u{2800}", "\u{288b}\u{2800}", "\u{284b}\u{2800}", "\u{280d}\u{2801}",
-            "\u{288b}\u{2801}", "\u{284b}\u{2801}", "\u{280d}\u{2809}", "\u{280b}\u{2809}",
-            "\u{280b}\u{2809}", "\u{2809}\u{2819}", "\u{2809}\u{2819}", "\u{2809}\u{2829}",
-            "\u{2808}\u{2899}", "\u{2808}\u{2859}", "\u{2888}\u{2829}", "\u{2840}\u{2899}",
-            "\u{2804}\u{2859}", "\u{2882}\u{2829}", "\u{2842}\u{2898}", "\u{2805}\u{2858}",
-            "\u{2883}\u{2828}", "\u{2843}\u{2890}", "\u{280d}\u{2850}", "\u{288b}\u{2820}",
-            "\u{284b}\u{2880}", "\u{280d}\u{2841}", "\u{288b}\u{2801}", "\u{284b}\u{2801}",
-            "\u{280d}\u{2809}", "\u{280b}\u{2809}", "\u{280b}\u{2809}", "\u{2809}\u{2819}",
-            "\u{2809}\u{2819}", "\u{2809}\u{2829}", "\u{2808}\u{2899}", "\u{2808}\u{2859}",
-            "\u{2808}\u{2829}", "\u{2800}\u{2899}", "\u{2800}\u{2859}", "\u{2800}\u{2829}",
-            "\u{2800}\u{2898}", "\u{2800}\u{2858}", "\u{2800}\u{2828}", "\u{2800}\u{2890}",
-            "\u{2800}\u{2850}", "\u{2800}\u{2820}", "\u{2800}\u{2880}", "\u{2800}\u{2840}",
-        ]),
-    });
+    m.insert(
+        "dots12",
+        SpinnerData {
+            interval: 80.0,
+            frames: strs_to_frames(&[
+                "\u{2880}\u{2800}",
+                "\u{2840}\u{2800}",
+                "\u{2804}\u{2800}",
+                "\u{2882}\u{2800}",
+                "\u{2842}\u{2800}",
+                "\u{2805}\u{2800}",
+                "\u{2883}\u{2800}",
+                "\u{2843}\u{2800}",
+                "\u{280d}\u{2800}",
+                "\u{288b}\u{2800}",
+                "\u{284b}\u{2800}",
+                "\u{280d}\u{2801}",
+                "\u{288b}\u{2801}",
+                "\u{284b}\u{2801}",
+                "\u{280d}\u{2809}",
+                "\u{280b}\u{2809}",
+                "\u{280b}\u{2809}",
+                "\u{2809}\u{2819}",
+                "\u{2809}\u{2819}",
+                "\u{2809}\u{2829}",
+                "\u{2808}\u{2899}",
+                "\u{2808}\u{2859}",
+                "\u{2888}\u{2829}",
+                "\u{2840}\u{2899}",
+                "\u{2804}\u{2859}",
+                "\u{2882}\u{2829}",
+                "\u{2842}\u{2898}",
+                "\u{2805}\u{2858}",
+                "\u{2883}\u{2828}",
+                "\u{2843}\u{2890}",
+                "\u{280d}\u{2850}",
+                "\u{288b}\u{2820}",
+                "\u{284b}\u{2880}",
+                "\u{280d}\u{2841}",
+                "\u{288b}\u{2801}",
+                "\u{284b}\u{2801}",
+                "\u{280d}\u{2809}",
+                "\u{280b}\u{2809}",
+                "\u{280b}\u{2809}",
+                "\u{2809}\u{2819}",
+                "\u{2809}\u{2819}",
+                "\u{2809}\u{2829}",
+                "\u{2808}\u{2899}",
+                "\u{2808}\u{2859}",
+                "\u{2808}\u{2829}",
+                "\u{2800}\u{2899}",
+                "\u{2800}\u{2859}",
+                "\u{2800}\u{2829}",
+                "\u{2800}\u{2898}",
+                "\u{2800}\u{2858}",
+                "\u{2800}\u{2828}",
+                "\u{2800}\u{2890}",
+                "\u{2800}\u{2850}",
+                "\u{2800}\u{2820}",
+                "\u{2800}\u{2880}",
+                "\u{2800}\u{2840}",
+            ]),
+        },
+    );
 
-    m.insert("dots8Bit", SpinnerData {
-        interval: 80.0,
-        frames: chars_to_frames(
-            "\u{2800}\u{2801}\u{2802}\u{2803}\u{2804}\u{2805}\u{2806}\u{2807}\
+    m.insert(
+        "dots8Bit",
+        SpinnerData {
+            interval: 80.0,
+            frames: chars_to_frames(
+                "\u{2800}\u{2801}\u{2802}\u{2803}\u{2804}\u{2805}\u{2806}\u{2807}\
              \u{2840}\u{2841}\u{2842}\u{2843}\u{2844}\u{2845}\u{2846}\u{2847}\
              \u{2808}\u{2809}\u{280a}\u{280b}\u{280c}\u{280d}\u{280e}\u{280f}\
              \u{2848}\u{2849}\u{284a}\u{284b}\u{284c}\u{284d}\u{284e}\u{284f}\
@@ -137,285 +212,438 @@ pub static SPINNERS: Lazy<HashMap<&'static str, SpinnerData>> = Lazy::new(|| {
              \u{28b0}\u{28b1}\u{28b2}\u{28b3}\u{28b4}\u{28b5}\u{28b6}\u{28b7}\
              \u{28f0}\u{28f1}\u{28f2}\u{28f3}\u{28f4}\u{28f5}\u{28f6}\u{28f7}\
              \u{28b8}\u{28b9}\u{28ba}\u{28bb}\u{28bc}\u{28bd}\u{28be}\u{28bf}\
-             \u{28f8}\u{28f9}\u{28fa}\u{28fb}\u{28fc}\u{28fd}\u{28fe}\u{28ff}"
-        ),
-    });
+             \u{28f8}\u{28f9}\u{28fa}\u{28fb}\u{28fc}\u{28fd}\u{28fe}\u{28ff}",
+            ),
+        },
+    );
 
-    m.insert("line", SpinnerData {
-        interval: 130.0,
-        frames: strs_to_frames(&["-", "\\", "|", "/"]),
-    });
+    m.insert(
+        "line",
+        SpinnerData {
+            interval: 130.0,
+            frames: strs_to_frames(&["-", "\\", "|", "/"]),
+        },
+    );
 
-    m.insert("line2", SpinnerData {
-        interval: 100.0,
-        frames: chars_to_frames("\u{2802}-\u{2013}\u{2014}\u{2013}-"),
-    });
+    m.insert(
+        "line2",
+        SpinnerData {
+            interval: 100.0,
+            frames: chars_to_frames("\u{2802}-\u{2013}\u{2014}\u{2013}-"),
+        },
+    );
 
-    m.insert("pipe", SpinnerData {
-        interval: 100.0,
-        frames: chars_to_frames("\u{2524}\u{2518}\u{2534}\u{2514}\u{251c}\u{250c}\u{252c}\u{2510}"),
-    });
+    m.insert(
+        "pipe",
+        SpinnerData {
+            interval: 100.0,
+            frames: chars_to_frames(
+                "\u{2524}\u{2518}\u{2534}\u{2514}\u{251c}\u{250c}\u{252c}\u{2510}",
+            ),
+        },
+    );
 
-    m.insert("simpleDots", SpinnerData {
-        interval: 400.0,
-        frames: strs_to_frames(&[".  ", ".. ", "...", "   "]),
-    });
+    m.insert(
+        "simpleDots",
+        SpinnerData {
+            interval: 400.0,
+            frames: strs_to_frames(&[".  ", ".. ", "...", "   "]),
+        },
+    );
 
-    m.insert("simpleDotsScrolling", SpinnerData {
-        interval: 200.0,
-        frames: strs_to_frames(&[".  ", ".. ", "...", " ..", "  .", "   "]),
-    });
+    m.insert(
+        "simpleDotsScrolling",
+        SpinnerData {
+            interval: 200.0,
+            frames: strs_to_frames(&[".  ", ".. ", "...", " ..", "  .", "   "]),
+        },
+    );
 
-    m.insert("star", SpinnerData {
-        interval: 70.0,
-        frames: chars_to_frames("\u{2736}\u{2738}\u{2739}\u{273a}\u{2739}\u{2737}"),
-    });
+    m.insert(
+        "star",
+        SpinnerData {
+            interval: 70.0,
+            frames: chars_to_frames("\u{2736}\u{2738}\u{2739}\u{273a}\u{2739}\u{2737}"),
+        },
+    );
 
-    m.insert("star2", SpinnerData {
-        interval: 80.0,
-        frames: chars_to_frames("+x*"),
-    });
+    m.insert(
+        "star2",
+        SpinnerData {
+            interval: 80.0,
+            frames: chars_to_frames("+x*"),
+        },
+    );
 
-    m.insert("flip", SpinnerData {
-        interval: 70.0,
-        frames: chars_to_frames("___-``'\u{b4}-___"),
-    });
+    m.insert(
+        "flip",
+        SpinnerData {
+            interval: 70.0,
+            frames: chars_to_frames("___-``'\u{b4}-___"),
+        },
+    );
 
-    m.insert("hamburger", SpinnerData {
-        interval: 100.0,
-        frames: chars_to_frames("\u{2631}\u{2632}\u{2634}"),
-    });
+    m.insert(
+        "hamburger",
+        SpinnerData {
+            interval: 100.0,
+            frames: chars_to_frames("\u{2631}\u{2632}\u{2634}"),
+        },
+    );
 
-    m.insert("growVertical", SpinnerData {
-        interval: 120.0,
-        frames: chars_to_frames("\u{2581}\u{2583}\u{2584}\u{2585}\u{2586}\u{2587}\u{2586}\u{2585}\u{2584}\u{2583}"),
-    });
+    m.insert(
+        "growVertical",
+        SpinnerData {
+            interval: 120.0,
+            frames: chars_to_frames(
+                "\u{2581}\u{2583}\u{2584}\u{2585}\u{2586}\u{2587}\u{2586}\u{2585}\u{2584}\u{2583}",
+            ),
+        },
+    );
 
     m.insert("growHorizontal", SpinnerData {
         interval: 120.0,
         frames: chars_to_frames("\u{258f}\u{258e}\u{258d}\u{258c}\u{258b}\u{258a}\u{2589}\u{258a}\u{258b}\u{258c}\u{258d}\u{258e}"),
     });
 
-    m.insert("balloon", SpinnerData {
-        interval: 140.0,
-        frames: chars_to_frames(" .oO@* "),
-    });
+    m.insert(
+        "balloon",
+        SpinnerData {
+            interval: 140.0,
+            frames: chars_to_frames(" .oO@* "),
+        },
+    );
 
-    m.insert("balloon2", SpinnerData {
-        interval: 120.0,
-        frames: chars_to_frames(".oO\u{b0}Oo."),
-    });
+    m.insert(
+        "balloon2",
+        SpinnerData {
+            interval: 120.0,
+            frames: chars_to_frames(".oO\u{b0}Oo."),
+        },
+    );
 
-    m.insert("noise", SpinnerData {
-        interval: 100.0,
-        frames: chars_to_frames("\u{2593}\u{2592}\u{2591}"),
-    });
+    m.insert(
+        "noise",
+        SpinnerData {
+            interval: 100.0,
+            frames: chars_to_frames("\u{2593}\u{2592}\u{2591}"),
+        },
+    );
 
-    m.insert("bounce", SpinnerData {
-        interval: 120.0,
-        frames: chars_to_frames("\u{2801}\u{2802}\u{2804}\u{2802}"),
-    });
+    m.insert(
+        "bounce",
+        SpinnerData {
+            interval: 120.0,
+            frames: chars_to_frames("\u{2801}\u{2802}\u{2804}\u{2802}"),
+        },
+    );
 
-    m.insert("boxBounce", SpinnerData {
-        interval: 120.0,
-        frames: chars_to_frames("\u{2596}\u{2598}\u{259d}\u{2597}"),
-    });
+    m.insert(
+        "boxBounce",
+        SpinnerData {
+            interval: 120.0,
+            frames: chars_to_frames("\u{2596}\u{2598}\u{259d}\u{2597}"),
+        },
+    );
 
-    m.insert("boxBounce2", SpinnerData {
-        interval: 100.0,
-        frames: chars_to_frames("\u{258c}\u{2580}\u{2590}\u{2584}"),
-    });
+    m.insert(
+        "boxBounce2",
+        SpinnerData {
+            interval: 100.0,
+            frames: chars_to_frames("\u{258c}\u{2580}\u{2590}\u{2584}"),
+        },
+    );
 
-    m.insert("triangle", SpinnerData {
-        interval: 50.0,
-        frames: chars_to_frames("\u{25e2}\u{25e3}\u{25e4}\u{25e5}"),
-    });
+    m.insert(
+        "triangle",
+        SpinnerData {
+            interval: 50.0,
+            frames: chars_to_frames("\u{25e2}\u{25e3}\u{25e4}\u{25e5}"),
+        },
+    );
 
-    m.insert("arc", SpinnerData {
-        interval: 100.0,
-        frames: chars_to_frames("\u{25dc}\u{25e0}\u{25dd}\u{25de}\u{25e1}\u{25df}"),
-    });
+    m.insert(
+        "arc",
+        SpinnerData {
+            interval: 100.0,
+            frames: chars_to_frames("\u{25dc}\u{25e0}\u{25dd}\u{25de}\u{25e1}\u{25df}"),
+        },
+    );
 
-    m.insert("circle", SpinnerData {
-        interval: 120.0,
-        frames: chars_to_frames("\u{25e1}\u{2299}\u{25e0}"),
-    });
+    m.insert(
+        "circle",
+        SpinnerData {
+            interval: 120.0,
+            frames: chars_to_frames("\u{25e1}\u{2299}\u{25e0}"),
+        },
+    );
 
-    m.insert("squareCorners", SpinnerData {
-        interval: 180.0,
-        frames: chars_to_frames("\u{25f0}\u{25f3}\u{25f2}\u{25f1}"),
-    });
+    m.insert(
+        "squareCorners",
+        SpinnerData {
+            interval: 180.0,
+            frames: chars_to_frames("\u{25f0}\u{25f3}\u{25f2}\u{25f1}"),
+        },
+    );
 
-    m.insert("circleQuarters", SpinnerData {
-        interval: 120.0,
-        frames: chars_to_frames("\u{25f4}\u{25f7}\u{25f6}\u{25f5}"),
-    });
+    m.insert(
+        "circleQuarters",
+        SpinnerData {
+            interval: 120.0,
+            frames: chars_to_frames("\u{25f4}\u{25f7}\u{25f6}\u{25f5}"),
+        },
+    );
 
-    m.insert("circleHalves", SpinnerData {
-        interval: 50.0,
-        frames: chars_to_frames("\u{25d0}\u{25d3}\u{25d1}\u{25d2}"),
-    });
+    m.insert(
+        "circleHalves",
+        SpinnerData {
+            interval: 50.0,
+            frames: chars_to_frames("\u{25d0}\u{25d3}\u{25d1}\u{25d2}"),
+        },
+    );
 
-    m.insert("squish", SpinnerData {
-        interval: 100.0,
-        frames: chars_to_frames("\u{256b}\u{256a}"),
-    });
+    m.insert(
+        "squish",
+        SpinnerData {
+            interval: 100.0,
+            frames: chars_to_frames("\u{256b}\u{256a}"),
+        },
+    );
 
-    m.insert("toggle", SpinnerData {
-        interval: 250.0,
-        frames: chars_to_frames("\u{22b6}\u{22b7}"),
-    });
+    m.insert(
+        "toggle",
+        SpinnerData {
+            interval: 250.0,
+            frames: chars_to_frames("\u{22b6}\u{22b7}"),
+        },
+    );
 
-    m.insert("toggle2", SpinnerData {
-        interval: 80.0,
-        frames: chars_to_frames("\u{25ab}\u{25aa}"),
-    });
+    m.insert(
+        "toggle2",
+        SpinnerData {
+            interval: 80.0,
+            frames: chars_to_frames("\u{25ab}\u{25aa}"),
+        },
+    );
 
-    m.insert("toggle3", SpinnerData {
-        interval: 120.0,
-        frames: chars_to_frames("\u{25a1}\u{25a0}"),
-    });
+    m.insert(
+        "toggle3",
+        SpinnerData {
+            interval: 120.0,
+            frames: chars_to_frames("\u{25a1}\u{25a0}"),
+        },
+    );
 
-    m.insert("toggle4", SpinnerData {
-        interval: 100.0,
-        frames: chars_to_frames("\u{25a0}\u{25a1}\u{25aa}\u{25ab}"),
-    });
+    m.insert(
+        "toggle4",
+        SpinnerData {
+            interval: 100.0,
+            frames: chars_to_frames("\u{25a0}\u{25a1}\u{25aa}\u{25ab}"),
+        },
+    );
 
-    m.insert("toggle5", SpinnerData {
-        interval: 100.0,
-        frames: chars_to_frames("\u{25ae}\u{25af}"),
-    });
+    m.insert(
+        "toggle5",
+        SpinnerData {
+            interval: 100.0,
+            frames: chars_to_frames("\u{25ae}\u{25af}"),
+        },
+    );
 
-    m.insert("toggle6", SpinnerData {
-        interval: 300.0,
-        frames: chars_to_frames("\u{101d}\u{1040}"),
-    });
+    m.insert(
+        "toggle6",
+        SpinnerData {
+            interval: 300.0,
+            frames: chars_to_frames("\u{101d}\u{1040}"),
+        },
+    );
 
-    m.insert("toggle7", SpinnerData {
-        interval: 80.0,
-        frames: chars_to_frames("\u{29be}\u{29bf}"),
-    });
+    m.insert(
+        "toggle7",
+        SpinnerData {
+            interval: 80.0,
+            frames: chars_to_frames("\u{29be}\u{29bf}"),
+        },
+    );
 
-    m.insert("toggle8", SpinnerData {
-        interval: 100.0,
-        frames: chars_to_frames("\u{25cd}\u{25cc}"),
-    });
+    m.insert(
+        "toggle8",
+        SpinnerData {
+            interval: 100.0,
+            frames: chars_to_frames("\u{25cd}\u{25cc}"),
+        },
+    );
 
-    m.insert("toggle9", SpinnerData {
-        interval: 100.0,
-        frames: chars_to_frames("\u{25c9}\u{25ce}"),
-    });
+    m.insert(
+        "toggle9",
+        SpinnerData {
+            interval: 100.0,
+            frames: chars_to_frames("\u{25c9}\u{25ce}"),
+        },
+    );
 
-    m.insert("toggle10", SpinnerData {
-        interval: 100.0,
-        frames: chars_to_frames("\u{3282}\u{3280}\u{3281}"),
-    });
+    m.insert(
+        "toggle10",
+        SpinnerData {
+            interval: 100.0,
+            frames: chars_to_frames("\u{3282}\u{3280}\u{3281}"),
+        },
+    );
 
-    m.insert("toggle11", SpinnerData {
-        interval: 50.0,
-        frames: chars_to_frames("\u{29c7}\u{29c6}"),
-    });
+    m.insert(
+        "toggle11",
+        SpinnerData {
+            interval: 50.0,
+            frames: chars_to_frames("\u{29c7}\u{29c6}"),
+        },
+    );
 
-    m.insert("toggle12", SpinnerData {
-        interval: 120.0,
-        frames: chars_to_frames("\u{2617}\u{2616}"),
-    });
+    m.insert(
+        "toggle12",
+        SpinnerData {
+            interval: 120.0,
+            frames: chars_to_frames("\u{2617}\u{2616}"),
+        },
+    );
 
-    m.insert("toggle13", SpinnerData {
-        interval: 80.0,
-        frames: chars_to_frames("=*-"),
-    });
+    m.insert(
+        "toggle13",
+        SpinnerData {
+            interval: 80.0,
+            frames: chars_to_frames("=*-"),
+        },
+    );
 
-    m.insert("arrow", SpinnerData {
-        interval: 100.0,
-        frames: chars_to_frames("\u{2190}\u{2196}\u{2191}\u{2197}\u{2192}\u{2198}\u{2193}\u{2199}"),
-    });
+    m.insert(
+        "arrow",
+        SpinnerData {
+            interval: 100.0,
+            frames: chars_to_frames(
+                "\u{2190}\u{2196}\u{2191}\u{2197}\u{2192}\u{2198}\u{2193}\u{2199}",
+            ),
+        },
+    );
 
-    m.insert("arrow2", SpinnerData {
-        interval: 80.0,
-        frames: strs_to_frames(&[
-            "\u{2b06}\u{fe0f} ", "\u{2197}\u{fe0f} ", "\u{27a1}\u{fe0f} ", "\u{2198}\u{fe0f} ",
-            "\u{2b07}\u{fe0f} ", "\u{2199}\u{fe0f} ", "\u{2b05}\u{fe0f} ", "\u{2196}\u{fe0f} ",
-        ]),
-    });
+    m.insert(
+        "arrow2",
+        SpinnerData {
+            interval: 80.0,
+            frames: strs_to_frames(&[
+                "\u{2b06}\u{fe0f} ",
+                "\u{2197}\u{fe0f} ",
+                "\u{27a1}\u{fe0f} ",
+                "\u{2198}\u{fe0f} ",
+                "\u{2b07}\u{fe0f} ",
+                "\u{2199}\u{fe0f} ",
+                "\u{2b05}\u{fe0f} ",
+                "\u{2196}\u{fe0f} ",
+            ]),
+        },
+    );
 
-    m.insert("arrow3", SpinnerData {
-        interval: 120.0,
-        frames: strs_to_frames(&[
-            "\u{25b9}\u{25b9}\u{25b9}\u{25b9}\u{25b9}",
-            "\u{25b8}\u{25b9}\u{25b9}\u{25b9}\u{25b9}",
-            "\u{25b9}\u{25b8}\u{25b9}\u{25b9}\u{25b9}",
-            "\u{25b9}\u{25b9}\u{25b8}\u{25b9}\u{25b9}",
-            "\u{25b9}\u{25b9}\u{25b9}\u{25b8}\u{25b9}",
-            "\u{25b9}\u{25b9}\u{25b9}\u{25b9}\u{25b8}",
-        ]),
-    });
+    m.insert(
+        "arrow3",
+        SpinnerData {
+            interval: 120.0,
+            frames: strs_to_frames(&[
+                "\u{25b9}\u{25b9}\u{25b9}\u{25b9}\u{25b9}",
+                "\u{25b8}\u{25b9}\u{25b9}\u{25b9}\u{25b9}",
+                "\u{25b9}\u{25b8}\u{25b9}\u{25b9}\u{25b9}",
+                "\u{25b9}\u{25b9}\u{25b8}\u{25b9}\u{25b9}",
+                "\u{25b9}\u{25b9}\u{25b9}\u{25b8}\u{25b9}",
+                "\u{25b9}\u{25b9}\u{25b9}\u{25b9}\u{25b8}",
+            ]),
+        },
+    );
 
-    m.insert("bouncingBar", SpinnerData {
-        interval: 80.0,
-        frames: strs_to_frames(&[
-            "[    ]",
-            "[=   ]",
-            "[==  ]",
-            "[=== ]",
-            "[ ===]",
-            "[  ==]",
-            "[   =]",
-            "[    ]",
-            "[   =]",
-            "[  ==]",
-            "[ ===]",
-            "[====]",
-            "[=== ]",
-            "[==  ]",
-            "[=   ]",
-        ]),
-    });
+    m.insert(
+        "bouncingBar",
+        SpinnerData {
+            interval: 80.0,
+            frames: strs_to_frames(&[
+                "[    ]", "[=   ]", "[==  ]", "[=== ]", "[ ===]", "[  ==]", "[   =]", "[    ]",
+                "[   =]", "[  ==]", "[ ===]", "[====]", "[=== ]", "[==  ]", "[=   ]",
+            ]),
+        },
+    );
 
-    m.insert("bouncingBall", SpinnerData {
-        interval: 80.0,
-        frames: strs_to_frames(&[
-            "( \u{25cf}    )",
-            "(  \u{25cf}   )",
-            "(   \u{25cf}  )",
-            "(    \u{25cf} )",
-            "(     \u{25cf})",
-            "(    \u{25cf} )",
-            "(   \u{25cf}  )",
-            "(  \u{25cf}   )",
-            "( \u{25cf}    )",
-            "(\u{25cf}     )",
-        ]),
-    });
+    m.insert(
+        "bouncingBall",
+        SpinnerData {
+            interval: 80.0,
+            frames: strs_to_frames(&[
+                "( \u{25cf}    )",
+                "(  \u{25cf}   )",
+                "(   \u{25cf}  )",
+                "(    \u{25cf} )",
+                "(     \u{25cf})",
+                "(    \u{25cf} )",
+                "(   \u{25cf}  )",
+                "(  \u{25cf}   )",
+                "( \u{25cf}    )",
+                "(\u{25cf}     )",
+            ]),
+        },
+    );
 
-    m.insert("smiley", SpinnerData {
-        interval: 200.0,
-        frames: strs_to_frames(&["\u{1f604} ", "\u{1f61d} "]),
-    });
+    m.insert(
+        "smiley",
+        SpinnerData {
+            interval: 200.0,
+            frames: strs_to_frames(&["\u{1f604} ", "\u{1f61d} "]),
+        },
+    );
 
-    m.insert("monkey", SpinnerData {
-        interval: 300.0,
-        frames: strs_to_frames(&["\u{1f648} ", "\u{1f648} ", "\u{1f649} ", "\u{1f64a} "]),
-    });
+    m.insert(
+        "monkey",
+        SpinnerData {
+            interval: 300.0,
+            frames: strs_to_frames(&["\u{1f648} ", "\u{1f648} ", "\u{1f649} ", "\u{1f64a} "]),
+        },
+    );
 
-    m.insert("hearts", SpinnerData {
-        interval: 100.0,
-        frames: strs_to_frames(&["\u{1f49b} ", "\u{1f499} ", "\u{1f49c} ", "\u{1f49a} ", "\u{2764}\u{fe0f} "]),
-    });
+    m.insert(
+        "hearts",
+        SpinnerData {
+            interval: 100.0,
+            frames: strs_to_frames(&[
+                "\u{1f49b} ",
+                "\u{1f499} ",
+                "\u{1f49c} ",
+                "\u{1f49a} ",
+                "\u{2764}\u{fe0f} ",
+            ]),
+        },
+    );
 
-    m.insert("clock", SpinnerData {
-        interval: 100.0,
-        frames: strs_to_frames(&[
-            "\u{1f55b} ", "\u{1f550} ", "\u{1f551} ", "\u{1f552} ",
-            "\u{1f553} ", "\u{1f554} ", "\u{1f555} ", "\u{1f556} ",
-            "\u{1f557} ", "\u{1f558} ", "\u{1f559} ", "\u{1f55a} ",
-        ]),
-    });
+    m.insert(
+        "clock",
+        SpinnerData {
+            interval: 100.0,
+            frames: strs_to_frames(&[
+                "\u{1f55b} ",
+                "\u{1f550} ",
+                "\u{1f551} ",
+                "\u{1f552} ",
+                "\u{1f553} ",
+                "\u{1f554} ",
+                "\u{1f555} ",
+                "\u{1f556} ",
+                "\u{1f557} ",
+                "\u{1f558} ",
+                "\u{1f559} ",
+                "\u{1f55a} ",
+            ]),
+        },
+    );
 
-    m.insert("earth", SpinnerData {
-        interval: 180.0,
-        frames: strs_to_frames(&["\u{1f30d} ", "\u{1f30e} ", "\u{1f30f} "]),
-    });
+    m.insert(
+        "earth",
+        SpinnerData {
+            interval: 180.0,
+            frames: strs_to_frames(&["\u{1f30d} ", "\u{1f30e} ", "\u{1f30f} "]),
+        },
+    );
 
     m.insert("material", SpinnerData {
         interval: 17.0,
@@ -515,171 +743,230 @@ pub static SPINNERS: Lazy<HashMap<&'static str, SpinnerData>> = Lazy::new(|| {
         ]),
     });
 
-    m.insert("moon", SpinnerData {
-        interval: 80.0,
-        frames: strs_to_frames(&[
-            "\u{1f311} ", "\u{1f312} ", "\u{1f313} ", "\u{1f314} ",
-            "\u{1f315} ", "\u{1f316} ", "\u{1f317} ", "\u{1f318} ",
-        ]),
-    });
+    m.insert(
+        "moon",
+        SpinnerData {
+            interval: 80.0,
+            frames: strs_to_frames(&[
+                "\u{1f311} ",
+                "\u{1f312} ",
+                "\u{1f313} ",
+                "\u{1f314} ",
+                "\u{1f315} ",
+                "\u{1f316} ",
+                "\u{1f317} ",
+                "\u{1f318} ",
+            ]),
+        },
+    );
 
-    m.insert("runner", SpinnerData {
-        interval: 140.0,
-        frames: strs_to_frames(&["\u{1f6b6} ", "\u{1f3c3} "]),
-    });
+    m.insert(
+        "runner",
+        SpinnerData {
+            interval: 140.0,
+            frames: strs_to_frames(&["\u{1f6b6} ", "\u{1f3c3} "]),
+        },
+    );
 
-    m.insert("pong", SpinnerData {
-        interval: 80.0,
-        frames: strs_to_frames(&[
-            "\u{2590}\u{2802}       \u{258c}",
-            "\u{2590}\u{2808}       \u{258c}",
-            "\u{2590} \u{2802}      \u{258c}",
-            "\u{2590} \u{2820}      \u{258c}",
-            "\u{2590}  \u{2840}     \u{258c}",
-            "\u{2590}  \u{2820}     \u{258c}",
-            "\u{2590}   \u{2802}    \u{258c}",
-            "\u{2590}   \u{2808}    \u{258c}",
-            "\u{2590}    \u{2802}   \u{258c}",
-            "\u{2590}    \u{2820}   \u{258c}",
-            "\u{2590}     \u{2840}  \u{258c}",
-            "\u{2590}     \u{2820}  \u{258c}",
-            "\u{2590}      \u{2802} \u{258c}",
-            "\u{2590}      \u{2808} \u{258c}",
-            "\u{2590}       \u{2802}\u{258c}",
-            "\u{2590}       \u{2820}\u{258c}",
-            "\u{2590}       \u{2840}\u{258c}",
-            "\u{2590}      \u{2820} \u{258c}",
-            "\u{2590}      \u{2802} \u{258c}",
-            "\u{2590}     \u{2808}  \u{258c}",
-            "\u{2590}     \u{2802}  \u{258c}",
-            "\u{2590}    \u{2820}   \u{258c}",
-            "\u{2590}    \u{2840}   \u{258c}",
-            "\u{2590}   \u{2820}    \u{258c}",
-            "\u{2590}   \u{2802}    \u{258c}",
-            "\u{2590}  \u{2808}     \u{258c}",
-            "\u{2590}  \u{2802}     \u{258c}",
-            "\u{2590} \u{2820}      \u{258c}",
-            "\u{2590} \u{2840}      \u{258c}",
-            "\u{2590}\u{2820}       \u{258c}",
-        ]),
-    });
+    m.insert(
+        "pong",
+        SpinnerData {
+            interval: 80.0,
+            frames: strs_to_frames(&[
+                "\u{2590}\u{2802}       \u{258c}",
+                "\u{2590}\u{2808}       \u{258c}",
+                "\u{2590} \u{2802}      \u{258c}",
+                "\u{2590} \u{2820}      \u{258c}",
+                "\u{2590}  \u{2840}     \u{258c}",
+                "\u{2590}  \u{2820}     \u{258c}",
+                "\u{2590}   \u{2802}    \u{258c}",
+                "\u{2590}   \u{2808}    \u{258c}",
+                "\u{2590}    \u{2802}   \u{258c}",
+                "\u{2590}    \u{2820}   \u{258c}",
+                "\u{2590}     \u{2840}  \u{258c}",
+                "\u{2590}     \u{2820}  \u{258c}",
+                "\u{2590}      \u{2802} \u{258c}",
+                "\u{2590}      \u{2808} \u{258c}",
+                "\u{2590}       \u{2802}\u{258c}",
+                "\u{2590}       \u{2820}\u{258c}",
+                "\u{2590}       \u{2840}\u{258c}",
+                "\u{2590}      \u{2820} \u{258c}",
+                "\u{2590}      \u{2802} \u{258c}",
+                "\u{2590}     \u{2808}  \u{258c}",
+                "\u{2590}     \u{2802}  \u{258c}",
+                "\u{2590}    \u{2820}   \u{258c}",
+                "\u{2590}    \u{2840}   \u{258c}",
+                "\u{2590}   \u{2820}    \u{258c}",
+                "\u{2590}   \u{2802}    \u{258c}",
+                "\u{2590}  \u{2808}     \u{258c}",
+                "\u{2590}  \u{2802}     \u{258c}",
+                "\u{2590} \u{2820}      \u{258c}",
+                "\u{2590} \u{2840}      \u{258c}",
+                "\u{2590}\u{2820}       \u{258c}",
+            ]),
+        },
+    );
 
-    m.insert("shark", SpinnerData {
-        interval: 120.0,
-        frames: strs_to_frames(&[
-            "\u{2590}|\\____________\u{258c}",
-            "\u{2590}_|\\___________\u{258c}",
-            "\u{2590}__|\\__________\u{258c}",
-            "\u{2590}___|\\_________\u{258c}",
-            "\u{2590}____|\\________\u{258c}",
-            "\u{2590}_____|\\_______\u{258c}",
-            "\u{2590}______|\\______\u{258c}",
-            "\u{2590}_______|\\_____\u{258c}",
-            "\u{2590}________|\\____\u{258c}",
-            "\u{2590}_________|\\___\u{258c}",
-            "\u{2590}__________|\\__\u{258c}",
-            "\u{2590}___________|\\_\u{258c}",
-            "\u{2590}____________|\\\u{258c}",
-            "\u{2590}____________/|\u{258c}",
-            "\u{2590}___________/|_\u{258c}",
-            "\u{2590}__________/|__\u{258c}",
-            "\u{2590}_________/|___\u{258c}",
-            "\u{2590}________/|____\u{258c}",
-            "\u{2590}_______/|_____\u{258c}",
-            "\u{2590}______/|______\u{258c}",
-            "\u{2590}_____/|_______\u{258c}",
-            "\u{2590}____/|________\u{258c}",
-            "\u{2590}___/|_________\u{258c}",
-            "\u{2590}__/|__________\u{258c}",
-            "\u{2590}_/|___________\u{258c}",
-            "\u{2590}/|____________\u{258c}",
-        ]),
-    });
+    m.insert(
+        "shark",
+        SpinnerData {
+            interval: 120.0,
+            frames: strs_to_frames(&[
+                "\u{2590}|\\____________\u{258c}",
+                "\u{2590}_|\\___________\u{258c}",
+                "\u{2590}__|\\__________\u{258c}",
+                "\u{2590}___|\\_________\u{258c}",
+                "\u{2590}____|\\________\u{258c}",
+                "\u{2590}_____|\\_______\u{258c}",
+                "\u{2590}______|\\______\u{258c}",
+                "\u{2590}_______|\\_____\u{258c}",
+                "\u{2590}________|\\____\u{258c}",
+                "\u{2590}_________|\\___\u{258c}",
+                "\u{2590}__________|\\__\u{258c}",
+                "\u{2590}___________|\\_\u{258c}",
+                "\u{2590}____________|\\\u{258c}",
+                "\u{2590}____________/|\u{258c}",
+                "\u{2590}___________/|_\u{258c}",
+                "\u{2590}__________/|__\u{258c}",
+                "\u{2590}_________/|___\u{258c}",
+                "\u{2590}________/|____\u{258c}",
+                "\u{2590}_______/|_____\u{258c}",
+                "\u{2590}______/|______\u{258c}",
+                "\u{2590}_____/|_______\u{258c}",
+                "\u{2590}____/|________\u{258c}",
+                "\u{2590}___/|_________\u{258c}",
+                "\u{2590}__/|__________\u{258c}",
+                "\u{2590}_/|___________\u{258c}",
+                "\u{2590}/|____________\u{258c}",
+            ]),
+        },
+    );
 
-    m.insert("dqpb", SpinnerData {
-        interval: 100.0,
-        frames: chars_to_frames("dqpb"),
-    });
+    m.insert(
+        "dqpb",
+        SpinnerData {
+            interval: 100.0,
+            frames: chars_to_frames("dqpb"),
+        },
+    );
 
-    m.insert("weather", SpinnerData {
-        interval: 100.0,
-        frames: strs_to_frames(&[
-            "\u{2600}\u{fe0f} ", "\u{2600}\u{fe0f} ", "\u{2600}\u{fe0f} ",
-            "\u{1f324} ", "\u{26c5}\u{fe0f} ", "\u{1f325} ", "\u{2601}\u{fe0f} ",
-            "\u{1f327} ", "\u{1f328} ", "\u{1f327} ", "\u{1f328} ",
-            "\u{1f327} ", "\u{1f328} ", "\u{26c8} ", "\u{1f328} ",
-            "\u{1f327} ", "\u{1f328} ", "\u{2601}\u{fe0f} ", "\u{1f325} ",
-            "\u{26c5}\u{fe0f} ", "\u{1f324} ", "\u{2600}\u{fe0f} ", "\u{2600}\u{fe0f} ",
-        ]),
-    });
+    m.insert(
+        "weather",
+        SpinnerData {
+            interval: 100.0,
+            frames: strs_to_frames(&[
+                "\u{2600}\u{fe0f} ",
+                "\u{2600}\u{fe0f} ",
+                "\u{2600}\u{fe0f} ",
+                "\u{1f324} ",
+                "\u{26c5}\u{fe0f} ",
+                "\u{1f325} ",
+                "\u{2601}\u{fe0f} ",
+                "\u{1f327} ",
+                "\u{1f328} ",
+                "\u{1f327} ",
+                "\u{1f328} ",
+                "\u{1f327} ",
+                "\u{1f328} ",
+                "\u{26c8} ",
+                "\u{1f328} ",
+                "\u{1f327} ",
+                "\u{1f328} ",
+                "\u{2601}\u{fe0f} ",
+                "\u{1f325} ",
+                "\u{26c5}\u{fe0f} ",
+                "\u{1f324} ",
+                "\u{2600}\u{fe0f} ",
+                "\u{2600}\u{fe0f} ",
+            ]),
+        },
+    );
 
-    m.insert("christmas", SpinnerData {
-        interval: 400.0,
-        frames: chars_to_frames("\u{1f332}\u{1f384}"),
-    });
+    m.insert(
+        "christmas",
+        SpinnerData {
+            interval: 400.0,
+            frames: chars_to_frames("\u{1f332}\u{1f384}"),
+        },
+    );
 
-    m.insert("grenade", SpinnerData {
-        interval: 80.0,
-        frames: strs_to_frames(&[
-            "\u{060c}   ",
-            "\u{2032}   ",
-            " \u{b4} ",
-            " \u{203e} ",
-            "  \u{2e0c}",
-            "  \u{2e0a}",
-            "  |",
-            "  \u{204e}",
-            "  \u{2055}",
-            " \u{0db4} ",
-            "  \u{2053}",
-            "   ",
-            "   ",
-            "   ",
-        ]),
-    });
+    m.insert(
+        "grenade",
+        SpinnerData {
+            interval: 80.0,
+            frames: strs_to_frames(&[
+                "\u{060c}   ",
+                "\u{2032}   ",
+                " \u{b4} ",
+                " \u{203e} ",
+                "  \u{2e0c}",
+                "  \u{2e0a}",
+                "  |",
+                "  \u{204e}",
+                "  \u{2055}",
+                " \u{0db4} ",
+                "  \u{2053}",
+                "   ",
+                "   ",
+                "   ",
+            ]),
+        },
+    );
 
-    m.insert("point", SpinnerData {
-        interval: 125.0,
-        frames: strs_to_frames(&[
-            "\u{2219}\u{2219}\u{2219}",
-            "\u{25cf}\u{2219}\u{2219}",
-            "\u{2219}\u{25cf}\u{2219}",
-            "\u{2219}\u{2219}\u{25cf}",
-            "\u{2219}\u{2219}\u{2219}",
-        ]),
-    });
+    m.insert(
+        "point",
+        SpinnerData {
+            interval: 125.0,
+            frames: strs_to_frames(&[
+                "\u{2219}\u{2219}\u{2219}",
+                "\u{25cf}\u{2219}\u{2219}",
+                "\u{2219}\u{25cf}\u{2219}",
+                "\u{2219}\u{2219}\u{25cf}",
+                "\u{2219}\u{2219}\u{2219}",
+            ]),
+        },
+    );
 
-    m.insert("layer", SpinnerData {
-        interval: 150.0,
-        frames: chars_to_frames("-=\u{2261}"),
-    });
+    m.insert(
+        "layer",
+        SpinnerData {
+            interval: 150.0,
+            frames: chars_to_frames("-=\u{2261}"),
+        },
+    );
 
-    m.insert("betaWave", SpinnerData {
-        interval: 80.0,
-        frames: strs_to_frames(&[
-            "\u{03c1}\u{03b2}\u{03b2}\u{03b2}\u{03b2}\u{03b2}\u{03b2}",
-            "\u{03b2}\u{03c1}\u{03b2}\u{03b2}\u{03b2}\u{03b2}\u{03b2}",
-            "\u{03b2}\u{03b2}\u{03c1}\u{03b2}\u{03b2}\u{03b2}\u{03b2}",
-            "\u{03b2}\u{03b2}\u{03b2}\u{03c1}\u{03b2}\u{03b2}\u{03b2}",
-            "\u{03b2}\u{03b2}\u{03b2}\u{03b2}\u{03c1}\u{03b2}\u{03b2}",
-            "\u{03b2}\u{03b2}\u{03b2}\u{03b2}\u{03b2}\u{03c1}\u{03b2}",
-            "\u{03b2}\u{03b2}\u{03b2}\u{03b2}\u{03b2}\u{03b2}\u{03c1}",
-        ]),
-    });
+    m.insert(
+        "betaWave",
+        SpinnerData {
+            interval: 80.0,
+            frames: strs_to_frames(&[
+                "\u{03c1}\u{03b2}\u{03b2}\u{03b2}\u{03b2}\u{03b2}\u{03b2}",
+                "\u{03b2}\u{03c1}\u{03b2}\u{03b2}\u{03b2}\u{03b2}\u{03b2}",
+                "\u{03b2}\u{03b2}\u{03c1}\u{03b2}\u{03b2}\u{03b2}\u{03b2}",
+                "\u{03b2}\u{03b2}\u{03b2}\u{03c1}\u{03b2}\u{03b2}\u{03b2}",
+                "\u{03b2}\u{03b2}\u{03b2}\u{03b2}\u{03c1}\u{03b2}\u{03b2}",
+                "\u{03b2}\u{03b2}\u{03b2}\u{03b2}\u{03b2}\u{03c1}\u{03b2}",
+                "\u{03b2}\u{03b2}\u{03b2}\u{03b2}\u{03b2}\u{03b2}\u{03c1}",
+            ]),
+        },
+    );
 
-    m.insert("aesthetic", SpinnerData {
-        interval: 80.0,
-        frames: strs_to_frames(&[
-            "\u{25b0}\u{25b1}\u{25b1}\u{25b1}\u{25b1}\u{25b1}\u{25b1}",
-            "\u{25b0}\u{25b0}\u{25b1}\u{25b1}\u{25b1}\u{25b1}\u{25b1}",
-            "\u{25b0}\u{25b0}\u{25b0}\u{25b1}\u{25b1}\u{25b1}\u{25b1}",
-            "\u{25b0}\u{25b0}\u{25b0}\u{25b0}\u{25b1}\u{25b1}\u{25b1}",
-            "\u{25b0}\u{25b0}\u{25b0}\u{25b0}\u{25b0}\u{25b1}\u{25b1}",
-            "\u{25b0}\u{25b0}\u{25b0}\u{25b0}\u{25b0}\u{25b0}\u{25b1}",
-            "\u{25b0}\u{25b0}\u{25b0}\u{25b0}\u{25b0}\u{25b0}\u{25b0}",
-            "\u{25b0}\u{25b1}\u{25b1}\u{25b1}\u{25b1}\u{25b1}\u{25b1}",
-        ]),
-    });
+    m.insert(
+        "aesthetic",
+        SpinnerData {
+            interval: 80.0,
+            frames: strs_to_frames(&[
+                "\u{25b0}\u{25b1}\u{25b1}\u{25b1}\u{25b1}\u{25b1}\u{25b1}",
+                "\u{25b0}\u{25b0}\u{25b1}\u{25b1}\u{25b1}\u{25b1}\u{25b1}",
+                "\u{25b0}\u{25b0}\u{25b0}\u{25b1}\u{25b1}\u{25b1}\u{25b1}",
+                "\u{25b0}\u{25b0}\u{25b0}\u{25b0}\u{25b1}\u{25b1}\u{25b1}",
+                "\u{25b0}\u{25b0}\u{25b0}\u{25b0}\u{25b0}\u{25b1}\u{25b1}",
+                "\u{25b0}\u{25b0}\u{25b0}\u{25b0}\u{25b0}\u{25b0}\u{25b1}",
+                "\u{25b0}\u{25b0}\u{25b0}\u{25b0}\u{25b0}\u{25b0}\u{25b0}",
+                "\u{25b0}\u{25b1}\u{25b1}\u{25b1}\u{25b1}\u{25b1}\u{25b1}",
+            ]),
+        },
+    );
 
     m
 });
@@ -699,17 +986,16 @@ mod tests {
         assert!(SPINNERS.contains_key("line"), "missing spinner: line");
         assert!(SPINNERS.contains_key("dots2"), "missing spinner: dots2");
         assert!(SPINNERS.contains_key("arc"), "missing spinner: arc");
-        assert!(SPINNERS.contains_key("bouncingBar"), "missing spinner: bouncingBar");
+        assert!(
+            SPINNERS.contains_key("bouncingBar"),
+            "missing spinner: bouncingBar"
+        );
     }
 
     #[test]
     fn test_all_spinners_have_non_empty_frames_and_positive_interval() {
         for (name, data) in SPINNERS.iter() {
-            assert!(
-                !data.frames.is_empty(),
-                "spinner '{}' has no frames",
-                name
-            );
+            assert!(!data.frames.is_empty(), "spinner '{}' has no frames", name);
             assert!(
                 data.interval > 0.0,
                 "spinner '{}' has non-positive interval: {}",
@@ -804,31 +1090,82 @@ mod tests {
     #[test]
     fn test_all_spinner_names() {
         let expected = vec![
-            "dots", "dots2", "dots3", "dots4", "dots5", "dots6", "dots7", "dots8",
-            "dots9", "dots10", "dots11", "dots12", "dots8Bit",
-            "line", "line2", "pipe",
-            "simpleDots", "simpleDotsScrolling",
-            "star", "star2", "flip", "hamburger",
-            "growVertical", "growHorizontal",
-            "balloon", "balloon2", "noise", "bounce",
-            "boxBounce", "boxBounce2", "triangle", "arc", "circle",
-            "squareCorners", "circleQuarters", "circleHalves",
-            "squish", "toggle", "toggle2", "toggle3", "toggle4", "toggle5",
-            "toggle6", "toggle7", "toggle8", "toggle9", "toggle10",
-            "toggle11", "toggle12", "toggle13",
-            "arrow", "arrow2", "arrow3",
-            "bouncingBar", "bouncingBall",
-            "smiley", "monkey", "hearts", "clock", "earth", "material",
-            "moon", "runner", "pong", "shark", "dqpb",
-            "weather", "christmas", "grenade", "point", "layer",
-            "betaWave", "aesthetic",
+            "dots",
+            "dots2",
+            "dots3",
+            "dots4",
+            "dots5",
+            "dots6",
+            "dots7",
+            "dots8",
+            "dots9",
+            "dots10",
+            "dots11",
+            "dots12",
+            "dots8Bit",
+            "line",
+            "line2",
+            "pipe",
+            "simpleDots",
+            "simpleDotsScrolling",
+            "star",
+            "star2",
+            "flip",
+            "hamburger",
+            "growVertical",
+            "growHorizontal",
+            "balloon",
+            "balloon2",
+            "noise",
+            "bounce",
+            "boxBounce",
+            "boxBounce2",
+            "triangle",
+            "arc",
+            "circle",
+            "squareCorners",
+            "circleQuarters",
+            "circleHalves",
+            "squish",
+            "toggle",
+            "toggle2",
+            "toggle3",
+            "toggle4",
+            "toggle5",
+            "toggle6",
+            "toggle7",
+            "toggle8",
+            "toggle9",
+            "toggle10",
+            "toggle11",
+            "toggle12",
+            "toggle13",
+            "arrow",
+            "arrow2",
+            "arrow3",
+            "bouncingBar",
+            "bouncingBall",
+            "smiley",
+            "monkey",
+            "hearts",
+            "clock",
+            "earth",
+            "material",
+            "moon",
+            "runner",
+            "pong",
+            "shark",
+            "dqpb",
+            "weather",
+            "christmas",
+            "grenade",
+            "point",
+            "layer",
+            "betaWave",
+            "aesthetic",
         ];
         for name in &expected {
-            assert!(
-                SPINNERS.contains_key(name),
-                "missing spinner: {}",
-                name
-            );
+            assert!(SPINNERS.contains_key(name), "missing spinner: {}", name);
         }
     }
 }

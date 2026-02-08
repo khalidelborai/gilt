@@ -204,10 +204,8 @@ impl Renderable for Columns {
         let max_width = options.max_width;
 
         // Measure each renderable's maximum width
-        let mut renderable_widths: Vec<usize> = renderables
-            .iter()
-            .map(|r| r.measure().maximum)
-            .collect();
+        let mut renderable_widths: Vec<usize> =
+            renderables.iter().map(|r| r.measure().maximum).collect();
 
         // If equal, set all widths to the max
         if self.equal {
@@ -511,11 +509,15 @@ mod tests {
         cols.add_renderable("aaaaaaaaaa"); // 10 chars
         cols.add_renderable("bbbbbbbbbb"); // 10 chars
         cols.add_renderable("cccccccccc"); // 10 chars
-        // With width=20 and padding of 1 between columns, only 2 can fit
-        // 10 + 1 + 10 = 21 > 20, so only 1 per row... or 2 barely
+                                           // With width=20 and padding of 1 between columns, only 2 can fit
+                                           // 10 + 1 + 10 = 21 > 20, so only 1 per row... or 2 barely
         let output = render_columns(&cols, 20);
         let lines: Vec<&str> = output.lines().filter(|l| !l.trim().is_empty()).collect();
-        assert!(lines.len() >= 2, "Expected multiple lines, got: {:?}", lines);
+        assert!(
+            lines.len() >= 2,
+            "Expected multiple lines, got: {:?}",
+            lines
+        );
     }
 
     #[test]
@@ -585,11 +587,27 @@ mod tests {
         // Should have 2 rows
         assert_eq!(lines.len(), 2, "Expected 2 lines, got: {:?}", lines);
         // First row should contain A and C
-        assert!(lines[0].contains('A'), "First row should contain A: {:?}", lines[0]);
-        assert!(lines[0].contains('C'), "First row should contain C: {:?}", lines[0]);
+        assert!(
+            lines[0].contains('A'),
+            "First row should contain A: {:?}",
+            lines[0]
+        );
+        assert!(
+            lines[0].contains('C'),
+            "First row should contain C: {:?}",
+            lines[0]
+        );
         // Second row should contain B and D
-        assert!(lines[1].contains('B'), "Second row should contain B: {:?}", lines[1]);
-        assert!(lines[1].contains('D'), "Second row should contain D: {:?}", lines[1]);
+        assert!(
+            lines[1].contains('B'),
+            "Second row should contain B: {:?}",
+            lines[1]
+        );
+        assert!(
+            lines[1].contains('D'),
+            "Second row should contain D: {:?}",
+            lines[1]
+        );
     }
 
     #[test]
@@ -640,12 +658,10 @@ mod tests {
 
     #[test]
     fn test_equal_sizing() {
-        let mut cols = Columns::new()
-            .with_equal(true)
-            .with_padding((0, 1, 0, 1));
-        cols.add_renderable("a");      // width 1
+        let mut cols = Columns::new().with_equal(true).with_padding((0, 1, 0, 1));
+        cols.add_renderable("a"); // width 1
         cols.add_renderable("longer"); // width 6
-        cols.add_renderable("bb");     // width 2
+        cols.add_renderable("bb"); // width 2
         let output = render_columns(&cols, 40);
         assert!(output.contains("a"));
         assert!(output.contains("longer"));
@@ -736,7 +752,12 @@ mod tests {
         assert!(output.contains("hello"));
         assert!(output.contains("world"));
         let lines: Vec<&str> = output.lines().filter(|l| !l.trim().is_empty()).collect();
-        assert_eq!(lines.len(), 2, "Expected 2 lines in narrow mode: {:?}", lines);
+        assert_eq!(
+            lines.len(),
+            2,
+            "Expected 2 lines in narrow mode: {:?}",
+            lines
+        );
     }
 
     #[test]
@@ -787,9 +808,7 @@ mod tests {
 
     #[test]
     fn test_equal_with_fixed_width() {
-        let mut cols = Columns::new()
-            .with_equal(true)
-            .with_width(15);
+        let mut cols = Columns::new().with_equal(true).with_width(15);
         cols.add_renderable("short");
         cols.add_renderable("medium text");
         cols.add_renderable("a very long item");
@@ -829,5 +848,4 @@ mod tests {
         assert!(!s.is_empty());
         assert!(s.contains("one"));
     }
-
 }

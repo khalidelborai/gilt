@@ -26,7 +26,9 @@ fn main() {
     console.log("[bold]GET[/bold] /api/v1/orders [green]200 OK[/green] (8ms)");
     console.log("[bold]DELETE[/bold] /api/v1/sessions/42 [yellow]204 No Content[/yellow] (3ms)");
     console.log("[bold]GET[/bold] /api/v1/missing [bold red]404 Not Found[/bold red] (2ms)");
-    console.log("[bold]POST[/bold] /api/v1/upload [bold red]500 Internal Server Error[/bold red] (120ms)");
+    console.log(
+        "[bold]POST[/bold] /api/v1/upload [bold red]500 Internal Server Error[/bold red] (120ms)",
+    );
 
     // Status updates
     console.log("[yellow]Warning:[/yellow] Connection pool at 80% capacity");

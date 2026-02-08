@@ -49,11 +49,7 @@ impl Measurement {
     }
 
     /// Apply optional minimum and maximum width constraints.
-    pub fn clamp(
-        &self,
-        min_width: Option<usize>,
-        max_width: Option<usize>,
-    ) -> Measurement {
+    pub fn clamp(&self, min_width: Option<usize>, max_width: Option<usize>) -> Measurement {
         let mut m = *self;
         if let Some(min_w) = min_width {
             m = m.with_minimum(min_w);

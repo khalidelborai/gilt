@@ -4,8 +4,8 @@
 //! the full pipeline: Renderable -> Segments -> ANSI output.
 
 use gilt::prelude::*;
-use gilt::text::Text;
 use gilt::style::Style;
+use gilt::text::Text;
 
 // ---------------------------------------------------------------------------
 // Console + Text + Style
@@ -210,7 +210,11 @@ fn console_line_outputs_newlines() {
 
 #[test]
 fn export_text_captures_output() {
-    let mut c = Console::builder().width(40).record(true).force_terminal(true).build();
+    let mut c = Console::builder()
+        .width(40)
+        .record(true)
+        .force_terminal(true)
+        .build();
     c.print_text("Hello export");
     let text = c.export_text(false, false);
     assert!(text.contains("Hello export"));
@@ -218,7 +222,11 @@ fn export_text_captures_output() {
 
 #[test]
 fn export_html_contains_markup() {
-    let mut c = Console::builder().width(40).record(true).force_terminal(true).build();
+    let mut c = Console::builder()
+        .width(40)
+        .record(true)
+        .force_terminal(true)
+        .build();
     c.print_text("[bold]Bold text[/bold]");
     let html = c.export_html(None, false, true);
     assert!(html.contains("Bold text"));
@@ -226,7 +234,11 @@ fn export_html_contains_markup() {
 
 #[test]
 fn export_svg_contains_svg_tags() {
-    let mut c = Console::builder().width(40).record(true).force_terminal(true).build();
+    let mut c = Console::builder()
+        .width(40)
+        .record(true)
+        .force_terminal(true)
+        .build();
     c.print_text("SVG content");
     let svg = c.export_svg("gilt", None, false, None, 0.61);
     assert!(svg.contains("<svg"));
@@ -264,7 +276,9 @@ fn measure_text_widget() {
 
 #[test]
 fn progress_bar_renders() {
-    let bar = ProgressBar::new().with_total(Some(100.0)).with_completed(50.0);
+    let bar = ProgressBar::new()
+        .with_total(Some(100.0))
+        .with_completed(50.0);
 
     let mut c = Console::builder().width(40).force_terminal(true).build();
     c.begin_capture();

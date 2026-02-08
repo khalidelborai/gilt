@@ -14,10 +14,26 @@ fn main() {
     }
 
     let employees = vec![
-        Employee { name: "Alice".into(), department: "Engineering".into(), years: 5 },
-        Employee { name: "Bob".into(), department: "Marketing".into(), years: 3 },
-        Employee { name: "Charlie".into(), department: "Engineering".into(), years: 8 },
-        Employee { name: "Diana".into(), department: "Sales".into(), years: 2 },
+        Employee {
+            name: "Alice".into(),
+            department: "Engineering".into(),
+            years: 5,
+        },
+        Employee {
+            name: "Bob".into(),
+            department: "Marketing".into(),
+            years: 3,
+        },
+        Employee {
+            name: "Charlie".into(),
+            department: "Engineering".into(),
+            years: 8,
+        },
+        Employee {
+            name: "Diana".into(),
+            department: "Sales".into(),
+            years: 2,
+        },
     ];
 
     let table = Employee::to_table(&employees);

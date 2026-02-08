@@ -25,7 +25,8 @@ fn main() {
 
     // ── Explain the concept ──────────────────────────────────────────────
     console.print(&"Synchronized output prevents flickering during rapid updates.".italic());
-    console.print(&"The terminal buffers everything between begin/end, then paints at once.".italic());
+    console
+        .print(&"The terminal buffers everything between begin/end, then paints at once.".italic());
     console.print_text("");
 
     // ── Method 1: Manual begin/end ───────────────────────────────────────
@@ -91,18 +92,14 @@ fn main() {
     let clipboard_text = "Hello from gilt!";
     let ctrl = Control::set_clipboard(clipboard_text);
     let raw_seq = ctrl.to_string();
-    let escaped = raw_seq
-        .replace('\x1b', "<ESC>")
-        .replace('\x07', "<BEL>");
+    let escaped = raw_seq.replace('\x1b', "<ESC>").replace('\x07', "<BEL>");
 
     console.print(&"copy_to_clipboard(\"Hello from gilt!\") produces:".bold());
     console.print_text(&format!("  {}", escaped));
     console.print_text("");
 
     // Actually send it to the clipboard (will work in supporting terminals)
-    let mut live_console = Console::builder()
-        .force_terminal(true)
-        .build();
+    let mut live_console = Console::builder().force_terminal(true).build();
     live_console.copy_to_clipboard(clipboard_text);
     console.print_text("  Clipboard command sent! Check your clipboard in a supported terminal.");
     console.print_text("");
@@ -112,9 +109,17 @@ fn main() {
 
     let reference = [
         ("Begin Sync", "ESC[?2026h", "Start buffering output"),
-        ("End Sync",   "ESC[?2026l", "Flush buffer, paint atomically"),
-        ("Set Clipboard", "ESC]52;c;<base64>BEL", "Copy text to clipboard"),
-        ("Get Clipboard", "ESC]52;c;?BEL", "Request clipboard contents"),
+        ("End Sync", "ESC[?2026l", "Flush buffer, paint atomically"),
+        (
+            "Set Clipboard",
+            "ESC]52;c;<base64>BEL",
+            "Copy text to clipboard",
+        ),
+        (
+            "Get Clipboard",
+            "ESC]52;c;?BEL",
+            "Request clipboard contents",
+        ),
     ];
 
     for (name, seq, desc) in &reference {

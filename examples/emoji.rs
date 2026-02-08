@@ -36,10 +36,7 @@ fn main() {
     for name in &names {
         match Emoji::new(name) {
             Ok(emoji) => {
-                let line = Text::new(
-                    &format!("  :{name}:  =>  {emoji}"),
-                    Style::null(),
-                );
+                let line = Text::new(&format!("  :{name}:  =>  {emoji}"), Style::null());
                 console.print(&line);
             }
             Err(_) => {

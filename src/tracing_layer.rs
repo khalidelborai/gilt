@@ -264,8 +264,7 @@ impl GiltLayer {
                 let span_names: Vec<&str> = scope.from_root().map(|s| s.name()).collect();
                 if !span_names.is_empty() {
                     let path = span_names.join(":");
-                    let span_style =
-                        Style::parse("italic cyan").unwrap_or_else(|_| Style::null());
+                    let span_style = Style::parse("italic cyan").unwrap_or_else(|_| Style::null());
                     let span_text = Text::styled(&path, span_style);
                     parts.append_text(&span_text);
                     parts.append_str(" ", None);
@@ -484,7 +483,13 @@ mod tests {
 
     #[test]
     fn test_render_level_has_style() {
-        for level in &[Level::ERROR, Level::WARN, Level::INFO, Level::DEBUG, Level::TRACE] {
+        for level in &[
+            Level::ERROR,
+            Level::WARN,
+            Level::INFO,
+            Level::DEBUG,
+            Level::TRACE,
+        ] {
             let text = GiltLayer::render_level(level);
             assert!(
                 !text.spans().is_empty(),
@@ -550,10 +555,8 @@ mod tests {
     #[test]
     fn test_field_visitor_record_str_other() {
         let mut visitor = FieldVisitor::new();
-        let field_set = tracing::field::FieldSet::new(
-            &["user"],
-            tracing::callsite::Identifier(&TestCallsite),
-        );
+        let field_set =
+            tracing::field::FieldSet::new(&["user"], tracing::callsite::Identifier(&TestCallsite));
         let field = field_set.field("user").unwrap();
         visitor.record_str(&field, "bob");
         assert!(visitor.message.is_none());
@@ -565,10 +568,8 @@ mod tests {
     #[test]
     fn test_field_visitor_record_i64() {
         let mut visitor = FieldVisitor::new();
-        let field_set = tracing::field::FieldSet::new(
-            &["count"],
-            tracing::callsite::Identifier(&TestCallsite),
-        );
+        let field_set =
+            tracing::field::FieldSet::new(&["count"], tracing::callsite::Identifier(&TestCallsite));
         let field = field_set.field("count").unwrap();
         visitor.record_i64(&field, -42);
         assert_eq!(visitor.fields[0], ("count".to_string(), "-42".to_string()));
@@ -577,10 +578,8 @@ mod tests {
     #[test]
     fn test_field_visitor_record_u64() {
         let mut visitor = FieldVisitor::new();
-        let field_set = tracing::field::FieldSet::new(
-            &["count"],
-            tracing::callsite::Identifier(&TestCallsite),
-        );
+        let field_set =
+            tracing::field::FieldSet::new(&["count"], tracing::callsite::Identifier(&TestCallsite));
         let field = field_set.field("count").unwrap();
         visitor.record_u64(&field, 99);
         assert_eq!(visitor.fields[0], ("count".to_string(), "99".to_string()));
@@ -604,16 +603,11 @@ mod tests {
     #[test]
     fn test_field_visitor_record_f64() {
         let mut visitor = FieldVisitor::new();
-        let field_set = tracing::field::FieldSet::new(
-            &["ratio"],
-            tracing::callsite::Identifier(&TestCallsite),
-        );
+        let field_set =
+            tracing::field::FieldSet::new(&["ratio"], tracing::callsite::Identifier(&TestCallsite));
         let field = field_set.field("ratio").unwrap();
         visitor.record_f64(&field, 1.5);
-        assert_eq!(
-            visitor.fields[0],
-            ("ratio".to_string(), "1.5".to_string())
-        );
+        assert_eq!(visitor.fields[0], ("ratio".to_string(), "1.5".to_string()));
     }
 
     // -- Subscriber integration (captured output) ----------------------------
@@ -754,10 +748,7 @@ mod tests {
                 None,
                 None,
                 None,
-                tracing::field::FieldSet::new(
-                    &[],
-                    tracing::callsite::Identifier(&TestCallsite2),
-                ),
+                tracing::field::FieldSet::new(&[], tracing::callsite::Identifier(&TestCallsite2)),
                 tracing::metadata::Kind::EVENT,
             );
             &META

@@ -82,12 +82,28 @@ impl Align {
 
     /// Center content.
     pub fn center(content: Text) -> Self {
-        Align::new(content, HorizontalAlign::Center, None, None, true, None, None)
+        Align::new(
+            content,
+            HorizontalAlign::Center,
+            None,
+            None,
+            true,
+            None,
+            None,
+        )
     }
 
     /// Right-align content.
     pub fn right(content: Text) -> Self {
-        Align::new(content, HorizontalAlign::Right, None, None, true, None, None)
+        Align::new(
+            content,
+            HorizontalAlign::Right,
+            None,
+            None,
+            true,
+            None,
+            None,
+        )
     }
 
     /// Measure the minimum and maximum width requirements.
@@ -167,33 +183,21 @@ impl Renderable for Align {
             match self.align {
                 HorizontalAlign::Left => {
                     if self.pad {
-                        line.push(Segment::styled(
-                            &" ".repeat(excess),
-                            pad_style.clone(),
-                        ));
+                        line.push(Segment::styled(&" ".repeat(excess), pad_style.clone()));
                     }
                 }
                 HorizontalAlign::Center => {
                     let left = excess / 2;
                     let right = excess - left;
                     if left > 0 {
-                        line.insert(
-                            0,
-                            Segment::styled(&" ".repeat(left), pad_style.clone()),
-                        );
+                        line.insert(0, Segment::styled(&" ".repeat(left), pad_style.clone()));
                     }
                     if self.pad && right > 0 {
-                        line.push(Segment::styled(
-                            &" ".repeat(right),
-                            pad_style.clone(),
-                        ));
+                        line.push(Segment::styled(&" ".repeat(right), pad_style.clone()));
                     }
                 }
                 HorizontalAlign::Right => {
-                    line.insert(
-                        0,
-                        Segment::styled(&" ".repeat(excess), pad_style.clone()),
-                    );
+                    line.insert(0, Segment::styled(&" ".repeat(excess), pad_style.clone()));
                 }
             }
         }

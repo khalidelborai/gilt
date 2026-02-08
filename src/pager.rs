@@ -78,9 +78,9 @@ impl Pager {
     /// Returns `Err(PagerError::NotFound)` if the command string is empty.
     fn parse_command(&self) -> Result<(&str, Vec<&str>), PagerError> {
         let mut parts = self.command.split_whitespace();
-        let program = parts.next().ok_or_else(|| {
-            PagerError::NotFound("empty pager command".to_string())
-        })?;
+        let program = parts
+            .next()
+            .ok_or_else(|| PagerError::NotFound("empty pager command".to_string()))?;
         let args: Vec<&str> = parts.collect();
         Ok((program, args))
     }
@@ -106,10 +106,7 @@ impl Pager {
             .spawn()
             .map_err(|e| {
                 if e.kind() == std::io::ErrorKind::NotFound {
-                    PagerError::NotFound(format!(
-                        "pager program '{}' not found",
-                        program
-                    ))
+                    PagerError::NotFound(format!("pager program '{}' not found", program))
                 } else {
                     PagerError::Io(e)
                 }
@@ -261,8 +258,7 @@ mod tests {
 
     #[test]
     fn test_pager_error_is_error_trait() {
-        let err: Box<dyn std::error::Error> =
-            Box::new(PagerError::NotFound("test".to_string()));
+        let err: Box<dyn std::error::Error> = Box::new(PagerError::NotFound("test".to_string()));
         assert!(err.to_string().contains("not found"));
     }
 

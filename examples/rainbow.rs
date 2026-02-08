@@ -36,17 +36,20 @@ fn main() {
     console.print(&Rule::with_title("Rainbow Text"));
 
     // Classic rainbow text
-    let message = "The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs!";
+    let message =
+        "The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs!";
     let rainbow = make_rainbow(message, 1.0);
     console.print(&rainbow);
 
     // Wider color spread
-    let message2 = "Rust is a systems programming language focused on safety, speed, and concurrency.";
+    let message2 =
+        "Rust is a systems programming language focused on safety, speed, and concurrency.";
     let rainbow2 = make_rainbow(message2, 3.0);
     console.print(&rainbow2);
 
     // Narrow spread — subtle gradient
-    let message3 = "gilt brings Rich-style terminal formatting to Rust with full ANSI color support.";
+    let message3 =
+        "gilt brings Rich-style terminal formatting to Rust with full ANSI color support.";
     let rainbow3 = make_rainbow(message3, 0.5);
     console.print(&rainbow3);
 

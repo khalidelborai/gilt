@@ -21,11 +21,7 @@ fn main() {
 
     console.print(&Rule::with_title("Simple Scope"));
 
-    let scope = Scope::from_pairs(&[
-        ("name", "Alice"),
-        ("age", "30"),
-        ("language", "Rust"),
-    ]);
+    let scope = Scope::from_pairs(&[("name", "Alice"), ("age", "30"), ("language", "Rust")]);
     console.print(&scope);
 
     // -- 2. Scope with Custom Title -------------------------------------------

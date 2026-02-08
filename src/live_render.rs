@@ -129,7 +129,8 @@ impl Renderable for LiveRender {
         } else {
             Some(&self.style)
         };
-        let mut lines = console.render_lines(&self.renderable, Some(options), style_ref, false, false);
+        let mut lines =
+            console.render_lines(&self.renderable, Some(options), style_ref, false, false);
 
         // Check the shape and apply vertical overflow if needed.
         let (_, height) = Segment::get_shape(&lines);
@@ -351,30 +352,15 @@ mod tests {
         // First code: CarriageReturn
         assert_eq!(ctrl[0], ControlCode::Simple(ControlType::CarriageReturn));
         // Second code: EraseInLine(2)
-        assert_eq!(
-            ctrl[1],
-            ControlCode::WithParam(ControlType::EraseInLine, 2)
-        );
+        assert_eq!(ctrl[1], ControlCode::WithParam(ControlType::EraseInLine, 2));
 
         // Then (height-1) = 2 pairs of CursorUp(1), EraseInLine(2)
         // Total codes: 1 + 1 + 2*2 = 6
         assert_eq!(ctrl.len(), 6);
-        assert_eq!(
-            ctrl[2],
-            ControlCode::WithParam(ControlType::CursorUp, 1)
-        );
-        assert_eq!(
-            ctrl[3],
-            ControlCode::WithParam(ControlType::EraseInLine, 2)
-        );
-        assert_eq!(
-            ctrl[4],
-            ControlCode::WithParam(ControlType::CursorUp, 1)
-        );
-        assert_eq!(
-            ctrl[5],
-            ControlCode::WithParam(ControlType::EraseInLine, 2)
-        );
+        assert_eq!(ctrl[2], ControlCode::WithParam(ControlType::CursorUp, 1));
+        assert_eq!(ctrl[3], ControlCode::WithParam(ControlType::EraseInLine, 2));
+        assert_eq!(ctrl[4], ControlCode::WithParam(ControlType::CursorUp, 1));
+        assert_eq!(ctrl[5], ControlCode::WithParam(ControlType::EraseInLine, 2));
     }
 
     // -- restore_cursor -----------------------------------------------------
@@ -446,10 +432,7 @@ mod tests {
         // height=1, so: CR, EraseInLine(2), no CursorUp pairs
         assert_eq!(ctrl.len(), 2);
         assert_eq!(ctrl[0], ControlCode::Simple(ControlType::CarriageReturn));
-        assert_eq!(
-            ctrl[1],
-            ControlCode::WithParam(ControlType::EraseInLine, 2)
-        );
+        assert_eq!(ctrl[1], ControlCode::WithParam(ControlType::EraseInLine, 2));
     }
 
     // -- Single-line restore_cursor -----------------------------------------
@@ -467,23 +450,26 @@ mod tests {
         // height=1: CR, CursorUp(1), EraseInLine(2)
         assert_eq!(ctrl.len(), 3);
         assert_eq!(ctrl[0], ControlCode::Simple(ControlType::CarriageReturn));
-        assert_eq!(
-            ctrl[1],
-            ControlCode::WithParam(ControlType::CursorUp, 1)
-        );
-        assert_eq!(
-            ctrl[2],
-            ControlCode::WithParam(ControlType::EraseInLine, 2)
-        );
+        assert_eq!(ctrl[1], ControlCode::WithParam(ControlType::CursorUp, 1));
+        assert_eq!(ctrl[2], ControlCode::WithParam(ControlType::EraseInLine, 2));
     }
 
     // -- Vertical overflow enum variants ------------------------------------
 
     #[test]
     fn test_vertical_overflow_method_variants() {
-        assert_ne!(VerticalOverflowMethod::Crop, VerticalOverflowMethod::Ellipsis);
-        assert_ne!(VerticalOverflowMethod::Ellipsis, VerticalOverflowMethod::Visible);
-        assert_ne!(VerticalOverflowMethod::Crop, VerticalOverflowMethod::Visible);
+        assert_ne!(
+            VerticalOverflowMethod::Crop,
+            VerticalOverflowMethod::Ellipsis
+        );
+        assert_ne!(
+            VerticalOverflowMethod::Ellipsis,
+            VerticalOverflowMethod::Visible
+        );
+        assert_ne!(
+            VerticalOverflowMethod::Crop,
+            VerticalOverflowMethod::Visible
+        );
     }
 
     // -- Render with style --------------------------------------------------
