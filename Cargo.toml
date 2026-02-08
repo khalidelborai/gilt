@@ -31,6 +31,7 @@ tracing = { version = "0.1", optional = true }
 tracing-subscriber = { version = "0.3", features = ["registry"], optional = true }
 miette = { version = "7", optional = true }
 eyre = { version = "0.6", optional = true }
+anstyle = { version = "1", optional = true }
 
 [features]
 default = []
@@ -38,6 +39,7 @@ tracing = ["dep:tracing", "dep:tracing-subscriber"]
 derive = ["dep:gilt-derive"]
 miette = ["dep:miette"]
 eyre = ["dep:eyre"]
+anstyle = ["dep:anstyle"]
 
 [dev-dependencies]
 pretty_assertions = "1"

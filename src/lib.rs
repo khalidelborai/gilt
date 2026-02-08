@@ -35,6 +35,8 @@ pub mod emoji_codes;
 pub mod emoji_replace;
 pub mod errors;
 pub mod export_format;
+#[cfg(feature = "anstyle")]
+pub mod anstyle_adapter;
 #[cfg(feature = "eyre")]
 pub mod eyre_handler;
 pub mod filesize;
