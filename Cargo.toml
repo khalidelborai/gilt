@@ -3,8 +3,9 @@ members = ["gilt-derive"]
 
 [package]
 name = "gilt"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
+exclude = [".claude/"]
 description = "A fast, rich terminal formatting library — Rust port of Python's rich"
 license = "MIT"
 repository = "https://github.com/khalidelborai/gilt"
