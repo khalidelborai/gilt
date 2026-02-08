@@ -3,7 +3,7 @@
 //! Port of Python `rich/box.py`. Defines 19 built-in box styles for rendering
 //! table borders and separators.
 
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 
 /// Which level of row separator to render.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -345,80 +345,80 @@ impl BoxChars {
 // ──────────────────────────────────────────────────────────
 
 /// ASCII box style using `+`, `-`, and `|` characters.
-pub static ASCII: Lazy<BoxChars> =
-    Lazy::new(|| BoxChars::new("+--+\n| ||\n|-+|\n| ||\n|-+|\n|-+|\n| ||\n+--+", true));
+pub static ASCII: LazyLock<BoxChars> =
+    LazyLock::new(|| BoxChars::new("+--+\n| ||\n|-+|\n| ||\n|-+|\n|-+|\n| ||\n+--+", true));
 
 /// Alternate ASCII box style with `+` at every intersection.
-pub static ASCII2: Lazy<BoxChars> =
-    Lazy::new(|| BoxChars::new("+-++\n| ||\n+-++\n| ||\n+-++\n+-++\n| ||\n+-++", true));
+pub static ASCII2: LazyLock<BoxChars> =
+    LazyLock::new(|| BoxChars::new("+-++\n| ||\n+-++\n| ||\n+-++\n+-++\n| ||\n+-++", true));
 
 /// ASCII box style with `=` for the header separator row.
-pub static ASCII_DOUBLE_HEAD: Lazy<BoxChars> =
-    Lazy::new(|| BoxChars::new("+-++\n| ||\n+=++\n| ||\n+-++\n+-++\n| ||\n+-++", true));
+pub static ASCII_DOUBLE_HEAD: LazyLock<BoxChars> =
+    LazyLock::new(|| BoxChars::new("+-++\n| ||\n+=++\n| ||\n+-++\n+-++\n| ||\n+-++", true));
 
 /// Standard single-line Unicode box style (`┌─┬┐`, `│`, `└─┴┘`).
-pub static SQUARE: Lazy<BoxChars> =
-    Lazy::new(|| BoxChars::new("┌─┬┐\n│ ││\n├─┼┤\n│ ││\n├─┼┤\n├─┼┤\n│ ││\n└─┴┘", false));
+pub static SQUARE: LazyLock<BoxChars> =
+    LazyLock::new(|| BoxChars::new("┌─┬┐\n│ ││\n├─┼┤\n│ ││\n├─┼┤\n├─┼┤\n│ ││\n└─┴┘", false));
 
 /// Single-line Unicode box with a double-line header separator (`╞═╪╡`).
-pub static SQUARE_DOUBLE_HEAD: Lazy<BoxChars> =
-    Lazy::new(|| BoxChars::new("┌─┬┐\n│ ││\n╞═╪╡\n│ ││\n├─┼┤\n├─┼┤\n│ ││\n└─┴┘", false));
+pub static SQUARE_DOUBLE_HEAD: LazyLock<BoxChars> =
+    LazyLock::new(|| BoxChars::new("┌─┬┐\n│ ││\n╞═╪╡\n│ ││\n├─┼┤\n├─┼┤\n│ ││\n└─┴┘", false));
 
 /// Minimal box style with no outer borders, only column dividers and row separators.
-pub static MINIMAL: Lazy<BoxChars> =
-    Lazy::new(|| BoxChars::new("  ╷ \n  │ \n╶─┼╴\n  │ \n╶─┼╴\n╶─┼╴\n  │ \n  ╵ ", false));
+pub static MINIMAL: LazyLock<BoxChars> =
+    LazyLock::new(|| BoxChars::new("  ╷ \n  │ \n╶─┼╴\n  │ \n╶─┼╴\n╶─┼╴\n  │ \n  ╵ ", false));
 
 /// Minimal box style with a heavy (thick) header separator (`╺━┿╸`).
-pub static MINIMAL_HEAVY_HEAD: Lazy<BoxChars> =
-    Lazy::new(|| BoxChars::new("  ╷ \n  │ \n╺━┿╸\n  │ \n╶─┼╴\n╶─┼╴\n  │ \n  ╵ ", false));
+pub static MINIMAL_HEAVY_HEAD: LazyLock<BoxChars> =
+    LazyLock::new(|| BoxChars::new("  ╷ \n  │ \n╺━┿╸\n  │ \n╶─┼╴\n╶─┼╴\n  │ \n  ╵ ", false));
 
 /// Minimal box style with a double-line header separator (`═╪`).
-pub static MINIMAL_DOUBLE_HEAD: Lazy<BoxChars> =
-    Lazy::new(|| BoxChars::new("  ╷ \n  │ \n ═╪ \n  │ \n ─┼ \n ─┼ \n  │ \n  ╵ ", false));
+pub static MINIMAL_DOUBLE_HEAD: LazyLock<BoxChars> =
+    LazyLock::new(|| BoxChars::new("  ╷ \n  │ \n ═╪ \n  │ \n ─┼ \n ─┼ \n  │ \n  ╵ ", false));
 
 /// Simple box style with only horizontal rules for header and footer separators.
-pub static SIMPLE: Lazy<BoxChars> =
-    Lazy::new(|| BoxChars::new("    \n    \n ── \n    \n    \n ── \n    \n    ", false));
+pub static SIMPLE: LazyLock<BoxChars> =
+    LazyLock::new(|| BoxChars::new("    \n    \n ── \n    \n    \n ── \n    \n    ", false));
 
 /// Simple box style with only a header separator rule (no footer rule).
-pub static SIMPLE_HEAD: Lazy<BoxChars> =
-    Lazy::new(|| BoxChars::new("    \n    \n ── \n    \n    \n    \n    \n    ", false));
+pub static SIMPLE_HEAD: LazyLock<BoxChars> =
+    LazyLock::new(|| BoxChars::new("    \n    \n ── \n    \n    \n    \n    \n    ", false));
 
 /// Simple box style with heavy (thick) horizontal rules (`━`).
-pub static SIMPLE_HEAVY: Lazy<BoxChars> =
-    Lazy::new(|| BoxChars::new("    \n    \n ━━ \n    \n    \n ━━ \n    \n    ", false));
+pub static SIMPLE_HEAVY: LazyLock<BoxChars> =
+    LazyLock::new(|| BoxChars::new("    \n    \n ━━ \n    \n    \n ━━ \n    \n    ", false));
 
 /// Box style using only horizontal rules for all borders and separators.
-pub static HORIZONTALS: Lazy<BoxChars> =
-    Lazy::new(|| BoxChars::new(" ── \n    \n ── \n    \n ── \n ── \n    \n ── ", false));
+pub static HORIZONTALS: LazyLock<BoxChars> =
+    LazyLock::new(|| BoxChars::new(" ── \n    \n ── \n    \n ── \n ── \n    \n ── ", false));
 
 /// Single-line Unicode box with rounded corners (`╭╮╰╯`).
-pub static ROUNDED: Lazy<BoxChars> =
-    Lazy::new(|| BoxChars::new("╭─┬╮\n│ ││\n├─┼┤\n│ ││\n├─┼┤\n├─┼┤\n│ ││\n╰─┴╯", false));
+pub static ROUNDED: LazyLock<BoxChars> =
+    LazyLock::new(|| BoxChars::new("╭─┬╮\n│ ││\n├─┼┤\n│ ││\n├─┼┤\n├─┼┤\n│ ││\n╰─┴╯", false));
 
 /// Heavy (thick) Unicode box style (`┏━┳┓`, `┃`, `┗━┻┛`).
-pub static HEAVY: Lazy<BoxChars> =
-    Lazy::new(|| BoxChars::new("┏━┳┓\n┃ ┃┃\n┣━╋┫\n┃ ┃┃\n┣━╋┫\n┣━╋┫\n┃ ┃┃\n┗━┻┛", false));
+pub static HEAVY: LazyLock<BoxChars> =
+    LazyLock::new(|| BoxChars::new("┏━┳┓\n┃ ┃┃\n┣━╋┫\n┃ ┃┃\n┣━╋┫\n┣━╋┫\n┃ ┃┃\n┗━┻┛", false));
 
 /// Heavy outer edges with light inner dividers (`┏━┯┓`, `┃│┃`).
-pub static HEAVY_EDGE: Lazy<BoxChars> =
-    Lazy::new(|| BoxChars::new("┏━┯┓\n┃ │┃\n┠─┼┨\n┃ │┃\n┠─┼┨\n┠─┼┨\n┃ │┃\n┗━┷┛", false));
+pub static HEAVY_EDGE: LazyLock<BoxChars> =
+    LazyLock::new(|| BoxChars::new("┏━┯┓\n┃ │┃\n┠─┼┨\n┃ │┃\n┠─┼┨\n┠─┼┨\n┃ │┃\n┗━┷┛", false));
 
 /// Heavy header section with light body (`┏━┳┓` header, `├─┼┤` body).
-pub static HEAVY_HEAD: Lazy<BoxChars> =
-    Lazy::new(|| BoxChars::new("┏━┳┓\n┃ ┃┃\n┡━╇┩\n│ ││\n├─┼┤\n├─┼┤\n│ ││\n└─┴┘", false));
+pub static HEAVY_HEAD: LazyLock<BoxChars> =
+    LazyLock::new(|| BoxChars::new("┏━┳┓\n┃ ┃┃\n┡━╇┩\n│ ││\n├─┼┤\n├─┼┤\n│ ││\n└─┴┘", false));
 
 /// Double-line Unicode box style (`╔═╦╗`, `║`, `╚═╩╝`).
-pub static DOUBLE: Lazy<BoxChars> =
-    Lazy::new(|| BoxChars::new("╔═╦╗\n║ ║║\n╠═╬╣\n║ ║║\n╠═╬╣\n╠═╬╣\n║ ║║\n╚═╩╝", false));
+pub static DOUBLE: LazyLock<BoxChars> =
+    LazyLock::new(|| BoxChars::new("╔═╦╗\n║ ║║\n╠═╬╣\n║ ║║\n╠═╬╣\n╠═╬╣\n║ ║║\n╚═╩╝", false));
 
 /// Double-line outer edges with single-line inner dividers (`╔═╤╗`, `║│║`).
-pub static DOUBLE_EDGE: Lazy<BoxChars> =
-    Lazy::new(|| BoxChars::new("╔═╤╗\n║ │║\n╟─┼╢\n║ │║\n╟─┼╢\n╟─┼╢\n║ │║\n╚═╧╝", false));
+pub static DOUBLE_EDGE: LazyLock<BoxChars> =
+    LazyLock::new(|| BoxChars::new("╔═╤╗\n║ │║\n╟─┼╢\n║ │║\n╟─┼╢\n╟─┼╢\n║ │║\n╚═╧╝", false));
 
 /// Markdown-compatible table box style using `|` and `-` characters.
-pub static MARKDOWN: Lazy<BoxChars> =
-    Lazy::new(|| BoxChars::new("    \n| ||\n|-||\n| ||\n|-||\n|-||\n| ||\n    ", true));
+pub static MARKDOWN: LazyLock<BoxChars> =
+    LazyLock::new(|| BoxChars::new("    \n| ||\n|-||\n| ||\n|-||\n|-||\n| ||\n    ", true));
 
 #[cfg(test)]
 mod tests {

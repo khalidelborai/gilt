@@ -2,13 +2,14 @@
 //!
 //! Replaces `:emoji_name:` patterns in text with actual Unicode emoji characters.
 
-use once_cell::sync::Lazy;
+use std::borrow::Cow;
+use std::sync::LazyLock;
 use regex::Regex;
 
 use crate::emoji_codes::EMOJI;
 
-static EMOJI_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r":(\S*?)(?:(?:\-)(emoji|text))?:").unwrap());
+static EMOJI_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r":(\S*?)(?:(?:\-)(emoji|text))?:").unwrap());
 
 /// Replace `:emoji_name:` patterns in text with corresponding Unicode emoji.
 ///
@@ -20,7 +21,7 @@ static EMOJI_RE: Lazy<Regex> =
 /// is appended to all replacements that don't specify one explicitly.
 ///
 /// Unknown emoji names are left unchanged (e.g. `:unknown:` stays as-is).
-pub fn emoji_replace(text: &str, default_variant: Option<&str>) -> String {
+pub fn emoji_replace<'a>(text: &'a str, default_variant: Option<&str>) -> Cow<'a, str> {
     let default_variant_code = match default_variant {
         Some("text") => "\u{FE0E}",
         Some("emoji") => "\u{FE0F}",
@@ -45,7 +46,6 @@ pub fn emoji_replace(text: &str, default_variant: Option<&str>) -> String {
                 None => full_match.to_string(),
             }
         })
-        .into_owned()
 }
 
 #[cfg(test)]

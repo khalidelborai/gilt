@@ -8,7 +8,9 @@
 //! `serde_json` instead of Python's runtime introspection.
 
 use crate::console::{Console, ConsoleOptions, Renderable};
-use crate::highlighter::{Highlighter, JSONHighlighter, ReprHighlighter};
+#[cfg(feature = "json")]
+use crate::highlighter::JSONHighlighter;
+use crate::highlighter::{Highlighter, ReprHighlighter};
 use crate::measure::Measurement;
 use crate::segment::Segment;
 use crate::style::Style;
@@ -98,6 +100,7 @@ impl Pretty {
     /// Formats the JSON with `serde_json::to_string_pretty` and applies
     /// [`JSONHighlighter`]. Sets `no_wrap` to `true` since pretty-printed JSON
     /// already contains newlines at appropriate positions.
+    #[cfg(feature = "json")]
     pub fn from_json(value: &serde_json::Value) -> Self {
         let formatted = serde_json::to_string_pretty(value).unwrap_or_default();
         let hl = JSONHighlighter::new();
@@ -199,6 +202,7 @@ impl Pretty {
     ///     .with_expand_all(true)
     ///     .rebuild_json(&value);
     /// ```
+    #[cfg(feature = "json")]
     #[must_use]
     pub fn rebuild_json(mut self, value: &serde_json::Value) -> Self {
         let formatted = format_json_value(
@@ -285,6 +289,7 @@ impl Renderable for Pretty {
 
 /// Format a JSON value as a pretty-printed string, respecting `max_length`,
 /// `max_string`, and `expand_all` parameters.
+#[cfg(feature = "json")]
 fn format_json_value(
     value: &serde_json::Value,
     depth: usize,
@@ -317,6 +322,7 @@ fn format_json_value(
 }
 
 /// Format a JSON array with optional truncation and forced expansion.
+#[cfg(feature = "json")]
 fn format_json_array(
     arr: &[serde_json::Value],
     depth: usize,
@@ -376,6 +382,7 @@ fn format_json_array(
 }
 
 /// Format a JSON object with optional truncation and forced expansion.
+#[cfg(feature = "json")]
 fn format_json_object(
     obj: &serde_json::Map<String, serde_json::Value>,
     depth: usize,
@@ -437,6 +444,7 @@ fn format_json_object(
 
 /// Truncate a string if it exceeds `max_string` characters.
 /// Appends `+N` to indicate hidden characters.
+#[cfg(feature = "json")]
 fn truncate_string(s: &str, max_string: Option<usize>) -> String {
     match max_string {
         Some(max) if s.chars().count() > max => {
@@ -476,6 +484,7 @@ fn infer_type_name(text: &str) -> &'static str {
 }
 
 /// Escape special JSON characters in a string.
+#[cfg(feature = "json")]
 fn escape_json_string(s: &str) -> String {
     let mut result = String::with_capacity(s.len());
     for c in s.chars() {
@@ -775,6 +784,7 @@ mod tests {
 
     // -- from_json tests ----------------------------------------------------
 
+    #[cfg(feature = "json")]
     #[test]
     fn test_from_json_simple_object() {
         let json: serde_json::Value =
@@ -787,6 +797,7 @@ mod tests {
         assert_eq!(pretty.indent_size, 2);
     }
 
+    #[cfg(feature = "json")]
     #[test]
     fn test_from_json_nested_object() {
         let json: serde_json::Value =
@@ -800,6 +811,7 @@ mod tests {
         assert!(plain.contains("    "));
     }
 
+    #[cfg(feature = "json")]
     #[test]
     fn test_from_json_array() {
         let json: serde_json::Value = serde_json::from_str(r#"[1, 2, 3]"#).unwrap();
@@ -810,6 +822,7 @@ mod tests {
         assert!(plain.contains('3'));
     }
 
+    #[cfg(feature = "json")]
     #[test]
     fn test_from_json_highlighting() {
         let json: serde_json::Value = serde_json::from_str(r#"{"key": true, "num": 42}"#).unwrap();
@@ -965,6 +978,7 @@ mod tests {
         assert!(!segments.is_empty());
     }
 
+    #[cfg(feature = "json")]
     #[test]
     fn test_renderable_json() {
         let console = make_console();
@@ -1015,6 +1029,7 @@ mod tests {
         assert_eq!(m.maximum, 0);
     }
 
+    #[cfg(feature = "json")]
     #[test]
     fn test_measure_json() {
         let json: serde_json::Value = serde_json::from_str(r#"{"key": "value"}"#).unwrap();
@@ -1045,6 +1060,7 @@ mod tests {
 
     // -- max_length tests ---------------------------------------------------
 
+    #[cfg(feature = "json")]
     #[test]
     fn test_max_length_truncates_array() {
         let json: serde_json::Value =
@@ -1065,6 +1081,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "json")]
     #[test]
     fn test_max_length_none_shows_all() {
         let json: serde_json::Value = serde_json::from_str("[1, 2, 3, 4, 5]").unwrap();
@@ -1087,6 +1104,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "json")]
     #[test]
     fn test_max_length_truncates_object() {
         let json: serde_json::Value =
@@ -1105,6 +1123,7 @@ mod tests {
 
     // -- max_string tests ---------------------------------------------------
 
+    #[cfg(feature = "json")]
     #[test]
     fn test_max_string_truncates() {
         let json: serde_json::Value = serde_json::from_str(
@@ -1129,6 +1148,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "json")]
     #[test]
     fn test_max_string_none_shows_full() {
         let long_str = "This is a very long string that should not be truncated";
@@ -1142,6 +1162,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "json")]
     #[test]
     fn test_max_string_short_string_not_truncated() {
         let json: serde_json::Value = serde_json::json!({"name": "Alice"});
@@ -1164,6 +1185,7 @@ mod tests {
 
     // -- expand_all tests ---------------------------------------------------
 
+    #[cfg(feature = "json")]
     #[test]
     fn test_expand_all_forces_expansion() {
         let json: serde_json::Value = serde_json::from_str("[1, 2]").unwrap();
@@ -1187,6 +1209,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "json")]
     #[test]
     fn test_expand_all_false_compact() {
         let json: serde_json::Value = serde_json::from_str("[1, 2]").unwrap();
@@ -1202,6 +1225,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "json")]
     #[test]
     fn test_expand_all_object() {
         let json: serde_json::Value = serde_json::from_str(r#"{"a": 1}"#).unwrap();
@@ -1218,6 +1242,7 @@ mod tests {
 
     // -- Combined parameter tests -------------------------------------------
 
+    #[cfg(feature = "json")]
     #[test]
     fn test_all_params_combined() {
         let json: serde_json::Value = serde_json::from_str(
@@ -1253,6 +1278,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "json")]
     #[test]
     fn test_max_length_with_nested_arrays() {
         let json: serde_json::Value =
@@ -1300,54 +1326,64 @@ mod tests {
 
     // -- Helper function unit tests -----------------------------------------
 
+    #[cfg(feature = "json")]
     #[test]
     fn test_truncate_string_within_limit() {
         assert_eq!(truncate_string("hello", Some(10)), "hello");
     }
 
+    #[cfg(feature = "json")]
     #[test]
     fn test_truncate_string_at_limit() {
         assert_eq!(truncate_string("hello", Some(5)), "hello");
     }
 
+    #[cfg(feature = "json")]
     #[test]
     fn test_truncate_string_over_limit() {
         assert_eq!(truncate_string("hello world", Some(5)), "hello+6");
     }
 
+    #[cfg(feature = "json")]
     #[test]
     fn test_truncate_string_none() {
         assert_eq!(truncate_string("hello world", None), "hello world");
     }
 
+    #[cfg(feature = "json")]
     #[test]
     fn test_escape_json_string_basic() {
         assert_eq!(escape_json_string("hello"), "hello");
     }
 
+    #[cfg(feature = "json")]
     #[test]
     fn test_escape_json_string_quotes() {
         assert_eq!(escape_json_string(r#"say "hi""#), r#"say \"hi\""#);
     }
 
+    #[cfg(feature = "json")]
     #[test]
     fn test_format_json_value_null() {
         let v = serde_json::Value::Null;
         assert_eq!(format_json_value(&v, 0, 2, None, None, false), "null");
     }
 
+    #[cfg(feature = "json")]
     #[test]
     fn test_format_json_value_bool() {
         let v = serde_json::Value::Bool(true);
         assert_eq!(format_json_value(&v, 0, 2, None, None, false), "true");
     }
 
+    #[cfg(feature = "json")]
     #[test]
     fn test_format_json_empty_array() {
         let v: serde_json::Value = serde_json::from_str("[]").unwrap();
         assert_eq!(format_json_value(&v, 0, 2, None, None, false), "[]");
     }
 
+    #[cfg(feature = "json")]
     #[test]
     fn test_format_json_empty_object() {
         let v: serde_json::Value = serde_json::from_str("{}").unwrap();
@@ -1375,6 +1411,7 @@ mod tests {
         assert!(pretty.type_annotation);
     }
 
+    #[cfg(feature = "json")]
     #[test]
     fn test_type_annotation_prepends_type_for_json_object() {
         let console = make_console();
@@ -1390,6 +1427,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "json")]
     #[test]
     fn test_type_annotation_prepends_type_for_json_array() {
         let console = make_console();
@@ -1405,6 +1443,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "json")]
     #[test]
     fn test_type_annotation_disabled_no_prefix() {
         let console = make_console();

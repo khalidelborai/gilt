@@ -70,6 +70,20 @@ pub fn detect_color_env() -> ColorEnvOverride {
     ColorEnvOverride::None
 }
 
+/// Detect if the user prefers reduced motion.
+///
+/// Returns `true` if the `REDUCE_MOTION` environment variable is set to
+/// `"1"` or `"true"` (case-insensitive).
+///
+/// This allows applications to skip animations (spinners, progress bars,
+/// live updates) when the user has expressed a preference for reduced motion.
+pub fn detect_reduce_motion() -> bool {
+    match env::var("REDUCE_MOTION") {
+        Ok(val) => val == "1" || val.eq_ignore_ascii_case("true"),
+        Err(_) => false,
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -205,5 +219,71 @@ mod tests {
         );
         // FORCE_COLOR=0 → NoColor, even though CLICOLOR_FORCE=1
         assert_eq!(r, ColorEnvOverride::NoColor);
+    }
+
+    // --- detect_reduce_motion tests ---
+
+    /// Helper for REDUCE_MOTION tests: clears REDUCE_MOTION, sets `val`, runs `f`, restores.
+    fn with_reduce_motion<F: FnOnce() -> bool>(val: Option<&str>, f: F) -> bool {
+        let _guard = ENV_LOCK.lock().unwrap();
+        let saved = env::var("REDUCE_MOTION").ok();
+        env::remove_var("REDUCE_MOTION");
+        if let Some(v) = val {
+            env::set_var("REDUCE_MOTION", v);
+        }
+        let result = f();
+        match saved {
+            Some(v) => env::set_var("REDUCE_MOTION", v),
+            None => env::remove_var("REDUCE_MOTION"),
+        }
+        result
+    }
+
+    #[test]
+    fn test_reduce_motion_unset() {
+        let r = with_reduce_motion(None, super::detect_reduce_motion);
+        assert!(!r, "should be false when REDUCE_MOTION is not set");
+    }
+
+    #[test]
+    fn test_reduce_motion_1() {
+        let r = with_reduce_motion(Some("1"), super::detect_reduce_motion);
+        assert!(r, "should be true when REDUCE_MOTION=1");
+    }
+
+    #[test]
+    fn test_reduce_motion_true_lowercase() {
+        let r = with_reduce_motion(Some("true"), super::detect_reduce_motion);
+        assert!(r, "should be true when REDUCE_MOTION=true");
+    }
+
+    #[test]
+    fn test_reduce_motion_true_uppercase() {
+        let r = with_reduce_motion(Some("TRUE"), super::detect_reduce_motion);
+        assert!(r, "should be true when REDUCE_MOTION=TRUE");
+    }
+
+    #[test]
+    fn test_reduce_motion_true_mixed_case() {
+        let r = with_reduce_motion(Some("True"), super::detect_reduce_motion);
+        assert!(r, "should be true when REDUCE_MOTION=True");
+    }
+
+    #[test]
+    fn test_reduce_motion_0() {
+        let r = with_reduce_motion(Some("0"), super::detect_reduce_motion);
+        assert!(!r, "should be false when REDUCE_MOTION=0");
+    }
+
+    #[test]
+    fn test_reduce_motion_empty() {
+        let r = with_reduce_motion(Some(""), super::detect_reduce_motion);
+        assert!(!r, "should be false when REDUCE_MOTION is empty");
+    }
+
+    #[test]
+    fn test_reduce_motion_arbitrary_value() {
+        let r = with_reduce_motion(Some("yes"), super::detect_reduce_motion);
+        assert!(!r, "should be false for arbitrary values like 'yes'");
     }
 }

@@ -3,7 +3,7 @@
 //! This module parses ANSI escape codes from terminal output and converts them
 //! to styled `Text` objects. It is a port of Python's `rich/ansi.py`.
 
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 use regex::Regex;
 
 use crate::color::Color;
@@ -18,7 +18,7 @@ use crate::text::Text;
 /// - Single-char C0/C1 sequences: `\x1b[0-?]`
 /// - OSC sequences: `\x1b](.*?)\x1b\\`
 /// - CSI/Fe sequences: `\x1b([(@-Z\\-_]|\[[0-?]*[ -/]*[@-~])`
-static RE_ANSI: Lazy<Regex> = Lazy::new(|| {
+static RE_ANSI: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
         r"(?:\x1b[0-?])|(?:\x1b\](.*?)\x1b\\)|(?:\x1b([(@\x2d-Z\\\x2d_]|\[[0-?]*[ -/]*[@-~]))",
     )

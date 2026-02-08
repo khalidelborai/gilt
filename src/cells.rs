@@ -3,6 +3,8 @@
 //! This module provides utilities for calculating the visual width of text in terminal cells,
 //! handling single-width (ASCII, box drawing) and double-width (CJK, emoji) characters.
 
+use std::borrow::Cow;
+
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 /// Get the cell width of a string (how many terminal columns it occupies).
@@ -58,11 +60,11 @@ pub fn get_character_cell_size(c: char) -> usize {
 /// assert_eq!(set_cell_size("😽😽", 4), "😽😽");
 /// assert_eq!(set_cell_size("😽😽", 3), "😽 ");  // crop in middle of emoji → space
 /// ```
-pub fn set_cell_size(text: &str, total: usize) -> String {
+pub fn set_cell_size(text: &str, total: usize) -> Cow<'_, str> {
     let current_len = cell_len(text);
 
     if current_len == total {
-        return text.to_string();
+        return Cow::Borrowed(text);
     }
 
     if current_len < total {
@@ -70,11 +72,11 @@ pub fn set_cell_size(text: &str, total: usize) -> String {
         let mut result = String::with_capacity(text.len() + (total - current_len));
         result.push_str(text);
         result.push_str(&" ".repeat(total - current_len));
-        return result;
+        return Cow::Owned(result);
     }
 
     if total == 0 {
-        return String::new();
+        return Cow::Borrowed("");
     }
 
     // Need to crop
@@ -98,7 +100,7 @@ pub fn set_cell_size(text: &str, total: usize) -> String {
         }
     }
 
-    result
+    Cow::Owned(result)
 }
 
 /// Split text into lines where each line fits within `width` cells.

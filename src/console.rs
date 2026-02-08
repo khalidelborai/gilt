@@ -9,6 +9,8 @@ use crate::color_env::{detect_color_env, ColorEnvOverride};
 use crate::control::Control;
 use crate::errors::ConsoleError;
 use crate::export_format::{CONSOLE_HTML_FORMAT, CONSOLE_SVG_FORMAT};
+use std::fmt::Write as _;
+#[cfg(feature = "json")]
 use crate::json::{Json, JsonOptions};
 use crate::markup;
 use crate::measure::Measurement;
@@ -969,6 +971,7 @@ impl Console {
     /// Like [`input`](Console::input), but terminal echo is disabled so the
     /// typed characters are not visible on screen. Uses `rpassword` for
     /// cross-platform hidden input.
+    #[cfg(feature = "interactive")]
     pub fn input_password(&mut self, prompt: &str) -> Result<String, std::io::Error> {
         // Render and print the prompt (without trailing newline)
         let text = self.render_str(prompt, None, None, None);
@@ -995,6 +998,7 @@ impl Console {
     /// assert!(output.contains("name"));
     /// assert!(output.contains("Alice"));
     /// ```
+    #[cfg(feature = "json")]
     pub fn print_json(&mut self, json: &str) {
         match Json::new(json, JsonOptions::default()) {
             Ok(json_widget) => self.print(&json_widget),
@@ -1496,15 +1500,13 @@ impl Console {
                 if css.is_empty() {
                     code.push_str(&escaped);
                 } else if inline_styles {
-                    code.push_str(&format!("<span style=\"{}\">{}</span>", css, escaped));
+                    write!(code, "<span style=\"{}\">{}</span>", css, escaped).unwrap();
                 } else {
                     // Use class-based styles
                     let class_name =
                         find_or_insert_class(&mut style_cache, &mut stylesheet, style, &css);
-                    code.push_str(&format!(
-                        "<span class=\"{}\">{}</span>",
-                        class_name, escaped
-                    ));
+                    write!(code, "<span class=\"{}\">{}</span>", class_name, escaped)
+                        .unwrap();
                 }
             } else {
                 code.push_str(&escaped);
@@ -1676,8 +1678,9 @@ fn find_or_insert_class(
             return class_name.clone();
         }
     }
-    let class_name = format!("r{}", cache.len() + 1);
-    stylesheet.push_str(&format!(".{} {{ {} }}\n", class_name, css));
+    let mut class_name = String::new();
+    write!(class_name, "r{}", cache.len() + 1).unwrap();
+    writeln!(stylesheet, ".{} {{ {} }}", class_name, css).unwrap();
     cache.push((style.clone(), class_name.clone()));
     class_name
 }
@@ -1694,32 +1697,38 @@ fn build_svg_chrome(
     let mut chrome = String::new();
 
     // Background rectangle with rounded corners
-    chrome.push_str(&format!(
+    writeln!(
+        chrome,
         "<rect fill=\"{}\" stroke=\"rgba(255,255,255,0.35)\" stroke-width=\"1\" \
-         x=\"0\" y=\"0\" width=\"{}\" height=\"{}\" rx=\"8\"/>\n",
+         x=\"0\" y=\"0\" width=\"{}\" height=\"{}\" rx=\"8\"/>",
         bg, width, height,
-    ));
+    )
+    .unwrap();
 
     // Window control dots
     let dot_colors = ["#ff5f57", "#febc2e", "#28c840"];
     for (i, color) in dot_colors.iter().enumerate() {
         let cx = 16.0 + (i as f64) * 22.0;
-        chrome.push_str(&format!(
-            "    <circle cx=\"{:.0}\" cy=\"18\" r=\"5\" fill=\"{}\"/>\n",
+        writeln!(
+            chrome,
+            "    <circle cx=\"{:.0}\" cy=\"18\" r=\"5\" fill=\"{}\"/>",
             cx, color
-        ));
+        )
+        .unwrap();
     }
 
     // Title text
     if !title.is_empty() {
-        chrome.push_str(&format!(
+        writeln!(
+            chrome,
             "    <text class=\"{}-title\" fill=\"{}\" x=\"{}\" y=\"23\" \
-             text-anchor=\"middle\">{}</text>\n",
+             text-anchor=\"middle\">{}</text>",
             unique_id,
             theme.foreground_color.hex(),
             width / 2.0,
             svg_escape(title),
-        ));
+        )
+        .unwrap();
     }
 
     chrome
@@ -1775,15 +1784,17 @@ fn build_svg_text(
                 // Background
                 if let Some(bgcolor) = style.bgcolor() {
                     let bg_triplet = bgcolor.get_truecolor(Some(theme), false);
-                    backgrounds.push_str(&format!(
+                    writeln!(
+                        backgrounds,
                         "    <rect fill=\"{}\" x=\"{:.1}\" y=\"{:.1}\" \
-                         width=\"{:.1}\" height=\"{:.1}\"/>\n",
+                         width=\"{:.1}\" height=\"{:.1}\"/>",
                         bg_triplet.hex(),
                         x,
                         y - line_height + 3.0,
                         text_width,
                         line_height,
-                    ));
+                    )
+                    .unwrap();
                 }
 
                 // Foreground text with style class
@@ -1791,32 +1802,38 @@ fn build_svg_text(
                 if !css.is_empty() {
                     let class_name =
                         find_or_insert_svg_class(&mut style_cache, &mut styles, unique_id, &css);
-                    matrix.push_str(&format!(
+                    writeln!(
+                        matrix,
                         "    <text class=\"{}\" x=\"{:.1}\" y=\"{:.1}\" \
-                         textLength=\"{:.1}\">{}</text>\n",
+                         textLength=\"{:.1}\">{}</text>",
                         class_name, x, y, text_width, escaped
-                    ));
+                    )
+                    .unwrap();
                 } else {
-                    matrix.push_str(&format!(
+                    writeln!(
+                        matrix,
                         "    <text fill=\"{}\" x=\"{:.1}\" y=\"{:.1}\" \
-                         textLength=\"{:.1}\">{}</text>\n",
+                         textLength=\"{:.1}\">{}</text>",
                         theme.foreground_color.hex(),
                         x,
                         y,
                         text_width,
                         escaped
-                    ));
+                    )
+                    .unwrap();
                 }
             } else {
-                matrix.push_str(&format!(
+                writeln!(
+                    matrix,
                     "    <text fill=\"{}\" x=\"{:.1}\" y=\"{:.1}\" \
-                     textLength=\"{:.1}\">{}</text>\n",
+                     textLength=\"{:.1}\">{}</text>",
                     theme.foreground_color.hex(),
                     x,
                     y,
                     text_width,
                     escaped
-                ));
+                )
+                .unwrap();
             }
 
             x += text_width;
@@ -1839,17 +1856,18 @@ fn find_or_insert_svg_class(
             return class_name.clone();
         }
     }
-    let class_name = format!("{}-s{}", unique_id, cache.len() + 1);
+    let mut class_name = String::new();
+    write!(class_name, "{}-s{}", unique_id, cache.len() + 1).unwrap();
     // Convert HTML CSS to SVG attributes
     let svg_style = css_to_svg_style(css);
-    styles.push_str(&format!("    .{} {{ {} }}\n", class_name, svg_style));
+    writeln!(styles, "    .{} {{ {} }}", class_name, svg_style).unwrap();
     cache.push((css.to_string(), class_name.clone()));
     class_name
 }
 
 /// Convert CSS style properties to SVG-compatible style properties.
 fn css_to_svg_style(css: &str) -> String {
-    let mut svg_parts = Vec::new();
+    let mut result = String::new();
     for part in css.split(';') {
         let part = part.trim();
         if part.is_empty() {
@@ -1858,16 +1876,22 @@ fn css_to_svg_style(css: &str) -> String {
         if let Some((key, value)) = part.split_once(':') {
             let key = key.trim();
             let value = value.trim();
-            match key {
-                "color" => svg_parts.push(format!("fill: {}", value)),
-                "font-weight" => svg_parts.push(format!("font-weight: {}", value)),
-                "font-style" => svg_parts.push(format!("font-style: {}", value)),
-                "text-decoration" => svg_parts.push(format!("text-decoration: {}", value)),
-                _ => {} // Skip background-color and other non-SVG properties
+            let svg_key = match key {
+                "color" => Some("fill"),
+                "font-weight" => Some("font-weight"),
+                "font-style" => Some("font-style"),
+                "text-decoration" => Some("text-decoration"),
+                _ => None, // Skip background-color and other non-SVG properties
+            };
+            if let Some(svg_key) = svg_key {
+                if !result.is_empty() {
+                    result.push_str("; ");
+                }
+                write!(result, "{}: {}", svg_key, value).unwrap();
             }
         }
     }
-    svg_parts.join("; ")
+    result
 }
 
 /// Escape text for SVG content.
@@ -2828,6 +2852,7 @@ mod tests {
         assert!(captured.ends_with('\n'));
     }
 
+    #[cfg(feature = "json")]
     #[test]
     fn test_print_json_valid() {
         let mut console = Console::builder()
@@ -2845,6 +2870,7 @@ mod tests {
         assert!(captured.contains("30"));
     }
 
+    #[cfg(feature = "json")]
     #[test]
     fn test_print_json_invalid_falls_back() {
         let mut console = Console::builder()
@@ -3165,6 +3191,7 @@ mod tests {
 
     // -- input_password method exists and compiles ----------------------------
 
+    #[cfg(feature = "interactive")]
     #[test]
     fn test_input_password_method_exists() {
         // Verify the method signature compiles correctly.

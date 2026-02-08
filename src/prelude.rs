@@ -4,6 +4,9 @@
 //! use gilt::prelude::*;
 //! ```
 
+// Accessibility
+pub use crate::accessibility::{contrast_ratio, meets_aa, meets_aa_large, meets_aaa};
+
 // Core engine
 pub use crate::console::{Console, ConsoleBuilder, ConsoleOptions, Renderable};
 
@@ -19,12 +22,14 @@ pub use crate::columns::Columns;
 pub use crate::gradient::Gradient;
 pub use crate::group::Group;
 pub use crate::inspect::Inspect;
+#[cfg(feature = "markdown")]
 pub use crate::markdown::Markdown;
 pub use crate::panel::Panel;
 pub use crate::progress::Progress;
 pub use crate::progress::ProgressIteratorExt;
 pub use crate::progress_bar::ProgressBar;
 pub use crate::rule::Rule;
+#[cfg(feature = "syntax")]
 pub use crate::syntax::Syntax;
 pub use crate::table::Table;
 pub use crate::tree::Tree;

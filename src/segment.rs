@@ -2,6 +2,8 @@
 //!
 //! All content flows through segments, which combine text, style, and control codes.
 
+use compact_str::CompactString;
+
 use crate::cells::{cell_len, get_character_cell_size, is_single_cell_widths, set_cell_size};
 use crate::style::Style;
 
@@ -68,7 +70,7 @@ pub enum ControlCode {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Segment {
     /// The text content of this segment.
-    pub text: String,
+    pub text: CompactString,
     /// The visual style applied to the text, or `None` for unstyled content.
     pub style: Option<Style>,
     /// Terminal control codes carried by this segment, or `None` for text-only segments.
@@ -90,7 +92,7 @@ impl Segment {
     /// ```
     pub fn new(text: &str, style: Option<Style>, control: Option<Vec<ControlCode>>) -> Self {
         Segment {
-            text: text.to_string(),
+            text: CompactString::from(text),
             style,
             control,
         }
@@ -109,7 +111,7 @@ impl Segment {
     /// ```
     pub fn text(text: &str) -> Self {
         Segment {
-            text: text.to_string(),
+            text: CompactString::from(text),
             style: None,
             control: None,
         }
@@ -134,7 +136,7 @@ impl Segment {
     /// ```
     pub fn styled(text: &str, style: Style) -> Self {
         Segment {
-            text: text.to_string(),
+            text: CompactString::from(text),
             style: Some(style),
             control: None,
         }

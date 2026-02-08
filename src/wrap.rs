@@ -6,14 +6,14 @@
 //!
 //! Port of Python rich's `_wrap.py`.
 
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 use regex::Regex;
 
 use crate::cells::{cell_len, chop_cells};
 
 /// Regex matching a "word" — optional leading whitespace, then non-whitespace,
 /// then optional trailing whitespace.
-static RE_WORD: Lazy<Regex> = Lazy::new(|| Regex::new(r"\s*\S+\s*").unwrap());
+static RE_WORD: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\s*\S+\s*").unwrap());
 
 /// Yields each word from the text as `(char_start, char_end, word_slice)`.
 ///

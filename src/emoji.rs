@@ -87,7 +87,7 @@ impl Emoji {
     ///
     /// This is a convenience wrapper around `emoji_replace`.
     pub fn replace(text: &str) -> String {
-        emoji_replace(text, None)
+        emoji_replace(text, None).into_owned()
     }
 }
 

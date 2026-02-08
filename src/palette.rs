@@ -66,7 +66,7 @@ impl Palette {
 }
 
 /// Standard 16-color ANSI palette.
-pub static STANDARD_PALETTE: once_cell::sync::Lazy<Palette> = once_cell::sync::Lazy::new(|| {
+pub static STANDARD_PALETTE: std::sync::LazyLock<Palette> = std::sync::LazyLock::new(|| {
     Palette::new(vec![
         (0, 0, 0),
         (170, 0, 0),
@@ -88,7 +88,7 @@ pub static STANDARD_PALETTE: once_cell::sync::Lazy<Palette> = once_cell::sync::L
 });
 
 /// Windows 10 console 16-color palette.
-pub static WINDOWS_PALETTE: once_cell::sync::Lazy<Palette> = once_cell::sync::Lazy::new(|| {
+pub static WINDOWS_PALETTE: std::sync::LazyLock<Palette> = std::sync::LazyLock::new(|| {
     Palette::new(vec![
         (12, 12, 12),
         (197, 15, 31),
@@ -158,8 +158,8 @@ fn generate_eight_bit_palette() -> Vec<(u8, u8, u8)> {
 }
 
 /// 8-bit (256-color) ANSI palette.
-pub static EIGHT_BIT_PALETTE: once_cell::sync::Lazy<Palette> =
-    once_cell::sync::Lazy::new(|| Palette::new(generate_eight_bit_palette()));
+pub static EIGHT_BIT_PALETTE: std::sync::LazyLock<Palette> =
+    std::sync::LazyLock::new(|| Palette::new(generate_eight_bit_palette()));
 
 #[cfg(test)]
 mod tests {

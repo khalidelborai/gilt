@@ -22,6 +22,7 @@
 //!
 //! ```rust,no_run
 //! gilt::print_text("Hello, [bold]world[/bold]!");
+//! # #[cfg(feature = "json")]
 //! gilt::print_json(r#"{"name": "gilt"}"#);
 //! gilt::inspect(&vec![1, 2, 3]);
 //! ```
@@ -46,14 +47,19 @@
 //!
 //! ## Feature Flags
 //!
-//! | Feature | Description |
-//! |---------|-------------|
-//! | `tracing` | [`tracing`](https://docs.rs/tracing) subscriber with gilt formatting |
-//! | `derive` | `#[derive(Table)]` proc macro for struct-to-table |
-//! | `miette` | [`miette`](https://docs.rs/miette) diagnostic report handler |
-//! | `eyre` | [`eyre`](https://docs.rs/eyre) error report handler |
-//! | `anstyle` | Bidirectional `From` conversions with [`anstyle`](https://docs.rs/anstyle) |
+//! | Feature | Default | Description |
+//! |---------|---------|-------------|
+//! | `json` | Yes | JSON pretty-printing (`serde`, `serde_json`) |
+//! | `markdown` | Yes | Terminal-rendered Markdown (`pulldown-cmark`) |
+//! | `syntax` | Yes | Syntax highlighting (`syntect`) |
+//! | `interactive` | Yes | Password input (`rpassword`) |
+//! | `tracing` | No | [`tracing`](https://docs.rs/tracing) subscriber with gilt formatting |
+//! | `derive` | No | `#[derive(Table)]` proc macro for struct-to-table |
+//! | `miette` | No | [`miette`](https://docs.rs/miette) diagnostic report handler |
+//! | `eyre` | No | [`eyre`](https://docs.rs/eyre) error report handler |
+//! | `anstyle` | No | Bidirectional `From` conversions with [`anstyle`](https://docs.rs/anstyle) |
 
+pub mod accessibility;
 pub mod align_widget;
 pub mod ansi;
 #[cfg(feature = "anstyle")]
@@ -82,11 +88,13 @@ pub mod gradient;
 pub mod group;
 pub mod highlighter;
 pub mod inspect;
+#[cfg(feature = "json")]
 pub mod json;
 pub mod layout;
 pub mod live;
 pub mod live_render;
 pub mod logging_handler;
+#[cfg(feature = "markdown")]
 pub mod markdown;
 pub mod markup;
 pub mod measure;
@@ -113,6 +121,7 @@ pub mod status;
 pub mod style;
 pub mod styled;
 pub mod styled_str;
+#[cfg(feature = "syntax")]
 pub mod syntax;
 pub mod table;
 pub mod terminal_theme;
@@ -127,12 +136,12 @@ pub mod wrap;
 #[cfg(feature = "derive")]
 pub use gilt_derive::Table;
 
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 use std::sync::Mutex;
 
 /// Global default console instance, protected by a mutex for thread safety.
-static DEFAULT_CONSOLE: Lazy<Mutex<console::Console>> =
-    Lazy::new(|| Mutex::new(console::Console::new()));
+static DEFAULT_CONSOLE: LazyLock<Mutex<console::Console>> =
+    LazyLock::new(|| Mutex::new(console::Console::new()));
 
 /// Access the global default console.
 ///
@@ -159,6 +168,7 @@ pub fn print_text(text: &str) {
 }
 
 /// Pretty-print JSON to the default console.
+#[cfg(feature = "json")]
 pub fn print_json(json: &str) {
     with_console(|c| c.print_json(json));
 }

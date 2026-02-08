@@ -6,7 +6,7 @@
 
 use crate::color_triplet::ColorTriplet;
 use crate::palette::Palette;
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 
 /// A terminal theme definition consisting of foreground, background, and ANSI colors.
 pub struct TerminalTheme {
@@ -49,7 +49,7 @@ impl TerminalTheme {
 }
 
 /// Default terminal theme with standard colors.
-pub static DEFAULT_TERMINAL_THEME: Lazy<TerminalTheme> = Lazy::new(|| {
+pub static DEFAULT_TERMINAL_THEME: LazyLock<TerminalTheme> = LazyLock::new(|| {
     TerminalTheme::new(
         (255, 255, 255),
         (0, 0, 0),
@@ -77,7 +77,7 @@ pub static DEFAULT_TERMINAL_THEME: Lazy<TerminalTheme> = Lazy::new(|| {
 });
 
 /// SVG export theme with neutral colors suitable for rendering.
-pub static SVG_EXPORT_THEME: Lazy<TerminalTheme> = Lazy::new(|| {
+pub static SVG_EXPORT_THEME: LazyLock<TerminalTheme> = LazyLock::new(|| {
     TerminalTheme::new(
         (41, 41, 41),
         (197, 200, 198),
@@ -105,7 +105,7 @@ pub static SVG_EXPORT_THEME: Lazy<TerminalTheme> = Lazy::new(|| {
 });
 
 /// Monokai theme with dark background and vibrant colors.
-pub static MONOKAI: Lazy<TerminalTheme> = Lazy::new(|| {
+pub static MONOKAI: LazyLock<TerminalTheme> = LazyLock::new(|| {
     TerminalTheme::new(
         (12, 12, 12),
         (217, 217, 217),
@@ -133,7 +133,7 @@ pub static MONOKAI: Lazy<TerminalTheme> = Lazy::new(|| {
 });
 
 /// Dimmed Monokai theme with muted colors.
-pub static DIMMED_MONOKAI: Lazy<TerminalTheme> = Lazy::new(|| {
+pub static DIMMED_MONOKAI: LazyLock<TerminalTheme> = LazyLock::new(|| {
     TerminalTheme::new(
         (25, 25, 25),
         (185, 188, 186),
@@ -161,7 +161,7 @@ pub static DIMMED_MONOKAI: Lazy<TerminalTheme> = Lazy::new(|| {
 });
 
 /// Night Owlish theme with light background.
-pub static NIGHT_OWLISH: Lazy<TerminalTheme> = Lazy::new(|| {
+pub static NIGHT_OWLISH: LazyLock<TerminalTheme> = LazyLock::new(|| {
     TerminalTheme::new(
         (255, 255, 255),
         (64, 63, 83),

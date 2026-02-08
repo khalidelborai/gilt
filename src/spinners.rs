@@ -3,7 +3,7 @@
 //! Ported from Python rich's `_spinners.py`, which sources data from cli-spinners
 //! (MIT License, Copyright (c) Sindre Sorhus).
 
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 use std::collections::HashMap;
 
 /// Data for a single spinner animation: the interval between frames and the frames themselves.
@@ -25,7 +25,7 @@ fn strs_to_frames(v: &[&str]) -> Vec<String> {
 }
 
 /// Global map of all spinner names to their animation data.
-pub static SPINNERS: Lazy<HashMap<&'static str, SpinnerData>> = Lazy::new(|| {
+pub static SPINNERS: LazyLock<HashMap<&'static str, SpinnerData>> = LazyLock::new(|| {
     let mut m = HashMap::new();
 
     m.insert(

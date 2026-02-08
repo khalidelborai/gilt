@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 
 use crate::style::Style;
 
@@ -32,7 +32,7 @@ fn null(m: &mut HashMap<String, Style>, name: &str) {
 ///
 /// Styles are lazily initialized on first access and cached for the lifetime
 /// of the program.
-pub static DEFAULT_STYLES: Lazy<HashMap<String, Style>> = Lazy::new(|| {
+pub static DEFAULT_STYLES: LazyLock<HashMap<String, Style>> = LazyLock::new(|| {
     let mut m = HashMap::new();
 
     // --- Basic styles ---

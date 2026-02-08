@@ -2,11 +2,11 @@
 //!
 //! This is a data file — auto-generated from Python rich's `_emoji_codes.py`.
 
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 use std::collections::HashMap;
 
 /// Lookup table mapping emoji names to their Unicode character sequences.
-pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
+pub static EMOJI: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| {
     let mut m = HashMap::with_capacity(3608);
     m.insert("1st_place_medal", "\u{1F947}");
     m.insert("2nd_place_medal", "\u{1F948}");

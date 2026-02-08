@@ -4,6 +4,7 @@
 //! along with supporting types `Span`, `Lines`, and related enums.
 //! Port of Python's rich/text.py.
 
+use std::borrow::Cow;
 use std::cmp::{min, Ordering};
 use std::fmt;
 use std::ops::{Add, Index, IndexMut};
@@ -55,10 +56,15 @@ pub enum OverflowMethod {
 // ---------------------------------------------------------------------------
 
 /// Strip control codes from text (Bell, Backspace, VT, FF, CR).
-pub fn strip_control_codes(text: &str) -> String {
-    text.chars()
-        .filter(|c| !matches!(*c as u32, 7 | 8 | 11 | 12 | 13))
-        .collect()
+pub fn strip_control_codes(text: &str) -> Cow<'_, str> {
+    if !text.chars().any(|c| matches!(c as u32, 7 | 8 | 11 | 12 | 13)) {
+        return Cow::Borrowed(text);
+    }
+    Cow::Owned(
+        text.chars()
+            .filter(|c| !matches!(*c as u32, 7 | 8 | 11 | 12 | 13))
+            .collect(),
+    )
 }
 
 /// Convert a char index to a byte index within a string.
@@ -444,7 +450,7 @@ impl Text {
     /// ```
     pub fn new(text: &str, style: Style) -> Self {
         Text {
-            text: strip_control_codes(text),
+            text: strip_control_codes(text).into_owned(),
             spans: Vec::new(),
             style,
             justify: None,
@@ -546,7 +552,7 @@ impl Text {
             }
             !span.is_empty()
         });
-        self.text = new_text;
+        self.text = new_text.into_owned();
     }
 
     /// Return the style spans applied to this text.
@@ -612,7 +618,7 @@ impl Text {
     /// but has different plain text and no spans.
     pub fn blank_copy(&self, plain: &str) -> Text {
         Text {
-            text: strip_control_codes(plain),
+            text: strip_control_codes(plain).into_owned(),
             spans: Vec::new(),
             style: self.style.clone(),
             justify: self.justify,
@@ -974,13 +980,13 @@ impl Text {
                     self.set_plain("");
                     return;
                 }
-                let new_text = set_cell_size(&self.text, max_width.saturating_sub(1));
+                let new_text = set_cell_size(&self.text, max_width.saturating_sub(1)).into_owned();
                 // Count chars of new_text for span adjustment
                 self.set_plain(&new_text);
                 self.append_str("\u{2026}", None); // ellipsis
             }
             OverflowMethod::Crop | OverflowMethod::Fold => {
-                let new_text = set_cell_size(&self.text, max_width);
+                let new_text = set_cell_size(&self.text, max_width).into_owned();
                 self.set_plain(&new_text);
             }
             OverflowMethod::Ignore => {
@@ -1274,7 +1280,7 @@ impl Text {
         let lines = self.split("\n", true, true);
         let mut result = Lines::default();
         for mut line in lines.lines {
-            let new_text = set_cell_size(line.plain(), width);
+            let new_text = set_cell_size(line.plain(), width).into_owned();
             line.set_plain(&new_text);
             // Pad if needed
             if line.cell_len() < width {

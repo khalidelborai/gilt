@@ -13,7 +13,7 @@
 //! - [`JSONHighlighter`] — patterns for JSON (braces, strings, numbers, keys).
 //! - [`ISO8601Highlighter`] — patterns for ISO 8601 date/time strings.
 
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 use regex::Regex;
 
 use crate::default_styles::DEFAULT_STYLES;
@@ -118,7 +118,7 @@ impl Highlighter for RegexHighlighter {
 // ---------------------------------------------------------------------------
 
 /// Pre-compiled regex patterns for [`ReprHighlighter`].
-static REPR_HIGHLIGHTS: Lazy<Vec<Regex>> = Lazy::new(|| {
+static REPR_HIGHLIGHTS: LazyLock<Vec<Regex>> = LazyLock::new(|| {
     let patterns: Vec<&str> = vec![
         // Tags: <tag_name contents>
         r"(?P<tag_start><)(?P<tag_name>[-\w.:|]*)(?P<tag_contents>[\w\W]*)(?P<tag_end>>)",
@@ -141,7 +141,7 @@ static REPR_HIGHLIGHTS: Lazy<Vec<Regex>> = Lazy::new(|| {
 /// Note: Rust's `regex` crate does not support look-behind assertions.
 /// Patterns have been adapted to use word boundaries or other anchoring
 /// techniques instead.
-static REPR_COMBINED: Lazy<String> = Lazy::new(|| {
+static REPR_COMBINED: LazyLock<String> = LazyLock::new(|| {
     combine_regex(&[
         // IPv4
         r"(?P<ipv4>[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})",
@@ -209,7 +209,7 @@ impl Highlighter for ReprHighlighter {
 const JSON_STR_PATTERN: &str = r#"(?P<str>"[^"\\]*(?:\\.[^"\\]*)*")"#;
 
 /// Pre-compiled regex patterns for [`JSONHighlighter`].
-static JSON_HIGHLIGHTS: Lazy<Vec<Regex>> = Lazy::new(|| {
+static JSON_HIGHLIGHTS: LazyLock<Vec<Regex>> = LazyLock::new(|| {
     let combined = combine_regex(&[
         r"(?P<brace>[\{\[\(\)\]\}])",
         r"\b(?P<bool_true>true)\b|\b(?P<bool_false>false)\b|\b(?P<null>null)\b",
@@ -221,8 +221,8 @@ static JSON_HIGHLIGHTS: Lazy<Vec<Regex>> = Lazy::new(|| {
 
 /// Pre-compiled regex for detecting JSON string spans (used for key detection).
 /// Uses a non-capturing version since we only need match positions.
-static JSON_STR_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r#""[^"\\]*(?:\\.[^"\\]*)*""#).expect("invalid json str regex"));
+static JSON_STR_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r#""[^"\\]*(?:\\.[^"\\]*)*""#).expect("invalid json str regex"));
 
 /// Characters considered whitespace in JSON.
 const JSON_WHITESPACE: &[char] = &[' ', '\n', '\r', '\t'];
@@ -297,7 +297,7 @@ impl Highlighter for JSONHighlighter {
 /// `(?(name)...)`. The Python pattern for "calendar date with time" used
 /// `(?(hyphen)-)` to conditionally require hyphens/colons. We replace it with
 /// two separate patterns: one with delimiters and one without.
-static ISO8601_HIGHLIGHTS: Lazy<Vec<Regex>> = Lazy::new(|| {
+static ISO8601_HIGHLIGHTS: LazyLock<Vec<Regex>> = LazyLock::new(|| {
     let patterns: Vec<&str> = vec![
         // Calendar month (e.g. 2008-08). The hyphen is required.
         r"^(?P<date>(?P<year>[0-9]{4})-(?P<month>1[0-2]|0[1-9]))$",
@@ -391,7 +391,7 @@ impl Default for URLHighlighter {
 
 impl Highlighter for URLHighlighter {
     fn highlight(&self, text: &mut Text) {
-        static RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"https?://[^\s)>\]]+").unwrap());
+        static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"https?://[^\s)>\]]+").unwrap());
         text.highlight_regex(&RE, self.style.clone());
     }
 }
@@ -426,7 +426,7 @@ impl Default for ISODateHighlighter {
 
 impl Highlighter for ISODateHighlighter {
     fn highlight(&self, text: &mut Text) {
-        static RE: Lazy<Regex> = Lazy::new(|| {
+        static RE: LazyLock<Regex> = LazyLock::new(|| {
             Regex::new(r"\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?)?")
                 .unwrap()
         });
@@ -464,7 +464,7 @@ impl Default for UUIDHighlighter {
 
 impl Highlighter for UUIDHighlighter {
     fn highlight(&self, text: &mut Text) {
-        static RE: Lazy<Regex> = Lazy::new(|| {
+        static RE: LazyLock<Regex> = LazyLock::new(|| {
             Regex::new(
                 r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
             )
@@ -504,8 +504,8 @@ impl Default for JSONPathHighlighter {
 impl Highlighter for JSONPathHighlighter {
     fn highlight(&self, text: &mut Text) {
         // JSON paths like .foo.bar[0].baz or $.data.users
-        static RE: Lazy<Regex> =
-            Lazy::new(|| Regex::new(r"\$?(?:\.[a-zA-Z_]\w*(?:\[\d+\])?)+").unwrap());
+        static RE: LazyLock<Regex> =
+            LazyLock::new(|| Regex::new(r"\$?(?:\.[a-zA-Z_]\w*(?:\[\d+\])?)+").unwrap());
         text.highlight_regex(&RE, self.style.clone());
     }
 }

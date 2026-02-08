@@ -10,6 +10,7 @@ use crate::console::{Console, ConsoleOptions, Renderable};
 use crate::panel::Panel;
 use crate::segment::Segment;
 use crate::style::Style;
+#[cfg(feature = "syntax")]
 use crate::syntax::Syntax;
 use crate::text::{Text, TextPart};
 
@@ -347,6 +348,7 @@ impl std::fmt::Display for Traceback {
 
 impl Renderable for Traceback {
     fn rich_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
+        #[cfg(feature = "syntax")]
         let panel_width = self.width.unwrap_or(options.max_width);
 
         // Build the inner content
@@ -401,7 +403,10 @@ impl Renderable for Traceback {
             content_parts.push(TextPart::Raw("\n".to_string()));
 
             // Source context: try to read the file and show context lines
+            #[allow(unused_mut)]
             let mut showed_syntax = false;
+
+            #[cfg(feature = "syntax")]
             if let Some(lineno) = frame.lineno {
                 if lineno > 0 {
                     let path = std::path::Path::new(&frame.filename);
@@ -441,7 +446,7 @@ impl Renderable for Traceback {
                                 if !syntax_segments.is_empty() {
                                     // Collect syntax output as a styled text block
                                     for seg in &syntax_segments {
-                                        content_parts.push(TextPart::Raw(seg.text.clone()));
+                                        content_parts.push(TextPart::Raw(seg.text.to_string()));
                                     }
                                     showed_syntax = true;
                                 }

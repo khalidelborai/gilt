@@ -9,6 +9,18 @@ check:
     cargo doc --no-deps
     RUSTFLAGS="-W missing-docs" cargo check
 
+# Test with no default features (minimal build)
+check-minimal:
+    cargo test --lib --no-default-features
+
+# Test all feature combinations
+check-all:
+    cargo test --lib
+    cargo test --lib --no-default-features
+    cargo test --lib --all-features
+    cargo test --doc
+    cargo clippy --all-features
+
 # Run tests
 test:
     cargo test --lib

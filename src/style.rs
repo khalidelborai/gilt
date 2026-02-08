@@ -8,6 +8,7 @@ use crate::color::{blend_rgb, Color, ColorSystem};
 use crate::errors::StyleError;
 use crate::terminal_theme::TerminalTheme;
 use std::fmt;
+use std::fmt::Write as _;
 use std::ops::Add;
 
 /// Bit positions for text attributes.
@@ -417,10 +418,12 @@ impl Style {
             return text.to_string();
         }
 
-        let mut codes = Vec::new();
+        // Build semicolon-separated SGR codes directly into a buffer,
+        // avoiding per-code String allocations.
+        let mut sgr = String::new();
 
         // Add attribute codes
-        let attrs = [
+        let attrs: [(u16, &str); 13] = [
             (BOLD, "1"),
             (DIM, "2"),
             (ITALIC, "3"),
@@ -438,68 +441,56 @@ impl Style {
 
         for (bit, code) in &attrs {
             if self.attributes & bit != 0 && self.set_attributes & bit != 0 {
-                codes.push(code.to_string());
+                if !sgr.is_empty() {
+                    sgr.push(';');
+                }
+                sgr.push_str(code);
             }
         }
 
         // Underline style codes (extended underline)
         if let Some(ul_style) = &self.underline_style {
-            match ul_style {
-                UnderlineStyle::Single => codes.push("4:1".to_string()),
-                UnderlineStyle::Double => codes.push("4:2".to_string()),
-                UnderlineStyle::Curly => codes.push("4:3".to_string()),
-                UnderlineStyle::Dotted => codes.push("4:4".to_string()),
-                UnderlineStyle::Dashed => codes.push("4:5".to_string()),
+            if !sgr.is_empty() {
+                sgr.push(';');
             }
+            sgr.push_str(match ul_style {
+                UnderlineStyle::Single => "4:1",
+                UnderlineStyle::Double => "4:2",
+                UnderlineStyle::Curly => "4:3",
+                UnderlineStyle::Dotted => "4:4",
+                UnderlineStyle::Dashed => "4:5",
+            });
         }
 
         // Add color codes
         if let Some(color) = &self.color {
-            codes.extend(color.get_ansi_codes(true));
+            color.write_ansi_codes(true, &mut sgr);
         }
 
         if let Some(bgcolor) = &self.bgcolor {
-            codes.extend(bgcolor.get_ansi_codes(false));
+            bgcolor.write_ansi_codes(false, &mut sgr);
         }
 
         // Underline color (SGR 58;5;N or 58;2;R;G;B)
         if let Some(ul_color) = &self.underline_color {
-            let ul_codes = ul_color.get_ansi_codes(true);
-            // Convert foreground codes to underline color codes (38->58)
-            if !ul_codes.is_empty() {
-                let first = &ul_codes[0];
-                if first == "38" {
-                    codes.push("58".to_string());
-                    codes.extend(ul_codes[1..].iter().cloned());
-                } else {
-                    // Standard color: convert 3x to 58;5;N
-                    // Standard colors use codes 30-37, map to 0-7 for 58;5;N
-                    if let Ok(code_num) = first.parse::<u8>() {
-                        if (30..=37).contains(&code_num) {
-                            codes.push("58".to_string());
-                            codes.push("5".to_string());
-                            codes.push(format!("{}", code_num - 30));
-                        } else if (90..=97).contains(&code_num) {
-                            codes.push("58".to_string());
-                            codes.push("5".to_string());
-                            codes.push(format!("{}", code_num - 90 + 8));
-                        }
-                    }
-                }
-            }
+            ul_color.write_underline_color_codes(&mut sgr);
         }
 
-        let rendered = if codes.is_empty() {
-            text.to_string()
+        let mut result = String::new();
+
+        if sgr.is_empty() {
+            result.push_str(text);
         } else {
-            format!("\x1b[{}m{}\x1b[0m", codes.join(";"), text)
-        };
+            write!(result, "\x1b[{}m{}\x1b[0m", sgr, text).unwrap();
+        }
 
         // Wrap in hyperlink if present
         if let Some(url) = &self.link {
-            format!("\x1b]8;;{}\x1b\\{}\x1b]8;;\x1b\\", url, rendered)
+            let mut linked = String::new();
+            write!(linked, "\x1b]8;;{}\x1b\\{}\x1b]8;;\x1b\\", url, result).unwrap();
+            linked
         } else {
-            rendered
+            result
         }
     }
 
@@ -585,7 +576,7 @@ impl Style {
 
     /// Returns a CSS style string for HTML rendering.
     pub fn get_html_style(&self, theme: Option<&TerminalTheme>) -> String {
-        let mut styles = Vec::new();
+        let mut css = String::new();
 
         let mut fg_color = self.color.as_ref();
         let mut bg_color = self.bgcolor.as_ref();
@@ -608,41 +599,64 @@ impl Style {
 
         // Color
         if let Some(triplet) = fg_triplet {
-            styles.push(format!("color: {}", triplet.hex()));
-            styles.push(format!("text-decoration-color: {}", triplet.hex()));
+            let hex = triplet.hex();
+            write!(css, "color: {}; text-decoration-color: {}", hex, hex).unwrap();
         }
 
         // Background color
         if let Some(triplet) = bg_triplet {
-            styles.push(format!("background-color: {}", triplet.hex()));
+            if !css.is_empty() {
+                css.push_str("; ");
+            }
+            write!(css, "background-color: {}", triplet.hex()).unwrap();
         }
 
         // Bold
         if self.bold() == Some(true) {
-            styles.push("font-weight: bold".to_string());
+            if !css.is_empty() {
+                css.push_str("; ");
+            }
+            css.push_str("font-weight: bold");
         }
 
         // Italic
         if self.italic() == Some(true) {
-            styles.push("font-style: italic".to_string());
+            if !css.is_empty() {
+                css.push_str("; ");
+            }
+            css.push_str("font-style: italic");
         }
 
         // Text decorations
-        let mut decorations = Vec::new();
-        if self.underline() == Some(true) {
-            decorations.push("underline");
-        }
-        if self.strike() == Some(true) {
-            decorations.push("line-through");
-        }
-        if self.overline() == Some(true) {
-            decorations.push("overline");
-        }
-        if !decorations.is_empty() {
-            styles.push(format!("text-decoration: {}", decorations.join(" ")));
+        let has_underline = self.underline() == Some(true);
+        let has_strike = self.strike() == Some(true);
+        let has_overline = self.overline() == Some(true);
+        if has_underline || has_strike || has_overline {
+            if !css.is_empty() {
+                css.push_str("; ");
+            }
+            css.push_str("text-decoration: ");
+            let mut first = true;
+            if has_underline {
+                css.push_str("underline");
+                first = false;
+            }
+            if has_strike {
+                if !first {
+                    css.push(' ');
+                }
+                css.push_str("line-through");
+                first = false;
+            }
+            if has_overline {
+                if !first {
+                    css.push(' ');
+                }
+                css.push_str("overline");
+            }
         }
 
-        styles.join("; ")
+        css
     }
 }
 

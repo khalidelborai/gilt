@@ -4,6 +4,7 @@
 //! including stripping and escaping control characters, and generating
 //! ANSI control sequences for cursor movement, screen clearing, etc.
 
+use std::borrow::Cow;
 use std::fmt;
 
 use crate::segment::{ControlCode, ControlType, Segment};
@@ -60,13 +61,15 @@ const CONTROL_CHARS: &[char] = &[
 /// assert_eq!(strip_control_codes("foo\rbar"), "foobar");
 /// assert_eq!(strip_control_codes("hello"), "hello");
 /// ```
-pub fn strip_control_codes(text: &str) -> String {
-    if text.is_empty() {
-        return String::new();
+pub fn strip_control_codes(text: &str) -> Cow<'_, str> {
+    if text.is_empty() || !text.chars().any(|c| CONTROL_CHARS.contains(&c)) {
+        return Cow::Borrowed(text);
     }
-    text.chars()
-        .filter(|c| !CONTROL_CHARS.contains(c))
-        .collect()
+    Cow::Owned(
+        text.chars()
+            .filter(|c| !CONTROL_CHARS.contains(c))
+            .collect(),
+    )
 }
 
 /// Replace control characters with their escape sequence representations.
@@ -82,9 +85,9 @@ pub fn strip_control_codes(text: &str) -> String {
 /// use gilt::control::escape_control_codes;
 /// assert_eq!(escape_control_codes("foo\rbar"), r"foo\rbar");
 /// ```
-pub fn escape_control_codes(text: &str) -> String {
-    if text.is_empty() {
-        return String::new();
+pub fn escape_control_codes(text: &str) -> Cow<'_, str> {
+    if text.is_empty() || !text.chars().any(|c| CONTROL_CHARS.contains(&c)) {
+        return Cow::Borrowed(text);
     }
     let mut result = String::with_capacity(text.len());
     for c in text.chars() {
@@ -97,7 +100,7 @@ pub fn escape_control_codes(text: &str) -> String {
             _ => result.push(c),
         }
     }
-    result
+    Cow::Owned(result)
 }
 
 /// Render a single `ControlCode` to its ANSI escape sequence string.

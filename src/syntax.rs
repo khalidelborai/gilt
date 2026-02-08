@@ -6,7 +6,7 @@
 
 use std::path::Path;
 
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 use syntect::easy::HighlightLines;
 use syntect::highlighting::{Style as SyntectStyle, ThemeSet};
 use syntect::parsing::SyntaxSet;
@@ -20,10 +20,10 @@ use crate::style::Style;
 use crate::text::Text;
 
 /// Global lazily-initialized syntax definitions.
-static SYNTAX_SET: Lazy<SyntaxSet> = Lazy::new(SyntaxSet::load_defaults_newlines);
+static SYNTAX_SET: LazyLock<SyntaxSet> = LazyLock::new(SyntaxSet::load_defaults_newlines);
 
 /// Global lazily-initialized theme set.
-static THEME_SET: Lazy<ThemeSet> = Lazy::new(ThemeSet::load_defaults);
+static THEME_SET: LazyLock<ThemeSet> = LazyLock::new(ThemeSet::load_defaults);
 
 /// Default theme name.
 const DEFAULT_THEME: &str = "base16-ocean.dark";

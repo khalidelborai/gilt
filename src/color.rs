@@ -8,6 +8,7 @@ use crate::errors::ColorParseError;
 use crate::palette::{EIGHT_BIT_PALETTE, STANDARD_PALETTE, WINDOWS_PALETTE};
 use crate::terminal_theme::{TerminalTheme, DEFAULT_TERMINAL_THEME};
 use std::fmt;
+use std::fmt::Write as _;
 
 /// Color system type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -287,6 +288,120 @@ impl Color {
                     }]
                 }
             }
+        }
+    }
+
+    /// Writes ANSI escape codes for this color directly into a semicolon-separated
+    /// SGR buffer, avoiding per-code String allocations.
+    ///
+    /// If `buf` is non-empty, a leading `;` separator is written first.
+    pub fn write_ansi_codes(&self, foreground: bool, buf: &mut String) {
+        // Helper: append separator if buffer is non-empty
+        macro_rules! sep {
+            ($b:expr) => {
+                if !$b.is_empty() {
+                    $b.push(';');
+                }
+            };
+        }
+
+        match self.color_type {
+            ColorType::Default => {
+                sep!(buf);
+                buf.push_str(if foreground { "39" } else { "49" });
+            }
+            ColorType::Standard | ColorType::Windows => {
+                if let Some(number) = self.number {
+                    let base: u16 = if foreground { 30 } else { 40 };
+                    sep!(buf);
+                    if number < 8 {
+                        write!(buf, "{}", base + number as u16).unwrap();
+                    } else {
+                        write!(buf, "{}", base + 60 + (number - 8) as u16).unwrap();
+                    }
+                } else {
+                    sep!(buf);
+                    buf.push_str(if foreground { "39" } else { "49" });
+                }
+            }
+            ColorType::EightBit => {
+                if let Some(number) = self.number {
+                    sep!(buf);
+                    buf.push_str(if foreground { "38;5;" } else { "48;5;" });
+                    write!(buf, "{}", number).unwrap();
+                } else {
+                    sep!(buf);
+                    buf.push_str(if foreground { "39" } else { "49" });
+                }
+            }
+            ColorType::TrueColor => {
+                if let Some(triplet) = self.triplet {
+                    sep!(buf);
+                    if foreground {
+                        write!(
+                            buf,
+                            "38;2;{};{};{}",
+                            triplet.red, triplet.green, triplet.blue
+                        )
+                        .unwrap();
+                    } else {
+                        write!(
+                            buf,
+                            "48;2;{};{};{}",
+                            triplet.red, triplet.green, triplet.blue
+                        )
+                        .unwrap();
+                    }
+                } else {
+                    sep!(buf);
+                    buf.push_str(if foreground { "39" } else { "49" });
+                }
+            }
+        }
+    }
+
+    /// Writes underline color codes (SGR 58) directly into a semicolon-separated
+    /// SGR buffer. Converts foreground codes to underline-color equivalents.
+    pub fn write_underline_color_codes(&self, buf: &mut String) {
+        macro_rules! sep {
+            ($b:expr) => {
+                if !$b.is_empty() {
+                    $b.push(';');
+                }
+            };
+        }
+
+        match self.color_type {
+            ColorType::TrueColor => {
+                if let Some(triplet) = self.triplet {
+                    sep!(buf);
+                    write!(
+                        buf,
+                        "58;2;{};{};{}",
+                        triplet.red, triplet.green, triplet.blue
+                    )
+                    .unwrap();
+                }
+            }
+            ColorType::EightBit => {
+                if let Some(number) = self.number {
+                    sep!(buf);
+                    write!(buf, "58;5;{}", number).unwrap();
+                }
+            }
+            ColorType::Standard | ColorType::Windows => {
+                if let Some(number) = self.number {
+                    sep!(buf);
+                    if number < 8 {
+                        // Standard colors 30-37 -> palette index 0-7
+                        write!(buf, "58;5;{}", number).unwrap();
+                    } else if number < 16 {
+                        // Bright colors 90-97 -> palette index 8-15
+                        write!(buf, "58;5;{}", number).unwrap();
+                    }
+                }
+            }
+            ColorType::Default => {}
         }
     }
 

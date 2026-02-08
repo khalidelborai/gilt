@@ -259,16 +259,23 @@ impl Prompt {
     /// When password mode is enabled, terminal echo is disabled so the input
     /// is not visible on screen.
     pub fn ask(&self) -> String {
+        #[cfg(feature = "interactive")]
         if self.password {
-            self.ask_password()
-        } else {
-            let stdin = io::stdin();
-            let mut handle = stdin.lock();
-            self.ask_with_input(&mut handle)
+            return self.ask_password();
         }
+        #[cfg(not(feature = "interactive"))]
+        if self.password {
+            // Fall back to regular input when rpassword is unavailable.
+            // WARNING: input will be visible on screen.
+            eprintln!("warning: gilt built without `interactive` feature; password input will be visible");
+        }
+        let stdin = io::stdin();
+        let mut handle = stdin.lock();
+        self.ask_with_input(&mut handle)
     }
 
     /// Password input loop — reads without terminal echo using `rpassword`.
+    #[cfg(feature = "interactive")]
     fn ask_password(&self) -> String {
         loop {
             let prompt = self.make_prompt();
