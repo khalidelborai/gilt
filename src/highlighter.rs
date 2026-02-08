@@ -13,8 +13,8 @@
 //! - [`JSONHighlighter`] — patterns for JSON (braces, strings, numbers, keys).
 //! - [`ISO8601Highlighter`] — patterns for ISO 8601 date/time strings.
 
-use std::sync::LazyLock;
 use regex::Regex;
+use std::sync::LazyLock;
 
 use crate::default_styles::DEFAULT_STYLES;
 use crate::style::Style;

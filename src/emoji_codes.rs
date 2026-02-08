@@ -2,8 +2,8 @@
 //!
 //! This is a data file — auto-generated from Python rich's `_emoji_codes.py`.
 
-use std::sync::LazyLock;
 use std::collections::HashMap;
+use std::sync::LazyLock;
 
 /// Lookup table mapping emoji names to their Unicode character sequences.
 pub static EMOJI: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| {

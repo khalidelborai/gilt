@@ -6,8 +6,8 @@
 //!
 //! Port of Python rich's `_wrap.py`.
 
-use std::sync::LazyLock;
 use regex::Regex;
+use std::sync::LazyLock;
 
 use crate::cells::{cell_len, chop_cells};
 

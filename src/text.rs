@@ -57,7 +57,10 @@ pub enum OverflowMethod {
 
 /// Strip control codes from text (Bell, Backspace, VT, FF, CR).
 pub fn strip_control_codes(text: &str) -> Cow<'_, str> {
-    if !text.chars().any(|c| matches!(c as u32, 7 | 8 | 11 | 12 | 13)) {
+    if !text
+        .chars()
+        .any(|c| matches!(c as u32, 7 | 8 | 11 | 12 | 13))
+    {
         return Cow::Borrowed(text);
     }
     Cow::Owned(

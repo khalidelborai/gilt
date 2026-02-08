@@ -97,28 +97,19 @@ mod tests {
     #[test]
     fn test_black_on_white_max_contrast() {
         let ratio = contrast_ratio(&black(), &white());
-        assert!(
-            (ratio - 21.0).abs() < 0.1,
-            "expected ~21.0, got {ratio}"
-        );
+        assert!((ratio - 21.0).abs() < 0.1, "expected ~21.0, got {ratio}");
     }
 
     #[test]
     fn test_white_on_white_no_contrast() {
         let ratio = contrast_ratio(&white(), &white());
-        assert!(
-            (ratio - 1.0).abs() < 0.01,
-            "expected ~1.0, got {ratio}"
-        );
+        assert!((ratio - 1.0).abs() < 0.01, "expected ~1.0, got {ratio}");
     }
 
     #[test]
     fn test_black_on_black_no_contrast() {
         let ratio = contrast_ratio(&black(), &black());
-        assert!(
-            (ratio - 1.0).abs() < 0.01,
-            "expected ~1.0, got {ratio}"
-        );
+        assert!((ratio - 1.0).abs() < 0.01, "expected ~1.0, got {ratio}");
     }
 
     #[test]
@@ -262,10 +253,7 @@ mod tests {
     #[test]
     fn test_luminance_white_is_one() {
         let lum = relative_luminance(&white());
-        assert!(
-            (lum - 1.0).abs() < 1e-10,
-            "white luminance should be 1.0"
-        );
+        assert!((lum - 1.0).abs() < 1e-10, "white luminance should be 1.0");
     }
 
     #[test]

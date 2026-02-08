@@ -9,7 +9,6 @@ use crate::color_env::{detect_color_env, ColorEnvOverride};
 use crate::control::Control;
 use crate::errors::ConsoleError;
 use crate::export_format::{CONSOLE_HTML_FORMAT, CONSOLE_SVG_FORMAT};
-use std::fmt::Write as _;
 #[cfg(feature = "json")]
 use crate::json::{Json, JsonOptions};
 use crate::markup;
@@ -23,6 +22,7 @@ use crate::terminal_theme::{TerminalTheme, DEFAULT_TERMINAL_THEME, SVG_EXPORT_TH
 use crate::text::{JustifyMethod, OverflowMethod, Text};
 use crate::theme::{Theme, ThemeStack};
 use crate::traceback::Traceback;
+use std::fmt::Write as _;
 
 // ---------------------------------------------------------------------------
 // ConsoleDimensions
@@ -1505,8 +1505,7 @@ impl Console {
                     // Use class-based styles
                     let class_name =
                         find_or_insert_class(&mut style_cache, &mut stylesheet, style, &css);
-                    write!(code, "<span class=\"{}\">{}</span>", class_name, escaped)
-                        .unwrap();
+                    write!(code, "<span class=\"{}\">{}</span>", class_name, escaped).unwrap();
                 }
             } else {
                 code.push_str(&escaped);

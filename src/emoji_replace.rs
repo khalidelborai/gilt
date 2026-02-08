@@ -2,9 +2,9 @@
 //!
 //! Replaces `:emoji_name:` patterns in text with actual Unicode emoji characters.
 
+use regex::Regex;
 use std::borrow::Cow;
 use std::sync::LazyLock;
-use regex::Regex;
 
 use crate::emoji_codes::EMOJI;
 
@@ -28,24 +28,23 @@ pub fn emoji_replace<'a>(text: &'a str, default_variant: Option<&str>) -> Cow<'a
         _ => "",
     };
 
-    EMOJI_RE
-        .replace_all(text, |caps: &regex::Captures| {
-            let full_match = caps.get(0).unwrap().as_str();
-            let emoji_name = caps.get(1).unwrap().as_str().to_lowercase();
-            let variant = caps.get(2).map(|m| m.as_str());
+    EMOJI_RE.replace_all(text, |caps: &regex::Captures| {
+        let full_match = caps.get(0).unwrap().as_str();
+        let emoji_name = caps.get(1).unwrap().as_str().to_lowercase();
+        let variant = caps.get(2).map(|m| m.as_str());
 
-            match EMOJI.get(emoji_name.as_str()) {
-                Some(emoji_char) => {
-                    let variant_code = match variant {
-                        Some("text") => "\u{FE0E}",
-                        Some("emoji") => "\u{FE0F}",
-                        _ => default_variant_code,
-                    };
-                    format!("{}{}", emoji_char, variant_code)
-                }
-                None => full_match.to_string(),
+        match EMOJI.get(emoji_name.as_str()) {
+            Some(emoji_char) => {
+                let variant_code = match variant {
+                    Some("text") => "\u{FE0E}",
+                    Some("emoji") => "\u{FE0F}",
+                    _ => default_variant_code,
+                };
+                format!("{}{}", emoji_char, variant_code)
             }
-        })
+            None => full_match.to_string(),
+        }
+    })
 }
 
 #[cfg(test)]

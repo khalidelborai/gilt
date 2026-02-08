@@ -4,8 +4,8 @@
 
 use std::fmt;
 
-use std::sync::LazyLock;
 use regex::Regex;
+use std::sync::LazyLock;
 
 use crate::errors::MarkupError;
 use crate::style::Style;
@@ -49,14 +49,16 @@ impl fmt::Display for Tag {
 
 /// Regex for `escape()`: find potential tag sequences, capturing preceding
 /// backslashes.  Group 1 = backslashes, Group 2 = the tag (with brackets).
-static RE_ESCAPE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\\*)(\[[a-z#/@][^\[]*?\])").unwrap());
+static RE_ESCAPE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(\\*)(\[[a-z#/@][^\[]*?\])").unwrap());
 
 /// Regex for `parse_markup()`: captures the whole match, backslashes, and the
 /// inner tag text (without brackets).
 /// Group 1 = full match (backslashes + bracketed tag)
 /// Group 2 = backslashes before the `[`
 /// Group 3 = tag content inside brackets
-static RE_MARKUP: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\\*)(\[[a-z#/@][^\[]*?\])").unwrap());
+static RE_MARKUP: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(\\*)(\[[a-z#/@][^\[]*?\])").unwrap());
 
 // ---------------------------------------------------------------------------
 // escape

@@ -267,7 +267,9 @@ impl Prompt {
         if self.password {
             // Fall back to regular input when rpassword is unavailable.
             // WARNING: input will be visible on screen.
-            eprintln!("warning: gilt built without `interactive` feature; password input will be visible");
+            eprintln!(
+                "warning: gilt built without `interactive` feature; password input will be visible"
+            );
         }
         let stdin = io::stdin();
         let mut handle = stdin.lock();

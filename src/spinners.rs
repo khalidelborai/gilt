@@ -3,8 +3,8 @@
 //! Ported from Python rich's `_spinners.py`, which sources data from cli-spinners
 //! (MIT License, Copyright (c) Sindre Sorhus).
 
-use std::sync::LazyLock;
 use std::collections::HashMap;
+use std::sync::LazyLock;
 
 /// Data for a single spinner animation: the interval between frames and the frames themselves.
 pub struct SpinnerData {

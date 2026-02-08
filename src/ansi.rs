@@ -3,8 +3,8 @@
 //! This module parses ANSI escape codes from terminal output and converts them
 //! to styled `Text` objects. It is a port of Python's `rich/ansi.py`.
 
-use std::sync::LazyLock;
 use regex::Regex;
+use std::sync::LazyLock;
 
 use crate::color::Color;
 use crate::style::Style;
