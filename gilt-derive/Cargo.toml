@@ -1,0 +1,20 @@
+[package]
+name = "gilt-derive"
+version = "0.1.0"
+edition = "2021"
+description = "Derive macros for the gilt terminal formatting library"
+license = "MIT"
+repository = "https://github.com/khalidelborai/gilt"
+homepage = "https://github.com/khalidelborai/gilt"
+documentation = "https://docs.rs/gilt-derive"
+keywords = ["terminal", "rich", "derive", "macro"]
+categories = ["command-line-interface"]
+rust-version = "1.82.0"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "2", features = ["full"] }
+quote = "1"
+proc-macro2 = "1"
