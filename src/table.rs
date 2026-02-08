@@ -184,40 +184,91 @@ struct CellInfo {
 // Table
 // ---------------------------------------------------------------------------
 
-/// A console renderable to draw a table.
+/// A console renderable to draw a table with Unicode box-drawing borders,
+/// column alignment, row striping, and styling.
+///
+/// # Examples
+///
+/// ```
+/// use gilt::table::*;
+///
+/// let mut table = Table::new(&["Name", "Age"]);
+/// table.add_row(&["Alice", "30"]);
+/// table.add_row(&["Bob", "25"]);
+/// let output = format!("{}", table);
+/// assert!(output.contains("Alice"));
+/// ```
 #[derive(Debug, Clone)]
 pub struct Table {
+    /// Column definitions (one per column).
     pub columns: Vec<Column>,
+    /// Row metadata (one per data row, does not include header/footer).
     pub rows: Vec<Row>,
+    /// Optional title displayed above the table.
     pub title: Option<String>,
+    /// Optional caption displayed below the table.
     pub caption: Option<String>,
+    /// Fixed table width, or `None` for auto-sizing. Setting a width implies expand.
     pub width: Option<usize>,
+    /// Minimum table width constraint.
     pub min_width: Option<usize>,
+    /// Box-drawing character set, or `None` for no borders.
     pub box_chars: Option<&'static BoxChars>,
+    /// Whether to substitute box characters on legacy terminals.
     pub safe_box: Option<bool>,
+    /// Cell padding as `(top, right, bottom, left)`.
     pub padding: (usize, usize, usize, usize),
+    /// Collapse inter-column padding so adjacent columns share padding space.
     pub collapse_padding: bool,
+    /// Whether to add padding at the left and right table edges.
     pub pad_edge: bool,
     expand_flag: bool,
+    /// Show the header row.
     pub show_header: bool,
+    /// Show the footer row.
     pub show_footer: bool,
+    /// Show the left and right border edges.
     pub show_edge: bool,
+    /// Draw horizontal separator lines between every row.
     pub show_lines: bool,
+    /// Number of extra blank lines to insert between rows.
     pub leading: usize,
+    /// Style applied to the entire table.
     pub style: String,
+    /// Alternating row styles (cycled by row index).
     pub row_styles: Vec<String>,
+    /// Style applied to the header row.
     pub header_style: String,
+    /// Style applied to the footer row.
     pub footer_style: String,
+    /// Style applied to the table border.
     pub border_style: String,
+    /// Style applied to the title text.
     pub title_style: String,
+    /// Style applied to the caption text.
     pub caption_style: String,
+    /// Horizontal justification for the title.
     pub title_justify: JustifyMethod,
+    /// Horizontal justification for the caption.
     pub caption_justify: JustifyMethod,
+    /// Enable syntax highlighting for cell content.
     pub highlight: bool,
 }
 
 impl Table {
-    /// Create a new Table with the given header strings.
+    /// Create a new table with the given header strings.
+    ///
+    /// Each string becomes a column header. The table defaults to `HEAVY_HEAD`
+    /// box characters, visible header, visible edges, and `(0, 1, 0, 1)` padding.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::table::Table;
+    ///
+    /// let table = Table::new(&["Name", "Age", "City"]);
+    /// assert_eq!(table.columns.len(), 3);
+    /// ```
     pub fn new(headers: &[&str]) -> Self {
         let mut table = Table {
             columns: Vec::new(),
@@ -255,6 +306,19 @@ impl Table {
     }
 
     /// Create a grid table (no box, no header/footer/edge, collapse_padding, no pad_edge).
+    ///
+    /// Grids are useful for side-by-side layout without visible borders.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::table::Table;
+    ///
+    /// let mut grid = Table::grid(&["A", "B"]);
+    /// grid.add_row(&["left", "right"]);
+    /// assert!(grid.box_chars.is_none());
+    /// assert!(!grid.show_header);
+    /// ```
     pub fn grid(headers: &[&str]) -> Self {
         let mut table = Table {
             columns: Vec::new(),
@@ -338,6 +402,24 @@ impl Table {
     }
 
     /// Add a column to the table.
+    ///
+    /// The column index is assigned automatically. Use [`ColumnOptions`] to
+    /// configure justification, width constraints, and styling.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::table::{Table, ColumnOptions};
+    /// use gilt::text::JustifyMethod;
+    ///
+    /// let mut table = Table::new(&[]);
+    /// table.add_column("Price", "$100", ColumnOptions {
+    ///     justify: Some(JustifyMethod::Right),
+    ///     width: Some(10),
+    ///     ..Default::default()
+    /// });
+    /// assert_eq!(table.columns[0].header, "Price");
+    /// ```
     #[allow(clippy::too_many_arguments)]
     pub fn add_column(&mut self, header: &str, footer: &str, opts: ColumnOptions) {
         let index = self.columns.len();
@@ -362,23 +444,59 @@ impl Table {
         self.columns.push(column);
     }
 
-    /// Add a row of cell values. Auto-creates columns if needed. Pads missing cells with empty strings.
+    /// Add a row of cell values.
+    ///
+    /// Auto-creates columns if more cells are provided than columns exist.
+    /// Pads missing cells with empty strings if fewer cells are provided.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::table::Table;
+    ///
+    /// let mut table = Table::new(&["Name", "Age"]);
+    /// table.add_row(&["Alice", "30"]);
+    /// table.add_row(&["Bob", "25"]);
+    /// assert_eq!(table.row_count(), 2);
+    /// ```
     pub fn add_row(&mut self, cells: &[&str]) {
         self.add_row_styled(cells, None, false);
     }
 
-    /// Add a row of cell values with optional style and end_section.
+    /// Add a row of cell values with an optional style and section break.
+    ///
+    /// When `end_section` is `true`, a horizontal separator is drawn after
+    /// this row.
     pub fn add_row_styled(&mut self, cells: &[&str], style: Option<&str>, end_section: bool) {
         let contents: Vec<CellContent> = cells.iter().map(|&s| CellContent::from(s)).collect();
         self.add_row_contents(&contents, style, end_section);
     }
 
     /// Add a row of pre-styled [`Text`] cells.
+    ///
+    /// Use this when cells already carry their own styling. The styles are
+    /// preserved as-is rather than being parsed from markup.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::table::Table;
+    /// use gilt::text::Text;
+    /// use gilt::style::Style;
+    ///
+    /// let mut table = Table::new(&["Name"]);
+    /// let bold_name = Text::new("Alice", Style::parse("bold").unwrap());
+    /// table.add_row_text(&[bold_name]);
+    /// assert_eq!(table.row_count(), 1);
+    /// ```
     pub fn add_row_text(&mut self, cells: &[Text]) {
         self.add_row_text_styled(cells, None, false);
     }
 
-    /// Add a row of pre-styled [`Text`] cells with optional style and end_section.
+    /// Add a row of pre-styled [`Text`] cells with an optional style and section break.
+    ///
+    /// Combines [`add_row_text`](Self::add_row_text) with the per-row style
+    /// and section-break support of [`add_row_styled`](Self::add_row_styled).
     pub fn add_row_text_styled(&mut self, cells: &[Text], style: Option<&str>, end_section: bool) {
         let contents: Vec<CellContent> =
             cells.iter().map(|t| CellContent::from(t.clone())).collect();
@@ -422,7 +540,20 @@ impl Table {
         });
     }
 
-    /// Add a section break (set end_section on the last row).
+    /// Add a section break after the last row.
+    ///
+    /// This draws a horizontal separator line after the most recently added row.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::table::Table;
+    ///
+    /// let mut table = Table::new(&["Item"]);
+    /// table.add_row(&["Apples"]);
+    /// table.add_section();
+    /// table.add_row(&["Oranges"]);
+    /// ```
     pub fn add_section(&mut self) {
         if let Some(last_row) = self.rows.last_mut() {
             last_row.end_section = true;
@@ -591,6 +722,10 @@ impl Table {
     }
 
     /// Calculate column widths for rendering.
+    ///
+    /// Takes into account fixed widths, flex ratios, min/max constraints,
+    /// padding, and the available `max_width` from the console options.
+    /// Returns a vector with one width per column.
     pub fn calculate_column_widths(
         &self,
         console: &Console,
@@ -712,7 +847,10 @@ impl Table {
         widths
     }
 
-    /// Reduce widths so that the total is under max_width.
+    /// Reduce widths so that the total is under `max_width`.
+    ///
+    /// Iteratively shrinks the widest wrapable columns until the total fits.
+    /// Columns marked as non-wrapable are left unchanged.
     pub fn collapse_widths(widths: &[usize], wrapable: &[bool], max_width: usize) -> Vec<usize> {
         let mut widths = widths.to_vec();
         let mut total_width: usize = widths.iter().sum();
@@ -1109,7 +1247,10 @@ impl Table {
         segments
     }
 
-    /// Measure the table for Renderable trait.
+    /// Measure the table, returning minimum and maximum widths.
+    ///
+    /// Used by the [`Renderable`] trait to determine how much space the table
+    /// requires.
     pub fn measure(&self, console: &Console, options: &ConsoleOptions) -> Measurement {
         let mut max_width = options.max_width;
         if let Some(w) = self.width {
@@ -1147,19 +1288,34 @@ impl Table {
 // ---------------------------------------------------------------------------
 
 /// Options for adding a column (used to avoid too many parameters).
+///
+/// All fields default to `None` / `false`, meaning the column inherits
+/// sensible defaults from the table.
 #[derive(Debug, Clone, Default)]
 pub struct ColumnOptions {
+    /// Style for the header cell, or `None` for default.
     pub header_style: Option<String>,
+    /// Style for the footer cell, or `None` for default.
     pub footer_style: Option<String>,
+    /// Style for the data cells, or `None` for default.
     pub style: Option<String>,
+    /// Horizontal justification, or `None` for `Left`.
     pub justify: Option<JustifyMethod>,
+    /// Vertical alignment, or `None` for `Top`.
     pub vertical: Option<VerticalAlign>,
+    /// Overflow method, or `None` for `Ellipsis`.
     pub overflow: Option<OverflowMethod>,
+    /// Fixed column width, or `None` for auto.
     pub width: Option<usize>,
+    /// Minimum column width constraint.
     pub min_width: Option<usize>,
+    /// Maximum column width constraint.
     pub max_width: Option<usize>,
+    /// Flex ratio for proportional sizing in expanded tables.
     pub ratio: Option<usize>,
+    /// Disable wrapping in this column.
     pub no_wrap: bool,
+    /// Enable syntax highlighting, or `None` to inherit from the table.
     pub highlight: Option<bool>,
 }
 

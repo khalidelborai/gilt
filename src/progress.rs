@@ -32,7 +32,9 @@ pub type TaskId = usize;
 /// A timestamped progress measurement used for speed calculation.
 #[derive(Debug, Clone)]
 pub struct ProgressSample {
+    /// Seconds since the UNIX epoch when this sample was taken.
     pub timestamp: f64,
+    /// Cumulative completed count at the time of this sample.
     pub completed: f64,
 }
 

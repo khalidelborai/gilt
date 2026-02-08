@@ -22,20 +22,31 @@ use crate::wrap::divide_line;
 // Enums
 // ---------------------------------------------------------------------------
 
+/// Text justification method for aligning text within a given width.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum JustifyMethod {
+    /// Use the default justification (equivalent to left).
     Default,
+    /// Align text to the left edge.
     Left,
+    /// Center text horizontally.
     Center,
+    /// Align text to the right edge.
     Right,
+    /// Distribute text evenly across the full width by expanding spaces.
     Full,
 }
 
+/// Strategy for handling text that exceeds the available width.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum OverflowMethod {
+    /// Wrap overflowing text onto the next line at character boundaries.
     Fold,
+    /// Truncate overflowing text silently.
     Crop,
+    /// Truncate overflowing text and append an ellipsis character.
     Ellipsis,
+    /// Allow text to overflow without any modification.
     Ignore,
 }
 
@@ -79,18 +90,26 @@ fn gcd(mut a: usize, mut b: usize) -> usize {
 // Span
 // ---------------------------------------------------------------------------
 
+/// A styled range within a [`Text`] object.
+///
+/// A span associates a [`Style`] with a half-open character range `[start, end)`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Span {
+    /// Start character offset (inclusive).
     pub start: usize,
+    /// End character offset (exclusive).
     pub end: usize,
+    /// Style applied to this range.
     pub style: Style,
 }
 
 impl Span {
+    /// Create a new span covering the character range `[start, end)` with the given style.
     pub fn new(start: usize, end: usize, style: Style) -> Self {
         Span { start, end, style }
     }
 
+    /// Return `true` if the span covers zero or negative characters.
     pub fn is_empty(&self) -> bool {
         self.end <= self.start
     }
@@ -151,9 +170,13 @@ impl std::hash::Hash for Span {
 // TextPart - for assemble()
 // ---------------------------------------------------------------------------
 
+/// A building block for [`Text::assemble`], representing one segment of text.
 pub enum TextPart {
+    /// Plain unstyled text.
     Raw(String),
+    /// Text with an explicit style.
     Styled(String, Style),
+    /// An existing [`Text`] object to embed.
     Rich(Text),
 }
 
@@ -161,8 +184,11 @@ pub enum TextPart {
 // TextOrStr - for generic append
 // ---------------------------------------------------------------------------
 
+/// Either a string slice or a [`Text`] reference, for use with [`Text::append`].
 pub enum TextOrStr<'a> {
+    /// A borrowed string with an optional style.
     Str(&'a str, Option<Style>),
+    /// A borrowed [`Text`] object.
     Text(&'a Text),
 }
 
@@ -170,44 +196,58 @@ pub enum TextOrStr<'a> {
 // Lines
 // ---------------------------------------------------------------------------
 
+/// A collection of [`Text`] lines, typically produced by wrapping or splitting.
 #[derive(Clone, Debug, Default)]
 pub struct Lines {
+    /// The individual text lines.
     pub lines: Vec<Text>,
 }
 
 impl Lines {
+    /// Create a new `Lines` collection from a vector of [`Text`] objects.
     pub fn new(lines: Vec<Text>) -> Self {
         Lines { lines }
     }
 
+    /// Return the number of lines.
     pub fn len(&self) -> usize {
         self.lines.len()
     }
 
+    /// Return `true` if there are no lines.
     pub fn is_empty(&self) -> bool {
         self.lines.is_empty()
     }
 
+    /// Append a [`Text`] line to the end.
     pub fn push(&mut self, text: Text) {
         self.lines.push(text);
     }
 
+    /// Extend the collection with lines from an iterator.
     pub fn extend(&mut self, other: impl IntoIterator<Item = Text>) {
         self.lines.extend(other);
     }
 
+    /// Remove and return the last line, or `None` if empty.
     pub fn pop(&mut self) -> Option<Text> {
         self.lines.pop()
     }
 
+    /// Return an iterator over the lines.
     pub fn iter(&self) -> impl Iterator<Item = &Text> {
         self.lines.iter()
     }
 
+    /// Return a mutable iterator over the lines.
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Text> {
         self.lines.iter_mut()
     }
 
+    /// Justify every line according to the given method, truncating or padding to `width`.
+    ///
+    /// `Full` justification distributes extra space between words on all lines
+    /// except the last, which is left-justified.
     pub fn justify(&mut self, width: usize, justify: JustifyMethod, overflow: OverflowMethod) {
         match justify {
             JustifyMethod::Default | JustifyMethod::Left => {
@@ -349,21 +389,59 @@ impl IndexMut<usize> for Lines {
 // Text
 // ---------------------------------------------------------------------------
 
+/// Rich text with styles, spans, and formatting metadata.
+///
+/// `Text` is the central type for styled terminal output. It stores a plain-text
+/// string alongside a list of [`Span`]s that apply styles to character ranges,
+/// and optional formatting hints such as justification, overflow, and tab size.
+///
+/// # Examples
+///
+/// ```
+/// # fn main() {
+/// use gilt::prelude::*;
+/// use gilt::text::Span;
+///
+/// let mut text = Text::new("Hello, World!", Style::null());
+/// text.stylize(Style::parse("bold").unwrap(), 0, Some(5));
+/// assert_eq!(text.plain(), "Hello, World!");
+/// assert_eq!(text.spans()[0], Span::new(0, 5, Style::parse("bold").unwrap()));
+/// # }
+/// ```
 #[derive(Clone, Debug)]
 pub struct Text {
     text: String,
     spans: Vec<Span>,
     style: Style,
+    /// Optional justification method for this text.
     pub justify: Option<JustifyMethod>,
+    /// Optional overflow strategy when text exceeds the available width.
     pub overflow: Option<OverflowMethod>,
+    /// When `Some(true)`, wrapping is suppressed for this text.
     pub no_wrap: Option<bool>,
+    /// String appended after the text when rendering (default `"\n"`).
     pub end: String,
+    /// Tab stop width override; `None` uses the default of 8.
     pub tab_size: Option<usize>,
 }
 
 impl Text {
     // -- Constructors -------------------------------------------------------
 
+    /// Create a new `Text` with the given plain string and base style.
+    ///
+    /// Control codes (Bell, Backspace, VT, FF, CR) are stripped automatically.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() {
+    /// use gilt::prelude::*;
+    ///
+    /// let text = Text::new("Hello", Style::parse("bold").unwrap());
+    /// assert_eq!(text.plain(), "Hello");
+    /// # }
+    /// ```
     pub fn new(text: &str, style: Style) -> Self {
         Text {
             text: strip_control_codes(text),
@@ -377,6 +455,7 @@ impl Text {
         }
     }
 
+    /// Create an empty `Text` with a null style.
     pub fn empty() -> Self {
         Text::new("", Style::null())
     }
@@ -391,6 +470,25 @@ impl Text {
         t
     }
 
+    /// Assemble a `Text` from a slice of [`TextPart`] segments with a shared base style.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() {
+    /// use gilt::prelude::*;
+    /// use gilt::text::TextPart;
+    ///
+    /// let text = Text::assemble(
+    ///     &[
+    ///         TextPart::Raw("Hello ".into()),
+    ///         TextPart::Styled("World".into(), Style::parse("bold").unwrap()),
+    ///     ],
+    ///     Style::null(),
+    /// );
+    /// assert_eq!(text.plain(), "Hello World");
+    /// # }
+    /// ```
     pub fn assemble(parts: &[TextPart], style: Style) -> Self {
         let mut result = Text::new("", style);
         for part in parts {
@@ -429,10 +527,12 @@ impl Text {
 
     // -- Properties ---------------------------------------------------------
 
+    /// Return the plain (unstyled) text content.
     pub fn plain(&self) -> &str {
         &self.text
     }
 
+    /// Replace the plain text, trimming any spans that exceed the new length.
     pub fn set_plain(&mut self, new_text: &str) {
         let new_text = strip_control_codes(new_text);
         let new_len = new_text.chars().count();
@@ -449,22 +549,29 @@ impl Text {
         self.text = new_text;
     }
 
+    /// Return the style spans applied to this text.
     pub fn spans(&self) -> &[Span] {
         &self.spans
     }
 
+    /// Return a mutable reference to the style spans.
     pub fn spans_mut(&mut self) -> &mut Vec<Span> {
         &mut self.spans
     }
 
+    /// Return the length of the text in Unicode characters.
     pub fn len(&self) -> usize {
         self.text.chars().count()
     }
 
+    /// Return `true` if the text is empty.
     pub fn is_empty(&self) -> bool {
         self.text.is_empty()
     }
 
+    /// Return the display width of the text in terminal cells.
+    ///
+    /// Wide characters (e.g. CJK) count as two cells.
     pub fn cell_len(&self) -> usize {
         cell_len(&self.text)
     }
@@ -484,20 +591,25 @@ impl Text {
 
     // -- Display & comparison -----------------------------------------------
 
+    /// Return `true` if the plain text contains the given substring.
     pub fn contains_str(&self, s: &str) -> bool {
         self.text.contains(s)
     }
 
+    /// Return `true` if the plain text contains the plain text of `t`.
     pub fn contains_text(&self, t: &Text) -> bool {
         self.text.contains(t.plain())
     }
 
     // -- Core manipulation --------------------------------------------------
 
+    /// Return a deep clone of this text (identical to `clone()`).
     pub fn copy(&self) -> Text {
         self.clone()
     }
 
+    /// Create a copy that shares formatting metadata (style, justify, overflow, etc.)
+    /// but has different plain text and no spans.
     pub fn blank_copy(&self, plain: &str) -> Text {
         Text {
             text: strip_control_codes(plain),
@@ -511,6 +623,19 @@ impl Text {
         }
     }
 
+    /// Append a string to the text, optionally applying a style to the appended portion.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() {
+    /// use gilt::prelude::*;
+    ///
+    /// let mut text = Text::new("Hello", Style::null());
+    /// text.append_str(", World!", Some(Style::parse("italic").unwrap()));
+    /// assert_eq!(text.plain(), "Hello, World!");
+    /// # }
+    /// ```
     pub fn append_str(&mut self, text: &str, style: Option<Style>) -> &mut Self {
         let text = strip_control_codes(text);
         if text.is_empty() {
@@ -527,6 +652,7 @@ impl Text {
         self
     }
 
+    /// Append another [`Text`] object, preserving its spans with adjusted offsets.
     pub fn append_text(&mut self, text: &Text) -> &mut Self {
         let offset = self.len();
         self.text.push_str(&text.text);
@@ -536,6 +662,7 @@ impl Text {
         self
     }
 
+    /// Append either a string or a [`Text`] via [`TextOrStr`].
     pub fn append(&mut self, text: TextOrStr) -> &mut Self {
         match text {
             TextOrStr::Str(s, style) => self.append_str(s, style),
@@ -543,6 +670,7 @@ impl Text {
         }
     }
 
+    /// Append multiple `(text, optional_style)` pairs in order.
     pub fn append_tokens(&mut self, tokens: &[(String, Option<Style>)]) -> &mut Self {
         for (token_text, style) in tokens {
             self.append_str(token_text, style.clone());
@@ -550,6 +678,22 @@ impl Text {
         self
     }
 
+    /// Apply a style to the character range `[start, end)`.
+    ///
+    /// If `end` is `None`, the style extends to the end of the text.
+    /// The span is appended after any existing spans.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() {
+    /// use gilt::prelude::*;
+    ///
+    /// let mut text = Text::new("Hello, World!", Style::null());
+    /// text.stylize(Style::parse("bold red").unwrap(), 0, Some(5));
+    /// assert_eq!(text.spans().len(), 1);
+    /// # }
+    /// ```
     pub fn stylize(&mut self, style: Style, start: usize, end: Option<usize>) {
         let length = self.len();
         if length == 0 {
@@ -564,6 +708,8 @@ impl Text {
         self.spans.push(Span::new(start, end, style));
     }
 
+    /// Apply a style to the character range `[start, end)`, inserting it before
+    /// all existing spans so it has lowest priority.
     pub fn stylize_before(&mut self, style: Style, start: usize, end: Option<usize>) {
         let length = self.len();
         if length == 0 {
@@ -578,12 +724,18 @@ impl Text {
         self.spans.insert(0, Span::new(start, end, style));
     }
 
+    /// Copy all spans from another [`Text`] into this one (without adjusting offsets).
     pub fn copy_styles(&mut self, other: &Text) {
         self.spans.extend(other.spans.iter().cloned());
     }
 
     // -- Splitting and dividing ---------------------------------------------
 
+    /// Split the text on a literal separator string, returning [`Lines`].
+    ///
+    /// When `include_separator` is `true`, the separator remains attached to the
+    /// end of each resulting line.  When `allow_blank` is `false`, empty lines
+    /// are removed from the result.
     pub fn split(&self, separator: &str, include_separator: bool, allow_blank: bool) -> Lines {
         let re = Regex::new(&regex::escape(separator)).unwrap();
         let plain = &self.text;
@@ -650,6 +802,12 @@ impl Text {
         }
     }
 
+    /// Divide the text at the given character offsets, distributing spans across the
+    /// resulting lines with locally adjusted positions.
+    ///
+    /// Each offset produces a split point; the text is divided into `offsets.len() + 1`
+    /// lines (after deduplication). Spans that cross a boundary are clipped to each
+    /// line's local range.
     pub fn divide(&self, offsets: &[usize]) -> Lines {
         let text_length = self.len();
         if offsets.is_empty() {
@@ -734,6 +892,8 @@ impl Text {
 
     // -- Indexing ------------------------------------------------------------
 
+    /// Return a single-character [`Text`] at the given character index, preserving
+    /// any overlapping styles. Returns an empty text if `index` is out of bounds.
     pub fn get_char(&self, index: usize) -> Text {
         let length = self.len();
         if index >= length {
@@ -749,6 +909,7 @@ impl Text {
         result
     }
 
+    /// Extract a sub-range `[start, end)` as a new [`Text`] with locally adjusted spans.
     pub fn slice(&self, start: usize, end: usize) -> Text {
         let length = self.len();
         let start = min(start, length);
@@ -769,6 +930,7 @@ impl Text {
 
     // -- Cropping and padding -----------------------------------------------
 
+    /// Remove `amount` characters from the right side of the text, adjusting spans.
     pub fn right_crop(&mut self, amount: usize) {
         let length = self.len();
         if amount >= length {
@@ -790,6 +952,11 @@ impl Text {
         });
     }
 
+    /// Truncate (or pad) the text to fit within `max_width` terminal cells.
+    ///
+    /// The `overflow` strategy controls how excess text is handled (see
+    /// [`OverflowMethod`]). When `pad` is `true` and the text is shorter than
+    /// `max_width`, spaces are appended to fill the remaining width.
     pub fn truncate(&mut self, max_width: usize, overflow: Option<OverflowMethod>, pad: bool) {
         let current_width = self.cell_len();
         let overflow = overflow.unwrap_or(OverflowMethod::Fold);
@@ -829,11 +996,13 @@ impl Text {
         }
     }
 
+    /// Pad both sides of the text with `count` copies of `character`.
     pub fn pad(&mut self, count: usize, character: char) {
         self.pad_left(count, character);
         self.pad_right(count, character);
     }
 
+    /// Prepend `count` copies of `character`, shifting all span offsets right.
     pub fn pad_left(&mut self, count: usize, character: char) {
         if count == 0 {
             return;
@@ -847,6 +1016,7 @@ impl Text {
         self.text = format!("{}{}", padding, self.text);
     }
 
+    /// Append `count` copies of `character` to the right side of the text.
     pub fn pad_right(&mut self, count: usize, character: char) {
         if count == 0 {
             return;
@@ -855,6 +1025,7 @@ impl Text {
         self.text.push_str(&padding);
     }
 
+    /// Remove trailing whitespace from the text, adjusting spans.
     pub fn rstrip(&mut self) {
         let trimmed = self.text.trim_end().to_string();
         if trimmed.len() != self.text.len() {
@@ -862,6 +1033,7 @@ impl Text {
         }
     }
 
+    /// Strip trailing whitespace that occurs beyond character position `size`.
     pub fn rstrip_end(&mut self, size: usize) {
         let length = self.len();
         if length <= size {
@@ -878,6 +1050,7 @@ impl Text {
         self.set_plain(&new_text);
     }
 
+    /// Set the text to exactly `new_length` characters by truncating or padding with spaces.
     pub fn set_length(&mut self, new_length: usize) {
         let current_length = self.len();
         if new_length < current_length {
@@ -888,6 +1061,7 @@ impl Text {
         }
     }
 
+    /// Remove `suffix` from the end of the text if present.
     pub fn remove_suffix(&mut self, suffix: &str) {
         if self.text.ends_with(suffix) {
             let suffix_chars = suffix.chars().count();
@@ -897,6 +1071,9 @@ impl Text {
         }
     }
 
+    /// Pad the text to `width` terminal cells using the given alignment and fill character.
+    ///
+    /// If the text already meets or exceeds `width`, no padding is added.
     pub fn align(&mut self, align: JustifyMethod, width: usize, character: char) {
         let text_width = self.cell_len();
         if text_width >= width {
@@ -924,6 +1101,23 @@ impl Text {
 
     // -- Highlighting -------------------------------------------------------
 
+    /// Apply `style` to every match of the compiled regex `pattern`.
+    ///
+    /// Returns the number of matches found.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() {
+    /// use gilt::prelude::*;
+    /// use regex::Regex;
+    ///
+    /// let mut text = Text::new("error: not found", Style::null());
+    /// let re = Regex::new(r"error").unwrap();
+    /// let count = text.highlight_regex(&re, Style::parse("bold red").unwrap());
+    /// assert_eq!(count, 1);
+    /// # }
+    /// ```
     pub fn highlight_regex(&mut self, pattern: &Regex, style: Style) -> usize {
         let plain = self.text.clone();
         let mut count = 0;
@@ -938,6 +1132,8 @@ impl Text {
         count
     }
 
+    /// Highlight named capture groups from `pattern`, using `style_prefix` concatenated
+    /// with each group name as the style string. Returns the total number of styled groups.
     pub fn highlight_regex_with_groups(&mut self, pattern: &Regex, style_prefix: &str) -> usize {
         let plain = self.text.clone();
         let mut count = 0;
@@ -959,6 +1155,9 @@ impl Text {
         count
     }
 
+    /// Apply `style` to every occurrence of each word (matched at word boundaries).
+    ///
+    /// Returns the total number of matches across all words.
     pub fn highlight_words(&mut self, words: &[&str], style: Style, case_sensitive: bool) -> usize {
         let mut count = 0;
         for word in words {
@@ -977,6 +1176,9 @@ impl Text {
 
     // -- Tab expansion ------------------------------------------------------
 
+    /// Replace tab characters with spaces, adjusting span positions accordingly.
+    ///
+    /// Uses the given `tab_size`, falling back to [`Text::tab_size`], then to 8.
     pub fn expand_tabs(&mut self, tab_size: Option<usize>) {
         let tab_size = tab_size.unwrap_or(self.tab_size.unwrap_or(8));
         if !self.text.contains('\t') {
@@ -1022,6 +1224,8 @@ impl Text {
         self.spans = new_spans;
     }
 
+    /// Append `spaces` whitespace characters and extend any spans that reach
+    /// the current end of text to cover the new characters.
     pub fn extend_style(&mut self, spaces: usize) {
         if spaces == 0 {
             return;
@@ -1039,6 +1243,19 @@ impl Text {
 
     // -- Advanced -----------------------------------------------------------
 
+    /// Join a slice of [`Text`] objects using `self` as the separator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() {
+    /// use gilt::prelude::*;
+    ///
+    /// let sep = Text::new(", ", Style::null());
+    /// let items = vec![Text::new("a", Style::null()), Text::new("b", Style::null())];
+    /// assert_eq!(sep.join(&items).plain(), "a, b");
+    /// # }
+    /// ```
     pub fn join(&self, texts: &[Text]) -> Text {
         if texts.is_empty() {
             return Text::empty();
@@ -1051,6 +1268,8 @@ impl Text {
         result
     }
 
+    /// Split the text on newlines and force each line to exactly `width` cells
+    /// by truncating or padding with spaces.
     pub fn fit(&self, width: usize) -> Lines {
         let lines = self.split("\n", true, true);
         let mut result = Lines::default();
@@ -1066,6 +1285,8 @@ impl Text {
         result
     }
 
+    /// Detect the indentation step size by computing the GCD of all leading
+    /// whitespace widths. Returns 1 if no indentation is found.
     pub fn detect_indentation(&self) -> usize {
         let mut indent_gcd = 0usize;
         for line in self.text.lines() {
@@ -1100,6 +1321,11 @@ impl Text {
         indent_gcd
     }
 
+    /// Return a copy of this text with indent guide characters inserted at every
+    /// `indent_size` leading-space boundary.
+    ///
+    /// If `indent_size` is `None`, it is auto-detected via [`detect_indentation`](Text::detect_indentation).
+    /// The `character` (e.g. `'|'` or `'\u{2502}'`) is styled with `guide_style`.
     pub fn with_indent_guides(
         &self,
         indent_size: Option<usize>,
@@ -1165,6 +1391,7 @@ impl Text {
         final_text
     }
 
+    /// Remove spans that extend beyond the text length and clamp those that partially exceed it.
     pub fn trim_spans(&mut self) {
         let length = self.len();
         self.spans.retain_mut(|span| {
@@ -1180,6 +1407,11 @@ impl Text {
 
     // -- Rendering ----------------------------------------------------------
 
+    /// Render the text into a list of [`Segment`]s, each carrying a combined style.
+    ///
+    /// Uses a sweep-line algorithm to merge overlapping spans into non-overlapping
+    /// styled segments. An end segment (containing [`Text::end`]) is appended if
+    /// the end string is non-empty.
     pub fn render(&self) -> Vec<Segment> {
         if self.spans.is_empty() {
             let style = if self.style.is_null() {
@@ -1278,6 +1510,14 @@ impl Text {
 
     // -- Wrapping -----------------------------------------------------------
 
+    /// Word-wrap the text to fit within `width` terminal cells, returning [`Lines`].
+    ///
+    /// The text is first split on newlines, tabs are expanded, and each line is
+    /// wrapped using [`crate::wrap::divide_line`]. Optional justification and
+    /// overflow truncation are applied afterwards.
+    ///
+    /// When `no_wrap` is `true`, lines are not wrapped but may still be truncated
+    /// according to the `overflow` strategy.
     pub fn wrap(
         &self,
         width: usize,

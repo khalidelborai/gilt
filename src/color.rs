@@ -13,9 +13,13 @@ use std::fmt;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(u8)]
 pub enum ColorSystem {
+    /// Standard 16-color palette (ANSI colors 0-15).
     Standard = 1,
+    /// Extended 256-color palette (8-bit ANSI).
     EightBit = 2,
+    /// 24-bit true-color (16 million colors).
     TrueColor = 3,
+    /// Windows console legacy color palette.
     Windows = 4,
 }
 
@@ -23,19 +27,28 @@ pub enum ColorSystem {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(u8)]
 pub enum ColorType {
+    /// Terminal default color (foreground or background).
     Default = 0,
+    /// Standard 16-color ANSI palette.
     Standard = 1,
+    /// Extended 256-color (8-bit) palette.
     EightBit = 2,
+    /// 24-bit true-color RGB.
     TrueColor = 3,
+    /// Windows console legacy color.
     Windows = 4,
 }
 
 /// A terminal color representation.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Color {
+    /// Human-readable name or hex representation of this color.
     pub name: String,
+    /// Classification indicating which color system this color belongs to.
     pub color_type: ColorType,
+    /// Palette index for standard or 8-bit colors (0-255).
     pub number: Option<u8>,
+    /// RGB triplet for true-color values.
     pub triplet: Option<ColorTriplet>,
 }
 

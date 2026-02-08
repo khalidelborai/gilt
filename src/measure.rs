@@ -8,7 +8,9 @@ use std::ops::Add;
 /// Stores the minimum and maximum widths (in cells) required to render an object.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Measurement {
+    /// Minimum width in cells required to render without loss.
     pub minimum: usize,
+    /// Maximum width in cells the content can meaningfully fill.
     pub maximum: usize,
 }
 

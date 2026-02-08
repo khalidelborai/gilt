@@ -1,11 +1,20 @@
+//! Terminal theme definitions for color resolution and export rendering.
+//!
+//! Provides [`TerminalTheme`] and several built-in themes (default, SVG export,
+//! Monokai, Dimmed Monokai, Night Owlish) used when resolving named/system
+//! colors to RGB values.
+
 use crate::color_triplet::ColorTriplet;
 use crate::palette::Palette;
 use once_cell::sync::Lazy;
 
 /// A terminal theme definition consisting of foreground, background, and ANSI colors.
 pub struct TerminalTheme {
+    /// Background color of the terminal.
     pub background_color: ColorTriplet,
+    /// Foreground (text) color of the terminal.
     pub foreground_color: ColorTriplet,
+    /// ANSI color palette (typically 16 colors: 8 normal + 8 bright).
     pub ansi_colors: Palette,
 }
 

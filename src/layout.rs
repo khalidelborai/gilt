@@ -93,7 +93,9 @@ impl Splitter for ColumnSplitter {
 /// Enum selecting between row and column splitting strategies.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SplitterType {
+    /// Split horizontally -- children placed side by side.
     Row,
+    /// Split vertically -- children stacked on top of each other.
     Column,
 }
 

@@ -9,47 +9,85 @@ use crate::style::Style;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(u8)]
 pub enum ControlType {
+    /// Emit audible bell (BEL, `\x07`).
     Bell = 1,
+    /// Move cursor to the beginning of the current line.
     CarriageReturn = 2,
+    /// Move cursor to the top-left corner of the terminal.
     Home = 3,
+    /// Clear the entire terminal screen.
     Clear = 4,
+    /// Make the terminal cursor visible.
     ShowCursor = 5,
+    /// Hide the terminal cursor.
     HideCursor = 6,
+    /// Switch to the alternate screen buffer.
     EnableAltScreen = 7,
+    /// Return to the primary screen buffer.
     DisableAltScreen = 8,
+    /// Move cursor up by a given number of rows.
     CursorUp = 9,
+    /// Move cursor down by a given number of rows.
     CursorDown = 10,
+    /// Move cursor forward (right) by a given number of columns.
     CursorForward = 11,
+    /// Move cursor backward (left) by a given number of columns.
     CursorBackward = 12,
+    /// Move cursor to a specific column on the current line.
     CursorMoveToColumn = 13,
+    /// Move cursor to an absolute (column, row) position.
     CursorMoveTo = 14,
+    /// Erase content on the current line.
     EraseInLine = 15,
+    /// Set the terminal window title via an OSC sequence.
     SetWindowTitle = 16,
+    /// Begin synchronized output (DEC 2026).
     BeginSync = 17,
+    /// End synchronized output (DEC 2026).
     EndSync = 18,
+    /// Copy content to the system clipboard via OSC 52.
     SetClipboard = 19,
+    /// Request the current clipboard contents via OSC 52.
     RequestClipboard = 20,
 }
 
 /// Terminal control code with optional parameters.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ControlCode {
+    /// A control code with no parameters (e.g., Bell, Clear).
     Simple(ControlType),
+    /// A control code with a single integer parameter (e.g., CursorUp with row count).
     WithParam(ControlType, i32),
+    /// A control code with a single string parameter (e.g., SetWindowTitle with a title).
     WithParamStr(ControlType, String),
+    /// A control code with two integer parameters (e.g., CursorMoveTo with column and row).
     WithTwoParams(ControlType, i32, i32),
 }
 
 /// A segment of terminal content with text, style, and optional control codes.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Segment {
+    /// The text content of this segment.
     pub text: String,
+    /// The visual style applied to the text, or `None` for unstyled content.
     pub style: Option<Style>,
+    /// Terminal control codes carried by this segment, or `None` for text-only segments.
     pub control: Option<Vec<ControlCode>>,
 }
 
 impl Segment {
     /// Creates a new segment with text, style, and control codes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::segment::Segment;
+    /// use gilt::style::Style;
+    ///
+    /// let seg = Segment::new("hello", Some(Style::parse("bold").unwrap()), None);
+    /// assert_eq!(seg.text, "hello");
+    /// assert!(!seg.is_control());
+    /// ```
     pub fn new(text: &str, style: Option<Style>, control: Option<Vec<ControlCode>>) -> Self {
         Segment {
             text: text.to_string(),
@@ -59,6 +97,16 @@ impl Segment {
     }
 
     /// Creates a plain text segment with no style or control codes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::segment::Segment;
+    ///
+    /// let seg = Segment::text("hello");
+    /// assert_eq!(seg.text, "hello");
+    /// assert!(seg.style.is_none());
+    /// ```
     pub fn text(text: &str) -> Self {
         Segment {
             text: text.to_string(),
@@ -73,6 +121,17 @@ impl Segment {
     }
 
     /// Creates a segment with text and style.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::segment::Segment;
+    /// use gilt::style::Style;
+    ///
+    /// let seg = Segment::styled("warning", Style::parse("bold yellow").unwrap());
+    /// assert_eq!(seg.text, "warning");
+    /// assert!(seg.style.is_some());
+    /// ```
     pub fn styled(text: &str, style: Style) -> Self {
         Segment {
             text: text.to_string(),
@@ -82,6 +141,17 @@ impl Segment {
     }
 
     /// Returns the cell length of this segment (0 for control segments).
+    ///
+    /// Double-width characters (CJK, emoji) count as 2 cells each.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::segment::Segment;
+    ///
+    /// assert_eq!(Segment::text("abc").cell_length(), 3);
+    /// assert_eq!(Segment::text("\u{1F4A9}").cell_length(), 2); // emoji = 2 cells
+    /// ```
     pub fn cell_length(&self) -> usize {
         if self.is_control() {
             0
@@ -104,6 +174,17 @@ impl Segment {
     ///
     /// If the cut position falls in the middle of a double-width character,
     /// it will be replaced with spaces on both sides of the split.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::segment::Segment;
+    ///
+    /// let seg = Segment::text("Hello");
+    /// let (left, right) = seg.split_cells(2);
+    /// assert_eq!(left.text, "He");
+    /// assert_eq!(right.text, "llo");
+    /// ```
     pub fn split_cells(&self, cut: usize) -> (Segment, Segment) {
         let text_len = self.text.len();
         let cell_length = cell_len(&self.text);
@@ -153,6 +234,25 @@ impl Segment {
     }
 
     /// Applies a base style and/or post style to a list of segments.
+    ///
+    /// The `style` is applied *underneath* each segment's existing style (as a base),
+    /// while `post_style` is applied *on top* of the result.
+    /// Control segments are passed through unchanged.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::segment::Segment;
+    /// use gilt::style::Style;
+    ///
+    /// let segments = vec![Segment::text("hello")];
+    /// let styled = Segment::apply_style(
+    ///     &segments,
+    ///     Some(Style::parse("bold").unwrap()),
+    ///     None,
+    /// );
+    /// assert!(styled[0].style.is_some());
+    /// ```
     pub fn apply_style(
         segments: &[Segment],
         style: Option<Style>,
@@ -185,6 +285,22 @@ impl Segment {
     }
 
     /// Filters segments by control flag.
+    ///
+    /// Pass `true` to keep only control segments, or `false` to keep only text segments.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::segment::{Segment, ControlCode, ControlType};
+    ///
+    /// let segments = vec![
+    ///     Segment::text("hello"),
+    ///     Segment::new("", None, Some(vec![ControlCode::Simple(ControlType::Bell)])),
+    /// ];
+    /// let text_only = Segment::filter_control(&segments, false);
+    /// assert_eq!(text_only.len(), 1);
+    /// assert_eq!(text_only[0].text, "hello");
+    /// ```
     pub fn filter_control(segments: &[Segment], is_control: bool) -> Vec<Segment> {
         segments
             .iter()
@@ -194,6 +310,21 @@ impl Segment {
     }
 
     /// Splits segments at newline boundaries.
+    ///
+    /// Each `\n` in the text produces a new line. Control segments are kept
+    /// with the line they appear in.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::segment::Segment;
+    ///
+    /// let segments = vec![Segment::text("Hello\nWorld")];
+    /// let lines = Segment::split_lines(&segments);
+    /// assert_eq!(lines.len(), 2);
+    /// assert_eq!(lines[0][0].text, "Hello");
+    /// assert_eq!(lines[1][0].text, "World");
+    /// ```
     pub fn split_lines(segments: &[Segment]) -> Vec<Vec<Segment>> {
         let mut lines = Vec::new();
         let mut current_line = Vec::new();
@@ -231,6 +362,20 @@ impl Segment {
     }
 
     /// Adjusts a line to a specific cell length by cropping or padding.
+    ///
+    /// If the line is shorter than `length` and `pad` is `true`, space characters
+    /// with the given `style` are appended. If the line is longer, it is cropped.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::segment::Segment;
+    /// use gilt::style::Style;
+    ///
+    /// let line = vec![Segment::text("Hi")];
+    /// let padded = Segment::adjust_line_length(&line, 5, &Style::null(), true);
+    /// assert_eq!(Segment::get_line_length(&padded), 5);
+    /// ```
     pub fn adjust_line_length(
         line: &[Segment],
         length: usize,
@@ -284,6 +429,17 @@ impl Segment {
     }
 
     /// Returns the total cell length of a line of segments.
+    ///
+    /// Control segments are excluded from the count.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::segment::Segment;
+    ///
+    /// let line = vec![Segment::text("foo"), Segment::text("bar")];
+    /// assert_eq!(Segment::get_line_length(&line), 6);
+    /// ```
     pub fn get_line_length(line: &[Segment]) -> usize {
         line.iter()
             .filter(|seg| !seg.is_control())
@@ -291,7 +447,19 @@ impl Segment {
             .sum()
     }
 
-    /// Returns the shape of multiple lines (max_width, height).
+    /// Returns the shape of multiple lines as `(max_width, height)`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::segment::Segment;
+    ///
+    /// let lines = vec![
+    ///     vec![Segment::text("Hello")],
+    ///     vec![Segment::text("World!")],
+    /// ];
+    /// assert_eq!(Segment::get_shape(&lines), (6, 2));
+    /// ```
     pub fn get_shape(lines: &[Vec<Segment>]) -> (usize, usize) {
         let max_width = lines
             .iter()
@@ -303,6 +471,9 @@ impl Segment {
     }
 
     /// Adjusts all lines to given dimensions.
+    ///
+    /// Each line is padded or cropped to `width`. If `height` is provided, extra
+    /// blank lines are appended (or excess lines are truncated) to match.
     pub fn set_shape(
         lines: &[Vec<Segment>],
         width: usize,
@@ -333,6 +504,24 @@ impl Segment {
     }
 
     /// Merges consecutive segments with the same style.
+    ///
+    /// Adjacent non-control segments that share identical style and control values
+    /// are concatenated into a single segment, reducing allocation overhead.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::segment::Segment;
+    ///
+    /// let segments = vec![
+    ///     Segment::text("Hello"),
+    ///     Segment::text(" "),
+    ///     Segment::text("World!"),
+    /// ];
+    /// let simplified = Segment::simplify(&segments);
+    /// assert_eq!(simplified.len(), 1);
+    /// assert_eq!(simplified[0].text, "Hello World!");
+    /// ```
     pub fn simplify(segments: &[Segment]) -> Vec<Segment> {
         if segments.is_empty() {
             return Vec::new();
@@ -358,7 +547,7 @@ impl Segment {
         result
     }
 
-    /// Removes links from segment styles.
+    /// Removes hyperlink metadata from segment styles, preserving all other attributes.
     pub fn strip_links(segments: &[Segment]) -> Vec<Segment> {
         segments
             .iter()
@@ -374,7 +563,7 @@ impl Segment {
             .collect()
     }
 
-    /// Removes all styles from segments.
+    /// Removes all styles from segments, leaving plain text.
     pub fn strip_styles(segments: &[Segment]) -> Vec<Segment> {
         segments
             .iter()
@@ -382,7 +571,8 @@ impl Segment {
             .collect()
     }
 
-    /// Removes colors from segment styles but keeps other attributes.
+    /// Removes foreground and background colors from segment styles while preserving
+    /// other attributes such as bold, italic, and underline.
     pub fn remove_color(segments: &[Segment]) -> Vec<Segment> {
         segments
             .iter()
@@ -398,6 +588,20 @@ impl Segment {
     }
 
     /// Divides segments into portions at given cell positions.
+    ///
+    /// Each value in `cuts` specifies a cumulative cell offset where the segment
+    /// list should be split. Returns one `Vec<Segment>` per cut.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::segment::Segment;
+    ///
+    /// let segments = vec![Segment::text("ABCDE")];
+    /// let parts = Segment::divide(&segments, &[2, 5]);
+    /// assert_eq!(parts[0][0].text, "AB");
+    /// assert_eq!(parts[1][0].text, "CDE");
+    /// ```
     pub fn divide(segments: &[Segment], cuts: &[usize]) -> Vec<Vec<Segment>> {
         if cuts.is_empty() {
             return Vec::new();
@@ -465,7 +669,7 @@ impl Segment {
         result
     }
 
-    /// Aligns lines to the top of a given height.
+    /// Aligns lines to the top of a given height, padding with blank lines below.
     pub fn align_top(
         lines: &[Vec<Segment>],
         width: usize,
@@ -476,7 +680,7 @@ impl Segment {
         Segment::set_shape(lines, width, Some(height), Some(style), new_lines)
     }
 
-    /// Aligns lines to the bottom of a given height.
+    /// Aligns lines to the bottom of a given height, padding with blank lines above.
     pub fn align_bottom(
         lines: &[Vec<Segment>],
         width: usize,
@@ -501,7 +705,7 @@ impl Segment {
         shaped
     }
 
-    /// Aligns lines to the middle of a given height.
+    /// Aligns lines vertically centered within a given height, padding equally above and below.
     pub fn align_middle(
         lines: &[Vec<Segment>],
         width: usize,
@@ -534,6 +738,17 @@ impl Segment {
     /// Split segments into lines on newlines, then adjust each line to the given width.
     ///
     /// Port of Python rich's `Segment.split_and_crop_lines`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::segment::Segment;
+    ///
+    /// let segments = vec![Segment::text("Hello\nWorld")];
+    /// let lines = Segment::split_and_crop_lines(&segments, 10, None, true, false);
+    /// assert_eq!(lines.len(), 2);
+    /// assert_eq!(Segment::get_line_length(&lines[0]), 10);
+    /// ```
     pub fn split_and_crop_lines(
         segments: &[Segment],
         length: usize,
@@ -593,6 +808,17 @@ impl Segment {
     /// whether it was terminated by a newline character.
     ///
     /// Port of Python rich's `Segment.split_lines_terminator`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::segment::Segment;
+    ///
+    /// let segments = vec![Segment::text("Hello\nWorld")];
+    /// let lines = Segment::split_lines_terminator(&segments);
+    /// assert_eq!(lines[0].1, true);  // "Hello" was followed by \n
+    /// assert_eq!(lines[1].1, false); // "World" was not
+    /// ```
     pub fn split_lines_terminator(segments: &[Segment]) -> Vec<(Vec<Segment>, bool)> {
         let mut result = Vec::new();
         let mut line: Vec<Segment> = Vec::new();

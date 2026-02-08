@@ -153,6 +153,7 @@ fn render_code(code: &ControlCode) -> String {
 /// `Control` wraps one or more `ControlCode` values, renders them to ANSI
 /// escape sequences, and stores them in a `Segment`.
 pub struct Control {
+    /// The segment containing the rendered ANSI escape sequence text and control metadata.
     pub segment: Segment,
 }
 

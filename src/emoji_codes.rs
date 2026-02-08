@@ -5,6 +5,7 @@
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
 
+/// Lookup table mapping emoji names to their Unicode character sequences.
 pub static EMOJI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     let mut m = HashMap::with_capacity(3608);
     m.insert("1st_place_medal", "\u{1F947}");

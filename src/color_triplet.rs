@@ -8,8 +8,11 @@ use std::fmt;
 /// An RGB color triplet.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ColorTriplet {
+    /// Red component (0-255).
     pub red: u8,
+    /// Green component (0-255).
     pub green: u8,
+    /// Blue component (0-255).
     pub blue: u8,
 }
 

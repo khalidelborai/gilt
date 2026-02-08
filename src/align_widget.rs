@@ -16,16 +16,22 @@ use crate::text::Text;
 /// Horizontal alignment method.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HorizontalAlign {
+    /// Align content to the left edge.
     Left,
+    /// Center content horizontally.
     Center,
+    /// Align content to the right edge.
     Right,
 }
 
 /// Vertical alignment method.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VerticalAlign {
+    /// Align content to the top.
     Top,
+    /// Center content vertically.
     Middle,
+    /// Align content to the bottom.
     Bottom,
 }
 

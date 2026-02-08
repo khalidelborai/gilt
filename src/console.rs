@@ -29,7 +29,9 @@ use crate::traceback::Traceback;
 /// Terminal dimensions in columns and rows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ConsoleDimensions {
+    /// Number of columns.
     pub width: usize,
+    /// Number of rows.
     pub height: usize,
 }
 
@@ -40,33 +42,56 @@ pub struct ConsoleDimensions {
 /// Options that control how renderables produce segments.
 #[derive(Debug, Clone)]
 pub struct ConsoleOptions {
+    /// Terminal dimensions used for layout.
     pub size: ConsoleDimensions,
+    /// Whether to use legacy Windows console rendering.
     pub legacy_windows: bool,
+    /// Minimum width in columns for renderable output.
     pub min_width: usize,
+    /// Maximum width in columns for renderable output.
     pub max_width: usize,
+    /// Whether the output target is an interactive terminal.
     pub is_terminal: bool,
+    /// Character encoding (always `"utf-8"` in Rust).
     pub encoding: String,
+    /// Maximum height in rows for renderable output.
     pub max_height: usize,
+    /// Text justification override, if any.
     pub justify: Option<JustifyMethod>,
+    /// Text overflow strategy override, if any.
     pub overflow: Option<OverflowMethod>,
+    /// Whether to disable text wrapping.
     pub no_wrap: bool,
+    /// Whether to enable syntax highlighting, if set.
     pub highlight: Option<bool>,
+    /// Whether to enable markup parsing, if set.
     pub markup: Option<bool>,
+    /// Explicit height constraint for renderables, if set.
     pub height: Option<usize>,
 }
 
 /// Builder for applying selective updates to `ConsoleOptions`.
 #[derive(Debug, Clone, Default)]
 pub struct ConsoleOptionsUpdates {
+    /// New width in columns, if changing.
     pub width: Option<usize>,
+    /// New minimum width, if changing.
     pub min_width: Option<usize>,
+    /// New maximum width, if changing.
     pub max_width: Option<usize>,
+    /// New justification override, if changing.
     pub justify: Option<Option<JustifyMethod>>,
+    /// New overflow strategy override, if changing.
     pub overflow: Option<Option<OverflowMethod>>,
+    /// New no-wrap flag, if changing.
     pub no_wrap: Option<bool>,
+    /// New highlight flag, if changing.
     pub highlight: Option<Option<bool>>,
+    /// New markup flag, if changing.
     pub markup: Option<Option<bool>>,
+    /// New height constraint, if changing.
     pub height: Option<Option<usize>>,
+    /// New maximum height, if changing.
     pub max_height: Option<usize>,
 }
 
@@ -250,50 +275,60 @@ impl Default for ConsoleBuilder {
 }
 
 impl ConsoleBuilder {
+    /// Create a new builder with default settings.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Set the color system by name (`"standard"`, `"256"`, `"truecolor"`, `"windows"`).
     pub fn color_system(mut self, cs: &str) -> Self {
         self.color_system = Some(cs.to_string());
         self
     }
 
+    /// Set the console width in columns.
     pub fn width(mut self, w: usize) -> Self {
         self.width = Some(w);
         self
     }
 
+    /// Set the console height in rows.
     pub fn height(mut self, h: usize) -> Self {
         self.height = Some(h);
         self
     }
 
+    /// Force or prevent terminal detection regardless of the actual environment.
     pub fn force_terminal(mut self, f: bool) -> Self {
         self.force_terminal = Some(f);
         self
     }
 
+    /// Enable or disable recording of output for later export.
     pub fn record(mut self, r: bool) -> Self {
         self.record = r;
         self
     }
 
+    /// Set a custom theme for style lookups.
     pub fn theme(mut self, t: Theme) -> Self {
         self.theme = Some(t);
         self
     }
 
+    /// Enable or disable markup parsing in print methods.
     pub fn markup(mut self, m: bool) -> Self {
         self.markup = m;
         self
     }
 
+    /// Enable or disable automatic syntax highlighting.
     pub fn highlight(mut self, h: bool) -> Self {
         self.highlight = h;
         self
     }
 
+    /// Enable or disable all color output.
     pub fn no_color(mut self, nc: bool) -> Self {
         self.no_color = nc;
         self.no_color_explicit = true;
@@ -307,26 +342,43 @@ impl ConsoleBuilder {
         self
     }
 
+    /// Set the tab size in spaces for text rendering.
     pub fn tab_size(mut self, ts: usize) -> Self {
         self.tab_size = ts;
         self
     }
 
+    /// Enable or disable quiet mode, which suppresses all output.
     pub fn quiet(mut self, q: bool) -> Self {
         self.quiet = q;
         self
     }
 
+    /// Enable or disable soft wrapping (allows lines to exceed terminal width).
     pub fn soft_wrap(mut self, sw: bool) -> Self {
         self.soft_wrap = sw;
         self
     }
 
+    /// Enable or disable safe box characters (ASCII fallback for non-UTF-8 terminals).
     pub fn safe_box(mut self, sb: bool) -> Self {
         self.safe_box = sb;
         self
     }
 
+    /// Build the `Console` instance with the configured options.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    ///
+    /// let console = Console::builder()
+    ///     .width(80)
+    ///     .no_color(true)
+    ///     .build();
+    /// assert_eq!(console.width(), 80);
+    /// ```
     pub fn build(self) -> Console {
         // Determine the effective color system.
         //
@@ -445,11 +497,33 @@ pub struct Console {
 
 impl Console {
     /// Create a new Console with sensible defaults.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    ///
+    /// let console = Console::new();
+    /// assert_eq!(console.encoding(), "utf-8");
+    /// ```
     pub fn new() -> Self {
         ConsoleBuilder::default().build()
     }
 
     /// Create a Console using the builder pattern.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    ///
+    /// let console = Console::builder()
+    ///     .width(120)
+    ///     .no_color(true)
+    ///     .record(true)
+    ///     .build();
+    /// assert_eq!(console.width(), 120);
+    /// ```
     pub fn builder() -> ConsoleBuilder {
         ConsoleBuilder::default()
     }
@@ -581,6 +655,20 @@ impl Console {
     // -- Core rendering -----------------------------------------------------
 
     /// Render a Renderable into a flat list of Segments.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    /// use gilt::text::Text;
+    /// use gilt::style::Style;
+    ///
+    /// let console = Console::builder().width(80).build();
+    /// let text = Text::new("Render me", Style::null());
+    /// let segments = console.render(&text, None);
+    /// let combined: String = segments.iter().map(|s| s.text.as_str()).collect();
+    /// assert!(combined.contains("Render me"));
+    /// ```
     pub fn render(
         &self,
         renderable: &dyn Renderable,
@@ -615,6 +703,19 @@ impl Console {
     }
 
     /// Parse a string (optionally with markup) into a `Text` object.
+    ///
+    /// If markup is enabled on this console, rich markup tags (e.g. `[bold]`)
+    /// are parsed and applied as spans.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    ///
+    /// let console = Console::builder().width(80).markup(false).build();
+    /// let text = console.render_str("Hello, world!", None, None, None);
+    /// assert_eq!(text.plain(), "Hello, world!");
+    /// ```
     pub fn render_str(
         &self,
         text: &str,
@@ -646,6 +747,24 @@ impl Console {
     // -- Print --------------------------------------------------------------
 
     /// Print a Renderable to the console.
+    ///
+    /// Renders the object into segments and writes them to the output
+    /// (terminal, capture buffer, or record buffer depending on mode).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    /// use gilt::text::Text;
+    /// use gilt::style::Style;
+    ///
+    /// let mut console = Console::builder().width(80).no_color(true).build();
+    /// console.begin_capture();
+    /// let text = Text::new("Hello, world!", Style::null());
+    /// console.print(&text);
+    /// let output = console.end_capture();
+    /// assert!(output.contains("Hello, world!"));
+    /// ```
     pub fn print(&mut self, renderable: &dyn Renderable) {
         self.print_styled(renderable, None, None, None, false, true, false);
     }
@@ -710,7 +829,22 @@ impl Console {
         self.write_segments(&segments);
     }
 
-    /// Convenience method to print a plain text string.
+    /// Print a plain text string to the console.
+    ///
+    /// Parses the string through `render_str` (applying markup if enabled)
+    /// before printing.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    ///
+    /// let mut console = Console::builder().width(80).no_color(true).markup(false).build();
+    /// console.begin_capture();
+    /// console.print_text("Hello, terminal!");
+    /// let output = console.end_capture();
+    /// assert!(output.contains("Hello, terminal!"));
+    /// ```
     pub fn print_text(&mut self, text: &str) {
         let rich_text = self.render_str(text, None, None, None);
         self.print(&rich_text);
@@ -722,6 +856,19 @@ impl Console {
     ///
     /// The current time is formatted as `[HH:MM:SS]` and styled with the
     /// `"log.time"` theme style, followed by a space and the rendered text.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    ///
+    /// let mut console = Console::builder().width(80).no_color(true).markup(false).build();
+    /// console.begin_capture();
+    /// console.log("Processing started");
+    /// let output = console.end_capture();
+    /// assert!(output.contains("Processing started"));
+    /// assert!(output.contains('['));  // timestamp bracket
+    /// ```
     pub fn log(&mut self, text: &str) {
         let now = {
             // Get current local time using libc/localtime
@@ -766,6 +913,18 @@ impl Console {
     }
 
     /// Print a horizontal rule, optionally with a title.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    ///
+    /// let mut console = Console::builder().width(40).no_color(true).markup(false).build();
+    /// console.begin_capture();
+    /// console.rule(Some("Section"));
+    /// let output = console.end_capture();
+    /// assert!(output.contains("Section"));
+    /// ```
     pub fn rule(&mut self, title: Option<&str>) {
         let rule = match title {
             Some(t) => Rule::with_title(t),
@@ -823,6 +982,19 @@ impl Console {
     /// Pretty-print a JSON string with syntax highlighting.
     ///
     /// If the input is not valid JSON, prints the raw string instead.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    ///
+    /// let mut console = Console::builder().width(80).no_color(true).markup(false).build();
+    /// console.begin_capture();
+    /// console.print_json(r#"{"name": "Alice"}"#);
+    /// let output = console.end_capture();
+    /// assert!(output.contains("name"));
+    /// assert!(output.contains("Alice"));
+    /// ```
     pub fn print_json(&mut self, json: &str) {
         match Json::new(json, JsonOptions::default()) {
             Ok(json_widget) => self.print(&json_widget),
@@ -858,6 +1030,20 @@ impl Console {
     /// maximum (longest line) cell widths. For types that implement
     /// their own measurement (like `Text`), this renders and measures
     /// the output segments.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    /// use gilt::text::Text;
+    /// use gilt::style::Style;
+    ///
+    /// let console = Console::builder().width(80).no_color(true).markup(false).build();
+    /// let text = Text::new("Hello World", Style::null());
+    /// let measurement = console.measure(&text);
+    /// assert_eq!(measurement.minimum, 5);  // longest word: "Hello" or "World"
+    /// assert_eq!(measurement.maximum, 11); // full line: "Hello World"
+    /// ```
     pub fn measure(&self, renderable: &dyn Renderable) -> Measurement {
         let opts = self.options();
         let segments = renderable.rich_console(self, &opts);
@@ -988,6 +1174,21 @@ impl Console {
     }
 
     /// Convert a slice of segments into an ANSI-rendered string.
+    ///
+    /// Applies style rendering (colors, bold, links) based on the console's
+    /// active color system. Control segments are passed through as-is.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    /// use gilt::segment::Segment;
+    ///
+    /// let console = Console::builder().no_color(true).color_system("").build();
+    /// let segments = vec![Segment::text("Hello")];
+    /// let output = console.render_buffer(&segments);
+    /// assert_eq!(output, "Hello");
+    /// ```
     pub fn render_buffer(&self, buffer: &[Segment]) -> String {
         let mut output = String::new();
         let color_system = if self.no_color {
@@ -1013,11 +1214,29 @@ impl Console {
 
     /// Begin capturing output. Subsequent writes go to the capture buffer
     /// instead of the terminal.
+    ///
+    /// Call [`end_capture`](Console::end_capture) to retrieve the captured output
+    /// as a string and resume normal output.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    ///
+    /// let mut console = Console::builder().width(80).no_color(true).markup(false).build();
+    /// console.begin_capture();
+    /// console.print_text("captured");
+    /// let output = console.end_capture();
+    /// assert!(output.contains("captured"));
+    /// ```
     pub fn begin_capture(&mut self) {
         self.capture_buffer = Some(Vec::new());
     }
 
     /// End capturing and return the captured output as a rendered string.
+    ///
+    /// Returns all output written since [`begin_capture`](Console::begin_capture)
+    /// was called, rendered through the console's color system.
     pub fn end_capture(&mut self) -> String {
         let segments = self.capture_buffer.take().unwrap_or_default();
         self.render_buffer(&segments)
@@ -1181,6 +1400,27 @@ impl Console {
     /// Export recorded output as plain or styled text.
     ///
     /// Only works if `record` was enabled when the Console was created.
+    /// Pass `clear = true` to empty the record buffer after export.
+    /// Pass `styles = true` to include ANSI escape codes in the output.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    /// use gilt::text::Text;
+    /// use gilt::style::Style;
+    ///
+    /// let mut console = Console::builder()
+    ///     .width(80)
+    ///     .no_color(true)
+    ///     .record(true)
+    ///     .markup(false)
+    ///     .build();
+    /// let text = Text::new("Export me", Style::null());
+    /// console.print(&text);
+    /// let exported = console.export_text(false, false);
+    /// assert!(exported.contains("Export me"));
+    /// ```
     pub fn export_text(&mut self, clear: bool, styles: bool) -> String {
         let buffer = self.record_buffer.clone();
         if clear {
@@ -1201,7 +1441,29 @@ impl Console {
         }
     }
 
-    /// Export recorded output as HTML.
+    /// Export recorded output as an HTML document.
+    ///
+    /// Generates a complete HTML page with inline or class-based styles.
+    /// Requires `record` mode to be enabled.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    /// use gilt::text::Text;
+    /// use gilt::style::Style;
+    ///
+    /// let mut console = Console::builder()
+    ///     .width(80)
+    ///     .record(true)
+    ///     .markup(false)
+    ///     .build();
+    /// let text = Text::styled("Red text", Style::parse("red").unwrap());
+    /// console.print(&text);
+    /// let html = console.export_html(None, false, true);
+    /// assert!(html.contains("<!DOCTYPE html>"));
+    /// assert!(html.contains("Red text"));
+    /// ```
     pub fn export_html(
         &mut self,
         theme: Option<&TerminalTheme>,
@@ -1259,7 +1521,30 @@ impl Console {
             .replace("{code}", &code)
     }
 
-    /// Export recorded output as SVG.
+    /// Export recorded output as an SVG document.
+    ///
+    /// Generates a complete SVG image with terminal-style chrome (title bar,
+    /// window controls) and styled text content. Requires `record` mode.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    /// use gilt::text::Text;
+    /// use gilt::style::Style;
+    ///
+    /// let mut console = Console::builder()
+    ///     .width(40)
+    ///     .record(true)
+    ///     .no_color(true)
+    ///     .markup(false)
+    ///     .build();
+    /// let text = Text::new("SVG test", Style::null());
+    /// console.print(&text);
+    /// let svg = console.export_svg("Test", None, false, None, 0.61);
+    /// assert!(svg.contains("<svg"));
+    /// assert!(svg.contains("SVG test"));
+    /// ```
     pub fn export_svg(
         &mut self,
         title: &str,

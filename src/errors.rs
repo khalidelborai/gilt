@@ -123,11 +123,19 @@ pub enum PaletteError {
 pub enum MarkupError {
     /// Closing tag doesn't match any open tag.
     #[error("closing tag '{tag}' at position {position} doesn't match any open tag")]
-    MismatchedTag { tag: String, position: usize },
+    MismatchedTag {
+        /// The tag name that was closed.
+        tag: String,
+        /// Byte position in the source string where the tag was found.
+        position: usize,
+    },
 
     /// Implicit close tag `[/]` has nothing to close.
     #[error("closing tag '[/]' at position {position} has nothing to close")]
-    NothingToClose { position: usize },
+    NothingToClose {
+        /// Byte position in the source string where `[/]` was found.
+        position: usize,
+    },
 }
 
 /// A general Result type alias for gilt operations.

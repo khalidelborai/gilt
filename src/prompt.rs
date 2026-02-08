@@ -17,6 +17,7 @@ use crate::text::Text;
 /// Error indicating an invalid response from the user.
 #[derive(Debug)]
 pub struct InvalidResponse {
+    /// Human-readable description of why the response was invalid.
     pub message: String,
 }
 

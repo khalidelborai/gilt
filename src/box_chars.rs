@@ -34,41 +34,70 @@ pub enum RowLevel {
 /// ```
 #[derive(Debug, Clone)]
 pub struct BoxChars {
+    /// Top-left corner character (e.g. `┌`).
     pub top_left: char,
+    /// Top border horizontal fill character (e.g. `─`).
     pub top: char,
+    /// Top border column divider character (e.g. `┬`).
     pub top_divider: char,
+    /// Top-right corner character (e.g. `┐`).
     pub top_right: char,
 
+    /// Left border character for the header row (e.g. `│`).
     pub head_left: char,
+    /// Vertical column divider in the header row (e.g. `│`).
     pub head_vertical: char,
+    /// Right border character for the header row (e.g. `│`).
     pub head_right: char,
 
+    /// Left border character for the header separator (e.g. `├`).
     pub head_row_left: char,
+    /// Horizontal fill character for the header separator (e.g. `─`).
     pub head_row_horizontal: char,
+    /// Cross/intersection character for the header separator (e.g. `┼`).
     pub head_row_cross: char,
+    /// Right border character for the header separator (e.g. `┤`).
     pub head_row_right: char,
 
+    /// Left border character for the mid separator (e.g. `│`).
     pub mid_left: char,
+    /// Vertical column divider for the mid separator (e.g. `│`).
     pub mid_vertical: char,
+    /// Right border character for the mid separator (e.g. `│`).
     pub mid_right: char,
 
+    /// Left border character for body row separators (e.g. `├`).
     pub row_left: char,
+    /// Horizontal fill character for body row separators (e.g. `─`).
     pub row_horizontal: char,
+    /// Cross/intersection character for body row separators (e.g. `┼`).
     pub row_cross: char,
+    /// Right border character for body row separators (e.g. `┤`).
     pub row_right: char,
 
+    /// Left border character for the footer separator (e.g. `├`).
     pub foot_row_left: char,
+    /// Horizontal fill character for the footer separator (e.g. `─`).
     pub foot_row_horizontal: char,
+    /// Cross/intersection character for the footer separator (e.g. `┼`).
     pub foot_row_cross: char,
+    /// Right border character for the footer separator (e.g. `┤`).
     pub foot_row_right: char,
 
+    /// Left border character for the footer row (e.g. `│`).
     pub foot_left: char,
+    /// Vertical column divider in the footer row (e.g. `│`).
     pub foot_vertical: char,
+    /// Right border character for the footer row (e.g. `│`).
     pub foot_right: char,
 
+    /// Bottom-left corner character (e.g. `└`).
     pub bottom_left: char,
+    /// Bottom border horizontal fill character (e.g. `─`).
     pub bottom_char: char,
+    /// Bottom border column divider character (e.g. `┴`).
     pub bottom_divider: char,
+    /// Bottom-right corner character (e.g. `┘`).
     pub bottom_right: char,
 
     /// Whether this box uses only ASCII characters.
@@ -315,60 +344,79 @@ impl BoxChars {
 // Box constant definitions
 // ──────────────────────────────────────────────────────────
 
+/// ASCII box style using `+`, `-`, and `|` characters.
 pub static ASCII: Lazy<BoxChars> =
     Lazy::new(|| BoxChars::new("+--+\n| ||\n|-+|\n| ||\n|-+|\n|-+|\n| ||\n+--+", true));
 
+/// Alternate ASCII box style with `+` at every intersection.
 pub static ASCII2: Lazy<BoxChars> =
     Lazy::new(|| BoxChars::new("+-++\n| ||\n+-++\n| ||\n+-++\n+-++\n| ||\n+-++", true));
 
+/// ASCII box style with `=` for the header separator row.
 pub static ASCII_DOUBLE_HEAD: Lazy<BoxChars> =
     Lazy::new(|| BoxChars::new("+-++\n| ||\n+=++\n| ||\n+-++\n+-++\n| ||\n+-++", true));
 
+/// Standard single-line Unicode box style (`┌─┬┐`, `│`, `└─┴┘`).
 pub static SQUARE: Lazy<BoxChars> =
     Lazy::new(|| BoxChars::new("┌─┬┐\n│ ││\n├─┼┤\n│ ││\n├─┼┤\n├─┼┤\n│ ││\n└─┴┘", false));
 
+/// Single-line Unicode box with a double-line header separator (`╞═╪╡`).
 pub static SQUARE_DOUBLE_HEAD: Lazy<BoxChars> =
     Lazy::new(|| BoxChars::new("┌─┬┐\n│ ││\n╞═╪╡\n│ ││\n├─┼┤\n├─┼┤\n│ ││\n└─┴┘", false));
 
+/// Minimal box style with no outer borders, only column dividers and row separators.
 pub static MINIMAL: Lazy<BoxChars> =
     Lazy::new(|| BoxChars::new("  ╷ \n  │ \n╶─┼╴\n  │ \n╶─┼╴\n╶─┼╴\n  │ \n  ╵ ", false));
 
+/// Minimal box style with a heavy (thick) header separator (`╺━┿╸`).
 pub static MINIMAL_HEAVY_HEAD: Lazy<BoxChars> =
     Lazy::new(|| BoxChars::new("  ╷ \n  │ \n╺━┿╸\n  │ \n╶─┼╴\n╶─┼╴\n  │ \n  ╵ ", false));
 
+/// Minimal box style with a double-line header separator (`═╪`).
 pub static MINIMAL_DOUBLE_HEAD: Lazy<BoxChars> =
     Lazy::new(|| BoxChars::new("  ╷ \n  │ \n ═╪ \n  │ \n ─┼ \n ─┼ \n  │ \n  ╵ ", false));
 
+/// Simple box style with only horizontal rules for header and footer separators.
 pub static SIMPLE: Lazy<BoxChars> =
     Lazy::new(|| BoxChars::new("    \n    \n ── \n    \n    \n ── \n    \n    ", false));
 
+/// Simple box style with only a header separator rule (no footer rule).
 pub static SIMPLE_HEAD: Lazy<BoxChars> =
     Lazy::new(|| BoxChars::new("    \n    \n ── \n    \n    \n    \n    \n    ", false));
 
+/// Simple box style with heavy (thick) horizontal rules (`━`).
 pub static SIMPLE_HEAVY: Lazy<BoxChars> =
     Lazy::new(|| BoxChars::new("    \n    \n ━━ \n    \n    \n ━━ \n    \n    ", false));
 
+/// Box style using only horizontal rules for all borders and separators.
 pub static HORIZONTALS: Lazy<BoxChars> =
     Lazy::new(|| BoxChars::new(" ── \n    \n ── \n    \n ── \n ── \n    \n ── ", false));
 
+/// Single-line Unicode box with rounded corners (`╭╮╰╯`).
 pub static ROUNDED: Lazy<BoxChars> =
     Lazy::new(|| BoxChars::new("╭─┬╮\n│ ││\n├─┼┤\n│ ││\n├─┼┤\n├─┼┤\n│ ││\n╰─┴╯", false));
 
+/// Heavy (thick) Unicode box style (`┏━┳┓`, `┃`, `┗━┻┛`).
 pub static HEAVY: Lazy<BoxChars> =
     Lazy::new(|| BoxChars::new("┏━┳┓\n┃ ┃┃\n┣━╋┫\n┃ ┃┃\n┣━╋┫\n┣━╋┫\n┃ ┃┃\n┗━┻┛", false));
 
+/// Heavy outer edges with light inner dividers (`┏━┯┓`, `┃│┃`).
 pub static HEAVY_EDGE: Lazy<BoxChars> =
     Lazy::new(|| BoxChars::new("┏━┯┓\n┃ │┃\n┠─┼┨\n┃ │┃\n┠─┼┨\n┠─┼┨\n┃ │┃\n┗━┷┛", false));
 
+/// Heavy header section with light body (`┏━┳┓` header, `├─┼┤` body).
 pub static HEAVY_HEAD: Lazy<BoxChars> =
     Lazy::new(|| BoxChars::new("┏━┳┓\n┃ ┃┃\n┡━╇┩\n│ ││\n├─┼┤\n├─┼┤\n│ ││\n└─┴┘", false));
 
+/// Double-line Unicode box style (`╔═╦╗`, `║`, `╚═╩╝`).
 pub static DOUBLE: Lazy<BoxChars> =
     Lazy::new(|| BoxChars::new("╔═╦╗\n║ ║║\n╠═╬╣\n║ ║║\n╠═╬╣\n╠═╬╣\n║ ║║\n╚═╩╝", false));
 
+/// Double-line outer edges with single-line inner dividers (`╔═╤╗`, `║│║`).
 pub static DOUBLE_EDGE: Lazy<BoxChars> =
     Lazy::new(|| BoxChars::new("╔═╤╗\n║ │║\n╟─┼╢\n║ │║\n╟─┼╢\n╟─┼╢\n║ │║\n╚═╧╝", false));
 
+/// Markdown-compatible table box style using `|` and `-` characters.
 pub static MARKDOWN: Lazy<BoxChars> =
     Lazy::new(|| BoxChars::new("    \n| ||\n|-||\n| ||\n|-||\n|-||\n| ||\n    ", true));
 
