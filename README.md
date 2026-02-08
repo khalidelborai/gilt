@@ -50,17 +50,20 @@ fn main() {
 - **`#[derive(Table)]`** — Auto-generate tables from structs
 - **Environment detection** — `NO_COLOR`, `FORCE_COLOR`, `CLICOLOR` support
 - **Inspect** — Debug any value with rich formatting
+- **Extended underlines** — Curly, dotted, dashed, double styles with color
+- **anstyle interop** — Bidirectional conversion with `anstyle` types
 
-### Error Reporting Integration
+### Integrations
 - **miette** — Diagnostic reporting with gilt styling
 - **eyre** — Error reporting with gilt styling
 - **tracing** — Log subscriber with colored output
+- **anstyle** — Convert between gilt and anstyle `Color`/`Style` types
 
 ## Optional Features
 
 ```toml
 [dependencies]
-gilt = { version = "0.1", features = ["tracing", "derive", "miette", "eyre"] }
+gilt = { version = "0.1", features = ["tracing", "derive", "miette", "eyre", "anstyle"] }
 ```
 
 | Feature | Description |
@@ -69,6 +72,7 @@ gilt = { version = "0.1", features = ["tracing", "derive", "miette", "eyre"] }
 | `derive` | `#[derive(Table)]` proc macro |
 | `miette` | `miette::ReportHandler` implementation |
 | `eyre` | `eyre::EyreHandler` implementation |
+| `anstyle` | Bidirectional `From` conversions with `anstyle` types |
 
 ## Examples
 

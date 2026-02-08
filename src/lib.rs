@@ -2,7 +2,7 @@
 //!
 //! gilt is a Rust port of Python's [rich](https://github.com/Textualize/rich) library,
 //! providing beautiful terminal output with styles, tables, trees, syntax highlighting,
-//! progress bars, and more.
+//! progress bars, and more — all rendered as ANSI escape sequences.
 //!
 //! ## Quick Start
 //!
@@ -15,6 +15,44 @@
 //! let output = console.end_capture();
 //! assert!(output.contains("Hello"));
 //! ```
+//!
+//! ## Global Console
+//!
+//! For quick one-off output, use the global convenience functions:
+//!
+//! ```rust,no_run
+//! gilt::print_text("Hello, [bold]world[/bold]!");
+//! gilt::print_json(r#"{"name": "gilt"}"#);
+//! gilt::inspect(&vec![1, 2, 3]);
+//! ```
+//!
+//! ## Core Modules
+//!
+//! | Module | Description |
+//! |--------|-------------|
+//! | [`console`] | Console output with color detection, capture, and export |
+//! | [`style`] | Text styles (bold, italic, colors, extended underlines) |
+//! | [`text`] | Rich text with markup parsing and word wrapping |
+//! | [`table`] | Unicode box-drawing tables with alignment and striping |
+//! | [`panel`] | Bordered content panels with titles |
+//! | [`tree`] | Hierarchical tree display with guide lines |
+//! | [`syntax`] | Code highlighting via syntect (150+ languages) |
+//! | [`markdown`] | Terminal-rendered Markdown |
+//! | [`progress`] | Multi-bar progress display with ETA and speed |
+//! | [`live`] | Live-updating terminal display |
+//! | [`gradient`] | True-color RGB gradient text |
+//! | [`styled_str`] | Stylize trait for `"text".bold().red()` chaining |
+//! | [`mod@inspect`] | Debug any value with rich formatting |
+//!
+//! ## Feature Flags
+//!
+//! | Feature | Description |
+//! |---------|-------------|
+//! | `tracing` | [`tracing`](https://docs.rs/tracing) subscriber with gilt formatting |
+//! | `derive` | `#[derive(Table)]` proc macro for struct-to-table |
+//! | `miette` | [`miette`](https://docs.rs/miette) diagnostic report handler |
+//! | `eyre` | [`eyre`](https://docs.rs/eyre) error report handler |
+//! | `anstyle` | Bidirectional `From` conversions with [`anstyle`](https://docs.rs/anstyle) |
 
 pub mod align_widget;
 pub mod ansi;
