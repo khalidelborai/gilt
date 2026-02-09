@@ -3,6 +3,7 @@
 //! Port of Python's `rich/constrain.py`.
 
 use std::cmp::min;
+use std::fmt;
 
 use crate::console::{Console, ConsoleOptions, Renderable};
 use crate::measure::Measurement;
@@ -71,6 +72,25 @@ impl Renderable for Constrain {
                 self.renderable.rich_console(console, &child_options)
             }
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Display
+// ---------------------------------------------------------------------------
+
+impl fmt::Display for Constrain {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let w = f.width().unwrap_or(80);
+        let mut console = Console::builder()
+            .width(w)
+            .force_terminal(true)
+            .no_color(true)
+            .build();
+        console.begin_capture();
+        console.print(self);
+        let output = console.end_capture();
+        write!(f, "{}", output.trim_end_matches('\n'))
     }
 }
 

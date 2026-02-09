@@ -10,6 +10,8 @@
 //!
 //! Rust port of Python's `rich.console.Group`.
 
+use std::fmt;
+
 use crate::console::{Console, ConsoleOptions, Renderable};
 use crate::measure::Measurement;
 use crate::segment::Segment;
@@ -135,6 +137,25 @@ impl Renderable for Group {
             segments.extend(item.rich_console(console, &render_options));
         }
         segments
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Display
+// ---------------------------------------------------------------------------
+
+impl fmt::Display for Group {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let w = f.width().unwrap_or(80);
+        let mut console = Console::builder()
+            .width(w)
+            .force_terminal(true)
+            .no_color(true)
+            .build();
+        console.begin_capture();
+        console.print(self);
+        let output = console.end_capture();
+        write!(f, "{}", output.trim_end_matches('\n'))
     }
 }
 

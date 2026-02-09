@@ -251,7 +251,7 @@ impl Traceback {
     ///
     /// This produces a simple text-only representation of the frames. The
     /// full `Renderable` implementation adds syntax highlighting on top.
-    #[allow(dead_code)]
+    #[cfg(test)]
     fn render_content(&self) -> Text {
         let mut parts: Vec<TextPart> = Vec::new();
 

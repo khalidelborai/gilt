@@ -6,6 +6,8 @@
 //! and their repr values inside a bordered panel. In Rust we accept
 //! pre-formatted `&str` pairs instead.
 
+use std::fmt;
+
 use crate::console::{Console, ConsoleOptions, Renderable};
 use crate::padding::PaddingDimensions;
 use crate::panel::Panel;
@@ -169,6 +171,25 @@ impl Scope {
 impl Renderable for Scope {
     fn rich_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         self.render_panel(console, options)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Display
+// ---------------------------------------------------------------------------
+
+impl fmt::Display for Scope {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let w = f.width().unwrap_or(80);
+        let mut console = Console::builder()
+            .width(w)
+            .force_terminal(true)
+            .no_color(true)
+            .build();
+        console.begin_capture();
+        console.print(self);
+        let output = console.end_capture();
+        write!(f, "{}", output.trim_end_matches('\n'))
     }
 }
 
