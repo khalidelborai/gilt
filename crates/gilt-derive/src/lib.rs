@@ -2516,7 +2516,7 @@ fn derive_rule_impl(input: &DeriveInput) -> syn::Result<proc_macro2::TokenStream
     if let Some(ref lit) = rule_attrs.style {
         let val = lit.value();
         rule_config.push(quote! {
-            rule = rule.style(gilt::style::Style::parse(#val));
+            rule = rule.style(gilt::style::Style::parse(#val).unwrap_or_else(|_| gilt::style::Style::null()));
         });
     }
     if let Some(ref lit) = rule_attrs.align {
