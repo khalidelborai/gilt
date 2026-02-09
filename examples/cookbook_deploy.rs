@@ -29,15 +29,17 @@ fn main() {
         "Application: myapp\nVersion:     2.1.0\nEnvironment: production\nInitiated:   2026-02-09 14:30:00 UTC",
         Style::null(),
     ))
-    .title(Text::styled("Deployment", Style::parse("bold bright_white").unwrap()))
-    .border_style(Style::parse("bright_cyan").unwrap())
-    .box_chars(&DOUBLE);
+    .with_title(Text::styled("Deployment", Style::parse("bold bright_white").unwrap()))
+    .with_border_style(Style::parse("bright_cyan").unwrap())
+    .with_box_chars(&DOUBLE);
 
     console.print(&banner);
     console.print(&header);
 
     // ── Deployment Steps Checklist ──────────────────────────────────────
-    console.print(&Rule::with_title("Pipeline Steps").style(Style::parse("bright_cyan").unwrap()));
+    console.print(
+        &Rule::with_title("Pipeline Steps").with_style(Style::parse("bright_cyan").unwrap()),
+    );
 
     let mut table = Table::new(&["#", "Step", "Duration", "Status"]);
     table.header_style = "bold bright_white on grey23".to_string();
@@ -70,7 +72,7 @@ fn main() {
 
     // ── Deployment Targets Tree ─────────────────────────────────────────
     console.print(
-        &Rule::with_title("Target Infrastructure").style(Style::parse("bright_cyan").unwrap()),
+        &Rule::with_title("Target Infrastructure").with_style(Style::parse("bright_cyan").unwrap()),
     );
 
     let bold_cyan = Style::parse("bold bright_cyan").unwrap();
@@ -78,8 +80,8 @@ fn main() {
     let green = Style::parse("green").unwrap();
     let dim = Style::parse("dim").unwrap();
 
-    let mut tree = Tree::new(Text::styled("production", bold_cyan.clone()));
-    tree.guide_style = Style::parse("bright_cyan").unwrap();
+    let mut tree = Tree::new(Text::styled("production", bold_cyan.clone()))
+        .with_guide_style(Style::parse("bright_cyan").unwrap());
 
     // us-east region
     {
@@ -112,8 +114,8 @@ fn main() {
     // ── Deployment Summary ──────────────────────────────────────────────
     console.print(
         &Rule::new()
-            .characters("\u{2550}")
-            .style(Style::parse("bright_cyan").unwrap()),
+            .with_characters("\u{2550}")
+            .with_style(Style::parse("bright_cyan").unwrap()),
     );
 
     let total_duration = "4m 36s";
@@ -128,11 +130,11 @@ fn main() {
         &summary_content,
         Style::parse("bold green").unwrap(),
     ))
-    .title(Text::styled(
+    .with_title(Text::styled(
         " SUCCESS ",
         Style::parse("bold bright_white on green").unwrap(),
     ))
-    .border_style(Style::parse("bold green").unwrap())
-    .box_chars(&HEAVY);
+    .with_border_style(Style::parse("bold green").unwrap())
+    .with_box_chars(&HEAVY);
     console.print(&success_panel);
 }

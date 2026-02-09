@@ -365,6 +365,189 @@ impl Table {
         self.expand_flag = expand;
     }
 
+    // -- Builder methods ----------------------------------------------------
+
+    /// Set the table title (builder pattern).
+    #[must_use]
+    pub fn with_title(mut self, title: &str) -> Self {
+        self.title = Some(title.to_string());
+        self
+    }
+
+    /// Set the table caption (builder pattern).
+    #[must_use]
+    pub fn with_caption(mut self, caption: &str) -> Self {
+        self.caption = Some(caption.to_string());
+        self
+    }
+
+    /// Set the style for the title text (builder pattern).
+    #[must_use]
+    pub fn with_title_style(mut self, style: &str) -> Self {
+        self.title_style = style.to_string();
+        self
+    }
+
+    /// Set the style for the caption text (builder pattern).
+    #[must_use]
+    pub fn with_caption_style(mut self, style: &str) -> Self {
+        self.caption_style = style.to_string();
+        self
+    }
+
+    /// Set the style for the header row (builder pattern).
+    #[must_use]
+    pub fn with_header_style(mut self, style: &str) -> Self {
+        self.header_style = style.to_string();
+        self
+    }
+
+    /// Set the style for the footer row (builder pattern).
+    #[must_use]
+    pub fn with_footer_style(mut self, style: &str) -> Self {
+        self.footer_style = style.to_string();
+        self
+    }
+
+    /// Set the style for the table border (builder pattern).
+    #[must_use]
+    pub fn with_border_style(mut self, style: &str) -> Self {
+        self.border_style = style.to_string();
+        self
+    }
+
+    /// Set the overall table style (builder pattern).
+    #[must_use]
+    pub fn with_style(mut self, style: &str) -> Self {
+        self.style = style.to_string();
+        self
+    }
+
+    /// Set the box-drawing character set (builder pattern).
+    ///
+    /// Pass `None` to disable borders entirely.
+    #[must_use]
+    pub fn with_box_chars(mut self, chars: Option<&'static BoxChars>) -> Self {
+        self.box_chars = chars;
+        self
+    }
+
+    /// Set whether to show horizontal separator lines between rows (builder pattern).
+    #[must_use]
+    pub fn with_show_lines(mut self, show: bool) -> Self {
+        self.show_lines = show;
+        self
+    }
+
+    /// Set whether to show the header row (builder pattern).
+    #[must_use]
+    pub fn with_show_header(mut self, show: bool) -> Self {
+        self.show_header = show;
+        self
+    }
+
+    /// Set whether to show the footer row (builder pattern).
+    #[must_use]
+    pub fn with_show_footer(mut self, show: bool) -> Self {
+        self.show_footer = show;
+        self
+    }
+
+    /// Set whether to show the left and right border edges (builder pattern).
+    #[must_use]
+    pub fn with_show_edge(mut self, show: bool) -> Self {
+        self.show_edge = show;
+        self
+    }
+
+    /// Set whether the table should expand to fill available width (builder pattern).
+    #[must_use]
+    pub fn with_expand(mut self, expand: bool) -> Self {
+        self.expand_flag = expand;
+        self
+    }
+
+    /// Set the fixed table width (builder pattern).
+    ///
+    /// Setting a width implies `expand`.
+    #[must_use]
+    pub fn with_width(mut self, width: usize) -> Self {
+        self.width = Some(width);
+        self
+    }
+
+    /// Set the minimum table width constraint (builder pattern).
+    #[must_use]
+    pub fn with_min_width(mut self, min_width: usize) -> Self {
+        self.min_width = Some(min_width);
+        self
+    }
+
+    /// Set alternating row styles (builder pattern).
+    ///
+    /// Styles are cycled by row index.
+    #[must_use]
+    pub fn with_row_styles(mut self, styles: Vec<String>) -> Self {
+        self.row_styles = styles;
+        self
+    }
+
+    /// Set cell padding as `(top, right, bottom, left)` (builder pattern).
+    #[must_use]
+    pub fn with_padding(mut self, padding: (usize, usize, usize, usize)) -> Self {
+        self.padding = padding;
+        self
+    }
+
+    /// Set whether to collapse inter-column padding (builder pattern).
+    #[must_use]
+    pub fn with_collapse_padding(mut self, collapse: bool) -> Self {
+        self.collapse_padding = collapse;
+        self
+    }
+
+    /// Set whether to add padding at the left and right table edges (builder pattern).
+    #[must_use]
+    pub fn with_pad_edge(mut self, pad: bool) -> Self {
+        self.pad_edge = pad;
+        self
+    }
+
+    /// Set the number of extra blank lines between rows (builder pattern).
+    #[must_use]
+    pub fn with_leading(mut self, leading: usize) -> Self {
+        self.leading = leading;
+        self
+    }
+
+    /// Set whether to substitute box characters on legacy terminals (builder pattern).
+    #[must_use]
+    pub fn with_safe_box(mut self, safe: Option<bool>) -> Self {
+        self.safe_box = safe;
+        self
+    }
+
+    /// Set horizontal justification for the title (builder pattern).
+    #[must_use]
+    pub fn with_title_justify(mut self, justify: JustifyMethod) -> Self {
+        self.title_justify = justify;
+        self
+    }
+
+    /// Set horizontal justification for the caption (builder pattern).
+    #[must_use]
+    pub fn with_caption_justify(mut self, justify: JustifyMethod) -> Self {
+        self.caption_justify = justify;
+        self
+    }
+
+    /// Set whether to enable syntax highlighting for cell content (builder pattern).
+    #[must_use]
+    pub fn with_highlight(mut self, highlight: bool) -> Self {
+        self.highlight = highlight;
+        self
+    }
+
     /// Get extra width contributed by box borders (edge + column dividers).
     pub fn extra_width(&self) -> usize {
         let mut w = 0;
@@ -2542,5 +2725,222 @@ mod tests {
         table.add_row(&cell_refs);
         let output = render_table(&table, 120);
         assert!(!output.is_empty());
+    }
+
+    // -- Builder method tests -----------------------------------------------
+
+    #[test]
+    fn test_builder_with_title() {
+        let table = Table::new(&["A"]).with_title("My Title");
+        assert_eq!(table.title, Some("My Title".to_string()));
+    }
+
+    #[test]
+    fn test_builder_with_caption() {
+        let table = Table::new(&["A"]).with_caption("Source: test");
+        assert_eq!(table.caption, Some("Source: test".to_string()));
+    }
+
+    #[test]
+    fn test_builder_with_title_style() {
+        let table = Table::new(&["A"]).with_title_style("bold white");
+        assert_eq!(table.title_style, "bold white");
+    }
+
+    #[test]
+    fn test_builder_with_caption_style() {
+        let table = Table::new(&["A"]).with_caption_style("dim");
+        assert_eq!(table.caption_style, "dim");
+    }
+
+    #[test]
+    fn test_builder_with_header_style() {
+        let table = Table::new(&["A"]).with_header_style("bold cyan");
+        assert_eq!(table.header_style, "bold cyan");
+    }
+
+    #[test]
+    fn test_builder_with_footer_style() {
+        let table = Table::new(&["A"]).with_footer_style("italic");
+        assert_eq!(table.footer_style, "italic");
+    }
+
+    #[test]
+    fn test_builder_with_border_style() {
+        let table = Table::new(&["A"]).with_border_style("bright_cyan");
+        assert_eq!(table.border_style, "bright_cyan");
+    }
+
+    #[test]
+    fn test_builder_with_style() {
+        let table = Table::new(&["A"]).with_style("on blue");
+        assert_eq!(table.style, "on blue");
+    }
+
+    #[test]
+    fn test_builder_with_box_chars() {
+        use crate::box_chars::ROUNDED;
+        let table = Table::new(&["A"]).with_box_chars(Some(&ROUNDED));
+        assert!(table.box_chars.is_some());
+
+        let table = Table::new(&["A"]).with_box_chars(None);
+        assert!(table.box_chars.is_none());
+    }
+
+    #[test]
+    fn test_builder_with_show_lines() {
+        let table = Table::new(&["A"]).with_show_lines(true);
+        assert!(table.show_lines);
+    }
+
+    #[test]
+    fn test_builder_with_show_header() {
+        let table = Table::new(&["A"]).with_show_header(false);
+        assert!(!table.show_header);
+    }
+
+    #[test]
+    fn test_builder_with_show_footer() {
+        let table = Table::new(&["A"]).with_show_footer(true);
+        assert!(table.show_footer);
+    }
+
+    #[test]
+    fn test_builder_with_show_edge() {
+        let table = Table::new(&["A"]).with_show_edge(false);
+        assert!(!table.show_edge);
+    }
+
+    #[test]
+    fn test_builder_with_expand() {
+        let table = Table::new(&["A"]).with_expand(true);
+        assert!(table.expand());
+    }
+
+    #[test]
+    fn test_builder_with_width() {
+        let table = Table::new(&["A"]).with_width(50);
+        assert_eq!(table.width, Some(50));
+        assert!(table.expand()); // width implies expand
+    }
+
+    #[test]
+    fn test_builder_with_min_width() {
+        let table = Table::new(&["A"]).with_min_width(30);
+        assert_eq!(table.min_width, Some(30));
+    }
+
+    #[test]
+    fn test_builder_with_row_styles() {
+        let table = Table::new(&["A"]).with_row_styles(vec!["".to_string(), "dim".to_string()]);
+        assert_eq!(table.row_styles.len(), 2);
+        assert_eq!(table.row_styles[1], "dim");
+    }
+
+    #[test]
+    fn test_builder_with_padding() {
+        let table = Table::new(&["A"]).with_padding((1, 2, 1, 2));
+        assert_eq!(table.padding, (1, 2, 1, 2));
+    }
+
+    #[test]
+    fn test_builder_with_collapse_padding() {
+        let table = Table::new(&["A"]).with_collapse_padding(true);
+        assert!(table.collapse_padding);
+    }
+
+    #[test]
+    fn test_builder_with_pad_edge() {
+        let table = Table::new(&["A"]).with_pad_edge(false);
+        assert!(!table.pad_edge);
+    }
+
+    #[test]
+    fn test_builder_with_leading() {
+        let table = Table::new(&["A"]).with_leading(2);
+        assert_eq!(table.leading, 2);
+    }
+
+    #[test]
+    fn test_builder_with_safe_box() {
+        let table = Table::new(&["A"]).with_safe_box(Some(true));
+        assert_eq!(table.safe_box, Some(true));
+    }
+
+    #[test]
+    fn test_builder_with_title_justify() {
+        let table = Table::new(&["A"]).with_title_justify(JustifyMethod::Left);
+        assert_eq!(table.title_justify, JustifyMethod::Left);
+    }
+
+    #[test]
+    fn test_builder_with_caption_justify() {
+        let table = Table::new(&["A"]).with_caption_justify(JustifyMethod::Right);
+        assert_eq!(table.caption_justify, JustifyMethod::Right);
+    }
+
+    #[test]
+    fn test_builder_with_highlight() {
+        let table = Table::new(&["A"]).with_highlight(true);
+        assert!(table.highlight);
+    }
+
+    #[test]
+    fn test_builder_chaining() {
+        use crate::box_chars::ROUNDED;
+        let mut table = Table::new(&["Name", "Age"])
+            .with_title("People")
+            .with_caption("End of list")
+            .with_box_chars(Some(&ROUNDED))
+            .with_border_style("bright_cyan")
+            .with_title_style("bold white")
+            .with_caption_style("dim")
+            .with_row_styles(vec!["".to_string(), "dim".to_string()])
+            .with_show_lines(true)
+            .with_expand(true);
+
+        table.add_row(&["Alice", "30"]);
+        table.add_row(&["Bob", "25"]);
+
+        assert_eq!(table.title, Some("People".to_string()));
+        assert_eq!(table.caption, Some("End of list".to_string()));
+        assert!(table.box_chars.is_some());
+        assert_eq!(table.border_style, "bright_cyan");
+        assert_eq!(table.title_style, "bold white");
+        assert_eq!(table.caption_style, "dim");
+        assert_eq!(table.row_styles.len(), 2);
+        assert!(table.show_lines);
+        assert!(table.expand());
+
+        // Verify it renders successfully
+        let output = render_table(&table, 80);
+        assert!(output.contains("People"));
+        assert!(output.contains("Alice"));
+        assert!(output.contains("Bob"));
+    }
+
+    #[test]
+    fn test_builder_renders_same_as_field_mutation() {
+        use crate::box_chars::ROUNDED;
+
+        // Build table using builder methods
+        let mut table_builder = Table::new(&["Name", "Age"])
+            .with_title("Title")
+            .with_box_chars(Some(&ROUNDED))
+            .with_border_style("dim")
+            .with_show_lines(true);
+        table_builder.add_row(&["Alice", "30"]);
+
+        // Build identical table using field mutation
+        let mut table_fields = Table::new(&["Name", "Age"]);
+        table_fields.title = Some("Title".to_string());
+        table_fields.box_chars = Some(&ROUNDED);
+        table_fields.border_style = "dim".to_string();
+        table_fields.show_lines = true;
+        table_fields.add_row(&["Alice", "30"]);
+
+        let output_builder = render_table(&table_builder, 60);
+        let output_fields = render_table(&table_fields, 60);
+        assert_eq!(output_builder, output_fields);
     }
 }

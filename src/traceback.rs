@@ -497,9 +497,9 @@ impl Renderable for Traceback {
         };
 
         let panel = Panel::new(content_text)
-            .title(title_text)
-            .border_style(Style::parse("red").unwrap_or_else(|_| Style::null()))
-            .expand(true);
+            .with_title(title_text)
+            .with_border_style(Style::parse("red").unwrap_or_else(|_| Style::null()))
+            .with_expand(true);
 
         let panel_opts = if let Some(w) = self.width {
             options.update_width(w)

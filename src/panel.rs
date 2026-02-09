@@ -78,84 +78,84 @@ impl Panel {
 
     /// Set the box-drawing character set.
     #[must_use]
-    pub fn box_chars(mut self, box_chars: &'static BoxChars) -> Self {
+    pub fn with_box_chars(mut self, box_chars: &'static BoxChars) -> Self {
         self.box_chars = box_chars;
         self
     }
 
     /// Set the title text.
     #[must_use]
-    pub fn title(mut self, title: Text) -> Self {
-        self.title = Some(title);
+    pub fn with_title(mut self, title: impl Into<Text>) -> Self {
+        self.title = Some(title.into());
         self
     }
 
     /// Set the title alignment.
     #[must_use]
-    pub fn title_align(mut self, align: HorizontalAlign) -> Self {
+    pub fn with_title_align(mut self, align: HorizontalAlign) -> Self {
         self.title_align = align;
         self
     }
 
     /// Set the subtitle text.
     #[must_use]
-    pub fn subtitle(mut self, subtitle: Text) -> Self {
-        self.subtitle = Some(subtitle);
+    pub fn with_subtitle(mut self, subtitle: impl Into<Text>) -> Self {
+        self.subtitle = Some(subtitle.into());
         self
     }
 
     /// Set the subtitle alignment.
     #[must_use]
-    pub fn subtitle_align(mut self, align: HorizontalAlign) -> Self {
+    pub fn with_subtitle_align(mut self, align: HorizontalAlign) -> Self {
         self.subtitle_align = align;
         self
     }
 
     /// Set whether the panel expands to fill available width.
     #[must_use]
-    pub fn expand(mut self, expand: bool) -> Self {
+    pub fn with_expand(mut self, expand: bool) -> Self {
         self.expand = expand;
         self
     }
 
     /// Set the content style.
     #[must_use]
-    pub fn style(mut self, style: Style) -> Self {
+    pub fn with_style(mut self, style: Style) -> Self {
         self.style = style;
         self
     }
 
     /// Set the border style.
     #[must_use]
-    pub fn border_style(mut self, style: Style) -> Self {
+    pub fn with_border_style(mut self, style: Style) -> Self {
         self.border_style = style;
         self
     }
 
     /// Set a fixed width.
     #[must_use]
-    pub fn width(mut self, width: usize) -> Self {
+    pub fn with_width(mut self, width: usize) -> Self {
         self.width = Some(width);
         self
     }
 
     /// Set a fixed height for the content area.
     #[must_use]
-    pub fn height(mut self, height: usize) -> Self {
+    pub fn with_height(mut self, height: usize) -> Self {
         self.height = Some(height);
         self
     }
 
     /// Set the inner padding.
     #[must_use]
-    pub fn padding(mut self, padding: PaddingDimensions) -> Self {
+    pub fn with_padding(mut self, padding: PaddingDimensions) -> Self {
         self.padding = padding;
         self
     }
 
     /// Enable or disable `ReprHighlighter` on the content.
     #[must_use]
-    pub fn highlight(mut self, highlight: bool) -> Self {
+    pub fn with_highlight(mut self, highlight: bool) -> Self {
         self.highlight = highlight;
         self
     }
@@ -562,7 +562,7 @@ mod tests {
     fn test_centered_title() {
         let console = make_console(30);
         let panel = Panel::new(Text::new("Content", Style::null()))
-            .title(Text::new("Title", Style::null()));
+            .with_title(Text::new("Title", Style::null()));
         let output = render_panel(&console, &panel);
         let lines = content_lines(&output);
 
@@ -577,7 +577,8 @@ mod tests {
     #[test]
     fn test_centered_title_padded_with_spaces() {
         let console = make_console(30);
-        let panel = Panel::new(Text::new("X", Style::null())).title(Text::new("T", Style::null()));
+        let panel =
+            Panel::new(Text::new("X", Style::null())).with_title(Text::new("T", Style::null()));
         let output = render_panel(&console, &panel);
         let lines = content_lines(&output);
 
@@ -591,8 +592,8 @@ mod tests {
     fn test_left_aligned_title() {
         let console = make_console(30);
         let panel = Panel::new(Text::new("Content", Style::null()))
-            .title(Text::new("Left", Style::null()))
-            .title_align(HorizontalAlign::Left);
+            .with_title(Text::new("Left", Style::null()))
+            .with_title_align(HorizontalAlign::Left);
         let output = render_panel(&console, &panel);
         let lines = content_lines(&output);
 
@@ -609,8 +610,8 @@ mod tests {
     fn test_right_aligned_title() {
         let console = make_console(30);
         let panel = Panel::new(Text::new("Content", Style::null()))
-            .title(Text::new("Right", Style::null()))
-            .title_align(HorizontalAlign::Right);
+            .with_title(Text::new("Right", Style::null()))
+            .with_title_align(HorizontalAlign::Right);
         let output = render_panel(&console, &panel);
         let lines = content_lines(&output);
 
@@ -624,7 +625,7 @@ mod tests {
     fn test_subtitle() {
         let console = make_console(30);
         let panel = Panel::new(Text::new("Content", Style::null()))
-            .subtitle(Text::new("Sub", Style::null()));
+            .with_subtitle(Text::new("Sub", Style::null()));
         let output = render_panel(&console, &panel);
         let lines = content_lines(&output);
 
@@ -639,8 +640,8 @@ mod tests {
     fn test_subtitle_left_aligned() {
         let console = make_console(30);
         let panel = Panel::new(Text::new("X", Style::null()))
-            .subtitle(Text::new("SubLeft", Style::null()))
-            .subtitle_align(HorizontalAlign::Left);
+            .with_subtitle(Text::new("SubLeft", Style::null()))
+            .with_subtitle_align(HorizontalAlign::Left);
         let output = render_panel(&console, &panel);
         let lines = content_lines(&output);
 
@@ -675,7 +676,7 @@ mod tests {
     fn test_fit_panel_wider_title() {
         let console = make_console(80);
         let panel = Panel::fit(Text::new("Hi", Style::null()))
-            .title(Text::new("A Longer Title", Style::null()));
+            .with_title(Text::new("A Longer Title", Style::null()));
         let output = render_panel(&console, &panel);
         let lines = content_lines(&output);
 
@@ -693,7 +694,7 @@ mod tests {
     #[test]
     fn test_double_box() {
         let console = make_console(20);
-        let panel = Panel::new(Text::new("X", Style::null())).box_chars(&DOUBLE);
+        let panel = Panel::new(Text::new("X", Style::null())).with_box_chars(&DOUBLE);
         let output = render_panel(&console, &panel);
         let lines = content_lines(&output);
 
@@ -708,7 +709,7 @@ mod tests {
     #[test]
     fn test_heavy_box() {
         let console = make_console(20);
-        let panel = Panel::new(Text::new("X", Style::null())).box_chars(&HEAVY);
+        let panel = Panel::new(Text::new("X", Style::null())).with_box_chars(&HEAVY);
         let output = render_panel(&console, &panel);
         let lines = content_lines(&output);
 
@@ -723,7 +724,7 @@ mod tests {
     #[test]
     fn test_ascii_box() {
         let console = make_console(20);
-        let panel = Panel::new(Text::new("X", Style::null())).box_chars(&ASCII);
+        let panel = Panel::new(Text::new("X", Style::null())).with_box_chars(&ASCII);
         let output = render_panel(&console, &panel);
         let lines = content_lines(&output);
 
@@ -738,7 +739,7 @@ mod tests {
     #[test]
     fn test_square_box() {
         let console = make_console(20);
-        let panel = Panel::new(Text::new("X", Style::null())).box_chars(&SQUARE);
+        let panel = Panel::new(Text::new("X", Style::null())).with_box_chars(&SQUARE);
         let output = render_panel(&console, &panel);
         let lines = content_lines(&output);
 
@@ -751,8 +752,8 @@ mod tests {
     #[test]
     fn test_custom_padding() {
         let console = make_console(30);
-        let panel =
-            Panel::new(Text::new("X", Style::null())).padding(PaddingDimensions::Full(1, 2, 1, 2));
+        let panel = Panel::new(Text::new("X", Style::null()))
+            .with_padding(PaddingDimensions::Full(1, 2, 1, 2));
         let output = render_panel(&console, &panel);
         let lines = content_lines(&output);
 
@@ -769,8 +770,8 @@ mod tests {
     #[test]
     fn test_zero_padding() {
         let console = make_console(20);
-        let panel =
-            Panel::new(Text::new("Hello", Style::null())).padding(PaddingDimensions::Uniform(0));
+        let panel = Panel::new(Text::new("Hello", Style::null()))
+            .with_padding(PaddingDimensions::Uniform(0));
         let output = render_panel(&console, &panel);
         let lines = content_lines(&output);
 
@@ -788,7 +789,7 @@ mod tests {
     #[test]
     fn test_custom_width() {
         let console = make_console(80);
-        let panel = Panel::new(Text::new("X", Style::null())).width(25);
+        let panel = Panel::new(Text::new("X", Style::null())).with_width(25);
         let output = render_panel(&console, &panel);
         let lines = content_lines(&output);
 
@@ -806,7 +807,7 @@ mod tests {
     fn test_custom_width_clamped() {
         // width larger than console should be clamped
         let console = make_console(20);
-        let panel = Panel::new(Text::new("X", Style::null())).width(50);
+        let panel = Panel::new(Text::new("X", Style::null())).with_width(50);
         let output = render_panel(&console, &panel);
         let lines = content_lines(&output);
 
@@ -820,17 +821,17 @@ mod tests {
     #[test]
     fn test_builder_chain() {
         let panel = Panel::new(Text::new("X", Style::null()))
-            .box_chars(&DOUBLE)
-            .title(Text::new("T", Style::null()))
-            .title_align(HorizontalAlign::Left)
-            .subtitle(Text::new("S", Style::null()))
-            .subtitle_align(HorizontalAlign::Right)
-            .expand(false)
-            .style(Style::parse("bold").unwrap())
-            .border_style(Style::parse("red").unwrap())
-            .width(40)
-            .height(5)
-            .padding(PaddingDimensions::Uniform(2));
+            .with_box_chars(&DOUBLE)
+            .with_title(Text::new("T", Style::null()))
+            .with_title_align(HorizontalAlign::Left)
+            .with_subtitle(Text::new("S", Style::null()))
+            .with_subtitle_align(HorizontalAlign::Right)
+            .with_expand(false)
+            .with_style(Style::parse("bold").unwrap())
+            .with_border_style(Style::parse("red").unwrap())
+            .with_width(40)
+            .with_height(5)
+            .with_padding(PaddingDimensions::Uniform(2));
 
         assert_eq!(panel.box_chars.top_left, '╔');
         assert!(panel.title.is_some());
@@ -862,7 +863,7 @@ mod tests {
     #[test]
     fn test_measure_with_fixed_width() {
         let console = make_console(80);
-        let panel = Panel::new(Text::new("Hello", Style::null())).width(30);
+        let panel = Panel::new(Text::new("Hello", Style::null())).with_width(30);
         let opts = console.options();
         let m = panel.measure(&console, &opts);
 
@@ -873,8 +874,8 @@ mod tests {
     #[test]
     fn test_measure_with_padding() {
         let console = make_console(80);
-        let panel =
-            Panel::new(Text::new("Hi", Style::null())).padding(PaddingDimensions::Full(0, 3, 0, 3));
+        let panel = Panel::new(Text::new("Hi", Style::null()))
+            .with_padding(PaddingDimensions::Full(0, 3, 0, 3));
         let opts = console.options();
         let m = panel.measure(&console, &opts);
 
@@ -909,7 +910,7 @@ mod tests {
     fn test_title_truncation() {
         let console = make_console(15);
         let panel = Panel::new(Text::new("X", Style::null()))
-            .title(Text::new("This Is A Very Long Title", Style::null()));
+            .with_title(Text::new("This Is A Very Long Title", Style::null()));
         let output = render_panel(&console, &panel);
         let lines = content_lines(&output);
 
@@ -954,8 +955,8 @@ mod tests {
     fn test_title_and_subtitle_together() {
         let console = make_console(30);
         let panel = Panel::new(Text::new("Body", Style::null()))
-            .title(Text::new("Top", Style::null()))
-            .subtitle(Text::new("Bottom", Style::null()));
+            .with_title(Text::new("Top", Style::null()))
+            .with_subtitle(Text::new("Bottom", Style::null()));
         let output = render_panel(&console, &panel);
         let lines = content_lines(&output);
 
@@ -966,7 +967,7 @@ mod tests {
     #[test]
     fn test_fixed_height() {
         let console = make_console(20);
-        let panel = Panel::new(Text::new("Short", Style::null())).height(5);
+        let panel = Panel::new(Text::new("Short", Style::null())).with_height(5);
         let output = render_panel(&console, &panel);
         let lines = content_lines(&output);
 
@@ -978,8 +979,8 @@ mod tests {
     fn test_panel_consistency_all_lines_same_width() {
         let console = make_console(40);
         let panel = Panel::new(Text::new("Hello, World!", Style::null()))
-            .title(Text::new("Title", Style::null()))
-            .subtitle(Text::new("Subtitle", Style::null()));
+            .with_title(Text::new("Title", Style::null()))
+            .with_subtitle(Text::new("Subtitle", Style::null()));
         let output = render_panel(&console, &panel);
         let lines = content_lines(&output);
 
@@ -1018,7 +1019,8 @@ mod tests {
             .markup(false)
             .build();
         let border_style = Style::parse("bold").unwrap();
-        let panel = Panel::new(Text::new("X", Style::null())).border_style(border_style.clone());
+        let panel =
+            Panel::new(Text::new("X", Style::null())).with_border_style(border_style.clone());
         let opts = console.options();
         let segments = panel.rich_console(&console, &opts);
 
@@ -1062,10 +1064,10 @@ mod tests {
 
     #[test]
     fn test_panel_highlight_builder() {
-        let panel = Panel::new(Text::new("hello 123", Style::null())).highlight(true);
+        let panel = Panel::new(Text::new("hello 123", Style::null())).with_highlight(true);
         assert!(panel.highlight);
 
-        let panel2 = Panel::new(Text::new("hello 123", Style::null())).highlight(false);
+        let panel2 = Panel::new(Text::new("hello 123", Style::null())).with_highlight(false);
         assert!(!panel2.highlight);
     }
 
@@ -1074,7 +1076,8 @@ mod tests {
         // When highlight is true, the rendered output should contain styled
         // segments (the ReprHighlighter adds styles to numbers, strings, etc.)
         let console = make_console(40);
-        let panel = Panel::new(Text::new("value=42 name='hello'", Style::null())).highlight(true);
+        let panel =
+            Panel::new(Text::new("value=42 name='hello'", Style::null())).with_highlight(true);
         let opts = console.options();
         let segments = panel.rich_console(&console, &opts);
         // The content should still contain the text
@@ -1135,7 +1138,7 @@ mod tests {
     fn test_panel_emoji_title() {
         let console = make_console(40);
         let panel = Panel::new(Text::new("Body text", Style::null()))
-            .title(Text::new("🎉 Title", Style::null()));
+            .with_title(Text::new("🎉 Title", Style::null()));
         let output = render_panel(&console, &panel);
         assert!(output.contains("🎉"));
         assert!(output.contains("Title"));

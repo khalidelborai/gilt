@@ -15,8 +15,8 @@ fn main() {
 
     console.print(&Rule::with_title("Star Wars Movies"));
 
-    let mut table = Table::new(&["Episode", "Title", "Director", "Year", "Box Office"]);
-    table.title = Some("Star Wars Saga".to_string());
+    let mut table = Table::new(&["Episode", "Title", "Director", "Year", "Box Office"])
+        .with_title("Star Wars Saga");
 
     table.add_row(&["IV", "A New Hope", "George Lucas", "1977", "$775M"]);
     table.add_row(&[

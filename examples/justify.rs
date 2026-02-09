@@ -28,7 +28,7 @@ fn main() {
 
     for (label, justify) in modes {
         // Print a rule as section header
-        let rule = Rule::with_title(label).characters("-");
+        let rule = Rule::with_title(label).with_characters("-");
         console.print(&rule);
 
         // Create text with the given justification
@@ -54,14 +54,14 @@ fn main() {
     ];
 
     for (label, overflow) in overflow_modes {
-        let rule = Rule::with_title(label).characters("-");
+        let rule = Rule::with_title(label).with_characters("-");
         console.print(&rule);
 
         let mut text = Text::new(long_word, Style::null());
         text.overflow = Some(*overflow);
 
         // Use a narrow panel to force overflow
-        let panel = Panel::new(text).width(25);
+        let panel = Panel::new(text).with_width(25);
 
         console.print(&panel);
     }
@@ -79,7 +79,7 @@ fn main() {
     styled.append_str(".", None);
     styled.justify = Some(JustifyMethod::Center);
 
-    let panel = Panel::new(styled).title(Text::new("Styled & Centered", Style::null()));
+    let panel = Panel::new(styled).with_title(Text::new("Styled & Centered", Style::null()));
 
     console.print(&panel);
 }

@@ -19,8 +19,8 @@ fn main() {
     let default = Style::null();
 
     // Root: Project/
-    let mut tree = Tree::new(Text::new("Project/", bold_blue.clone()));
-    tree.guide_style = Style::parse("dim").unwrap();
+    let mut tree = Tree::new(Text::new("Project/", bold_blue.clone()))
+        .with_guide_style(Style::parse("dim").unwrap());
 
     // src/
     let src = tree.add(Text::new("src/", bold_blue.clone()));

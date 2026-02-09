@@ -41,8 +41,8 @@ fn main() {
     combined.append_str("green flair", Some(Style::parse("bold green").unwrap()));
 
     let panel = Panel::new(combined)
-        .title(Text::new("Grouped Content", Style::parse("bold").unwrap()))
-        .border_style(Style::parse("cyan").unwrap());
+        .with_title(Text::new("Grouped Content", Style::parse("bold").unwrap()))
+        .with_border_style(Style::parse("cyan").unwrap());
     console.print(&panel);
 
     // -- 3. Fit Group ---------------------------------------------------------

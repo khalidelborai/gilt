@@ -132,9 +132,9 @@ fn main() {
         Style::null(),
     );
     let panel = Panel::fit(content)
-        .title(Text::new("About Gilt", Style::parse("bold cyan").unwrap()))
-        .subtitle(Text::new("v0.5.0", Style::parse("dim").unwrap()))
-        .border_style(Style::parse("bright_blue").unwrap());
+        .with_title(Text::new("About Gilt", Style::parse("bold cyan").unwrap()))
+        .with_subtitle(Text::new("v0.5.0", Style::parse("dim").unwrap()))
+        .with_border_style(Style::parse("bright_blue").unwrap());
     console.print(&panel);
     pause();
 
@@ -165,8 +165,8 @@ fn main() {
     let green = Style::parse("green").unwrap();
     let default = Style::null();
 
-    let mut tree = Tree::new(Text::new("my_project/", bold_blue.clone()));
-    tree.guide_style = Style::parse("dim").unwrap();
+    let mut tree = Tree::new(Text::new("my_project/", bold_blue.clone()))
+        .with_guide_style(Style::parse("dim").unwrap());
 
     {
         let src = tree.add(Text::new("src/", bold_blue.clone()));
@@ -227,18 +227,18 @@ fn main() {
     console.print(&Rule::with_title("Centered Title"));
     console.print(
         &Rule::with_title("Heavy Rule")
-            .characters("\u{2501}")
-            .style(Style::parse("bold red").unwrap()),
+            .with_characters("\u{2501}")
+            .with_style(Style::parse("bold red").unwrap()),
     );
     console.print(
         &Rule::with_title("Double Line")
-            .characters("=")
-            .style(Style::parse("green").unwrap()),
+            .with_characters("=")
+            .with_style(Style::parse("green").unwrap()),
     );
     console.print(
         &Rule::with_title("Dotted")
-            .characters(".")
-            .style(Style::parse("dim").unwrap()),
+            .with_characters(".")
+            .with_style(Style::parse("dim").unwrap()),
     );
     pause();
 
@@ -775,8 +775,8 @@ Gilt supports **bold**, *italic*, and `inline code` in markdown.
         );
         text.justify = Some(*justify);
         let panel = Panel::fit(text)
-            .title(Text::new(label, Style::parse("bold").unwrap()))
-            .border_style(Style::parse("dim").unwrap());
+            .with_title(Text::new(label, Style::parse("bold").unwrap()))
+            .with_border_style(Style::parse("dim").unwrap());
         console.print(&panel);
     }
     pause();

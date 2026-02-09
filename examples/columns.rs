@@ -71,7 +71,7 @@ fn main() {
     // Print each description inside its own panel
     for (name, desc) in descriptions {
         let content = Text::new(desc, Style::null());
-        let panel = Panel::fit(content).title(Text::new(name, Style::null()));
+        let panel = Panel::fit(content).with_title(Text::new(name, Style::null()));
 
         console.print(&panel);
     }

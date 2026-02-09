@@ -50,28 +50,28 @@ impl Rule {
 
     /// Set the line characters.
     #[must_use]
-    pub fn characters(mut self, chars: &str) -> Self {
+    pub fn with_characters(mut self, chars: &str) -> Self {
         self.characters = chars.to_string();
         self
     }
 
     /// Set the rule style.
     #[must_use]
-    pub fn style(mut self, style: Style) -> Self {
+    pub fn with_style(mut self, style: Style) -> Self {
         self.style = style;
         self
     }
 
     /// Set the alignment.
     #[must_use]
-    pub fn align(mut self, align: HorizontalAlign) -> Self {
+    pub fn with_align(mut self, align: HorizontalAlign) -> Self {
         self.align = align;
         self
     }
 
     /// Set the end string.
     #[must_use]
-    pub fn end(mut self, end: &str) -> Self {
+    pub fn with_end(mut self, end: &str) -> Self {
         self.end = end.to_string();
         self
     }
@@ -334,7 +334,7 @@ mod tests {
     #[test]
     fn test_no_title_custom_char() {
         let console = make_console(10);
-        let rule = Rule::new().characters("-");
+        let rule = Rule::new().with_characters("-");
         let output = render_rule(&console, &rule);
         let line = output.trim_end_matches('\n');
         assert_eq!(line, "----------");
@@ -343,7 +343,7 @@ mod tests {
     #[test]
     fn test_no_title_double_char() {
         let console = make_console(10);
-        let rule = Rule::new().characters("=-");
+        let rule = Rule::new().with_characters("=-");
         let output = render_rule(&console, &rule);
         let line = output.trim_end_matches('\n');
         assert_eq!(cell_len(line), 10);
@@ -355,7 +355,7 @@ mod tests {
     #[test]
     fn test_centered_title() {
         let console = make_console(40);
-        let rule = Rule::with_title("Title").characters("-");
+        let rule = Rule::with_title("Title").with_characters("-");
         let output = render_rule(&console, &rule);
         let line = output.trim_end_matches('\n');
         assert_eq!(cell_len(line), 40);
@@ -366,7 +366,7 @@ mod tests {
     #[test]
     fn test_centered_title_has_rule_chars_both_sides() {
         let console = make_console(20);
-        let rule = Rule::with_title("X").characters("-");
+        let rule = Rule::with_title("X").with_characters("-");
         let output = render_rule(&console, &rule);
         let line = output.trim_end_matches('\n');
         // Should have dashes on both sides of " X "
@@ -383,8 +383,8 @@ mod tests {
     fn test_left_title() {
         let console = make_console(30);
         let rule = Rule::with_title("Left")
-            .characters("-")
-            .align(HorizontalAlign::Left);
+            .with_characters("-")
+            .with_align(HorizontalAlign::Left);
         let output = render_rule(&console, &rule);
         let line = output.trim_end_matches('\n');
         assert_eq!(cell_len(line), 30);
@@ -397,8 +397,8 @@ mod tests {
     fn test_right_title() {
         let console = make_console(30);
         let rule = Rule::with_title("Right")
-            .characters("-")
-            .align(HorizontalAlign::Right);
+            .with_characters("-")
+            .with_align(HorizontalAlign::Right);
         let output = render_rule(&console, &rule);
         let line = output.trim_end_matches('\n');
         assert_eq!(cell_len(line), 30);
@@ -432,7 +432,7 @@ mod tests {
     fn test_custom_style() {
         let console = make_console(20);
         let custom_style = Style::parse("bold").unwrap();
-        let rule = Rule::new().style(custom_style);
+        let rule = Rule::new().with_style(custom_style);
         let opts = console.options();
         let segments = rule.rich_console(&console, &opts);
         // The rule line segment should have a style
@@ -461,10 +461,10 @@ mod tests {
     #[test]
     fn test_builder_chain() {
         let rule = Rule::new()
-            .characters("=")
-            .align(HorizontalAlign::Left)
-            .end("")
-            .style(Style::parse("bold").unwrap());
+            .with_characters("=")
+            .with_align(HorizontalAlign::Left)
+            .with_end("")
+            .with_style(Style::parse("bold").unwrap());
         assert_eq!(rule.characters, "=");
         assert_eq!(rule.align, HorizontalAlign::Left);
         assert_eq!(rule.end, "");
@@ -475,21 +475,21 @@ mod tests {
 
     #[test]
     fn test_rule_line_exact() {
-        let rule = Rule::new().characters("-");
+        let rule = Rule::new().with_characters("-");
         let line = rule.rule_line(5);
         assert_eq!(line, "-----");
     }
 
     #[test]
     fn test_rule_line_multi_char() {
-        let rule = Rule::new().characters("=-");
+        let rule = Rule::new().with_characters("=-");
         let line = rule.rule_line(6);
         assert_eq!(line, "=-=-=-");
     }
 
     #[test]
     fn test_rule_line_remainder() {
-        let rule = Rule::new().characters("=-");
+        let rule = Rule::new().with_characters("=-");
         let line = rule.rule_line(5);
         // "=-" repeated 2 times = "=-=-" (4 cells), plus 1 cell remainder = "="
         assert_eq!(cell_len(&line), 5);
@@ -497,7 +497,7 @@ mod tests {
 
     #[test]
     fn test_rule_line_zero_width() {
-        let rule = Rule::new().characters("-");
+        let rule = Rule::new().with_characters("-");
         let line = rule.rule_line(0);
         assert_eq!(line, "");
     }
@@ -507,7 +507,7 @@ mod tests {
     #[test]
     fn test_title_truncation() {
         let console = make_console(10);
-        let rule = Rule::with_title("This is a very long title").characters("-");
+        let rule = Rule::with_title("This is a very long title").with_characters("-");
         let output = render_rule(&console, &rule);
         let line = output.trim_end_matches('\n');
         assert_eq!(cell_len(line), 10);
@@ -526,7 +526,7 @@ mod tests {
     #[test]
     fn test_no_end() {
         let console = make_console(20);
-        let rule = Rule::new().end("");
+        let rule = Rule::new().with_end("");
         let output = render_rule(&console, &rule);
         assert!(!output.ends_with('\n'));
     }

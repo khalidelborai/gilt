@@ -197,7 +197,7 @@ impl Renderable for Markdown {
                         let rule_style = console
                             .get_style("markdown.hr")
                             .unwrap_or_else(|_| Style::null());
-                        let rule = Rule::new().style(rule_style).end("");
+                        let rule = Rule::new().with_style(rule_style).with_end("");
                         let rule_segs = rule.rich_console(console, options);
                         segments.extend(rule_segs);
                         segments.push(Segment::line());
@@ -372,9 +372,9 @@ impl Renderable for Markdown {
 
                         // Wrap in a panel (like Python rich does)
                         let panel = Panel::new(code_content)
-                            .box_chars(&HEAVY)
-                            .style(code_style)
-                            .expand(true);
+                            .with_box_chars(&HEAVY)
+                            .with_style(code_style)
+                            .with_expand(true);
                         let panel_segs = panel.rich_console(console, options);
                         segments.extend(panel_segs);
 
@@ -529,7 +529,7 @@ impl Renderable for Markdown {
                     let hr_style = console
                         .get_style("markdown.hr")
                         .unwrap_or_else(|_| Style::parse("dim").unwrap());
-                    let rule = Rule::new().style(hr_style).end("");
+                    let rule = Rule::new().with_style(hr_style).with_end("");
                     let rule_segs = rule.rich_console(console, options);
                     segments.extend(rule_segs);
                     segments.push(Segment::line());

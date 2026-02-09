@@ -114,30 +114,60 @@ impl Tree {
 
     /// Set the node style (builder pattern).
     #[must_use]
-    pub fn style(mut self, style: Style) -> Self {
+    pub fn with_style(mut self, style: Style) -> Self {
         self.style = style;
         self
     }
 
     /// Set the guide style (builder pattern).
     #[must_use]
-    pub fn guide_style(mut self, style: Style) -> Self {
+    pub fn with_guide_style(mut self, style: Style) -> Self {
         self.guide_style = style;
         self
     }
 
     /// Set whether the tree is expanded (builder pattern).
     #[must_use]
-    pub fn expanded(mut self, expanded: bool) -> Self {
+    pub fn with_expanded(mut self, expanded: bool) -> Self {
         self.expanded = expanded;
         self
     }
 
     /// Set whether the root node is hidden (builder pattern).
     #[must_use]
-    pub fn hide_root(mut self, hide_root: bool) -> Self {
+    pub fn with_hide_root(mut self, hide_root: bool) -> Self {
         self.hide_root = hide_root;
         self
+    }
+
+    // -- Deprecated aliases (old names without `with_` prefix) ----------------
+
+    /// Deprecated: use [`with_style`](Self::with_style) instead.
+    #[must_use]
+    #[deprecated(since = "0.2.0", note = "renamed to `with_style`")]
+    pub fn style(self, style: Style) -> Self {
+        self.with_style(style)
+    }
+
+    /// Deprecated: use [`with_guide_style`](Self::with_guide_style) instead.
+    #[must_use]
+    #[deprecated(since = "0.2.0", note = "renamed to `with_guide_style`")]
+    pub fn guide_style(self, style: Style) -> Self {
+        self.with_guide_style(style)
+    }
+
+    /// Deprecated: use [`with_expanded`](Self::with_expanded) instead.
+    #[must_use]
+    #[deprecated(since = "0.2.0", note = "renamed to `with_expanded`")]
+    pub fn expanded(self, expanded: bool) -> Self {
+        self.with_expanded(expanded)
+    }
+
+    /// Deprecated: use [`with_hide_root`](Self::with_hide_root) instead.
+    #[must_use]
+    #[deprecated(since = "0.2.0", note = "renamed to `with_hide_root`")]
+    pub fn hide_root(self, hide_root: bool) -> Self {
+        self.with_hide_root(hide_root)
     }
 
     /// Measure this tree: compute minimum and maximum widths.
@@ -428,7 +458,7 @@ mod tests {
 
     #[test]
     fn test_hide_root() {
-        let mut tree = Tree::new(Text::new("root", Style::null())).hide_root(true);
+        let mut tree = Tree::new(Text::new("root", Style::null())).with_hide_root(true);
         tree.add(Text::new("child1", Style::null()));
         tree.add(Text::new("child2", Style::null()));
         let output = render_tree(&tree, 80);
@@ -446,7 +476,7 @@ mod tests {
     fn test_collapsed_node() {
         let mut tree = Tree::new(Text::new("root", Style::null()));
         tree.children
-            .push(Tree::new(Text::new("branch", Style::null())).expanded(false));
+            .push(Tree::new(Text::new("branch", Style::null())).with_expanded(false));
         // Add a child to the branch that should NOT be rendered.
         tree.children[0]
             .children
@@ -544,10 +574,10 @@ mod tests {
         let guide_style = Style::parse("red").unwrap();
 
         let tree = Tree::new(Text::new("root", Style::null()))
-            .style(style.clone())
-            .guide_style(guide_style.clone())
-            .expanded(false)
-            .hide_root(true);
+            .with_style(style.clone())
+            .with_guide_style(guide_style.clone())
+            .with_expanded(false)
+            .with_hide_root(true);
 
         assert_eq!(tree.style, style);
         assert_eq!(tree.guide_style, guide_style);
@@ -608,9 +638,9 @@ mod tests {
         let style = Style::parse("bold").unwrap();
         let guide_style = Style::parse("red").unwrap();
 
-        let mut tree = Tree::new(Text::new("root", Style::null()));
-        tree.style = style.clone();
-        tree.guide_style = guide_style.clone();
+        let mut tree = Tree::new(Text::new("root", Style::null()))
+            .with_style(style.clone())
+            .with_guide_style(guide_style.clone());
 
         tree.add(Text::new("child", Style::null()));
 
@@ -658,7 +688,7 @@ mod tests {
 
     #[test]
     fn test_hide_root_deep() {
-        let mut tree = Tree::new(Text::new("ROOT", Style::null())).hide_root(true);
+        let mut tree = Tree::new(Text::new("ROOT", Style::null())).with_hide_root(true);
         let child = tree.add(Text::new("child", Style::null()));
         child
             .children
@@ -674,7 +704,7 @@ mod tests {
 
     #[test]
     fn test_measure_hide_root() {
-        let mut tree = Tree::new(Text::new("LONG_ROOT_NAME", Style::null())).hide_root(true);
+        let mut tree = Tree::new(Text::new("LONG_ROOT_NAME", Style::null())).with_hide_root(true);
         tree.add(Text::new("short", Style::null()));
 
         let console = test_console(80);
@@ -707,7 +737,7 @@ mod tests {
     #[test]
     fn test_measure_collapsed() {
         let mut tree = Tree::new(Text::new("r", Style::null()));
-        let mut branch = Tree::new(Text::new("branch", Style::null())).expanded(false);
+        let mut branch = Tree::new(Text::new("branch", Style::null())).with_expanded(false);
         branch.children.push(Tree::new(Text::new(
             "very_very_very_long_hidden_label",
             Style::null(),
@@ -726,8 +756,8 @@ mod tests {
 
     #[test]
     fn test_bold_guide_style() {
-        let mut tree = Tree::new(Text::new("root", Style::null()));
-        tree.guide_style = Style::parse("bold").unwrap();
+        let mut tree = Tree::new(Text::new("root", Style::null()))
+            .with_guide_style(Style::parse("bold").unwrap());
         tree.add(Text::new("child1", Style::null()));
         tree.add(Text::new("child2", Style::null()));
 
@@ -741,8 +771,8 @@ mod tests {
 
     #[test]
     fn test_double_guide_style() {
-        let mut tree = Tree::new(Text::new("root", Style::null()));
-        tree.guide_style = Style::parse("underline2").unwrap();
+        let mut tree = Tree::new(Text::new("root", Style::null()))
+            .with_guide_style(Style::parse("underline2").unwrap());
         tree.add(Text::new("child1", Style::null()));
         tree.add(Text::new("child2", Style::null()));
 
@@ -790,7 +820,7 @@ mod tests {
 
     #[test]
     fn test_hide_root_no_children() {
-        let tree = Tree::new(Text::new("hidden", Style::null())).hide_root(true);
+        let tree = Tree::new(Text::new("hidden", Style::null())).with_hide_root(true);
         let output = render_tree(&tree, 80);
         assert!(
             output.trim().is_empty(),

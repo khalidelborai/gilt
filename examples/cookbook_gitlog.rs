@@ -31,23 +31,24 @@ fn main() {
          Last tag:      v2.3.1 (3 days ago)",
         Style::null(),
     ))
-    .title(Text::styled(
+    .with_title(Text::styled(
         " myproject ",
         Style::parse("bold bright_white on blue").unwrap(),
     ))
-    .subtitle(Text::styled(
+    .with_subtitle(Text::styled(
         "HEAD -> main",
         Style::parse("bold green").unwrap(),
     ))
-    .border_style(Style::parse("bright_yellow").unwrap())
-    .box_chars(&DOUBLE);
+    .with_border_style(Style::parse("bright_yellow").unwrap())
+    .with_box_chars(&DOUBLE);
 
     console.print(&title_gradient);
     console.print(&header);
 
     // ── Commit History Table ──────────────────────────────────────────────
-    console
-        .print(&Rule::with_title("Commit History").style(Style::parse("bright_yellow").unwrap()));
+    console.print(
+        &Rule::with_title("Commit History").with_style(Style::parse("bright_yellow").unwrap()),
+    );
 
     let mut table = Table::new(&["Hash", "Graph", "Message", "Author", "Date", "Files"]);
     table.header_style = "bold bright_white on grey23".to_string();
@@ -208,7 +209,7 @@ fn main() {
     console.print(&table);
 
     // ── Branch Tree ───────────────────────────────────────────────────────
-    console.print(&Rule::with_title("Branches").style(Style::parse("bright_yellow").unwrap()));
+    console.print(&Rule::with_title("Branches").with_style(Style::parse("bright_yellow").unwrap()));
 
     let bold_yellow = Style::parse("bold bright_yellow").unwrap();
     let bold_green = Style::parse("bold green").unwrap();
@@ -217,8 +218,8 @@ fn main() {
     let dim = Style::parse("dim").unwrap();
     let green = Style::parse("green").unwrap();
 
-    let mut tree = Tree::new(Text::styled("origin", bold_yellow.clone()));
-    tree.guide_style = Style::parse("bright_yellow").unwrap();
+    let mut tree = Tree::new(Text::styled("origin", bold_yellow.clone()))
+        .with_guide_style(Style::parse("bright_yellow").unwrap());
 
     // main branch
     {
@@ -270,15 +271,15 @@ fn main() {
     // ── Summary Rule ──────────────────────────────────────────────────────
     console.print(
         &Rule::new()
-            .characters("\u{2550}")
-            .style(Style::parse("bright_yellow").unwrap()),
+            .with_characters("\u{2550}")
+            .with_style(Style::parse("bright_yellow").unwrap()),
     );
 
     let summary = Panel::fit(Text::styled(
         "Showing 10 of 847 commits  \u{00b7}  4 branches  \u{00b7}  12 contributors",
         Style::parse("bold").unwrap(),
     ))
-    .border_style(Style::parse("dim").unwrap())
-    .box_chars(&HEAVY);
+    .with_border_style(Style::parse("dim").unwrap())
+    .with_box_chars(&HEAVY);
     console.print(&summary);
 }

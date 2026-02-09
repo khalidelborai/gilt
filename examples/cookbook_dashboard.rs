@@ -23,20 +23,21 @@ fn main() {
         "GILT OPS DASHBOARD  --  myapp v3.2.1\nMonitoring 6 servers across 3 regions",
         Style::null(),
     ))
-    .title(Text::styled(
+    .with_title(Text::styled(
         "Server Monitor",
         Style::parse("bold white").unwrap(),
     ))
-    .subtitle(Text::styled(
+    .with_subtitle(Text::styled(
         "refreshed just now",
         Style::parse("dim").unwrap(),
     ))
-    .border_style(Style::parse("bright_cyan").unwrap())
-    .box_chars(&DOUBLE);
+    .with_border_style(Style::parse("bright_cyan").unwrap())
+    .with_box_chars(&DOUBLE);
     console.print(&header);
 
     // ── Server Status Table ─────────────────────────────────────────────
-    console.print(&Rule::with_title("Server Fleet").style(Style::parse("bright_blue").unwrap()));
+    console
+        .print(&Rule::with_title("Server Fleet").with_style(Style::parse("bright_blue").unwrap()));
 
     let mut table = Table::new(&["Server", "Region", "CPU %", "Mem %", "Uptime", "Status"]);
     table.title = Some("Fleet Overview".to_string());
@@ -104,7 +105,8 @@ fn main() {
 
     // ── Request Rate Sparkline ──────────────────────────────────────────
     console.print(
-        &Rule::with_title("Request Rate (last 60s)").style(Style::parse("bright_blue").unwrap()),
+        &Rule::with_title("Request Rate (last 60s)")
+            .with_style(Style::parse("bright_blue").unwrap()),
     );
 
     // Simulated requests-per-second over the last 60 seconds
@@ -140,8 +142,9 @@ fn main() {
     console.print(&Text::styled(&stats_line, Style::parse("dim").unwrap()));
 
     // ── Resource Bars ───────────────────────────────────────────────────
-    console
-        .print(&Rule::with_title("Cluster Resources").style(Style::parse("bright_blue").unwrap()));
+    console.print(
+        &Rule::with_title("Cluster Resources").with_style(Style::parse("bright_blue").unwrap()),
+    );
 
     let resources: &[(&str, f64, &str)] = &[
         ("  CPU  (avg)", 57.7, "yellow"),
@@ -164,15 +167,15 @@ fn main() {
     // ── Footer ──────────────────────────────────────────────────────────
     console.print(
         &Rule::new()
-            .characters("\u{2550}")
-            .style(Style::parse("bright_cyan").unwrap()),
+            .with_characters("\u{2550}")
+            .with_style(Style::parse("bright_cyan").unwrap()),
     );
 
     let footer = Panel::fit(Text::styled(
         "4 OK  |  1 WARN  |  1 CRIT  |  6 total",
         Style::parse("bold").unwrap(),
     ))
-    .border_style(Style::parse("dim").unwrap())
-    .box_chars(&HEAVY);
+    .with_border_style(Style::parse("dim").unwrap())
+    .with_box_chars(&HEAVY);
     console.print(&footer);
 }

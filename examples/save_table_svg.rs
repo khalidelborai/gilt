@@ -31,8 +31,8 @@ fn main() {
         "Typing",
         "First Appeared",
         "TIOBE Rank",
-    ]);
-    table.title = Some("Top Languages (2025)".to_string());
+    ])
+    .with_title("Top Languages (2025)");
 
     table.add_row(&["Rust", "Multi-paradigm", "Static", "2010", "#14"]);
     table.add_row(&["Python", "Multi-paradigm", "Dynamic", "1991", "#1"]);

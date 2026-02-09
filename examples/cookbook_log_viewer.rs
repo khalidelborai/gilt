@@ -42,11 +42,11 @@ fn main() {
         "Application Log Viewer\nShowing last 10 entries from myapp.log",
         Style::parse("bold").unwrap(),
     ))
-    .title(Text::styled(
+    .with_title(Text::styled(
         "Log Viewer",
         Style::parse("bold bright_white").unwrap(),
     ))
-    .border_style(Style::parse("bright_green").unwrap());
+    .with_border_style(Style::parse("bright_green").unwrap());
     console.print(&header);
 
     // ── Sample log data ─────────────────────────────────────────────────
@@ -114,7 +114,8 @@ fn main() {
     ];
 
     // ── Log Table ───────────────────────────────────────────────────────
-    console.print(&Rule::with_title("Log Entries").style(Style::parse("bright_green").unwrap()));
+    console
+        .print(&Rule::with_title("Log Entries").with_style(Style::parse("bright_green").unwrap()));
 
     let mut table = Table::new(&["Timestamp", "Level", "Source", "Message"]);
     table.header_style = "bold bright_white on grey23".to_string();
@@ -140,7 +141,7 @@ fn main() {
     console.print(&table);
 
     // ── Summary Panel ───────────────────────────────────────────────────
-    console.print(&Rule::with_title("Summary").style(Style::parse("bright_green").unwrap()));
+    console.print(&Rule::with_title("Summary").with_style(Style::parse("bright_green").unwrap()));
 
     let mut info_count = 0u32;
     let mut warn_count = 0u32;
@@ -168,7 +169,7 @@ fn main() {
 
     let summary_text = console.render_str(&summary, None, None, None);
     let summary_panel = Panel::fit(summary_text)
-        .title(Text::styled("Level Counts", Style::parse("bold").unwrap()))
-        .border_style(Style::parse("bright_green").unwrap());
+        .with_title(Text::styled("Level Counts", Style::parse("bold").unwrap()))
+        .with_border_style(Style::parse("bright_green").unwrap());
     console.print(&summary_panel);
 }

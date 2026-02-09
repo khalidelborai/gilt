@@ -261,11 +261,11 @@ fn bench_console_render(c: &mut Criterion) {
     )
     .unwrap();
     let styled_panel = Panel::new(styled_panel_text)
-        .title(Text::new(
+        .with_title(Text::new(
             "Alert",
             Style::parse("bold white on red").unwrap(),
         ))
-        .style(Style::parse("red").unwrap());
+        .with_style(Style::parse("red").unwrap());
     group.bench_function("panel_styled", |b| {
         b.iter(|| console.render(black_box(&styled_panel), None));
     });

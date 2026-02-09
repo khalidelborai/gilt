@@ -49,7 +49,7 @@ fn main() {
     styled_text.append_str("italic text", Some(Style::parse("italic").unwrap()));
     styled_text.append_str(" live together.", None);
 
-    let panel = Panel::new(styled_text).border_style(Style::parse("green").unwrap());
+    let panel = Panel::new(styled_text).with_border_style(Style::parse("green").unwrap());
 
     console.print(&panel);
 }

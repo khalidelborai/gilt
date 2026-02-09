@@ -153,11 +153,11 @@ impl Scope {
 
         // Build the panel
         let mut panel = Panel::fit(content)
-            .border_style(border_style)
-            .padding(PaddingDimensions::Pair(0, 1));
+            .with_border_style(border_style)
+            .with_padding(PaddingDimensions::Pair(0, 1));
 
         if let Some(ref title) = self.title {
-            panel = panel.title(Text::new(title, Style::null()));
+            panel = panel.with_title(Text::new(title, Style::null()));
         }
 
         panel.rich_console(console, options)

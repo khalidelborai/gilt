@@ -438,8 +438,8 @@ Supports much of the *markdown* __syntax__!
         let bold_blue = Style::parse("bold blue").unwrap();
         let default = Style::null();
 
-        let mut tree = Tree::new(Text::new("gilt/", bold_blue.clone()));
-        tree.guide_style = Style::parse("dim green").unwrap();
+        let mut tree = Tree::new(Text::new("gilt/", bold_blue.clone()))
+            .with_guide_style(Style::parse("dim green").unwrap());
 
         let src = tree.add(Text::new("src/", bold_blue.clone()));
         src.add(Text::new("console.rs", default.clone()));
@@ -571,10 +571,10 @@ fn main() {
         )
         .unwrap(),
     )
-    .title(Text::styled(
+    .with_title(Text::styled(
         " gilt v0.3.0 ",
         Style::parse("bold green").unwrap(),
     ))
-    .border_style(Style::parse("green").unwrap());
+    .with_border_style(Style::parse("green").unwrap());
     console.print(&farewell);
 }

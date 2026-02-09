@@ -231,12 +231,14 @@ fn build_final_table() -> Table {
         },
     );
     add_all_rows(&mut table);
-    table.title = Some("Star Wars Saga".to_string());
-    table.caption = Some("Source: Box Office Mojo".to_string());
-    table.box_chars = Some(&ROUNDED);
-    table.border_style = "bright_cyan".to_string();
-    table.title_style = "bold white".to_string();
-    table.caption_style = "dim".to_string();
-    table.row_styles = vec!["".to_string(), "dim".to_string()];
+
+    // Use builder methods for table-level styling
     table
+        .with_title("Star Wars Saga")
+        .with_caption("Source: Box Office Mojo")
+        .with_box_chars(Some(&ROUNDED))
+        .with_border_style("bright_cyan")
+        .with_title_style("bold white")
+        .with_caption_style("dim")
+        .with_row_styles(vec!["".to_string(), "dim".to_string()])
 }
