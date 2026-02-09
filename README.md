@@ -14,7 +14,7 @@ gilt brings beautiful terminal output to Rust with styles, tables, trees, syntax
 
 ```toml
 [dependencies]
-gilt = "0.4"
+gilt = "0.5"
 ```
 
 ```rust
@@ -26,8 +26,9 @@ fn main() {
 }
 ```
 
-## v0.4.0 Highlights
+## v0.5.0 Highlights
 
+- **7 derive macros** -- `#[derive(Table, Panel, Tree, Columns, Rule, Inspect, Renderable)]`
 - **Sparkline** -- inline Unicode bar charts (`▁▂▃▄▅▆▇█`)
 - **Canvas** -- Braille dot-matrix drawing (lines, rects, circles)
 - **Diff** -- LCS-based unified and side-by-side text diffs
@@ -81,13 +82,13 @@ All four heavy dependencies are **default-on**. Disable them for minimal builds:
 
 ```toml
 # Full (default) -- includes json, markdown, syntax, interactive
-gilt = "0.4"
+gilt = "0.5"
 
 # Minimal -- no heavy deps
-gilt = { version = "0.4", default-features = false }
+gilt = { version = "0.5", default-features = false }
 
 # Pick what you need
-gilt = { version = "0.4", default-features = false, features = ["json", "syntax"] }
+gilt = { version = "0.5", default-features = false, features = ["json", "syntax"] }
 ```
 
 | Feature | Default | Description |
