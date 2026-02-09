@@ -476,9 +476,7 @@ fn justify_tokens(lit: &LitStr) -> syn::Result<proc_macro2::TokenStream> {
         "full" => Ok(quote! { gilt::text::JustifyMethod::Full }),
         other => Err(syn::Error::new_spanned(
             lit,
-            format!(
-                "unknown justify `{other}`. Expected one of: left, center, right, full"
-            ),
+            format!("unknown justify `{other}`. Expected one of: left, center, right, full"),
         )),
     }
 }
@@ -616,11 +614,7 @@ fn derive_table_impl(input: &DeriveInput) -> syn::Result<proc_macro2::TokenStrea
         let col_attrs = parse_column_attrs(field)?;
 
         // Check skip.
-        let skip = col_attrs
-            .skip
-            .as_ref()
-            .map(|b| b.value)
-            .unwrap_or(false);
+        let skip = col_attrs.skip.as_ref().map(|b| b.value).unwrap_or(false);
         if skip {
             continue;
         }
@@ -2362,9 +2356,7 @@ fn align_tokens(lit: &LitStr) -> syn::Result<proc_macro2::TokenStream> {
         "right" => Ok(quote! { gilt::align_widget::HorizontalAlign::Right }),
         other => Err(syn::Error::new_spanned(
             lit,
-            format!(
-                "unknown align `{other}`. Expected one of: left, center, right"
-            ),
+            format!("unknown align `{other}`. Expected one of: left, center, right"),
         )),
     }
 }
@@ -2381,10 +2373,7 @@ fn has_rule_title_attr(field: &syn::Field) -> syn::Result<bool> {
         }
         return Err(syn::Error::new_spanned(
             &ident,
-            format!(
-                "unknown rule field attribute `{}`. Expected: title",
-                ident
-            ),
+            format!("unknown rule field attribute `{}`. Expected: title", ident),
         ));
     }
     Ok(false)
@@ -3037,7 +3026,11 @@ mod tests {
             }
         };
         let result = derive_table_impl(&input);
-        assert!(result.is_ok(), "derive_table_impl failed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "derive_table_impl failed: {:?}",
+            result.err()
+        );
         let tokens = result.unwrap().to_string();
         assert!(tokens.contains("to_table"));
         assert!(tokens.contains("\"Name\""));
@@ -3115,7 +3108,10 @@ mod tests {
         };
         let result = derive_table_impl(&input);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("does not support enums"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("does not support enums"));
     }
 
     #[test]
@@ -3128,9 +3124,10 @@ mod tests {
         };
         let result = derive_table_impl(&input);
         assert!(result.is_err());
-        assert!(
-            result.unwrap_err().to_string().contains("unknown table attribute"),
-        );
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("unknown table attribute"),);
     }
 
     #[test]
@@ -3143,9 +3140,10 @@ mod tests {
         };
         let result = derive_table_impl(&input);
         assert!(result.is_err());
-        assert!(
-            result.unwrap_err().to_string().contains("unknown column attribute"),
-        );
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("unknown column attribute"),);
     }
 
     #[test]
@@ -3171,7 +3169,10 @@ mod tests {
         };
         let result = derive_table_impl(&input);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("unknown box_style"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("unknown box_style"));
     }
 
     #[test]
@@ -3232,15 +3233,34 @@ mod tests {
             }
         };
         let result = derive_panel_impl(&input);
-        assert!(result.is_ok(), "derive_panel_impl failed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "derive_panel_impl failed: {:?}",
+            result.err()
+        );
         let tokens = result.unwrap().to_string();
-        assert!(tokens.contains("to_panel"), "should generate to_panel method");
-        assert!(tokens.contains("\"Name\""), "should contain default label 'Name'");
-        assert!(tokens.contains("\"Cpu\""), "should contain default label 'Cpu'");
+        assert!(
+            tokens.contains("to_panel"),
+            "should generate to_panel method"
+        );
+        assert!(
+            tokens.contains("\"Name\""),
+            "should contain default label 'Name'"
+        );
+        assert!(
+            tokens.contains("\"Cpu\""),
+            "should contain default label 'Cpu'"
+        );
         assert!(tokens.contains("Panel"), "should reference Panel type");
-        assert!(tokens.contains("from_markup"), "should use from_markup for content");
+        assert!(
+            tokens.contains("from_markup"),
+            "should use from_markup for content"
+        );
         // Default title should be the struct name.
-        assert!(tokens.contains("\"Server\""), "default title should be struct name");
+        assert!(
+            tokens.contains("\"Server\""),
+            "default title should be struct name"
+        );
     }
 
     #[test]
@@ -3262,17 +3282,30 @@ mod tests {
             }
         };
         let result = derive_panel_impl(&input);
-        assert!(result.is_ok(), "derive_panel_impl failed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "derive_panel_impl failed: {:?}",
+            result.err()
+        );
         let tokens = result.unwrap().to_string();
-        assert!(tokens.contains("\"Server Status\""), "should contain custom title");
-        assert!(tokens.contains("\"Last updated\""), "should contain subtitle");
+        assert!(
+            tokens.contains("\"Server Status\""),
+            "should contain custom title"
+        );
+        assert!(
+            tokens.contains("\"Last updated\""),
+            "should contain subtitle"
+        );
         assert!(tokens.contains("HEAVY"), "should reference HEAVY box style");
         assert!(tokens.contains("\"blue\""), "should contain border_style");
         assert!(tokens.contains("\"white\""), "should contain style");
         assert!(tokens.contains("expand"), "should set expand");
         assert!(tokens.contains("highlight"), "should set highlight");
         assert!(tokens.contains("\"Host\""), "should use custom label");
-        assert!(tokens.contains("bold cyan"), "should contain field style markup");
+        assert!(
+            tokens.contains("bold cyan"),
+            "should contain field style markup"
+        );
     }
 
     #[test]
@@ -3288,12 +3321,21 @@ mod tests {
         let result = derive_panel_impl(&input);
         assert!(result.is_ok());
         let tokens = result.unwrap().to_string();
-        assert!(tokens.contains("\"Visible\""), "should include visible field");
-        assert!(tokens.contains("\"Also Visible\""), "should include also_visible field");
+        assert!(
+            tokens.contains("\"Visible\""),
+            "should include visible field"
+        );
+        assert!(
+            tokens.contains("\"Also Visible\""),
+            "should include also_visible field"
+        );
         // The hidden field should not appear.
         assert!(!tokens.contains("\"Hidden\""), "should skip hidden field");
         // Ensure the hidden field ident is not referenced.
-        assert!(!tokens.contains("hidden"), "hidden field ident should not appear");
+        assert!(
+            !tokens.contains("hidden"),
+            "hidden field ident should not appear"
+        );
     }
 
     #[test]
@@ -3311,13 +3353,31 @@ mod tests {
         let result = derive_panel_impl(&input);
         assert!(result.is_ok());
         let tokens = result.unwrap().to_string();
-        assert!(tokens.contains("\"Host Name\""), "should use custom label 'Host Name'");
-        assert!(tokens.contains("\"CPU %\""), "should use custom label 'CPU %'");
-        assert!(tokens.contains("\"Mem (GB)\""), "should use custom label 'Mem (GB)'");
+        assert!(
+            tokens.contains("\"Host Name\""),
+            "should use custom label 'Host Name'"
+        );
+        assert!(
+            tokens.contains("\"CPU %\""),
+            "should use custom label 'CPU %'"
+        );
+        assert!(
+            tokens.contains("\"Mem (GB)\""),
+            "should use custom label 'Mem (GB)'"
+        );
         // Default Title Case labels should NOT appear.
-        assert!(!tokens.contains("\"Server Name\""), "should not use default label");
-        assert!(!tokens.contains("\"Cpu Usage\""), "should not use default label");
-        assert!(!tokens.contains("\"Memory Gb\""), "should not use default label");
+        assert!(
+            !tokens.contains("\"Server Name\""),
+            "should not use default label"
+        );
+        assert!(
+            !tokens.contains("\"Cpu Usage\""),
+            "should not use default label"
+        );
+        assert!(
+            !tokens.contains("\"Memory Gb\""),
+            "should not use default label"
+        );
     }
 
     #[test]
@@ -3327,7 +3387,10 @@ mod tests {
         };
         let result = derive_panel_impl(&input);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("does not support enums"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("does not support enums"));
     }
 
     #[test]
@@ -3340,9 +3403,10 @@ mod tests {
         };
         let result = derive_panel_impl(&input);
         assert!(result.is_err());
-        assert!(
-            result.unwrap_err().to_string().contains("unknown panel attribute"),
-        );
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("unknown panel attribute"),);
     }
 
     #[test]
@@ -3355,9 +3419,10 @@ mod tests {
         };
         let result = derive_panel_impl(&input);
         assert!(result.is_err());
-        assert!(
-            result.unwrap_err().to_string().contains("unknown field attribute"),
-        );
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("unknown field attribute"),);
     }
 
     #[test]
@@ -3370,7 +3435,10 @@ mod tests {
         };
         let result = derive_panel_impl(&input);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("unknown box_style"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("unknown box_style"));
     }
 
     #[test]
@@ -3384,7 +3452,10 @@ mod tests {
         let result = derive_panel_impl(&input);
         assert!(result.is_ok());
         let tokens = result.unwrap().to_string();
-        assert!(tokens.contains("bold cyan"), "should apply title_style as markup");
+        assert!(
+            tokens.contains("bold cyan"),
+            "should apply title_style as markup"
+        );
         assert!(tokens.contains("\"Info\""), "should contain title text");
     }
 
@@ -3498,12 +3569,19 @@ mod tests {
             }
         };
         let result = derive_tree_impl(&input);
-        assert!(result.is_ok(), "derive_tree_impl failed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "derive_tree_impl failed: {:?}",
+            result.err()
+        );
         let tokens = result.unwrap().to_string();
         assert!(tokens.contains("to_tree"), "should generate to_tree method");
         assert!(tokens.contains("Tree"), "should reference Tree type");
         assert!(tokens.contains("name"), "should use label field 'name'");
-        assert!(tokens.contains("entries"), "should use children field 'entries'");
+        assert!(
+            tokens.contains("entries"),
+            "should use children field 'entries'"
+        );
         assert!(tokens.contains("children"), "should push to children vec");
     }
 
@@ -3519,11 +3597,24 @@ mod tests {
             }
         };
         let result = derive_tree_impl(&input);
-        assert!(result.is_ok(), "derive_tree_impl failed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "derive_tree_impl failed: {:?}",
+            result.err()
+        );
         let tokens = result.unwrap().to_string();
-        assert!(tokens.contains("\"bold\""), "should contain style string 'bold'");
-        assert!(tokens.contains("\"dim cyan\""), "should contain guide_style string 'dim cyan'");
-        assert!(tokens.contains("Style :: parse"), "should call Style::parse");
+        assert!(
+            tokens.contains("\"bold\""),
+            "should contain style string 'bold'"
+        );
+        assert!(
+            tokens.contains("\"dim cyan\""),
+            "should contain guide_style string 'dim cyan'"
+        );
+        assert!(
+            tokens.contains("Style :: parse"),
+            "should call Style::parse"
+        );
     }
 
     #[test]
@@ -3541,13 +3632,29 @@ mod tests {
             }
         };
         let result = derive_tree_impl(&input);
-        assert!(result.is_ok(), "derive_tree_impl failed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "derive_tree_impl failed: {:?}",
+            result.err()
+        );
         let tokens = result.unwrap().to_string();
         assert!(tokens.contains("to_tree"), "should generate to_tree method");
-        assert!(tokens.contains("\"Size\""), "should contain leaf label 'Size'");
-        assert!(tokens.contains("\"Permissions\""), "should contain leaf label 'Permissions'");
-        assert!(tokens.contains("self . size"), "should reference leaf field 'size'");
-        assert!(tokens.contains("self . permissions"), "should reference leaf field 'permissions'");
+        assert!(
+            tokens.contains("\"Size\""),
+            "should contain leaf label 'Size'"
+        );
+        assert!(
+            tokens.contains("\"Permissions\""),
+            "should contain leaf label 'Permissions'"
+        );
+        assert!(
+            tokens.contains("self . size"),
+            "should reference leaf field 'size'"
+        );
+        assert!(
+            tokens.contains("self . permissions"),
+            "should reference leaf field 'permissions'"
+        );
     }
 
     #[test]
@@ -3579,7 +3686,10 @@ mod tests {
             }
         };
         let result = derive_tree_impl(&input);
-        assert!(result.is_err(), "should error when no #[tree(children)] field");
+        assert!(
+            result.is_err(),
+            "should error when no #[tree(children)] field"
+        );
         let err_msg = result.unwrap_err().to_string();
         assert!(
             err_msg.contains("tree(children)"),
@@ -3595,7 +3705,10 @@ mod tests {
         };
         let result = derive_tree_impl(&input);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("does not support enums"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("does not support enums"));
     }
 
     #[test]
@@ -3611,9 +3724,10 @@ mod tests {
         };
         let result = derive_tree_impl(&input);
         assert!(result.is_err());
-        assert!(
-            result.unwrap_err().to_string().contains("unknown tree attribute"),
-        );
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("unknown tree attribute"),);
     }
 
     #[test]
@@ -3630,9 +3744,10 @@ mod tests {
         };
         let result = derive_tree_impl(&input);
         assert!(result.is_err());
-        assert!(
-            result.unwrap_err().to_string().contains("unknown tree field attribute"),
-        );
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("unknown tree field attribute"),);
     }
 
     #[test]
@@ -3649,9 +3764,7 @@ mod tests {
         };
         let result = derive_tree_impl(&input);
         assert!(result.is_err());
-        assert!(
-            result.unwrap_err().to_string().contains("only one field"),
-        );
+        assert!(result.unwrap_err().to_string().contains("only one field"),);
     }
 
     #[test]
@@ -3667,11 +3780,20 @@ mod tests {
             }
         };
         let result = derive_tree_impl(&input);
-        assert!(result.is_ok(), "unannotated fields should be silently ignored");
+        assert!(
+            result.is_ok(),
+            "unannotated fields should be silently ignored"
+        );
         let tokens = result.unwrap().to_string();
         // Ignored fields should not appear in the output.
-        assert!(!tokens.contains("ignored_field"), "ignored_field should not appear");
-        assert!(!tokens.contains("another_ignored"), "another_ignored should not appear");
+        assert!(
+            !tokens.contains("ignored_field"),
+            "ignored_field should not appear"
+        );
+        assert!(
+            !tokens.contains("another_ignored"),
+            "another_ignored should not appear"
+        );
     }
 
     // -- TreeAttr parsing --------------------------------------------------
@@ -3724,12 +3846,25 @@ mod tests {
             }
         };
         let result = derive_renderable_impl(&input);
-        assert!(result.is_ok(), "derive_renderable_impl failed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "derive_renderable_impl failed: {:?}",
+            result.err()
+        );
         let tokens = result.unwrap().to_string();
-        assert!(tokens.contains("Renderable"), "should implement Renderable trait");
-        assert!(tokens.contains("rich_console"), "should generate rich_console method");
+        assert!(
+            tokens.contains("Renderable"),
+            "should implement Renderable trait"
+        );
+        assert!(
+            tokens.contains("rich_console"),
+            "should generate rich_console method"
+        );
         assert!(tokens.contains("to_panel"), "should delegate to to_panel()");
-        assert!(!tokens.contains("to_tree"), "should not reference to_tree()");
+        assert!(
+            !tokens.contains("to_tree"),
+            "should not reference to_tree()"
+        );
     }
 
     #[test]
@@ -3742,12 +3877,25 @@ mod tests {
             }
         };
         let result = derive_renderable_impl(&input);
-        assert!(result.is_ok(), "derive_renderable_impl failed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "derive_renderable_impl failed: {:?}",
+            result.err()
+        );
         let tokens = result.unwrap().to_string();
-        assert!(tokens.contains("Renderable"), "should implement Renderable trait");
-        assert!(tokens.contains("rich_console"), "should generate rich_console method");
+        assert!(
+            tokens.contains("Renderable"),
+            "should implement Renderable trait"
+        );
+        assert!(
+            tokens.contains("rich_console"),
+            "should generate rich_console method"
+        );
         assert!(tokens.contains("to_tree"), "should delegate to to_tree()");
-        assert!(!tokens.contains("to_panel"), "should not reference to_panel()");
+        assert!(
+            !tokens.contains("to_panel"),
+            "should not reference to_panel()"
+        );
     }
 
     #[test]
@@ -3760,10 +3908,19 @@ mod tests {
             }
         };
         let result = derive_renderable_impl(&input);
-        assert!(result.is_ok(), "derive_renderable_impl should succeed with no attrs");
+        assert!(
+            result.is_ok(),
+            "derive_renderable_impl should succeed with no attrs"
+        );
         let tokens = result.unwrap().to_string();
-        assert!(tokens.contains("Renderable"), "should implement Renderable trait");
-        assert!(tokens.contains("to_panel"), "default delegation should be to_panel()");
+        assert!(
+            tokens.contains("Renderable"),
+            "should implement Renderable trait"
+        );
+        assert!(
+            tokens.contains("to_panel"),
+            "default delegation should be to_panel()"
+        );
     }
 
     #[test]
@@ -3791,7 +3948,10 @@ mod tests {
         };
         let result = derive_renderable_impl(&input);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("does not support enums"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("does not support enums"));
     }
 
     #[test]
@@ -3804,9 +3964,10 @@ mod tests {
         };
         let result = derive_renderable_impl(&input);
         assert!(result.is_err());
-        assert!(
-            result.unwrap_err().to_string().contains("unknown renderable attribute"),
-        );
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("unknown renderable attribute"),);
     }
 
     // -- RenderableAttr parsing --------------------------------------------
@@ -3841,16 +4002,32 @@ mod tests {
             }
         };
         let result = derive_columns_impl(&input);
-        assert!(result.is_ok(), "derive_columns_impl failed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "derive_columns_impl failed: {:?}",
+            result.err()
+        );
         let tokens = result.unwrap().to_string();
         assert!(tokens.contains("to_card"), "should generate to_card method");
-        assert!(tokens.contains("to_columns"), "should generate to_columns method");
-        assert!(tokens.contains("\"Name\""), "should contain default label 'Name'");
-        assert!(tokens.contains("\"Status\""), "should contain default label 'Status'");
+        assert!(
+            tokens.contains("to_columns"),
+            "should generate to_columns method"
+        );
+        assert!(
+            tokens.contains("\"Name\""),
+            "should contain default label 'Name'"
+        );
+        assert!(
+            tokens.contains("\"Status\""),
+            "should contain default label 'Status'"
+        );
         assert!(tokens.contains("Panel"), "should reference Panel type");
         assert!(tokens.contains("Columns"), "should reference Columns type");
         // Default title should be the struct name.
-        assert!(tokens.contains("\"ProjectCard\""), "default card title should be struct name");
+        assert!(
+            tokens.contains("\"ProjectCard\""),
+            "default card title should be struct name"
+        );
     }
 
     #[test]
@@ -3871,16 +4048,35 @@ mod tests {
             }
         };
         let result = derive_columns_impl(&input);
-        assert!(result.is_ok(), "derive_columns_impl failed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "derive_columns_impl failed: {:?}",
+            result.err()
+        );
         let tokens = result.unwrap().to_string();
         assert!(tokens.contains("to_card"), "should generate to_card method");
-        assert!(tokens.contains("to_columns"), "should generate to_columns method");
-        assert!(tokens.contains("\"Project\""), "should use custom label 'Project'");
-        assert!(tokens.contains("bold cyan"), "should contain field style markup");
-        assert!(tokens.contains("\"Status\""), "should use custom label 'Status'");
+        assert!(
+            tokens.contains("to_columns"),
+            "should generate to_columns method"
+        );
+        assert!(
+            tokens.contains("\"Project\""),
+            "should use custom label 'Project'"
+        );
+        assert!(
+            tokens.contains("bold cyan"),
+            "should contain field style markup"
+        );
+        assert!(
+            tokens.contains("\"Status\""),
+            "should use custom label 'Status'"
+        );
         assert!(tokens.contains("equal"), "should set equal");
         assert!(tokens.contains("expand"), "should set expand");
-        assert!(tokens.contains("width"), "should set width from column_count");
+        assert!(
+            tokens.contains("width"),
+            "should set width from column_count"
+        );
         assert!(tokens.contains("\"My Projects\""), "should contain title");
     }
 
@@ -3897,11 +4093,20 @@ mod tests {
         let result = derive_columns_impl(&input);
         assert!(result.is_ok());
         let tokens = result.unwrap().to_string();
-        assert!(tokens.contains("\"Visible\""), "should include visible field");
-        assert!(tokens.contains("\"Also Visible\""), "should include also_visible field");
+        assert!(
+            tokens.contains("\"Visible\""),
+            "should include visible field"
+        );
+        assert!(
+            tokens.contains("\"Also Visible\""),
+            "should include also_visible field"
+        );
         // The hidden field should not appear.
         assert!(!tokens.contains("\"Hidden\""), "should skip hidden field");
-        assert!(!tokens.contains("hidden"), "hidden field ident should not appear");
+        assert!(
+            !tokens.contains("hidden"),
+            "hidden field ident should not appear"
+        );
     }
 
     #[test]
@@ -3911,7 +4116,10 @@ mod tests {
         };
         let result = derive_columns_impl(&input);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("does not support enums"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("does not support enums"));
     }
 
     // -- ColumnsAttr parsing -----------------------------------------------
@@ -3994,9 +4202,10 @@ mod tests {
         };
         let result = derive_columns_impl(&input);
         assert!(result.is_err());
-        assert!(
-            result.unwrap_err().to_string().contains("unknown columns attribute"),
-        );
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("unknown columns attribute"),);
     }
 
     #[test]
@@ -4009,9 +4218,10 @@ mod tests {
         };
         let result = derive_columns_impl(&input);
         assert!(result.is_err());
-        assert!(
-            result.unwrap_err().to_string().contains("unknown field attribute"),
-        );
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("unknown field attribute"),);
     }
 
     // -- Rule derive -------------------------------------------------------
@@ -4024,13 +4234,23 @@ mod tests {
             }
         };
         let result = derive_rule_impl(&input);
-        assert!(result.is_ok(), "derive_rule_impl failed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "derive_rule_impl failed: {:?}",
+            result.err()
+        );
         let tokens = result.unwrap().to_string();
         assert!(tokens.contains("to_rule"), "should generate to_rule method");
         assert!(tokens.contains("Rule"), "should reference Rule type");
-        assert!(tokens.contains("with_title"), "should use with_title constructor");
+        assert!(
+            tokens.contains("with_title"),
+            "should use with_title constructor"
+        );
         // Default title should be the struct name.
-        assert!(tokens.contains("\"Section\""), "default title should be struct name");
+        assert!(
+            tokens.contains("\"Section\""),
+            "default title should be struct name"
+        );
     }
 
     #[test]
@@ -4042,11 +4262,21 @@ mod tests {
             }
         };
         let result = derive_rule_impl(&input);
-        assert!(result.is_ok(), "derive_rule_impl failed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "derive_rule_impl failed: {:?}",
+            result.err()
+        );
         let tokens = result.unwrap().to_string();
         assert!(tokens.contains("to_rule"), "should generate to_rule method");
-        assert!(tokens.contains("Style :: parse"), "should parse style string");
-        assert!(tokens.contains("\"bold blue\""), "should contain style value");
+        assert!(
+            tokens.contains("Style :: parse"),
+            "should parse style string"
+        );
+        assert!(
+            tokens.contains("\"bold blue\""),
+            "should contain style value"
+        );
     }
 
     #[test]
@@ -4058,9 +4288,16 @@ mod tests {
             }
         };
         let result = derive_rule_impl(&input);
-        assert!(result.is_ok(), "derive_rule_impl failed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "derive_rule_impl failed: {:?}",
+            result.err()
+        );
         let tokens = result.unwrap().to_string();
-        assert!(tokens.contains("characters"), "should call characters method");
+        assert!(
+            tokens.contains("characters"),
+            "should call characters method"
+        );
         assert!(tokens.contains("\"=\""), "should contain custom character");
     }
 
@@ -4073,7 +4310,11 @@ mod tests {
             }
         };
         let result = derive_rule_impl(&input);
-        assert!(result.is_ok(), "derive_rule_impl failed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "derive_rule_impl failed: {:?}",
+            result.err()
+        );
         let tokens = result.unwrap().to_string();
         assert!(tokens.contains("align"), "should call align method");
         assert!(tokens.contains("Left"), "should contain Left variant");
@@ -4089,14 +4330,24 @@ mod tests {
             }
         };
         let result = derive_rule_impl(&input);
-        assert!(result.is_ok(), "derive_rule_impl failed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "derive_rule_impl failed: {:?}",
+            result.err()
+        );
         let tokens = result.unwrap().to_string();
         assert!(tokens.contains("to_rule"), "should generate to_rule method");
         // Should use the field `heading` as the title source.
         assert!(tokens.contains("heading"), "should reference heading field");
-        assert!(tokens.contains("to_string"), "should call to_string on field");
+        assert!(
+            tokens.contains("to_string"),
+            "should call to_string on field"
+        );
         // Should NOT fall back to struct name.
-        assert!(!tokens.contains("\"Section\""), "should not use struct name as title");
+        assert!(
+            !tokens.contains("\"Section\""),
+            "should not use struct name as title"
+        );
     }
 
     #[test]
@@ -4106,7 +4357,10 @@ mod tests {
         };
         let result = derive_rule_impl(&input);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("does not support enums"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("does not support enums"));
     }
 
     // -- RuleAttr parsing --------------------------------------------------
@@ -4141,9 +4395,16 @@ mod tests {
             }
         };
         let result = derive_inspect_impl(&input);
-        assert!(result.is_ok(), "derive_inspect_impl failed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "derive_inspect_impl failed: {:?}",
+            result.err()
+        );
         let tokens = result.unwrap().to_string();
-        assert!(tokens.contains("to_inspect"), "should generate to_inspect method");
+        assert!(
+            tokens.contains("to_inspect"),
+            "should generate to_inspect method"
+        );
         assert!(tokens.contains("Inspect"), "should reference Inspect type");
         assert!(tokens.contains("Debug"), "should have Debug bound");
     }
@@ -4158,9 +4419,16 @@ mod tests {
             }
         };
         let result = derive_inspect_impl(&input);
-        assert!(result.is_ok(), "derive_inspect_impl failed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "derive_inspect_impl failed: {:?}",
+            result.err()
+        );
         let tokens = result.unwrap().to_string();
-        assert!(tokens.contains("\"Server Info\""), "should contain custom title");
+        assert!(
+            tokens.contains("\"Server Info\""),
+            "should contain custom title"
+        );
         assert!(tokens.contains("with_title"), "should call with_title");
     }
 
@@ -4174,7 +4442,11 @@ mod tests {
             }
         };
         let result = derive_inspect_impl(&input);
-        assert!(result.is_ok(), "derive_inspect_impl failed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "derive_inspect_impl failed: {:?}",
+            result.err()
+        );
         let tokens = result.unwrap().to_string();
         assert!(tokens.contains("with_title"), "should call with_title");
         assert!(tokens.contains("with_label"), "should call with_label");
@@ -4203,7 +4475,10 @@ mod tests {
         };
         let result = derive_inspect_impl(&input);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("does not support enums"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("does not support enums"));
     }
 
     #[test]
@@ -4216,9 +4491,10 @@ mod tests {
         };
         let result = derive_inspect_impl(&input);
         assert!(result.is_err());
-        assert!(
-            result.unwrap_err().to_string().contains("unknown inspect attribute"),
-        );
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("unknown inspect attribute"),);
     }
 
     // -- InspectAttr parsing -----------------------------------------------
@@ -4279,5 +4555,4 @@ mod tests {
         assert!(result.is_ok());
         assert!(!result.unwrap().value);
     }
-
 }

@@ -19,10 +19,26 @@ fn main() {
     }
 
     let planets = vec![
-        Planet { name: "Mercury".into(), mass_kg: 3.3e23, moons: 0 },
-        Planet { name: "Venus".into(), mass_kg: 4.87e24, moons: 0 },
-        Planet { name: "Earth".into(), mass_kg: 5.97e24, moons: 1 },
-        Planet { name: "Mars".into(), mass_kg: 6.42e23, moons: 2 },
+        Planet {
+            name: "Mercury".into(),
+            mass_kg: 3.3e23,
+            moons: 0,
+        },
+        Planet {
+            name: "Venus".into(),
+            mass_kg: 4.87e24,
+            moons: 0,
+        },
+        Planet {
+            name: "Earth".into(),
+            mass_kg: 5.97e24,
+            moons: 1,
+        },
+        Planet {
+            name: "Mars".into(),
+            mass_kg: 6.42e23,
+            moons: 2,
+        },
     ];
     console.print(&Planet::to_table(&planets));
 
@@ -39,7 +55,7 @@ fn main() {
         title_style = "bold magenta",
         caption_style = "dim italic",
         show_lines = true,
-        pad_edge = true,
+        pad_edge = true
     )]
     struct Sale {
         region: String,
@@ -49,10 +65,30 @@ fn main() {
     }
 
     let sales = vec![
-        Sale { region: "North".into(), product: "Widget A".into(), revenue: 15420.50, units: 342 },
-        Sale { region: "South".into(), product: "Widget B".into(), revenue: 8930.00, units: 178 },
-        Sale { region: "East".into(), product: "Widget A".into(), revenue: 22100.75, units: 491 },
-        Sale { region: "West".into(), product: "Widget C".into(), revenue: 6750.25, units: 135 },
+        Sale {
+            region: "North".into(),
+            product: "Widget A".into(),
+            revenue: 15420.50,
+            units: 342,
+        },
+        Sale {
+            region: "South".into(),
+            product: "Widget B".into(),
+            revenue: 8930.00,
+            units: 178,
+        },
+        Sale {
+            region: "East".into(),
+            product: "Widget A".into(),
+            revenue: 22100.75,
+            units: 491,
+        },
+        Sale {
+            region: "West".into(),
+            product: "Widget C".into(),
+            revenue: 6750.25,
+            units: 135,
+        },
     ];
     console.print(&Sale::to_table(&sales));
 
@@ -76,10 +112,34 @@ fn main() {
     }
 
     let servers = vec![
-        Server { name: "web-prod-01".into(), cpu: 45.2, memory: 62.1, status: "OK".into(), internal_id: 1001 },
-        Server { name: "web-prod-02".into(), cpu: 78.9, memory: 85.3, status: "WARN".into(), internal_id: 1002 },
-        Server { name: "db-primary".into(), cpu: 23.1, memory: 41.7, status: "OK".into(), internal_id: 2001 },
-        Server { name: "cache-01".into(), cpu: 12.5, memory: 28.9, status: "OK".into(), internal_id: 3001 },
+        Server {
+            name: "web-prod-01".into(),
+            cpu: 45.2,
+            memory: 62.1,
+            status: "OK".into(),
+            internal_id: 1001,
+        },
+        Server {
+            name: "web-prod-02".into(),
+            cpu: 78.9,
+            memory: 85.3,
+            status: "WARN".into(),
+            internal_id: 1002,
+        },
+        Server {
+            name: "db-primary".into(),
+            cpu: 23.1,
+            memory: 41.7,
+            status: "OK".into(),
+            internal_id: 2001,
+        },
+        Server {
+            name: "cache-01".into(),
+            cpu: 12.5,
+            memory: 28.9,
+            status: "OK".into(),
+            internal_id: 3001,
+        },
     ];
     console.print(&Server::to_table(&servers));
 
@@ -91,7 +151,7 @@ fn main() {
         title = "Inventory",
         box_style = "SIMPLE",
         row_styles = "on grey11, ",
-        header_style = "bold underline",
+        header_style = "bold underline"
     )]
     struct Item {
         #[column(header = "SKU", style = "dim")]
@@ -105,12 +165,42 @@ fn main() {
     }
 
     let items = vec![
-        Item { sku: "A-001".into(), name: "Mechanical Keyboard".into(), quantity: 45, price: "$89.99".into() },
-        Item { sku: "A-002".into(), name: "Wireless Mouse".into(), quantity: 120, price: "$34.50".into() },
-        Item { sku: "B-010".into(), name: "USB-C Hub".into(), quantity: 67, price: "$49.99".into() },
-        Item { sku: "B-011".into(), name: "Monitor Arm".into(), quantity: 23, price: "$129.00".into() },
-        Item { sku: "C-100".into(), name: "Webcam HD".into(), quantity: 89, price: "$59.95".into() },
-        Item { sku: "C-101".into(), name: "Headset Pro".into(), quantity: 34, price: "$149.00".into() },
+        Item {
+            sku: "A-001".into(),
+            name: "Mechanical Keyboard".into(),
+            quantity: 45,
+            price: "$89.99".into(),
+        },
+        Item {
+            sku: "A-002".into(),
+            name: "Wireless Mouse".into(),
+            quantity: 120,
+            price: "$34.50".into(),
+        },
+        Item {
+            sku: "B-010".into(),
+            name: "USB-C Hub".into(),
+            quantity: 67,
+            price: "$49.99".into(),
+        },
+        Item {
+            sku: "B-011".into(),
+            name: "Monitor Arm".into(),
+            quantity: 23,
+            price: "$129.00".into(),
+        },
+        Item {
+            sku: "C-100".into(),
+            name: "Webcam HD".into(),
+            quantity: 89,
+            price: "$59.95".into(),
+        },
+        Item {
+            sku: "C-101".into(),
+            name: "Headset Pro".into(),
+            quantity: 34,
+            price: "$149.00".into(),
+        },
     ];
     console.print(&Item::to_table(&items));
 
@@ -123,7 +213,7 @@ fn main() {
         box_style = "DOUBLE",
         expand = true,
         header_style = "bold white on dark_green",
-        border_style = "green",
+        border_style = "green"
     )]
     struct Task {
         #[column(header = "ID", justify = "center", ratio = 1)]
@@ -137,10 +227,30 @@ fn main() {
     }
 
     let tasks = vec![
-        Task { id: 1, description: "Implement auth middleware".into(), assignee: "Alice".into(), priority: "High".into() },
-        Task { id: 2, description: "Fix pagination bug on /users".into(), assignee: "Bob".into(), priority: "Med".into() },
-        Task { id: 3, description: "Add CSV export endpoint".into(), assignee: "Charlie".into(), priority: "Low".into() },
-        Task { id: 4, description: "Update dependencies".into(), assignee: "Diana".into(), priority: "Med".into() },
+        Task {
+            id: 1,
+            description: "Implement auth middleware".into(),
+            assignee: "Alice".into(),
+            priority: "High".into(),
+        },
+        Task {
+            id: 2,
+            description: "Fix pagination bug on /users".into(),
+            assignee: "Bob".into(),
+            priority: "Med".into(),
+        },
+        Task {
+            id: 3,
+            description: "Add CSV export endpoint".into(),
+            assignee: "Charlie".into(),
+            priority: "Low".into(),
+        },
+        Task {
+            id: 4,
+            description: "Update dependencies".into(),
+            assignee: "Diana".into(),
+            priority: "Med".into(),
+        },
     ];
     console.print(&Task::to_table(&tasks));
 
@@ -158,10 +268,26 @@ fn main() {
     }
 
     let logs = vec![
-        LogEntry { timestamp: "12:01:03".into(), level: "INFO".into(), message: "Server started on :8080".into() },
-        LogEntry { timestamp: "12:01:05".into(), level: "WARN".into(), message: "Config file not found, using defaults".into() },
-        LogEntry { timestamp: "12:01:12".into(), level: "INFO".into(), message: "Connected to database".into() },
-        LogEntry { timestamp: "12:02:45".into(), level: "ERR".into(), message: "Failed to reach payment API".into() },
+        LogEntry {
+            timestamp: "12:01:03".into(),
+            level: "INFO".into(),
+            message: "Server started on :8080".into(),
+        },
+        LogEntry {
+            timestamp: "12:01:05".into(),
+            level: "WARN".into(),
+            message: "Config file not found, using defaults".into(),
+        },
+        LogEntry {
+            timestamp: "12:01:12".into(),
+            level: "INFO".into(),
+            message: "Connected to database".into(),
+        },
+        LogEntry {
+            timestamp: "12:02:45".into(),
+            level: "ERR".into(),
+            message: "Failed to reach payment API".into(),
+        },
     ];
     console.print(&LogEntry::to_table(&logs));
 
@@ -176,7 +302,10 @@ fn main() {
                 a: String,
                 b: String,
             }
-            let data = vec![$name { a: "Hello".into(), b: "World".into() }];
+            let data = vec![$name {
+                a: "Hello".into(),
+                b: "World".into(),
+            }];
             console.print(&$name::to_table(&data));
         };
     }
@@ -234,16 +363,32 @@ fn main() {
     #[table(
         title = "Deployment Matrix",
         box_style = "HEAVY_HEAD",
-        border_style = "dim",
+        border_style = "dim"
     )]
     struct Deployment {
-        #[column(header = "Service", header_style = "bold white on dark_blue", min_width = 14)]
+        #[column(
+            header = "Service",
+            header_style = "bold white on dark_blue",
+            min_width = 14
+        )]
         service: String,
-        #[column(header = "Staging", header_style = "bold white on dark_orange", justify = "center")]
+        #[column(
+            header = "Staging",
+            header_style = "bold white on dark_orange",
+            justify = "center"
+        )]
         staging: String,
-        #[column(header = "Production", header_style = "bold white on dark_red", justify = "center")]
+        #[column(
+            header = "Production",
+            header_style = "bold white on dark_red",
+            justify = "center"
+        )]
         production: String,
-        #[column(header = "Version", header_style = "bold white on dark_green", justify = "right")]
+        #[column(
+            header = "Version",
+            header_style = "bold white on dark_green",
+            justify = "right"
+        )]
         version: String,
     }
 
@@ -289,7 +434,7 @@ fn main() {
         caption_style = "dim red italic",
         show_lines = true,
         pad_edge = true,
-        row_styles = "on grey7, ",
+        row_styles = "on grey7, "
     )]
     struct Employee {
         #[column(header = "ID", justify = "right", style = "dim", width = 5)]

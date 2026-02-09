@@ -105,11 +105,7 @@ fn main() {
         name: "gilt".into(),
         version: "0.1.0".into(),
         features: vec!["derive".into(), "miette".into(), "eyre".into()],
-        dependencies: vec![
-            "serde".into(),
-            "thiserror".into(),
-            "unicode-width".into(),
-        ],
+        dependencies: vec!["serde".into(), "thiserror".into(), "unicode-width".into()],
     };
     console.print(&manifest.to_inspect());
 

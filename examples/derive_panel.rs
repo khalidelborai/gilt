@@ -26,7 +26,9 @@ fn main() {
     console.print(&config.to_panel());
 
     // ── 2. Styled panel — title, box_style, border_style, title_style ───
-    console.print_text("\n[bold cyan]2. Styled panel — custom title, box, border, and field styles[/]");
+    console.print_text(
+        "\n[bold cyan]2. Styled panel — custom title, box, border, and field styles[/]",
+    );
 
     #[derive(PanelDerive)]
     #[panel(

@@ -541,18 +541,8 @@ impl Diff {
 
     /// Compute the maximum line width across both texts.
     fn max_line_width(&self) -> usize {
-        let old_max = self
-            .old_text
-            .lines()
-            .map(cell_len)
-            .max()
-            .unwrap_or(0);
-        let new_max = self
-            .new_text
-            .lines()
-            .map(cell_len)
-            .max()
-            .unwrap_or(0);
+        let old_max = self.old_text.lines().map(cell_len).max().unwrap_or(0);
+        let new_max = self.new_text.lines().map(cell_len).max().unwrap_or(0);
         old_max.max(new_max)
     }
 }

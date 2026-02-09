@@ -248,19 +248,15 @@ fn main() {
             OrgNode {
                 title: "Design".into(),
                 role: "Department".into(),
-                reports: vec![
-                    OrgNode {
-                        title: "UX Team".into(),
-                        role: "Team".into(),
-                        reports: vec![
-                            OrgNode {
-                                title: "Eve Johnson".into(),
-                                role: "Senior Designer".into(),
-                                reports: vec![],
-                            },
-                        ],
-                    },
-                ],
+                reports: vec![OrgNode {
+                    title: "UX Team".into(),
+                    role: "Team".into(),
+                    reports: vec![OrgNode {
+                        title: "Eve Johnson".into(),
+                        role: "Senior Designer".into(),
+                        reports: vec![],
+                    }],
+                }],
             },
             OrgNode {
                 title: "Product".into(),

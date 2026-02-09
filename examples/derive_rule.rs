@@ -100,7 +100,9 @@ fn main() {
     console.print(&right.to_rule());
 
     // ── 5. Section dividers showcase ────────────────────────────────────
-    console.print_text("\n[bold cyan]5. Section dividers — different characters for visual variety[/]");
+    console.print_text(
+        "\n[bold cyan]5. Section dividers — different characters for visual variety[/]",
+    );
 
     #[derive(DeriveRule)]
     #[rule(title = "Heavy", characters = "━", style = "bold red")]
