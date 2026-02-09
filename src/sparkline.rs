@@ -10,7 +10,7 @@
 //! use gilt::sparkline::Sparkline;
 //!
 //! let spark = Sparkline::new(&[1.0, 3.0, 5.0, 7.0, 5.0, 3.0, 1.0]);
-//! assert_eq!(spark.to_string(), "\u{2581}\u{2583}\u{2585}\u{2587}\u{2585}\u{2583}\u{2581}");
+//! assert_eq!(spark.to_string(), "\u{2581}\u{2583}\u{2586}\u{2588}\u{2586}\u{2583}\u{2581}");
 //! ```
 
 use std::fmt;
