@@ -14,7 +14,7 @@ gilt brings beautiful terminal output to Rust with styles, tables, trees, syntax
 
 ```toml
 [dependencies]
-gilt = "0.5"
+gilt = "0.6"
 ```
 
 ```rust
@@ -26,15 +26,17 @@ fn main() {
 }
 ```
 
-## v0.5.0 Highlights
+## v0.6.0 Highlights
 
-- **7 derive macros** -- `#[derive(Table, Panel, Tree, Columns, Rule, Inspect, Renderable)]`
-- **Sparkline** -- inline Unicode bar charts (`▁▂▃▄▅▆▇█`)
-- **Canvas** -- Braille dot-matrix drawing (lines, rects, circles)
-- **Diff** -- LCS-based unified and side-by-side text diffs
-- **Figlet** -- large ASCII art text with built-in 5×7 block font
-- **CsvTable** -- CSV-to-Table with built-in parser and optional `csv` crate
-- **73 examples** covering all features
+- **Soundness fix** -- replaced unsafe interior mutability with `Cell` in live_render
+- **Hardened API** -- 10 `unwrap()` calls replaced with graceful handling
+- **Feature-gated `log`** -- `logging_handler` now behind `logging` feature (default on)
+- **Expanded prelude** -- `Bar`, `Layout`, `Live`, `Status`, `Prompt`, `Json` added
+- **Binary filesize** -- `filesize::binary()` for KiB/MiB/GiB units
+- **Readline autocomplete** -- rustyline-based prompt completions (feature-gated)
+- **Display on 5 more widgets** -- Constrain, Scope, Group, Align, Styled
+- **2,334 tests** -- 85 new tests for CJK/emoji, boundary widths, stress scenarios
+- **85 examples** including 4 cookbooks and 47-section showcase
 
 ## Features
 
@@ -82,13 +84,13 @@ All four heavy dependencies are **default-on**. Disable them for minimal builds:
 
 ```toml
 # Full (default) -- includes json, markdown, syntax, interactive
-gilt = "0.5"
+gilt = "0.6"
 
 # Minimal -- no heavy deps
-gilt = { version = "0.5", default-features = false }
+gilt = { version = "0.6", default-features = false }
 
 # Pick what you need
-gilt = { version = "0.5", default-features = false, features = ["json", "syntax"] }
+gilt = { version = "0.6", default-features = false, features = ["json", "syntax"] }
 ```
 
 | Feature | Default | Description |

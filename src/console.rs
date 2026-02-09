@@ -3320,6 +3320,75 @@ mod tests {
         assert_eq!(output, "\x1b]52;c;?\x07");
     }
 
+    // -- Stress tests -------------------------------------------------------
+
+    #[test]
+    fn test_render_large_text() {
+        use crate::text::Text;
+
+        // Build a 50,000 character text block (a mix of lines).
+        let line = "The quick brown fox jumps over the lazy dog. ";
+        let mut large = String::with_capacity(50_000);
+        while large.len() < 50_000 {
+            large.push_str(line);
+            if large.len() % 200 < line.len() {
+                large.push('\n');
+            }
+        }
+        assert!(large.len() >= 50_000);
+
+        let text = Text::new(&large, crate::style::Style::null());
+        let mut console = Console::builder().width(120).force_terminal(true).build();
+        console.begin_capture();
+        console.print(&text);
+        let output = console.end_capture();
+        // Must produce non-empty output and not panic.
+        assert!(
+            !output.is_empty(),
+            "expected non-empty output for large text",
+        );
+    }
+
+    #[test]
+    fn test_render_deeply_nested_panels() {
+        use crate::panel::Panel;
+        use crate::text::Text;
+
+        // Build 20 panels nested inside each other by rendering each level
+        // into a single-line summary, keeping content size bounded.
+        let mut console = Console::builder().width(200).force_terminal(true).build();
+
+        let mut inner = Text::new("innermost content", crate::style::Style::null());
+
+        for i in 0..20 {
+            let panel = Panel::new(inner);
+            console.begin_capture();
+            console.print(&panel);
+            let rendered = console.end_capture();
+            // Keep only first and last lines to bound growth, preserving
+            // proof that rendering happened at each level.
+            let first_line = rendered.lines().next().unwrap_or("");
+            inner = Text::new(
+                &format!("level {i}: {first_line}"),
+                crate::style::Style::null(),
+            );
+        }
+
+        // Final render of the outermost level.
+        console.begin_capture();
+        console.print(&inner);
+        let output = console.end_capture();
+        assert!(
+            !output.is_empty(),
+            "expected non-empty output for deeply nested panels",
+        );
+        // Verify the last level references level 19.
+        assert!(
+            output.contains("level 19"),
+            "expected level 19 in output, got: {output}",
+        );
+    }
+
     // -- Helper function for tests ------------------------------------------
 
     fn make_default_options() -> ConsoleOptions {

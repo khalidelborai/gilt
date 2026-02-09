@@ -2468,4 +2468,79 @@ mod tests {
         assert!(wide.contains("x"));
         assert!(narrow.contains("x"));
     }
+
+    // -- CJK / emoji content tests ------------------------------------------
+
+    #[test]
+    fn test_table_cjk_content() {
+        let mut table = Table::new(&["名前", "年齢", "都市"]);
+        table.add_row(&["太郎", "30", "東京"]);
+        table.add_row(&["花子", "25", "大阪"]);
+        let output = render_table(&table, 60);
+        assert!(output.contains("名前"));
+        assert!(output.contains("年齢"));
+        assert!(output.contains("都市"));
+        assert!(output.contains("太郎"));
+        assert!(output.contains("東京"));
+        assert!(output.contains("花子"));
+        assert!(output.contains("大阪"));
+    }
+
+    #[test]
+    fn test_table_emoji_content() {
+        let mut table = Table::new(&["Icon", "Name"]);
+        table.add_row(&["🦀", "Rust"]);
+        table.add_row(&["🐍", "Python"]);
+        table.add_row(&["🏗️", "Build"]);
+        let output = render_table(&table, 40);
+        assert!(!output.is_empty());
+        // Emoji should appear in the output
+        assert!(output.contains("🦀"));
+        assert!(output.contains("🐍"));
+    }
+
+    // -- Extreme width boundary tests ---------------------------------------
+
+    #[test]
+    fn test_table_width_one() {
+        let mut table = Table::new(&["A", "B"]);
+        table.add_row(&["hello", "world"]);
+        // Should not panic at width=1
+        let _output = render_table(&table, 1);
+    }
+
+    #[test]
+    fn test_table_width_zero() {
+        let mut table = Table::new(&["A", "B"]);
+        table.add_row(&["hello", "world"]);
+        // Should not panic at width=0 (may produce empty output)
+        let _output = render_table(&table, 0);
+    }
+
+    // -- Large data tests ---------------------------------------------------
+
+    #[test]
+    fn test_table_large_row_count() {
+        let mut table = Table::new(&["ID", "Value"]);
+        for i in 0..500 {
+            table.add_row(&[&i.to_string(), &format!("val_{}", i)]);
+        }
+        let output = render_table(&table, 40);
+        assert!(!output.is_empty());
+        // Spot-check first and last rows
+        assert!(output.contains("val_0"));
+        assert!(output.contains("val_499"));
+    }
+
+    #[test]
+    fn test_table_many_columns() {
+        let headers: Vec<String> = (0..20).map(|i| format!("C{}", i)).collect();
+        let header_refs: Vec<&str> = headers.iter().map(|s| s.as_str()).collect();
+        let mut table = Table::new(&header_refs);
+        let cells: Vec<String> = (0..20).map(|i| format!("v{}", i)).collect();
+        let cell_refs: Vec<&str> = cells.iter().map(|s| s.as_str()).collect();
+        table.add_row(&cell_refs);
+        let output = render_table(&table, 120);
+        assert!(!output.is_empty());
+    }
 }

@@ -168,4 +168,137 @@ mod tests {
             "expected outer error message in output, got: {output}",
         );
     }
+
+    #[test]
+    #[allow(unused_assignments)]
+    fn test_miette_error_with_source_code() {
+        #[derive(Debug, thiserror::Error, miette::Diagnostic)]
+        #[error("unexpected token")]
+        #[diagnostic(code(gilt::parse::unexpected_token))]
+        struct ParseError {
+            #[source_code]
+            src: miette::NamedSource<String>,
+            #[label("here")]
+            span: miette::SourceSpan,
+        }
+
+        let src = "let x = ;".to_string();
+        let err = ParseError {
+            src: miette::NamedSource::new("test.rs", src),
+            span: (8, 1).into(),
+        };
+
+        let handler = GiltMietteHandler::new();
+        // Format via the handler's ReportHandler::debug method.
+        let output = format!("{}", DisplayViaDebugHandler(&handler, &err));
+        assert!(
+            output.contains("unexpected token"),
+            "expected error message in output, got: {output}",
+        );
+    }
+
+    #[test]
+    fn test_miette_error_with_help() {
+        #[derive(Debug, thiserror::Error, miette::Diagnostic)]
+        #[error("file not found")]
+        #[diagnostic(help("check that the path exists and is readable"))]
+        struct NotFoundError;
+
+        let handler = GiltMietteHandler::new();
+        let output = format!("{}", DisplayViaDebugHandler(&handler, &NotFoundError));
+        assert!(
+            output.contains("file not found"),
+            "expected error message in output, got: {output}",
+        );
+        assert!(
+            output.contains("check that the path exists"),
+            "expected help text in output, got: {output}",
+        );
+    }
+
+    #[test]
+    fn test_miette_error_with_url() {
+        #[derive(Debug, thiserror::Error, miette::Diagnostic)]
+        #[error("deprecated feature used")]
+        #[diagnostic(url("https://example.com/docs/deprecation"))]
+        struct DeprecationError;
+
+        let handler = GiltMietteHandler::new();
+        let output = format!("{}", DisplayViaDebugHandler(&handler, &DeprecationError));
+        assert!(
+            output.contains("deprecated feature used"),
+            "expected error message in output, got: {output}",
+        );
+        assert!(
+            output.contains("https://example.com/docs/deprecation"),
+            "expected URL in output, got: {output}",
+        );
+    }
+
+    #[test]
+    #[allow(unused_assignments)]
+    fn test_miette_multiple_labels() {
+        #[derive(Debug, thiserror::Error, miette::Diagnostic)]
+        #[error("type mismatch")]
+        #[diagnostic(code(gilt::check::mismatch))]
+        struct TypeMismatch {
+            #[source_code]
+            src: miette::NamedSource<String>,
+            #[label("expected type here")]
+            expected_span: miette::SourceSpan,
+            #[label("found type here")]
+            found_span: miette::SourceSpan,
+        }
+
+        let src = "let x: i32 = \"hello\";".to_string();
+        let err = TypeMismatch {
+            src: miette::NamedSource::new("test.rs", src),
+            expected_span: (7, 3).into(),
+            found_span: (13, 7).into(),
+        };
+
+        let handler = GiltMietteHandler::new();
+        let output = format!("{}", DisplayViaDebugHandler(&handler, &err));
+        assert!(
+            output.contains("type mismatch"),
+            "expected error message in output, got: {output}",
+        );
+    }
+
+    #[test]
+    fn test_miette_severity_levels() {
+        #[derive(Debug, thiserror::Error, miette::Diagnostic)]
+        #[error("this is a warning")]
+        #[diagnostic(severity(Warning))]
+        struct WarningDiag;
+
+        #[derive(Debug, thiserror::Error, miette::Diagnostic)]
+        #[error("this is advice")]
+        #[diagnostic(severity(Advice))]
+        struct AdviceDiag;
+
+        let handler = GiltMietteHandler::new();
+
+        let warn_output = format!("{}", DisplayViaDebugHandler(&handler, &WarningDiag));
+        assert!(
+            warn_output.contains("this is a warning"),
+            "expected warning message in output, got: {warn_output}",
+        );
+
+        let advice_output = format!("{}", DisplayViaDebugHandler(&handler, &AdviceDiag));
+        assert!(
+            advice_output.contains("this is advice"),
+            "expected advice message in output, got: {advice_output}",
+        );
+    }
+
+    /// Helper to format a diagnostic through the GiltMietteHandler's debug method.
+    struct DisplayViaDebugHandler<'a, E: miette::Diagnostic>(&'a GiltMietteHandler, &'a E);
+
+    impl<E: miette::Diagnostic> fmt::Display for DisplayViaDebugHandler<'_, E> {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            use miette::ReportHandler;
+            self.0.debug(self.1, f)
+        }
+    }
 }

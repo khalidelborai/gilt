@@ -2616,4 +2616,43 @@ mod tests {
         let text = Text::from(Cow::Owned(String::from("world")));
         assert_eq!(text.plain(), "world");
     }
+
+    // -- Width boundary wrap tests ------------------------------------------
+
+    #[test]
+    fn test_wrap_width_zero() {
+        let text = Text::new("Hello world", Style::null());
+        // Should not panic at width=0
+        let _lines = text.wrap(0, None, None, 8, false);
+    }
+
+    #[test]
+    fn test_wrap_width_one() {
+        let text = Text::new("Hello", Style::null());
+        let lines = text.wrap(1, None, None, 8, false);
+        // Each line should be at most 1 cell wide
+        for line in lines.iter() {
+            let plain = line.plain();
+            let w = crate::cells::cell_len(&plain);
+            assert!(w <= 1, "Line '{}' has cell_len {} > 1", plain, w);
+        }
+        // Should produce at least 5 lines (one per character)
+        assert!(
+            lines.len() >= 5,
+            "Expected at least 5 lines, got {}",
+            lines.len()
+        );
+    }
+
+    #[test]
+    fn test_large_text_wrap() {
+        // 10,000 character string — should not panic and should complete quickly
+        let big = "a".repeat(10_000);
+        let text = Text::new(&big, Style::null());
+        let lines = text.wrap(80, None, None, 8, false);
+        assert!(!lines.is_empty());
+        // Total chars across all lines should equal original
+        let total: usize = lines.iter().map(|l| l.plain().len()).sum();
+        assert_eq!(total, 10_000);
+    }
 }

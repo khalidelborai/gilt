@@ -1118,4 +1118,44 @@ mod tests {
         let s = format!("{:60}", panel);
         assert!(s.contains("content"));
     }
+
+    // -- CJK / emoji content tests ------------------------------------------
+
+    #[test]
+    fn test_panel_cjk_content() {
+        let console = make_console(40);
+        let panel = Panel::new(Text::new("こんにちは世界", Style::null()));
+        let output = render_panel(&console, &panel);
+        assert!(output.contains("こんにちは世界"));
+        let lines = content_lines(&output);
+        assert!(lines.len() >= 3); // top border, content, bottom border
+    }
+
+    #[test]
+    fn test_panel_emoji_title() {
+        let console = make_console(40);
+        let panel = Panel::new(Text::new("Body text", Style::null()))
+            .title(Text::new("🎉 Title", Style::null()));
+        let output = render_panel(&console, &panel);
+        assert!(output.contains("🎉"));
+        assert!(output.contains("Title"));
+    }
+
+    // -- Extreme width boundary tests ---------------------------------------
+
+    #[test]
+    fn test_panel_width_one() {
+        let console = make_console(1);
+        let panel = Panel::new(Text::new("Hello", Style::null()));
+        // Should not panic at width=1
+        let _output = render_panel(&console, &panel);
+    }
+
+    #[test]
+    fn test_panel_width_zero() {
+        let console = make_console(0);
+        let panel = Panel::new(Text::new("Hello", Style::null()));
+        // Should not panic at width=0 (may produce empty output)
+        let _output = render_panel(&console, &panel);
+    }
 }

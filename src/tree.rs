@@ -809,4 +809,55 @@ mod tests {
         assert!(s.contains("child1"));
         assert!(s.contains("child2"));
     }
+
+    // -- CJK / emoji content tests ------------------------------------------
+
+    #[test]
+    fn test_tree_cjk_labels() {
+        let mut tree = Tree::new(Text::new("根", Style::null()));
+        tree.add(Text::new("子ノード一", Style::null()));
+        tree.add(Text::new("子ノード二", Style::null()));
+        let output = render_tree(&tree, 40);
+        assert!(output.contains("根"));
+        assert!(output.contains("子ノード一"));
+        assert!(output.contains("子ノード二"));
+    }
+
+    #[test]
+    fn test_tree_emoji_labels() {
+        let mut tree = Tree::new(Text::new("🌳 Root", Style::null()));
+        tree.add(Text::new("🍎 Apple", Style::null()));
+        tree.add(Text::new("🍊 Orange", Style::null()));
+        let output = render_tree(&tree, 40);
+        assert!(output.contains("🌳"));
+        assert!(output.contains("🍎"));
+        assert!(output.contains("🍊"));
+    }
+
+    // -- Deep nesting test --------------------------------------------------
+
+    #[test]
+    fn test_tree_deep_nesting() {
+        // Build a tree 50 levels deep — should not stack overflow.
+        // Each guide is 4 cells wide, so 50 levels needs ~200 cells of guides
+        // plus room for labels. Use width=300 to ensure labels fit.
+        let mut root = Tree::new(Text::new("level_0", Style::null()));
+        let mut current = &mut root;
+        for i in 1..50 {
+            current = current.add(Text::new(&format!("level_{}", i), Style::null()));
+        }
+        let output = render_tree(&root, 300);
+        assert!(output.contains("level_0"));
+        assert!(output.contains("level_49"));
+    }
+
+    // -- Extreme width boundary tests ---------------------------------------
+
+    #[test]
+    fn test_tree_width_one() {
+        let mut tree = Tree::new(Text::new("root", Style::null()));
+        tree.add(Text::new("child", Style::null()));
+        // Should not panic at width=1
+        let _output = render_tree(&tree, 1);
+    }
 }
