@@ -5,7 +5,7 @@
 use crate::align_widget::HorizontalAlign;
 use crate::box_chars::{BoxChars, ROUNDED};
 use crate::console::{Console, ConsoleOptions, Renderable};
-use crate::highlighter::{Highlighter, ReprHighlighter};
+use crate::highlighter::Highlighter;
 use crate::measure::Measurement;
 use crate::padding::PaddingDimensions;
 use crate::segment::Segment;
@@ -17,6 +17,29 @@ use crate::text::Text;
 // ---------------------------------------------------------------------------
 
 /// A bordered box around content, with optional title and subtitle in the border.
+///
+/// The content can be any type that implements the [`Renderable`] trait, such as
+/// [`Text`], [`Table`](crate::table::Table), [`Tree`](crate::tree::Tree),
+/// [`Columns`](crate::columns::Columns), or even another [`Panel`].
+///
+/// # Examples
+///
+/// ```
+/// use gilt::prelude::*;
+///
+/// // Panel with Text content
+/// let panel = Panel::new(Text::new("Hello, world!", Style::null()));
+///
+/// // Panel with styled border and title
+/// let panel = Panel::new(Text::new("Important message", Style::null()))
+///     .with_title("Notice")
+///     .with_border_style(Style::parse("red").unwrap());
+///
+/// // Panel with Table content (render table to text first)
+/// let mut table = Table::new(&["Name", "Value"]);
+/// table.add_row(&["Key", "Value"]);
+/// let panel = Panel::new(Text::from(format!("{}", table))).with_title("Data");
+/// ```
 #[derive(Debug, Clone)]
 pub struct Panel {
     /// The inner content.
@@ -49,6 +72,23 @@ pub struct Panel {
 
 impl Panel {
     /// Create a new expanding `Panel` with ROUNDED box and default padding.
+    ///
+    /// The content can be any type that implements [`Renderable`] by first converting
+    /// to [`Text`] via the console's string rendering. For more control, use [`Text`] directly.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::prelude::*;
+    ///
+    /// // Panel with Text
+    /// let panel = Panel::new(Text::new("Hello", Style::null()));
+    ///
+    /// // Panel with Table (rendered as text)
+    /// let mut table = Table::new(&["Name", "Value"]);
+    /// table.add_row(&["Key", "Value"]);
+    /// let panel = Panel::new(Text::from(format!("{}", table)));
+    /// ```
     pub fn new(content: Text) -> Self {
         Panel {
             content,
@@ -310,7 +350,7 @@ impl Renderable for Panel {
 
         // Apply ReprHighlighter if highlight is enabled
         if self.highlight {
-            ReprHighlighter.highlight(&mut content_copy);
+            crate::highlighter::ReprHighlighter.highlight(&mut content_copy);
         }
         let wrapped = content_copy.wrap(
             inner_width,

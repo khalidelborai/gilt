@@ -16,6 +16,7 @@
 
 use crate::color::Color;
 use crate::console::{Console, ConsoleOptions, Renderable};
+use crate::errors::{ColorParseError, StyleError};
 use crate::segment::Segment;
 use crate::style::Style;
 use crate::text::Text;
@@ -282,6 +283,84 @@ pub trait Stylize: Sized {
     /// Apply a hyperlink.
     fn link(self, url: &str) -> StyledStr {
         self.styled(Style::with_link(url))
+    }
+
+    // -- Fallible/safe methods -----------------------------------------------
+
+    /// Apply a style string safely, returning an error if parsing fails.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::styled_str::Stylize;
+    ///
+    /// let styled = "Hello".try_styled("bold red").unwrap();
+    /// assert_eq!(styled.text, "Hello");
+    ///
+    /// // Invalid style returns an error instead of panicking
+    /// assert!("Hello".try_styled("invalid_style_name").is_err());
+    /// ```
+    fn try_styled(self, style_str: &str) -> Result<StyledStr, StyleError> {
+        let style = Style::parse(style_str)?;
+        Ok(self.styled(style))
+    }
+
+    /// Set the foreground color safely, returning an error if the color is invalid.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::styled_str::Stylize;
+    ///
+    /// // Valid color
+    /// let styled = "Hello".try_fg("#ff6600").unwrap();
+    /// assert_eq!(styled.text, "Hello");
+    ///
+    /// // Invalid color returns an error
+    /// assert!("Hello".try_fg("not_a_color").is_err());
+    /// ```
+    fn try_fg(self, color: &str) -> Result<StyledStr, ColorParseError> {
+        let color = Color::parse(color)?;
+        Ok(self.styled(Style::from_color(Some(color), None)))
+    }
+
+    /// Set the background color safely, returning an error if the color is invalid.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::styled_str::Stylize;
+    ///
+    /// // Valid color
+    /// let styled = "Hello".try_bg("blue").unwrap();
+    /// assert_eq!(styled.text, "Hello");
+    ///
+    /// // Invalid color returns an error
+    /// assert!("Hello".try_bg("#gggggg").is_err());
+    /// ```
+    fn try_bg(self, color: &str) -> Result<StyledStr, ColorParseError> {
+        let color = Color::parse(color)?;
+        Ok(self.styled(Style::from_color(None, Some(color))))
+    }
+
+    /// Apply a single style attribute safely, returning an error if the attribute is invalid.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::styled_str::Stylize;
+    ///
+    /// // Valid attribute
+    /// let styled = "Hello".try_attr("bold").unwrap();
+    /// assert_eq!(styled.text, "Hello");
+    ///
+    /// // Invalid attribute returns an error
+    /// assert!("Hello".try_attr("invalid_attr").is_err());
+    /// ```
+    fn try_attr(self, attr: &str) -> Result<StyledStr, StyleError> {
+        // Use Style::parse to validate the attribute
+        let style = Style::parse(attr)?;
+        Ok(self.styled(style))
     }
 }
 

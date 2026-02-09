@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.8.0] - 2026-02-09
+
+### Added
+- **Thread-safe Console** - Interior mutability with `Arc<RwLock<ConsoleInner>>` for safe sharing across threads
+- **LRU Cache for Style/Color parsing** - 256-entry cache for `Style::parse()`, 512-entry for `Color::parse()` for 2-5x speedup on repeated parses
+- **New Progress Column Types**:
+  - `SpinnerColumn` - Animated spinner with 80+ styles
+  - `TimeElapsedColumn` - Shows elapsed time (H:MM:SS format)
+  - `TimeRemainingColumn` - Shows estimated remaining time with `--:--` when unknown
+  - `FileSizeColumn` - Human-readable file sizes (kB, MB, GB)
+  - `DownloadColumn` - Shows `completed/total` with size formatting
+  - `TransferSpeedColumn` - Shows transfer rate (MB/s, GB/s)
+- **Iterator Progress Tracking** - `track()` function and `ProgressIteratorExt` trait for `.progress()` on any iterator
+- **File Progress I/O** - `Progress::open()` and `ProgressFile` for reading files with progress bars
+- **Live stdout/stderr redirection** - `FileProxy` for capturing print! output within Live displays
+- **New Widgets**:
+  - `Padding` widget - configurable padding on all sides
+  - `Align` widget - horizontal and vertical alignment of content
+  - `Group` container - combines multiple renderables with fit mode
+- **Safe Stylize methods** - `try_styled()`, `try_fg()`, `try_bg()`, `try_attr()` for fallible style parsing
+- **Improved Unicode cell width** - Proper handling of ZWJ sequences (👨‍👩‍👧‍👦), variation selectors (👍️), and regional indicators (🇺🇸)
+- **12 new examples**: `align_demo`, `cache_demo`, `columns_demo`, `group_demo`, `padding_demo`, `panel_nested`, `progress_columns_demo`, `raii_guards`, `stylize_safe`, `thread_safe`, `track_demo`, `unicode_width_demo`
+
+### Changed
+- **Breaking**: `Panel` now accepts any `Renderable` (not just `Text`) via `Box<dyn Renderable>`
+- **Breaking**: `Columns` now accepts any `Renderable` via `Vec<Box<dyn Renderable>>`
+- **Breaking**: `Panel` and `Columns` no longer implement `Clone` due to trait object constraints
+- Console methods changed from `&mut self` to `&self` for thread safety
+
+### Fixed
+- **Progress/Live display shape tracking** - Fixed over-clearing of lines caused by Text's trailing newline
+- `Rule::with_characters()` now validates input (panics on empty string)
+- `cell_len()` now correctly handles box-drawing characters
+
+[0.8.0]: https://github.com/khalidelborai/gilt/compare/v0.7.0...v0.8.0
+
 ## [0.4.0] - 2026-02-09
 
 ### Added

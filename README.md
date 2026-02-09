@@ -14,7 +14,7 @@ gilt brings beautiful terminal output to Rust with styles, tables, trees, syntax
 
 ```toml
 [dependencies]
-gilt = "0.7"
+gilt = "0.8"
 ```
 
 ```rust
@@ -25,6 +25,16 @@ fn main() {
     console.print_text("Hello, [bold magenta]gilt[/bold magenta]!");
 }
 ```
+
+## v0.8.0 Highlights
+
+- **Thread-safe Console** - Share consoles across threads with interior mutability
+- **LRU caching** - 2-5x speedup on Style/Color parsing with automatic caching
+- **New progress columns** - Spinner, TimeElapsed, TimeRemaining, FileSize, Download, TransferSpeed
+- **Iterator tracking** - `track()` function and `.progress()` method for iterators
+- **New widgets** - Padding, Align, and Group containers
+- **Safe stylize** - `try_fg()`, `try_bg()` for fallible style parsing
+- **Improved Unicode** - Proper width for ZWJ emojis, flags, variation selectors
 
 ## v0.7.0 Highlights
 
@@ -90,7 +100,7 @@ All four heavy dependencies are **default-on**. Disable them for minimal builds:
 
 ```toml
 # Full (default) -- includes json, markdown, syntax, interactive
-gilt = "0.7"
+gilt = "0.8"
 
 # Minimal -- no heavy deps
 gilt = { version = "0.7", default-features = false }

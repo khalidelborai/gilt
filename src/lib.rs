@@ -798,6 +798,10 @@ pub mod status;
 pub mod style;
 pub mod styled;
 pub mod styled_str;
+
+// Re-export cache management functions
+pub use style::{clear_style_cache, style_cache_size};
+pub use color::{clear_color_cache, color_cache_size};
 #[cfg(feature = "syntax")]
 pub mod syntax;
 pub mod table;

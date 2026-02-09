@@ -152,7 +152,7 @@ impl Style {
         }
     }
 
-    /// Parses a style definition string.
+    /// Parses a style definition string with LRU caching.
     ///
     /// # Grammar
     /// - Words are split by whitespace
@@ -162,6 +162,29 @@ impl Style {
     /// - Known attribute names with aliases
     /// - Anything else: try as foreground color
     pub fn parse(definition: &str) -> Result<Self, StyleError> {
+        // Check cache first
+        let mut cache = get_style_cache();
+        if let Some(ref mut c) = *cache {
+            if let Some(style) = c.get(definition) {
+                return Ok(style.clone());
+            }
+        }
+        drop(cache);
+
+        // Parse the style
+        let style = Self::parse_internal(definition)?;
+
+        // Insert into cache
+        let mut cache = get_style_cache();
+        if let Some(ref mut c) = *cache {
+            c.put(definition.to_string(), style.clone());
+        }
+
+        Ok(style)
+    }
+
+    /// Internal parsing logic without caching.
+    fn parse_internal(definition: &str) -> Result<Self, StyleError> {
         let definition = definition.trim();
         if definition.is_empty() {
             return Ok(Style::null());
@@ -1705,5 +1728,41 @@ mod tests {
         assert_eq!(style.reverse(), Some(true));
         assert_eq!(style.conceal(), Some(true));
         assert_eq!(style.strike(), Some(true));
+    }
+}
+
+// ============================================================================
+// LRU Cache for Style Parsing
+// ============================================================================
+
+use std::sync::Mutex;
+use lru::LruCache;
+use std::num::NonZeroUsize;
+
+/// Global LRU cache for parsed styles with capacity for 256 entries.
+static STYLE_CACHE: Mutex<Option<LruCache<String, Style>>> = Mutex::new(None);
+
+/// Gets or initializes the style cache.
+fn get_style_cache() -> std::sync::MutexGuard<'static, Option<LruCache<String, Style>>> {
+    let mut cache = STYLE_CACHE.lock().unwrap();
+    if cache.is_none() {
+        *cache = Some(LruCache::new(NonZeroUsize::new(256).unwrap()));
+    }
+    cache
+}
+
+/// Clears the global style cache.
+pub fn clear_style_cache() {
+    if let Ok(mut cache) = STYLE_CACHE.lock() {
+        *cache = None;
+    }
+}
+
+/// Returns the current number of entries in the style cache.
+pub fn style_cache_size() -> usize {
+    if let Ok(cache) = STYLE_CACHE.lock() {
+        cache.as_ref().map(|c| c.len()).unwrap_or(0)
+    } else {
+        0
     }
 }

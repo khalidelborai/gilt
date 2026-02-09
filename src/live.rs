@@ -332,10 +332,6 @@ impl Live {
         s.live_render.set_renderable(renderable.clone());
         s.live_render.vertical_overflow = vertical_overflow;
 
-        // Position cursor to overwrite the previous render.
-        let position_segments = s.live_render.position_cursor();
-        emit_control_segments(&mut s.console, &position_segments);
-
         if s.screen {
             // Screen mode: render through Screen which fills the whole alt-screen.
             let opts = s.console.options();
@@ -349,7 +345,14 @@ impl Live {
             // which causes the tracked shape (N lines) to mismatch the actual
             // output (N+1 lines), leaking 1 line per refresh frame.
             let opts = s.console.options();
+            
+            // First render to compute shape (shape is stored in live_render)
             let render_segments = s.live_render.rich_console(&s.console, &opts);
+            
+            // Now position cursor using the computed shape
+            let position_segments = s.live_render.position_cursor();
+            emit_control_segments(&mut s.console, &position_segments);
+            
             s.console.write_segments(&render_segments);
         }
     }

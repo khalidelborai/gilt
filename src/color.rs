@@ -1204,3 +1204,30 @@ mod tests {
         assert_eq!(downgraded.color_type, ColorType::Default);
     }
 }
+
+// ============================================================================
+// LRU Cache for Color Parsing
+// ============================================================================
+
+use std::sync::Mutex;
+use lru::LruCache;
+
+
+/// Global LRU cache for parsed colors with capacity for 512 entries.
+static COLOR_CACHE: Mutex<Option<LruCache<String, Color>>> = Mutex::new(None);
+
+/// Clears the global color cache.
+pub fn clear_color_cache() {
+    if let Ok(mut cache) = COLOR_CACHE.lock() {
+        *cache = None;
+    }
+}
+
+/// Returns the current number of entries in the color cache.
+pub fn color_cache_size() -> usize {
+    if let Ok(cache) = COLOR_CACHE.lock() {
+        cache.as_ref().map(|c| c.len()).unwrap_or(0)
+    } else {
+        0
+    }
+}

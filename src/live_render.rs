@@ -163,6 +163,14 @@ impl Renderable for LiveRender {
         }
 
         // Compute and store the final shape.
+        // Trim trailing empty lines caused by Text's trailing newline (Text::end="\n")
+        while let Some(last) = lines.last() {
+            if last.is_empty() || last.iter().all(|s| s.text.trim().is_empty()) {
+                lines.pop();
+            } else {
+                break;
+            }
+        }
         let final_shape = Segment::get_shape(&lines);
         self.shape.set(Some(final_shape));
 
