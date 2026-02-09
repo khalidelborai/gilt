@@ -18,7 +18,11 @@ pub use crate::styled_str::{StyledStr, Stylize};
 pub use crate::text::{JustifyMethod, OverflowMethod, Text};
 
 // Widgets
+pub use crate::canvas::Canvas;
 pub use crate::columns::Columns;
+pub use crate::csv_table::CsvTable;
+pub use crate::diff::{Diff, DiffStyle};
+pub use crate::figlet::Figlet;
 pub use crate::gradient::Gradient;
 pub use crate::group::Group;
 pub use crate::inspect::Inspect;
@@ -29,6 +33,7 @@ pub use crate::progress::Progress;
 pub use crate::progress::ProgressIteratorExt;
 pub use crate::progress_bar::ProgressBar;
 pub use crate::rule::Rule;
+pub use crate::sparkline::Sparkline;
 #[cfg(feature = "syntax")]
 pub use crate::syntax::Syntax;
 pub use crate::table::Table;
