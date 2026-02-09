@@ -450,7 +450,12 @@ fn bench_emoji_operations(c: &mut Criterion) {
     let mut group = c.benchmark_group("emoji_operations");
 
     group.bench_function("no_emojis", |b| {
-        b.iter(|| emoji_replace(black_box("Just a plain text string with no emoji codes."), None));
+        b.iter(|| {
+            emoji_replace(
+                black_box("Just a plain text string with no emoji codes."),
+                None,
+            )
+        });
     });
 
     group.bench_function("single_emoji", |b| {
@@ -544,7 +549,9 @@ fn bench_segment_operations(c: &mut Criterion) {
         b.iter(|| Segment::simplify(black_box(&mixed_segments)));
     });
 
-    let divide_segments = vec![Segment::text("The quick brown fox jumps over the lazy dog and more text here")];
+    let divide_segments = vec![Segment::text(
+        "The quick brown fox jumps over the lazy dog and more text here",
+    )];
     group.bench_function("divide_many_cuts", |b| {
         b.iter(|| {
             Segment::divide(
