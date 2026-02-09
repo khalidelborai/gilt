@@ -22,6 +22,7 @@ use crate::terminal_theme::{TerminalTheme, DEFAULT_TERMINAL_THEME, SVG_EXPORT_TH
 use crate::text::{JustifyMethod, OverflowMethod, Text};
 use crate::theme::{Theme, ThemeStack};
 use crate::traceback::Traceback;
+use std::borrow::Cow;
 use std::fmt::Write as _;
 
 // ---------------------------------------------------------------------------
@@ -1629,21 +1630,33 @@ impl Console {
             padding_left,
         );
 
-        CONSOLE_SVG_FORMAT
-            .replace("{unique_id}", unique_id)
-            .replace("{char_height}", &format!("{:.1}", char_height))
-            .replace("{line_height}", &format!("{:.1}", line_height))
-            .replace("{width}", &format!("{:.0}", svg_width))
-            .replace("{height}", &format!("{:.0}", svg_height))
-            .replace("{terminal_width}", &format!("{:.0}", terminal_width))
-            .replace("{terminal_height}", &format!("{:.0}", terminal_height))
-            .replace("{terminal_x}", &format!("{:.0}", terminal_x))
-            .replace("{terminal_y}", &format!("{:.0}", terminal_y))
-            .replace("{chrome}", &chrome)
-            .replace("{matrix}", &matrix)
-            .replace("{backgrounds}", &backgrounds)
-            .replace("{styles}", &styles)
-            .replace("{lines}", &lines_defs)
+        // Pre-format numeric values into a shared buffer to avoid per-replace allocations.
+        let mut buf = String::with_capacity(16);
+        macro_rules! fmt_buf {
+            ($fmt:literal, $val:expr) => {{
+                buf.clear();
+                write!(buf, $fmt, $val).unwrap();
+                &buf
+            }};
+        }
+
+        // Apply replacements that use the shared buffer one at a time,
+        // cloning the formatted value so `buf` can be reused.
+        let mut svg = CONSOLE_SVG_FORMAT.replace("{unique_id}", unique_id);
+        svg = svg.replace("{char_height}", fmt_buf!("{:.1}", char_height));
+        svg = svg.replace("{line_height}", fmt_buf!("{:.1}", line_height));
+        svg = svg.replace("{width}", fmt_buf!("{:.0}", svg_width));
+        svg = svg.replace("{height}", fmt_buf!("{:.0}", svg_height));
+        svg = svg.replace("{terminal_width}", fmt_buf!("{:.0}", terminal_width));
+        svg = svg.replace("{terminal_height}", fmt_buf!("{:.0}", terminal_height));
+        svg = svg.replace("{terminal_x}", fmt_buf!("{:.0}", terminal_x));
+        svg = svg.replace("{terminal_y}", fmt_buf!("{:.0}", terminal_y));
+        svg = svg.replace("{chrome}", &chrome);
+        svg = svg.replace("{matrix}", &matrix);
+        svg = svg.replace("{backgrounds}", &backgrounds);
+        svg = svg.replace("{styles}", &styles);
+        svg = svg.replace("{lines}", &lines_defs);
+        svg
     }
 }
 
@@ -1658,11 +1671,21 @@ impl Default for Console {
 // ---------------------------------------------------------------------------
 
 /// Escape HTML special characters.
-fn html_escape(s: &str) -> String {
-    s.replace('&', "&amp;")
-        .replace('<', "&lt;")
-        .replace('>', "&gt;")
-        .replace('"', "&quot;")
+fn html_escape(s: &str) -> Cow<'_, str> {
+    if !s.contains(['&', '<', '>', '"']) {
+        return Cow::Borrowed(s);
+    }
+    let mut out = String::with_capacity(s.len());
+    for c in s.chars() {
+        match c {
+            '&' => out.push_str("&amp;"),
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
+            '"' => out.push_str("&quot;"),
+            _ => out.push(c),
+        }
+    }
+    Cow::Owned(out)
 }
 
 /// Find an existing CSS class for a style, or create a new one.
@@ -1894,12 +1917,22 @@ fn css_to_svg_style(css: &str) -> String {
 }
 
 /// Escape text for SVG content.
-fn svg_escape(s: &str) -> String {
-    s.replace('&', "&amp;")
-        .replace('<', "&lt;")
-        .replace('>', "&gt;")
-        .replace('"', "&quot;")
-        .replace('\'', "&#39;")
+fn svg_escape(s: &str) -> Cow<'_, str> {
+    if !s.contains(['&', '<', '>', '"', '\'']) {
+        return Cow::Borrowed(s);
+    }
+    let mut out = String::with_capacity(s.len());
+    for c in s.chars() {
+        match c {
+            '&' => out.push_str("&amp;"),
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
+            '"' => out.push_str("&quot;"),
+            '\'' => out.push_str("&#39;"),
+            _ => out.push(c),
+        }
+    }
+    Cow::Owned(out)
 }
 
 // ---------------------------------------------------------------------------
