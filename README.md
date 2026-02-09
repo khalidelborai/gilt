@@ -1,19 +1,20 @@
 # gilt
 
-**Rich terminal formatting for Rust** — a port of Python's [rich](https://github.com/Textualize/rich) library.
+**Rich terminal formatting for Rust** -- a port of Python's [rich](https://github.com/Textualize/rich) library.
 
 [![CI](https://github.com/khalidelborai/gilt/actions/workflows/ci.yml/badge.svg)](https://github.com/khalidelborai/gilt/actions)
 [![Crates.io](https://img.shields.io/crates/v/gilt.svg)](https://crates.io/crates/gilt)
 [![Documentation](https://docs.rs/gilt/badge.svg)](https://docs.rs/gilt)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![MSRV](https://img.shields.io/badge/MSRV-1.82.0-blue)](https://blog.rust-lang.org/2024/10/17/Rust-1.82.0.html)
 
-gilt brings beautiful terminal output to Rust with styles, tables, trees, syntax highlighting, progress bars, and more — all rendered as ANSI escape sequences.
+gilt brings beautiful terminal output to Rust with styles, tables, trees, syntax highlighting, progress bars, and more -- all rendered as ANSI escape sequences.
 
 ## Quick Start
 
 ```toml
 [dependencies]
-gilt = "0.1"
+gilt = "0.3"
 ```
 
 ```rust
@@ -25,59 +26,86 @@ fn main() {
 }
 ```
 
+## v0.3.0 Highlights
+
+- **Dropped `once_cell`** -- uses `std::sync::LazyLock` (requires Rust 1.82+)
+- **Feature-gated heavy deps** -- `json`, `markdown`, `syntax`, `interactive` are default-on but can be disabled for minimal builds
+- **CompactString for Segment.text** -- reduced heap allocations in rendering pipelines
+- **Cow\<str\> returns** from hot-path functions to avoid unnecessary cloning
+- **write! over format!** in rendering loops for fewer intermediate allocations
+- **WCAG 2.1 accessibility** -- `contrast_ratio`, `meets_aa`, `meets_aaa` functions
+- **REDUCE_MOTION detection** -- respects the `REDUCE_MOTION` environment variable
+- **64 criterion benchmarks** covering core rendering paths
+
 ## Features
 
 ### Core Widgets
-- **Text** — Rich text with markup, styles, wrapping, alignment
-- **Table** — Unicode box-drawing tables with column alignment and row striping
-- **Panel** — Bordered content panels with titles
-- **Tree** — Hierarchical tree display with guide lines
-- **Columns** — Multi-column layout
-- **Layout** — Flexible split-pane layouts
+- **Text** -- Rich text with markup, styles, wrapping, alignment
+- **Table** -- Unicode box-drawing tables with column alignment and row striping
+- **Panel** -- Bordered content panels with titles
+- **Tree** -- Hierarchical tree display with guide lines
+- **Columns** -- Multi-column layout
+- **Layout** -- Flexible split-pane layouts
 
 ### Terminal Features
-- **Syntax** — Code highlighting via syntect (150+ languages)
-- **Markdown** — Terminal-rendered Markdown
-- **JSON** — Pretty-printed JSON with highlighting
-- **Progress** — Multi-bar progress display with ETA, speed, spinner
-- **Live** — Live-updating terminal display
-- **Status** — Spinner with status message
+- **Syntax** -- Code highlighting via syntect (150+ languages)
+- **Markdown** -- Terminal-rendered Markdown
+- **JSON** -- Pretty-printed JSON with highlighting
+- **Progress** -- Multi-bar progress display with ETA, speed, spinner
+- **Live** -- Live-updating terminal display
+- **Status** -- Spinner with status message
 
 ### Rust-Native Extensions
-- **Gradients** — True-color RGB gradient text
-- **Stylize trait** — `"hello".bold().red()` method chaining
-- **Iterator progress** — `iter.progress()` adapter
-- **`#[derive(Table)]`** — Auto-generate tables from structs
-- **Environment detection** — `NO_COLOR`, `FORCE_COLOR`, `CLICOLOR` support
-- **Inspect** — Debug any value with rich formatting
-- **Extended underlines** — Curly, dotted, dashed, double styles with color
-- **anstyle interop** — Bidirectional conversion with `anstyle` types
+- **Gradients** -- True-color RGB gradient text
+- **Stylize trait** -- `"hello".bold().red()` method chaining
+- **Iterator progress** -- `iter.progress()` adapter
+- **`#[derive(Table)]`** -- Auto-generate tables from structs
+- **Environment detection** -- `NO_COLOR`, `FORCE_COLOR`, `CLICOLOR` support
+- **Inspect** -- Debug any value with rich formatting
+- **Accessibility** -- WCAG 2.1 contrast checking, `REDUCE_MOTION` detection
+- **Extended underlines** -- Curly, dotted, dashed, double styles with color
+- **anstyle interop** -- Bidirectional conversion with `anstyle` types
 
 ### Integrations
-- **miette** — Diagnostic reporting with gilt styling
-- **eyre** — Error reporting with gilt styling
-- **tracing** — Log subscriber with colored output
-- **anstyle** — Convert between gilt and anstyle `Color`/`Style` types
+- **miette** -- Diagnostic reporting with gilt styling
+- **eyre** -- Error reporting with gilt styling
+- **tracing** -- Log subscriber with colored output
+- **anstyle** -- Convert between gilt and anstyle `Color`/`Style` types
 
-## Optional Features
+## Feature Gates
+
+All four heavy dependencies are **default-on**. Disable them for minimal builds:
 
 ```toml
-[dependencies]
-gilt = { version = "0.1", features = ["tracing", "derive", "miette", "eyre", "anstyle"] }
+# Full (default) -- includes json, markdown, syntax, interactive
+gilt = "0.3"
+
+# Minimal -- no heavy deps
+gilt = { version = "0.3", default-features = false }
+
+# Pick what you need
+gilt = { version = "0.3", default-features = false, features = ["json", "syntax"] }
 ```
 
-| Feature | Description |
-|---------|-------------|
-| `tracing` | `tracing` subscriber with gilt formatting |
-| `derive` | `#[derive(Table)]` proc macro |
-| `miette` | `miette::ReportHandler` implementation |
-| `eyre` | `eyre::EyreHandler` implementation |
-| `anstyle` | Bidirectional `From` conversions with `anstyle` types |
+| Feature | Default | Description |
+|---------|---------|-------------|
+| `json` | yes | Pretty-printed JSON (`serde`, `serde_json`) |
+| `markdown` | yes | Terminal Markdown rendering (`pulldown-cmark`) |
+| `syntax` | yes | Syntax highlighting (`syntect`) |
+| `interactive` | yes | Password prompts, select/multi-select (`rpassword`) |
+| `tracing` | no | `tracing` subscriber with gilt formatting |
+| `derive` | no | `#[derive(Table)]` proc macro |
+| `miette` | no | `miette::ReportHandler` implementation |
+| `eyre` | no | `eyre::EyreHandler` implementation |
+| `anstyle` | no | Bidirectional `From` conversions with `anstyle` types |
 
 ## Examples
 
 ```bash
-# Basic examples
+# Showcase (runs all major widgets)
+cargo run --example showcase --all-features
+
+# Core widgets
 cargo run --example table
 cargo run --example panel
 cargo run --example syntax
@@ -95,7 +123,7 @@ cargo run --example miette_demo --features miette
 cargo run --example tracing_demo --features tracing
 ```
 
-See the [examples/](examples/) directory for all 51 examples.
+See the [examples/](examples/) directory for all 64 examples.
 
 ## Global Console
 
@@ -109,6 +137,18 @@ gilt::print_json(r#"{"name": "gilt"}"#);
 // Inspect any Debug value
 gilt::inspect(&vec![1, 2, 3]);
 ```
+
+## Performance
+
+gilt includes a criterion benchmark suite (64 benchmarks) covering text rendering, style application, table layout, segment operations, and more:
+
+```bash
+cargo bench
+```
+
+## Minimum Supported Rust Version
+
+gilt requires **Rust 1.82.0** or later (for `std::sync::LazyLock`).
 
 ## License
 
