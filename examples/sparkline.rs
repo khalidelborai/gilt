@@ -63,10 +63,10 @@ fn main() {
 
     let mut walk = vec![0.0f64; 50];
     let mut val = 50.0;
-    for i in 0..50 {
+    for (i, item) in walk.iter_mut().enumerate().take(50) {
         // Deterministic "random" walk for reproducibility
         val += ((i * 7 + 3) % 11) as f64 - 5.0;
-        walk[i] = val;
+        *item = val;
     }
     let walk_spark = Sparkline::new(&walk).with_style(Style::parse("magenta").unwrap());
     console.print(&walk_spark);
