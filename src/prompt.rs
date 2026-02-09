@@ -11,6 +11,52 @@ use crate::style::Style;
 use crate::text::Text;
 
 // ---------------------------------------------------------------------------
+// Rustyline completer (feature-gated)
+// ---------------------------------------------------------------------------
+
+/// A simple completer that matches from a list of candidate strings.
+#[cfg(feature = "readline")]
+#[derive(Clone)]
+struct ListCompleter {
+    candidates: Vec<String>,
+}
+
+#[cfg(feature = "readline")]
+impl rustyline::completion::Completer for ListCompleter {
+    type Candidate = String;
+
+    fn complete(
+        &self,
+        line: &str,
+        pos: usize,
+        _ctx: &rustyline::Context<'_>,
+    ) -> rustyline::Result<(usize, Vec<String>)> {
+        let prefix = &line[..pos];
+        let matches: Vec<String> = self
+            .candidates
+            .iter()
+            .filter(|c| c.starts_with(prefix))
+            .cloned()
+            .collect();
+        Ok((0, matches))
+    }
+}
+
+#[cfg(feature = "readline")]
+impl rustyline::hint::Hinter for ListCompleter {
+    type Hint = String;
+}
+
+#[cfg(feature = "readline")]
+impl rustyline::highlight::Highlighter for ListCompleter {}
+
+#[cfg(feature = "readline")]
+impl rustyline::validate::Validator for ListCompleter {}
+
+#[cfg(feature = "readline")]
+impl rustyline::Helper for ListCompleter {}
+
+// ---------------------------------------------------------------------------
 // InvalidResponse
 // ---------------------------------------------------------------------------
 
@@ -60,6 +106,13 @@ pub struct Prompt {
     pub show_choices: bool,
     /// Optional default value returned when the user enters empty input.
     pub default: Option<String>,
+    /// Optional list of tab-completion candidates.
+    ///
+    /// When the `readline` feature is enabled and this is `Some`, the prompt
+    /// will use `rustyline` to provide interactive tab-completion from the
+    /// given list. When the feature is not enabled, this field is ignored and
+    /// input is read from standard input as usual.
+    pub completions: Option<Vec<String>>,
     /// The console used for rendering prompt text.
     console: Console,
 }
@@ -79,6 +132,7 @@ impl Prompt {
             show_default: true,
             show_choices: true,
             default: None,
+            completions: None,
             console: Console::new(),
         }
     }
@@ -129,6 +183,17 @@ impl Prompt {
     #[must_use]
     pub fn with_show_choices(mut self, show: bool) -> Self {
         self.show_choices = show;
+        self
+    }
+
+    /// Set the list of tab-completion candidates.
+    ///
+    /// When the `readline` feature is enabled, the prompt will use `rustyline`
+    /// to offer interactive tab-completion from the given list. When the
+    /// feature is not enabled, this setting is silently ignored.
+    #[must_use]
+    pub fn with_completions(mut self, completions: Vec<String>) -> Self {
+        self.completions = Some(completions);
         self
     }
 
@@ -257,7 +322,9 @@ impl Prompt {
     ///
     /// This is the primary public API. It loops until valid input is received.
     /// When password mode is enabled, terminal echo is disabled so the input
-    /// is not visible on screen.
+    /// is not visible on screen. When the `readline` feature is enabled and
+    /// [`completions`](Prompt::completions) is set, the prompt uses `rustyline`
+    /// to provide interactive tab-completion.
     pub fn ask(&self) -> String {
         #[cfg(feature = "interactive")]
         if self.password {
@@ -271,9 +338,71 @@ impl Prompt {
                 "warning: gilt built without `interactive` feature; password input will be visible"
             );
         }
+
+        #[cfg(feature = "readline")]
+        if self.completions.is_some() {
+            return self.ask_readline();
+        }
+
         let stdin = io::stdin();
         let mut handle = stdin.lock();
         self.ask_with_input(&mut handle)
+    }
+
+    /// Readline-based input loop with tab-completion.
+    #[cfg(feature = "readline")]
+    fn ask_readline(&self) -> String {
+        let candidates = self.completions.clone().unwrap_or_default();
+        let helper = ListCompleter { candidates };
+        let config = rustyline::Config::builder()
+            .completion_type(rustyline::CompletionType::List)
+            .build();
+        let mut editor = rustyline::Editor::with_config(config).expect("Failed to create editor");
+        editor.set_helper(Some(helper));
+
+        loop {
+            let prompt = self.make_prompt();
+            let prompt_str = prompt.plain().to_string();
+
+            match editor.readline(&prompt_str) {
+                Ok(line) => {
+                    let value = line.trim_end_matches('\n').trim_end_matches('\r').to_string();
+
+                    // Empty input: return default if available
+                    if value.trim().is_empty() {
+                        if let Some(ref default) = self.default {
+                            return default.clone();
+                        }
+                    }
+
+                    // Validate against choices
+                    if self.choices.is_some() {
+                        if !self.check_choice(&value) {
+                            eprintln!("Please select one of the available options");
+                            continue;
+                        }
+                        return self.resolve_choice(&value);
+                    }
+
+                    return value;
+                }
+                Err(rustyline::error::ReadlineError::Eof) => {
+                    if let Some(ref default) = self.default {
+                        return default.clone();
+                    }
+                    return String::new();
+                }
+                Err(rustyline::error::ReadlineError::Interrupted) => {
+                    return String::new();
+                }
+                Err(_) => {
+                    if let Some(ref default) = self.default {
+                        return default.clone();
+                    }
+                    return String::new();
+                }
+            }
+        }
     }
 
     /// Password input loop — reads without terminal echo using `rpassword`.
@@ -1213,6 +1342,21 @@ mod tests {
     fn test_builder_with_password() {
         let p = Prompt::new("test").with_password(true);
         assert!(p.password);
+    }
+
+    #[test]
+    fn test_builder_with_completions() {
+        let p = Prompt::new("test").with_completions(vec!["foo".into(), "bar".into()]);
+        assert_eq!(
+            p.completions,
+            Some(vec!["foo".to_string(), "bar".to_string()])
+        );
+    }
+
+    #[test]
+    fn test_builder_completions_default_none() {
+        let p = Prompt::new("test");
+        assert!(p.completions.is_none());
     }
 
     // -- Prompt suffix is ": " ----------------------------------------------

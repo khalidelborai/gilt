@@ -33,8 +33,8 @@ fn copy_with_progress(src_path: &str, dst_path: &str) -> io::Result<()> {
     let columns: Vec<Box<dyn ProgressColumn>> = vec![
         Box::new(TextColumn::new("{task.description}")),
         Box::new(BarColumn::new()),
-        Box::new(DownloadColumn),
-        Box::new(TransferSpeedColumn),
+        Box::new(DownloadColumn::new()),
+        Box::new(TransferSpeedColumn::new()),
         Box::new(TimeRemainingColumn::new()),
     ];
 

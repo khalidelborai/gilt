@@ -709,20 +709,50 @@ impl ProgressColumn for MofNCompleteColumn {
 // ---------------------------------------------------------------------------
 
 /// A column that shows `downloaded/total` as human-readable file sizes.
+///
+/// By default, sizes are formatted with SI (base-1000) units using
+/// [`filesize::decimal`]. Set `binary_units` to `true` to use IEC
+/// (base-1024) units via [`filesize::binary`].
 #[derive(Debug, Clone)]
-pub struct DownloadColumn;
+pub struct DownloadColumn {
+    /// When `true`, format sizes with binary (base-1024) units (KiB, MiB, ...).
+    /// When `false` (default), use decimal (base-1000) units (kB, MB, ...).
+    pub binary_units: bool,
+}
+
+impl DownloadColumn {
+    /// Create a new `DownloadColumn` with SI decimal units (default).
+    pub fn new() -> Self {
+        Self { binary_units: false }
+    }
+
+    /// Create a new `DownloadColumn` that uses IEC binary units.
+    pub fn with_binary_units(mut self, binary: bool) -> Self {
+        self.binary_units = binary;
+        self
+    }
+
+    /// Format a byte count using the configured unit system.
+    fn format_size(&self, size: u64) -> String {
+        if self.binary_units {
+            filesize::binary(size, 1, " ")
+        } else {
+            filesize::decimal(size, 1, " ")
+        }
+    }
+}
 
 impl Default for DownloadColumn {
     fn default() -> Self {
-        Self
+        Self::new()
     }
 }
 
 impl ProgressColumn for DownloadColumn {
     fn render(&self, task: &Task) -> Text {
-        let completed = filesize::decimal(task.completed as u64, 1, " ");
+        let completed = self.format_size(task.completed as u64);
         let total = match task.total {
-            Some(t) => filesize::decimal(t as u64, 1, " "),
+            Some(t) => self.format_size(t as u64),
             None => "?".to_string(),
         };
         let style = Style::parse("progress.download").unwrap_or_else(|_| Style::null());
@@ -735,12 +765,42 @@ impl ProgressColumn for DownloadColumn {
 // ---------------------------------------------------------------------------
 
 /// A column that shows the current transfer speed in human-readable form.
+///
+/// By default, speeds are formatted with SI (base-1000) units using
+/// [`filesize::decimal`]. Set `binary_units` to `true` to use IEC
+/// (base-1024) units via [`filesize::binary`].
 #[derive(Debug, Clone)]
-pub struct TransferSpeedColumn;
+pub struct TransferSpeedColumn {
+    /// When `true`, format speeds with binary (base-1024) units (KiB, MiB, ...).
+    /// When `false` (default), use decimal (base-1000) units (kB, MB, ...).
+    pub binary_units: bool,
+}
+
+impl TransferSpeedColumn {
+    /// Create a new `TransferSpeedColumn` with SI decimal units (default).
+    pub fn new() -> Self {
+        Self { binary_units: false }
+    }
+
+    /// Create a new `TransferSpeedColumn` that uses IEC binary units.
+    pub fn with_binary_units(mut self, binary: bool) -> Self {
+        self.binary_units = binary;
+        self
+    }
+
+    /// Format a byte count using the configured unit system.
+    fn format_size(&self, size: u64) -> String {
+        if self.binary_units {
+            filesize::binary(size, 1, " ")
+        } else {
+            filesize::decimal(size, 1, " ")
+        }
+    }
+}
 
 impl Default for TransferSpeedColumn {
     fn default() -> Self {
-        Self
+        Self::new()
     }
 }
 
@@ -749,7 +809,7 @@ impl ProgressColumn for TransferSpeedColumn {
         let style = Style::parse("progress.data.speed").unwrap_or_else(|_| Style::null());
         match task.speed() {
             Some(speed) => {
-                let formatted = filesize::decimal(speed as u64, 1, " ");
+                let formatted = self.format_size(speed as u64);
                 Text::new(&format!("{formatted}/s"), style)
             }
             None => Text::new("?", style),
@@ -2265,7 +2325,7 @@ mod tests {
 
     #[test]
     fn test_download_column() {
-        let col = DownloadColumn;
+        let col = DownloadColumn::new();
         let mut task = Task::new(0, "test", Some(1000000.0));
         task.completed = 500000.0;
         let text = col.render(&task);
@@ -2274,11 +2334,20 @@ mod tests {
 
     #[test]
     fn test_download_column_no_total() {
-        let col = DownloadColumn;
+        let col = DownloadColumn::new();
         let mut task = Task::new(0, "test", None);
         task.completed = 1000.0;
         let text = col.render(&task);
         assert_eq!(text.plain(), "1.0 kB/?");
+    }
+
+    #[test]
+    fn test_download_column_binary_units() {
+        let col = DownloadColumn::new().with_binary_units(true);
+        let mut task = Task::new(0, "test", Some(1_048_576.0));
+        task.completed = 524_288.0;
+        let text = col.render(&task);
+        assert_eq!(text.plain(), "512.0 KiB/1.0 MiB");
     }
 
     // =======================================================================
@@ -2287,7 +2356,7 @@ mod tests {
 
     #[test]
     fn test_transfer_speed_column_no_speed() {
-        let col = TransferSpeedColumn;
+        let col = TransferSpeedColumn::new();
         let task = Task::new(0, "test", Some(100.0));
         let text = col.render(&task);
         assert_eq!(text.plain(), "?");
@@ -2295,7 +2364,7 @@ mod tests {
 
     #[test]
     fn test_transfer_speed_column_with_speed() {
-        let col = TransferSpeedColumn;
+        let col = TransferSpeedColumn::new();
         let mut task = Task::new(0, "test", Some(100000.0));
         task.start_time = Some(0.0);
         task.completed = 1000.0;
@@ -2305,6 +2374,20 @@ mod tests {
         // speed = 10000 bytes/sec
         let text = col.render(&task);
         assert_eq!(text.plain(), "10.0 kB/s");
+    }
+
+    #[test]
+    fn test_transfer_speed_column_binary_units() {
+        let col = TransferSpeedColumn::new().with_binary_units(true);
+        let mut task = Task::new(0, "test", Some(100000.0));
+        task.start_time = Some(0.0);
+        task.completed = 1000.0;
+        task.record_sample(1.0, 30.0);
+        task.completed = 11000.0;
+        task.record_sample(2.0, 30.0);
+        // speed = 10000 bytes/sec
+        let text = col.render(&task);
+        assert_eq!(text.plain(), "9.8 KiB/s");
     }
 
     // =======================================================================
@@ -2738,8 +2821,8 @@ mod tests {
             Box::new(FileSizeColumn),
             Box::new(TotalFileSizeColumn),
             Box::new(MofNCompleteColumn::default()),
-            Box::new(DownloadColumn),
-            Box::new(TransferSpeedColumn),
+            Box::new(DownloadColumn::new()),
+            Box::new(TransferSpeedColumn::new()),
         ];
 
         let mut progress = Progress::new(columns).with_get_time(|| 1.0);

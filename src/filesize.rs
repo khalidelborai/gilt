@@ -3,21 +3,30 @@
 //! Port of Python `rich/filesize.py`, originally borrowed from
 //! [pyfilesystem2](https://github.com/PyFilesystem/pyfilesystem2).
 //!
-//! Provides [`decimal`] to format sizes using powers of 1000 (SI prefixes).
+//! Provides [`decimal`] to format sizes using powers of 1000 (SI prefixes)
+//! and [`binary`] to format sizes using powers of 1024 (IEC binary prefixes).
 //!
 //! # Examples
 //!
 //! ```
-//! use gilt::filesize::decimal;
+//! use gilt::filesize::{decimal, binary};
 //!
 //! assert_eq!(decimal(0, 1, " "), "0 bytes");
 //! assert_eq!(decimal(1, 1, " "), "1 byte");
 //! assert_eq!(decimal(1000, 1, " "), "1.0 kB");
 //! assert_eq!(decimal(30000, 2, ""), "30.00kB");
+//!
+//! assert_eq!(binary(0, 1, " "), "0 bytes");
+//! assert_eq!(binary(1, 1, " "), "1 byte");
+//! assert_eq!(binary(1024, 1, " "), "1.0 KiB");
+//! assert_eq!(binary(30000, 2, ""), "29.30KiB");
 //! ```
 
 /// SI suffixes used by [`decimal`].
 const DECIMAL_SUFFIXES: &[&str] = &["kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
+
+/// IEC binary suffixes used by [`binary`].
+const BINARY_SUFFIXES: &[&str] = &["KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"];
 
 /// Format an integer with comma-separated thousands.
 ///
@@ -177,6 +186,32 @@ pub fn pick_unit_and_suffix(size: u64, suffixes: &[&str], base: u64) -> (u64, St
 /// ```
 pub fn decimal(size: u64, precision: usize, separator: &str) -> String {
     to_str(size, DECIMAL_SUFFIXES, 1000, precision, separator)
+}
+
+/// Convert a file size to a human-readable string using powers of 1024
+/// (IEC binary prefixes).
+///
+/// In this convention, `1024 B = 1 KiB`.
+///
+/// This is typically the format used by **Linux** to report file sizes and by
+/// tools like `du -h` or `ls -lh`.
+///
+/// # Arguments
+///
+/// * `size` - The file size in bytes.
+/// * `precision` - Number of decimal places (typically 1).
+/// * `separator` - String placed between the value and the unit (typically `" "`).
+///
+/// # Examples
+///
+/// ```
+/// use gilt::filesize::binary;
+///
+/// assert_eq!(binary(1024, 1, " "), "1.0 KiB");
+/// assert_eq!(binary(30000, 2, ""), "29.30KiB");
+/// ```
+pub fn binary(size: u64, precision: usize, separator: &str) -> String {
+    to_str(size, BINARY_SUFFIXES, 1024, precision, separator)
 }
 
 #[cfg(test)]
@@ -356,5 +391,101 @@ mod tests {
         let (unit, suffix) = pick_unit_and_suffix(999_000_000_000, suffixes, 1000);
         assert_eq!(unit, 1000);
         assert_eq!(suffix, "MB");
+    }
+
+    // ── binary: special cases ──────────────────────────────────────
+
+    #[test]
+    fn binary_zero_bytes() {
+        assert_eq!(binary(0, 1, " "), "0 bytes");
+    }
+
+    #[test]
+    fn binary_one_byte() {
+        assert_eq!(binary(1, 1, " "), "1 byte");
+    }
+
+    #[test]
+    fn binary_small_bytes() {
+        assert_eq!(binary(1023, 1, " "), "1,023 bytes");
+    }
+
+    // ── binary: KiB range ───────────────────────────────────────────
+
+    #[test]
+    fn binary_exactly_1024() {
+        assert_eq!(binary(1024, 1, " "), "1.0 KiB");
+    }
+
+    #[test]
+    fn binary_1536() {
+        assert_eq!(binary(1536, 1, " "), "1.5 KiB");
+    }
+
+    #[test]
+    fn binary_30000() {
+        assert_eq!(binary(30000, 2, " "), "29.30 KiB");
+    }
+
+    // ── binary: MiB range ───────────────────────────────────────────
+
+    #[test]
+    fn binary_one_mebibyte() {
+        assert_eq!(binary(1_048_576, 1, " "), "1.0 MiB");
+    }
+
+    #[test]
+    fn binary_1_5_mebibytes() {
+        assert_eq!(binary(1_572_864, 1, " "), "1.5 MiB");
+    }
+
+    // ── binary: GiB range ───────────────────────────────────────────
+
+    #[test]
+    fn binary_one_gibibyte() {
+        assert_eq!(binary(1_073_741_824, 1, " "), "1.0 GiB");
+    }
+
+    // ── binary: TiB range ───────────────────────────────────────────
+
+    #[test]
+    fn binary_one_tebibyte() {
+        assert_eq!(binary(1_099_511_627_776, 1, " "), "1.0 TiB");
+    }
+
+    // ── binary: custom precision ───────────────────────────────────
+
+    #[test]
+    fn binary_precision_2() {
+        assert_eq!(binary(30000, 2, " "), "29.30 KiB");
+    }
+
+    #[test]
+    fn binary_precision_0() {
+        assert_eq!(binary(30000, 0, " "), "29 KiB");
+    }
+
+    // ── binary: custom separator ───────────────────────────────────
+
+    #[test]
+    fn binary_empty_separator() {
+        assert_eq!(binary(30000, 2, ""), "29.30KiB");
+    }
+
+    #[test]
+    fn binary_dash_separator() {
+        assert_eq!(binary(30000, 1, "-"), "29.3-KiB");
+    }
+
+    // ── binary: very large ─────────────────────────────────────────
+
+    #[test]
+    fn binary_pebibyte() {
+        assert_eq!(binary(1_125_899_906_842_624, 1, " "), "1.0 PiB");
+    }
+
+    #[test]
+    fn binary_exbibyte() {
+        assert_eq!(binary(1_152_921_504_606_846_976, 1, " "), "1.0 EiB");
     }
 }

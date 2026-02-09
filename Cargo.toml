@@ -31,6 +31,7 @@ tracing = { version = "0.1", optional = true }
 tracing-subscriber = { version = "0.3", features = ["registry"], optional = true }
 miette = { version = "7", optional = true }
 eyre = { version = "0.6", optional = true }
+rustyline = { version = "15", optional = true }
 anstyle = { version = "1", optional = true }
 csv = { version = "1", optional = true }
 compact_str = "0.8"
@@ -45,6 +46,7 @@ tracing = ["dep:tracing", "dep:tracing-subscriber"]
 derive = ["dep:gilt-derive"]
 miette = ["dep:miette"]
 eyre = ["dep:eyre"]
+readline = ["dep:rustyline"]
 anstyle = ["dep:anstyle"]
 csv = ["dep:csv"]
 

@@ -43,7 +43,7 @@ fn read_with_progress(file_path: &str) -> io::Result<usize> {
         Box::new(BarColumn::new()),
         Box::new(FileSizeColumn),
         Box::new(TotalFileSizeColumn),
-        Box::new(TransferSpeedColumn),
+        Box::new(TransferSpeedColumn::new()),
         Box::new(TimeRemainingColumn::new()),
     ];
 

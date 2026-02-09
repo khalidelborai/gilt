@@ -31,8 +31,8 @@ fn main() {
     let columns: Vec<Box<dyn gilt::progress::ProgressColumn>> = vec![
         Box::new(TextColumn::new("{task.description}")),
         Box::new(BarColumn::new()),
-        Box::new(DownloadColumn),
-        Box::new(TransferSpeedColumn),
+        Box::new(DownloadColumn::new()),
+        Box::new(TransferSpeedColumn::new()),
         Box::new(TimeRemainingColumn::new()),
     ];
 
