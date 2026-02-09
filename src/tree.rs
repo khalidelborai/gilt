@@ -68,6 +68,7 @@ fn make_guide(index: usize, style: &Style, ascii_only: bool) -> Segment {
 // ---------------------------------------------------------------------------
 
 /// A tree widget that renders a hierarchical structure with guide characters.
+#[derive(Debug, Clone)]
 pub struct Tree {
     /// The node's display text.
     pub label: Text,
@@ -106,7 +107,9 @@ impl Tree {
             expanded: true,
             hide_root: false,
         });
-        self.children.last_mut().unwrap()
+        self.children
+            .last_mut()
+            .expect("children is non-empty after push")
     }
 
     /// Set the node style (builder pattern).

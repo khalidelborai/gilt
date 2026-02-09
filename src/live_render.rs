@@ -3,6 +3,8 @@
 //! Port of Python's `rich/live_render.py`. Used by `Live` to display content
 //! that can be refreshed in-place by emitting cursor movement control codes.
 
+use std::cell::Cell;
+
 use crate::console::{Console, ConsoleOptions, Renderable};
 use crate::segment::{ControlCode, ControlType, Segment};
 use crate::style::Style;
@@ -29,7 +31,9 @@ pub struct LiveRender {
     /// How to handle vertical overflow.
     pub vertical_overflow: VerticalOverflowMethod,
     /// The (width, height) of the last render, or `None` if never rendered.
-    shape: Option<(usize, usize)>,
+    /// Uses `Cell` for interior mutability so the `Renderable` trait method
+    /// (which takes `&self`) can cache the computed shape without unsafe code.
+    shape: Cell<Option<(usize, usize)>>,
 }
 
 impl LiveRender {
@@ -41,7 +45,7 @@ impl LiveRender {
             renderable,
             style: Style::null(),
             vertical_overflow: VerticalOverflowMethod::Ellipsis,
-            shape: None,
+            shape: Cell::new(None),
         }
     }
 
@@ -63,7 +67,7 @@ impl LiveRender {
     ///
     /// Returns `0` if nothing has been rendered yet.
     pub fn last_render_height(&self) -> usize {
-        match self.shape {
+        match self.shape.get() {
             Some((_, height)) => height,
             None => 0,
         }
@@ -80,7 +84,7 @@ impl LiveRender {
     /// Produces: CR, ERASE_IN_LINE(2), then (height-1) repetitions of
     /// CURSOR_UP(1) + ERASE_IN_LINE(2).
     pub fn position_cursor(&self) -> Vec<Segment> {
-        let Some((_, height)) = self.shape else {
+        let Some((_, height)) = self.shape.get() else {
             return Vec::new();
         };
         if height == 0 {
@@ -103,7 +107,7 @@ impl LiveRender {
     ///
     /// Produces: CR, then `height` repetitions of CURSOR_UP(1) + ERASE_IN_LINE(2).
     pub fn restore_cursor(&self) -> Vec<Segment> {
-        let Some((_, height)) = self.shape else {
+        let Some((_, height)) = self.shape.get() else {
             return Vec::new();
         };
         if height == 0 {
@@ -160,17 +164,7 @@ impl Renderable for LiveRender {
 
         // Compute and store the final shape.
         let final_shape = Segment::get_shape(&lines);
-
-        // SAFETY: We need interior mutability to store shape while implementing
-        // the trait method which takes &self. We use a raw pointer cast here
-        // because LiveRender is not used concurrently and shape is purely a
-        // cache. An alternative would be Cell/RefCell, but we keep the struct
-        // simple.
-        #[allow(invalid_reference_casting)]
-        {
-            let self_mut = unsafe { &mut *(self as *const LiveRender as *mut LiveRender) };
-            self_mut.shape = Some(final_shape);
-        }
+        self.shape.set(Some(final_shape));
 
         // Flatten lines into a single segment list, inserting newlines between
         // lines (but not after the last line).
@@ -199,7 +193,7 @@ mod tests {
         assert_eq!(lr.renderable.plain(), "hello");
         assert!(lr.style.is_null());
         assert_eq!(lr.vertical_overflow, VerticalOverflowMethod::Ellipsis);
-        assert!(lr.shape.is_none());
+        assert!(lr.shape.get().is_none());
     }
 
     // -- Builder methods ----------------------------------------------------
@@ -409,10 +403,10 @@ mod tests {
         let lr = LiveRender::new(Text::new("Hello", Style::null()));
         let opts = console.options();
 
-        assert!(lr.shape.is_none());
+        assert!(lr.shape.get().is_none());
         let _ = lr.rich_console(&console, &opts);
-        assert!(lr.shape.is_some());
-        let (w, h) = lr.shape.unwrap();
+        assert!(lr.shape.get().is_some());
+        let (w, h) = lr.shape.get().unwrap();
         assert!(w > 0);
         assert_eq!(h, 1);
     }

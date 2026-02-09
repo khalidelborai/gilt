@@ -36,31 +36,14 @@ const NUMBERS_COLUMN_DEFAULT_PADDING: usize = 2;
 // ---------------------------------------------------------------------------
 
 /// Errors that can occur during syntax operations.
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum SyntaxError {
     /// Failed to read a file.
-    IoError(std::io::Error),
+    #[error("IO error: {0}")]
+    IoError(#[from] std::io::Error),
     /// Could not determine the language for highlighting.
+    #[error("unknown language: {0}")]
     UnknownLanguage(String),
-}
-
-impl std::fmt::Display for SyntaxError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            SyntaxError::IoError(e) => write!(f, "IO error: {}", e),
-            SyntaxError::UnknownLanguage(name) => {
-                write!(f, "unknown language: {}", name)
-            }
-        }
-    }
-}
-
-impl std::error::Error for SyntaxError {}
-
-impl From<std::io::Error> for SyntaxError {
-    fn from(e: std::io::Error) -> Self {
-        SyntaxError::IoError(e)
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -71,6 +54,7 @@ impl From<std::io::Error> for SyntaxError {
 ///
 /// Renders code with syntax highlighting, optional line numbers, word wrap,
 /// theme selection, and more.
+#[derive(Debug, Clone)]
 pub struct Syntax {
     /// The source code to highlight.
     pub code: String,

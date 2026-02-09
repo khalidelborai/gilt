@@ -1,7 +1,7 @@
 //! Demonstrates the Constrain widget for limiting content to a maximum width.
 
-use gilt::constrain::Constrain;
 use gilt::console::Console;
+use gilt::constrain::Constrain;
 use gilt::prelude::*;
 
 fn main() {

@@ -46,9 +46,8 @@ fn main() {
     console.print(&header);
 
     // ── Commit History Table ──────────────────────────────────────────────
-    console.print(
-        &Rule::with_title("Commit History").style(Style::parse("bright_yellow").unwrap()),
-    );
+    console
+        .print(&Rule::with_title("Commit History").style(Style::parse("bright_yellow").unwrap()));
 
     let mut table = Table::new(&["Hash", "Graph", "Message", "Author", "Date", "Files"]);
     table.header_style = "bold bright_white on grey23".to_string();
@@ -165,12 +164,11 @@ fn main() {
         let hash_text = Text::styled(hash, Style::parse("dim yellow").unwrap());
 
         // Graph: colored branch indicator
-        let graph_style =
-            if graph.contains('\\') || graph.contains('/') || graph.contains('|') {
-                Style::parse("bold bright_magenta").unwrap()
-            } else {
-                Style::parse("bold bright_green").unwrap()
-            };
+        let graph_style = if graph.contains('\\') || graph.contains('/') || graph.contains('|') {
+            Style::parse("bold bright_magenta").unwrap()
+        } else {
+            Style::parse("bold bright_green").unwrap()
+        };
         let graph_text = Text::styled(graph, graph_style);
 
         // Message: prefix colored by convention, rest normal
@@ -182,12 +180,9 @@ fn main() {
             "chore" => "dim",
             _ => "",
         };
-        let full_msg = format!(
-            "[{prefix_style}]{prefix}:[/{prefix_style}] {msg}"
-        );
-        let msg_text = Text::from_markup(&full_msg).unwrap_or_else(|_| {
-            Text::styled(&format!("{prefix}: {msg}"), Style::null())
-        });
+        let full_msg = format!("[{prefix_style}]{prefix}:[/{prefix_style}] {msg}");
+        let msg_text = Text::from_markup(&full_msg)
+            .unwrap_or_else(|_| Text::styled(&format!("{prefix}: {msg}"), Style::null()));
 
         // Author: bold
         let author_text = Text::styled(author, Style::parse("bold").unwrap());
@@ -196,12 +191,9 @@ fn main() {
         let date_text = Text::styled(date, Style::parse("dim").unwrap());
 
         // Files: +N in green, -M in red
-        let files_str = format!(
-            "[green]+{add}[/green] [red]-{del}[/red]"
-        );
-        let files_text = Text::from_markup(&files_str).unwrap_or_else(|_| {
-            Text::styled(&format!("+{add} -{del}"), Style::null())
-        });
+        let files_str = format!("[green]+{add}[/green] [red]-{del}[/red]");
+        let files_text = Text::from_markup(&files_str)
+            .unwrap_or_else(|_| Text::styled(&format!("+{add} -{del}"), Style::null()));
 
         table.add_row_text(&[
             hash_text,
@@ -216,9 +208,7 @@ fn main() {
     console.print(&table);
 
     // ── Branch Tree ───────────────────────────────────────────────────────
-    console.print(
-        &Rule::with_title("Branches").style(Style::parse("bright_yellow").unwrap()),
-    );
+    console.print(&Rule::with_title("Branches").style(Style::parse("bright_yellow").unwrap()));
 
     let bold_yellow = Style::parse("bold bright_yellow").unwrap();
     let bold_green = Style::parse("bold green").unwrap();
@@ -232,10 +222,7 @@ fn main() {
 
     // main branch
     {
-        let main = tree.add(Text::styled(
-            "main  \u{2190} HEAD",
-            bold_green.clone(),
-        ));
+        let main = tree.add(Text::styled("main  \u{2190} HEAD", bold_green.clone()));
         main.add(Text::styled(
             "a3f7b21  feat: add OAuth2 login flow",
             dim.clone(),
@@ -244,10 +231,7 @@ fn main() {
 
     // feature/auth branch
     {
-        let feature = tree.add(Text::styled(
-            "feature/auth",
-            bold_cyan.clone(),
-        ));
+        let feature = tree.add(Text::styled("feature/auth", bold_cyan.clone()));
         feature.add(Text::styled(
             "1b8e3f5  implement rate limiter middleware",
             dim.clone(),
@@ -260,10 +244,7 @@ fn main() {
 
     // bugfix/login branch
     {
-        let bugfix = tree.add(Text::styled(
-            "bugfix/login",
-            bold_magenta.clone(),
-        ));
+        let bugfix = tree.add(Text::styled("bugfix/login", bold_magenta.clone()));
         bugfix.add(Text::styled(
             "e9c4d08  resolve race condition in session store",
             dim.clone(),
@@ -280,14 +261,8 @@ fn main() {
             "release/v2.0",
             Style::parse("bold bright_red").unwrap(),
         ));
-        release.add(Text::styled(
-            "tagged v2.0.0  (2 weeks ago)",
-            dim.clone(),
-        ));
-        release.add(Text::styled(
-            "\u{2714} merged into main",
-            green.clone(),
-        ));
+        release.add(Text::styled("tagged v2.0.0  (2 weeks ago)", dim.clone()));
+        release.add(Text::styled("\u{2714} merged into main", green.clone()));
     }
 
     console.print(&tree);

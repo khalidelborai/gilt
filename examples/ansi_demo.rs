@@ -19,7 +19,10 @@ fn main() {
         ("Bold green", "\x1b[1;32mbold green\x1b[0m"),
         ("Italic cyan", "\x1b[3;36mitalic cyan\x1b[0m"),
         ("Underline yellow", "\x1b[4;33munderline yellow\x1b[0m"),
-        ("Bold + italic magenta", "\x1b[1;3;35mbold italic magenta\x1b[0m"),
+        (
+            "Bold + italic magenta",
+            "\x1b[1;3;35mbold italic magenta\x1b[0m",
+        ),
         ("Dim blue", "\x1b[2;34mdim blue\x1b[0m"),
         (
             "256-color (orange, index 208)",
@@ -33,10 +36,7 @@ fn main() {
             "Background (white on red)",
             "\x1b[37;41mwhite on red\x1b[0m",
         ),
-        (
-            "Strikethrough",
-            "\x1b[9mstrikethrough text\x1b[0m",
-        ),
+        ("Strikethrough", "\x1b[9mstrikethrough text\x1b[0m"),
     ];
 
     // -- "Before" vs "After" table -------------------------------------------
@@ -49,9 +49,7 @@ fn main() {
 
     for (description, raw) in samples {
         // "Raw bytes" column: show the escape codes as visible text
-        let raw_display = raw
-            .replace('\x1b', "\\x1b")
-            .replace('\n', "\\n");
+        let raw_display = raw.replace('\x1b', "\\x1b").replace('\n', "\\n");
 
         // Parse the ANSI string into gilt Text
         let parsed_lines = decoder.decode(raw);

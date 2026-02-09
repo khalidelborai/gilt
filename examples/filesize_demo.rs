@@ -48,7 +48,10 @@ fn main() {
 
     let sample_size: u64 = 1_536_000; // ~1.5 MB / ~1.46 MiB
     let mut prec_table = Table::new(&["Precision", "Decimal (SI)", "Binary (IEC)"]);
-    prec_table.title = Some(format!("Sample: {} bytes", format_with_separator(sample_size)));
+    prec_table.title = Some(format!(
+        "Sample: {} bytes",
+        format_with_separator(sample_size)
+    ));
 
     for precision in 0..=3 {
         prec_table.add_row(&[
