@@ -44,6 +44,11 @@
 //! | [`gradient`] | True-color RGB gradient text |
 //! | [`styled_str`] | Stylize trait for `"text".bold().red()` chaining |
 //! | [`mod@inspect`] | Debug any value with rich formatting |
+//! | [`sparkline`] | Inline Unicode sparkline charts |
+//! | [`canvas`] | Braille dot-matrix terminal drawing |
+//! | [`diff`] | Colored unified and side-by-side text diffs |
+//! | [`figlet`] | Large ASCII art text rendering |
+//! | [`csv_table`] | CSV-to-Table conversion |
 //!
 //! ## Feature Flags
 //!
@@ -54,10 +59,11 @@
 //! | `syntax` | Yes | Syntax highlighting (`syntect`) |
 //! | `interactive` | Yes | Password input (`rpassword`) |
 //! | `tracing` | No | [`tracing`](https://docs.rs/tracing) subscriber with gilt formatting |
-//! | `derive` | No | `#[derive(Table)]` proc macro for struct-to-table |
+//! | `derive` | No | `#[derive(Table, Panel, Tree, ...)]` proc macros (7 derives) |
 //! | `miette` | No | [`miette`](https://docs.rs/miette) diagnostic report handler |
 //! | `eyre` | No | [`eyre`](https://docs.rs/eyre) error report handler |
 //! | `anstyle` | No | Bidirectional `From` conversions with [`anstyle`](https://docs.rs/anstyle) |
+//! | `csv` | No | CSV file reading via `csv` crate |
 
 pub mod accessibility;
 pub mod align_widget;

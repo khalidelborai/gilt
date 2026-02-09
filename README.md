@@ -33,7 +33,7 @@ fn main() {
 - **Diff** -- LCS-based unified and side-by-side text diffs
 - **Figlet** -- large ASCII art text with built-in 5×7 block font
 - **CsvTable** -- CSV-to-Table with built-in parser and optional `csv` crate
-- **69 examples** covering all features
+- **73 examples** covering all features
 
 ## Features
 
@@ -62,7 +62,7 @@ fn main() {
 - **CsvTable** -- CSV to rich Table conversion
 - **Stylize trait** -- `"hello".bold().red()` method chaining
 - **Iterator progress** -- `iter.progress()` adapter
-- **`#[derive(Table)]`** -- Auto-generate tables from structs
+- **`#[derive(Table, Panel, Tree, Columns, Rule, Inspect, Renderable)]`** -- Auto-generate widgets from structs
 - **Environment detection** -- `NO_COLOR`, `FORCE_COLOR`, `CLICOLOR` support
 - **Inspect** -- Debug any value with rich formatting
 - **Accessibility** -- WCAG 2.1 contrast checking, `REDUCE_MOTION` detection
@@ -97,7 +97,7 @@ gilt = { version = "0.4", default-features = false, features = ["json", "syntax"
 | `syntax` | yes | Syntax highlighting (`syntect`) |
 | `interactive` | yes | Password prompts, select/multi-select (`rpassword`) |
 | `tracing` | no | `tracing` subscriber with gilt formatting |
-| `derive` | no | `#[derive(Table)]` proc macro |
+| `derive` | no | `#[derive(Table, Panel, Tree, ...)]` proc macros (7 derives) |
 | `miette` | no | `miette::ReportHandler` implementation |
 | `eyre` | no | `eyre::EyreHandler` implementation |
 | `csv` | no | CSV file reading via `csv` crate (built-in parser always available) |
@@ -120,14 +120,19 @@ cargo run --example markdown
 cargo run --example gradient
 cargo run --example inspect_demo
 cargo run --example styled_string
+cargo run --example sparkline
 
 # Feature-gated examples
 cargo run --example derive_table --features derive
+cargo run --example derive_panel --features derive
+cargo run --example derive_tree --features derive
+cargo run --example derive_rule --features derive
+cargo run --example derive_inspect --features derive
 cargo run --example miette_demo --features miette
 cargo run --example tracing_demo --features tracing
 ```
 
-See the [examples/](examples/) directory for all 69 examples.
+See the [examples/](examples/) directory for all 73 examples.
 
 ## Global Console
 
