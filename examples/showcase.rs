@@ -14,13 +14,17 @@ use std::time::Duration;
 use gilt::align_widget::Align;
 use gilt::ansi::AnsiDecoder;
 use gilt::bar::Bar;
+use gilt::canvas::Canvas;
 use gilt::color::Color;
 use gilt::color_triplet::ColorTriplet;
 use gilt::columns::Columns;
 use gilt::console::Console;
 use gilt::constrain::Constrain;
+use gilt::csv_table::CsvTable;
+use gilt::diff::Diff;
 use gilt::emoji::Emoji;
 use gilt::emoji_replace::emoji_replace;
+use gilt::figlet::Figlet;
 use gilt::filesize;
 use gilt::gradient::Gradient;
 use gilt::highlighter::*;
@@ -33,6 +37,7 @@ use gilt::pretty::Pretty;
 use gilt::progress::Progress;
 use gilt::rule::Rule;
 use gilt::scope::Scope;
+use gilt::sparkline::Sparkline;
 use gilt::spinners::SPINNERS;
 use gilt::status::Status;
 use gilt::styled::Styled;
@@ -128,7 +133,7 @@ fn main() {
     );
     let panel = Panel::fit(content)
         .title(Text::new("About Gilt", Style::parse("bold cyan").unwrap()))
-        .subtitle(Text::new("v0.1.0", Style::parse("dim").unwrap()))
+        .subtitle(Text::new("v0.5.0", Style::parse("dim").unwrap()))
         .border_style(Style::parse("bright_blue").unwrap());
     console.print(&panel);
     pause();
@@ -608,9 +613,9 @@ Gilt supports **bold**, *italic*, and `inline code` in markdown.
     pause();
 
     // =========================================================================
-    // 21. Filesize
+    // 21. Filesize (Decimal & Binary)
     // =========================================================================
-    console.rule(Some("Filesize"));
+    console.rule(Some("Filesize (Decimal & Binary)"));
 
     let sizes: &[(&str, u64)] = &[
         ("Empty file", 0),
@@ -621,9 +626,17 @@ Gilt supports **bold**, *italic*, and `inline code` in markdown.
         ("Dataset", 5_000_000_000_000),
     ];
 
+    console.print(&Text::new(
+        &format!(
+            "  {:.<20} {:>14}  {:>14}",
+            "Name", "Decimal (SI)", "Binary (IEC)"
+        ),
+        Style::parse("bold").unwrap(),
+    ));
     for (name, size) in sizes {
-        let decimal = filesize::decimal(*size, 1, " ");
-        let line = format!("  {name:.<20} {decimal:>12}");
+        let dec = filesize::decimal(*size, 1, " ");
+        let bin = filesize::binary(*size, 1, " ");
+        let line = format!("  {name:.<20} {dec:>14}  {bin:>14}");
         console.print(&Text::new(&line, Style::null()));
     }
     pause();
@@ -1127,6 +1140,278 @@ Gilt supports **bold**, *italic*, and `inline code` in markdown.
         console.print(&Text::styled(&combined, combined_style));
     }
     pause();
+
+    // =========================================================================
+    // 41. Sparkline
+    // =========================================================================
+    console.rule(Some("Sparkline"));
+
+    // Simulated CPU usage over time (%)
+    let cpu_data: Vec<f64> = vec![
+        12.0, 15.0, 22.0, 35.0, 42.0, 55.0, 68.0, 72.0, 80.0, 95.0, 88.0, 70.0, 60.0, 45.0, 38.0,
+        30.0, 25.0, 18.0, 20.0, 28.0, 35.0, 50.0, 62.0, 75.0, 85.0, 78.0, 65.0, 55.0, 40.0, 32.0,
+        22.0, 15.0, 10.0, 18.0, 30.0, 45.0, 58.0, 70.0, 82.0, 90.0,
+    ];
+    let spark = Sparkline::new(&cpu_data)
+        .with_width(70)
+        .with_style(Style::parse("bold green").unwrap());
+    console.print(&Text::new(
+        "  CPU usage over time:",
+        Style::parse("bold").unwrap(),
+    ));
+    console.print(&spark);
+
+    // Memory pressure — shorter data, no resample
+    let mem_data: Vec<f64> = vec![
+        30.0, 32.0, 35.0, 40.0, 55.0, 70.0, 85.0, 92.0, 95.0, 88.0, 75.0, 60.0,
+    ];
+    let mem_spark = Sparkline::new(&mem_data).with_style(Style::parse("bold yellow").unwrap());
+    console.print(&Text::new(
+        "  Memory pressure:",
+        Style::parse("bold").unwrap(),
+    ));
+    console.print(&mem_spark);
+    pause();
+
+    // =========================================================================
+    // 42. Canvas (Braille Dot-Matrix Graphics)
+    // =========================================================================
+    console.rule(Some("Canvas (Braille Dot-Matrix)"));
+
+    // 30 cols x 8 rows => 60x32 pixel grid
+    let mut canvas = Canvas::new(30, 8).with_style(Style::parse("cyan").unwrap());
+
+    // Draw a rectangle border
+    canvas.rect(0, 0, 59, 31);
+
+    // Draw diagonal lines forming an X
+    canvas.line(2, 2, 56, 28);
+    canvas.line(56, 2, 2, 28);
+
+    // Draw a circle in the center
+    canvas.circle(30, 16, 12);
+
+    console.print(&canvas);
+    pause();
+
+    // =========================================================================
+    // 43. Diff (Text Diff)
+    // =========================================================================
+    console.rule(Some("Text Diff"));
+
+    let old_code = r#"fn greet(name: &str) {
+    println!("Hello, {}!", name);
+}
+
+fn main() {
+    greet("world");
+}"#;
+
+    let new_code = r#"fn greet(name: &str, excited: bool) {
+    if excited {
+        println!("Hello, {}!!", name);
+    } else {
+        println!("Hello, {}.", name);
+    }
+}
+
+fn main() {
+    greet("world", true);
+}"#;
+
+    let diff = Diff::new(old_code, new_code)
+        .with_labels("a/greet.rs", "b/greet.rs")
+        .with_context(2);
+    console.print(&diff);
+    pause();
+
+    // =========================================================================
+    // 44. Figlet (ASCII Art)
+    // =========================================================================
+    console.rule(Some("Figlet (ASCII Art)"));
+
+    let banner = Figlet::new("GILT").with_style(Style::parse("bold bright_magenta").unwrap());
+    console.print(&banner);
+    console.line(1);
+
+    let sub_banner = Figlet::new("v0.5")
+        .with_style(Style::parse("dim cyan").unwrap())
+        .with_width(90);
+    console.print(&sub_banner);
+    pause();
+
+    // =========================================================================
+    // 45. CSV Table
+    // =========================================================================
+    console.rule(Some("CSV Table"));
+
+    let csv_data = "\
+City,Country,Population,Area (km2)
+Tokyo,Japan,13960000,2194
+Delhi,India,11030000,1484
+Shanghai,China,24870000,6341
+Sao Paulo,Brazil,12330000,1521
+Mumbai,India,12440000,603";
+
+    let csv = CsvTable::from_csv_str(csv_data)
+        .unwrap()
+        .with_title("World Cities")
+        .with_header_style(Style::parse("bold magenta").unwrap());
+    console.print(&csv);
+    pause();
+
+    // =========================================================================
+    // 46. Iterator .progress() (non-animated summary)
+    // =========================================================================
+    console.rule(Some("Iterator Progress (.progress())"));
+
+    console.print(&Text::new(
+        "  The ProgressIteratorExt trait adds .progress() to any iterator:",
+        Style::null(),
+    ));
+    console.print(&Text::new(
+        "    for item in (0..100).progress(\"Processing\") { ... }",
+        Style::parse("bold green").unwrap(),
+    ));
+    console.print(&Text::new(
+        "    for item in data.iter().progress_with_total(\"Loading\", 500.0) { ... }",
+        Style::parse("bold green").unwrap(),
+    ));
+    console.print(&Text::new(
+        "  Total is inferred from size_hint() or set explicitly.",
+        Style::parse("dim").unwrap(),
+    ));
+    pause();
+
+    // =========================================================================
+    // 47. Derive Macros (feature-gated)
+    // =========================================================================
+    #[cfg(feature = "derive")]
+    {
+        console.rule(Some("Derive Macros"));
+
+        console.print(&Text::new(
+            "  gilt-derive provides: #[derive(Table)], #[derive(Panel)],",
+            Style::null(),
+        ));
+        console.print(&Text::new(
+            "  #[derive(Tree)], #[derive(Columns)], #[derive(Rule)],",
+            Style::null(),
+        ));
+        console.print(&Text::new(
+            "  #[derive(Inspect)], and #[derive(Renderable)]",
+            Style::null(),
+        ));
+        console.line(1);
+
+        // Demonstrate #[derive(Panel)]
+        use gilt::Panel as PanelDerive;
+
+        #[derive(PanelDerive)]
+        #[panel(
+            title = "Server Status",
+            box_style = "ROUNDED",
+            border_style = "bright_green",
+            title_style = "bold white"
+        )]
+        struct ServerStatus {
+            #[field(label = "Host", style = "bold cyan")]
+            host: String,
+            #[field(label = "Port")]
+            port: u16,
+            #[field(label = "Status", style = "bold green")]
+            status: String,
+            #[field(label = "Uptime")]
+            uptime: String,
+        }
+
+        let server = ServerStatus {
+            host: "prod-web-01.example.com".into(),
+            port: 443,
+            status: "HEALTHY".into(),
+            uptime: "47 days, 13:22:09".into(),
+        };
+        console.print(&server.to_panel());
+
+        // Demonstrate #[derive(Tree)]
+        use gilt::Tree as TreeDerive;
+
+        #[derive(TreeDerive)]
+        #[tree(style = "bold blue", guide_style = "dim")]
+        struct MenuItem {
+            #[tree(label)]
+            name: String,
+            #[tree(children)]
+            items: Vec<MenuItem>,
+        }
+
+        let menu = MenuItem {
+            name: "Application".into(),
+            items: vec![
+                MenuItem {
+                    name: "File".into(),
+                    items: vec![
+                        MenuItem {
+                            name: "New".into(),
+                            items: vec![],
+                        },
+                        MenuItem {
+                            name: "Open".into(),
+                            items: vec![],
+                        },
+                    ],
+                },
+                MenuItem {
+                    name: "Edit".into(),
+                    items: vec![
+                        MenuItem {
+                            name: "Undo".into(),
+                            items: vec![],
+                        },
+                        MenuItem {
+                            name: "Redo".into(),
+                            items: vec![],
+                        },
+                    ],
+                },
+            ],
+        };
+        console.print(&menu.to_tree());
+
+        // Demonstrate #[derive(Columns)]
+        use gilt::DeriveColumns;
+
+        #[derive(DeriveColumns)]
+        #[columns(equal, padding = 1)]
+        struct Framework {
+            #[field(label = "Name", style = "bold")]
+            name: String,
+            #[field(label = "Language", style = "cyan")]
+            language: String,
+            #[field(label = "Stars")]
+            stars: String,
+        }
+
+        let frameworks = vec![
+            Framework {
+                name: "Axum".into(),
+                language: "Rust".into(),
+                stars: "19k".into(),
+            },
+            Framework {
+                name: "Actix".into(),
+                language: "Rust".into(),
+                stars: "22k".into(),
+            },
+            Framework {
+                name: "Rocket".into(),
+                language: "Rust".into(),
+                stars: "24k".into(),
+            },
+        ];
+        console.print(&Framework::to_columns(&frameworks));
+        pause();
+    }
 
     // =========================================================================
     // Farewell
