@@ -139,7 +139,15 @@ pub mod tree;
 pub mod wrap;
 
 #[cfg(feature = "derive")]
+pub use gilt_derive::Columns as DeriveColumns;
+#[cfg(feature = "derive")]
+pub use gilt_derive::Panel;
+#[cfg(feature = "derive")]
+pub use gilt_derive::Renderable;
+#[cfg(feature = "derive")]
 pub use gilt_derive::Table;
+#[cfg(feature = "derive")]
+pub use gilt_derive::Tree;
 
 use std::sync::LazyLock;
 use std::sync::Mutex;
