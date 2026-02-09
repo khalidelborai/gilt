@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] - 2026-02-09
+
+### Added
+- `sparkline` module: inline Unicode bar charts using `▁▂▃▄▅▆▇█` blocks with linear interpolation resampling
+- `canvas` module: Braille dot-matrix drawing (2×4 pixels per cell) with line, rect, fill_rect, circle primitives
+- `diff` module: LCS-based line-level text diffing with unified and side-by-side rendering, colored output
+- `figlet` module: large ASCII art text with built-in 5×7 block font (A-Z, a-z, 0-9, 34 punctuation chars)
+- `csv_table` module: CSV-to-Table conversion with built-in parser (no deps) and optional `csv` crate integration
+- `csv` feature gate for `csv` crate dependency
+- 5 new examples: `sparkline`, `canvas`, `diff`, `figlet`, `csv_table`
+- 119 new tests across the 5 modules
+
 ## [0.3.0] - 2026-02-08
 
 ### Added

@@ -14,7 +14,7 @@ gilt brings beautiful terminal output to Rust with styles, tables, trees, syntax
 
 ```toml
 [dependencies]
-gilt = "0.3"
+gilt = "0.4"
 ```
 
 ```rust
@@ -26,16 +26,14 @@ fn main() {
 }
 ```
 
-## v0.3.0 Highlights
+## v0.4.0 Highlights
 
-- **Dropped `once_cell`** -- uses `std::sync::LazyLock` (requires Rust 1.82+)
-- **Feature-gated heavy deps** -- `json`, `markdown`, `syntax`, `interactive` are default-on but can be disabled for minimal builds
-- **CompactString for Segment.text** -- reduced heap allocations in rendering pipelines
-- **Cow\<str\> returns** from hot-path functions to avoid unnecessary cloning
-- **write! over format!** in rendering loops for fewer intermediate allocations
-- **WCAG 2.1 accessibility** -- `contrast_ratio`, `meets_aa`, `meets_aaa` functions
-- **REDUCE_MOTION detection** -- respects the `REDUCE_MOTION` environment variable
-- **64 criterion benchmarks** covering core rendering paths
+- **Sparkline** -- inline Unicode bar charts (`▁▂▃▄▅▆▇█`)
+- **Canvas** -- Braille dot-matrix drawing (lines, rects, circles)
+- **Diff** -- LCS-based unified and side-by-side text diffs
+- **Figlet** -- large ASCII art text with built-in 5×7 block font
+- **CsvTable** -- CSV-to-Table with built-in parser and optional `csv` crate
+- **69 examples** covering all features
 
 ## Features
 
@@ -57,6 +55,11 @@ fn main() {
 
 ### Rust-Native Extensions
 - **Gradients** -- True-color RGB gradient text
+- **Sparkline** -- Inline Unicode bar charts
+- **Canvas** -- Braille dot-matrix drawing with line, rect, circle primitives
+- **Diff** -- Unified and side-by-side text diffs with colored output
+- **Figlet** -- Large ASCII art text rendering
+- **CsvTable** -- CSV to rich Table conversion
 - **Stylize trait** -- `"hello".bold().red()` method chaining
 - **Iterator progress** -- `iter.progress()` adapter
 - **`#[derive(Table)]`** -- Auto-generate tables from structs
@@ -78,13 +81,13 @@ All four heavy dependencies are **default-on**. Disable them for minimal builds:
 
 ```toml
 # Full (default) -- includes json, markdown, syntax, interactive
-gilt = "0.3"
+gilt = "0.4"
 
 # Minimal -- no heavy deps
-gilt = { version = "0.3", default-features = false }
+gilt = { version = "0.4", default-features = false }
 
 # Pick what you need
-gilt = { version = "0.3", default-features = false, features = ["json", "syntax"] }
+gilt = { version = "0.4", default-features = false, features = ["json", "syntax"] }
 ```
 
 | Feature | Default | Description |
@@ -97,6 +100,7 @@ gilt = { version = "0.3", default-features = false, features = ["json", "syntax"
 | `derive` | no | `#[derive(Table)]` proc macro |
 | `miette` | no | `miette::ReportHandler` implementation |
 | `eyre` | no | `eyre::EyreHandler` implementation |
+| `csv` | no | CSV file reading via `csv` crate (built-in parser always available) |
 | `anstyle` | no | Bidirectional `From` conversions with `anstyle` types |
 
 ## Examples
@@ -123,7 +127,7 @@ cargo run --example miette_demo --features miette
 cargo run --example tracing_demo --features tracing
 ```
 
-See the [examples/](examples/) directory for all 64 examples.
+See the [examples/](examples/) directory for all 69 examples.
 
 ## Global Console
 
