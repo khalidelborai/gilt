@@ -466,20 +466,22 @@ impl ConsoleBuilder {
 ///
 /// Console manages terminal capabilities, drives the rendering pipeline,
 /// and handles output buffering, capture, and export.
-#[allow(dead_code)]
 pub struct Console {
     // Configuration
     color_system: Option<ColorSystem>,
     width_override: Option<usize>,
     height_override: Option<usize>,
     force_terminal: Option<bool>,
+    #[allow(dead_code)] // Reserved for future tab expansion support
     tab_size: usize,
     record: bool,
     markup_enabled: bool,
     highlight_enabled: bool,
+    #[allow(dead_code)] // Reserved for future soft-wrap rendering
     soft_wrap: bool,
     no_color: bool,
     quiet: bool,
+    #[allow(dead_code)] // Reserved for future safe box-drawing fallback
     safe_box: bool,
     legacy_windows: bool,
     base_style: Option<Style>,
@@ -822,9 +824,8 @@ impl Console {
         }
 
         // Add newline if not ending with one
-        if !segments.is_empty() {
-            let last_text = &segments.last().unwrap().text;
-            if !last_text.ends_with('\n') {
+        if let Some(last) = segments.last() {
+            if !last.text.ends_with('\n') {
                 segments.push(Segment::line());
             }
         }
@@ -905,9 +906,8 @@ impl Console {
         segments.extend(body.rich_console(self, &self.options()));
 
         // Ensure trailing newline
-        if !segments.is_empty() {
-            let last_text = &segments.last().unwrap().text;
-            if !last_text.ends_with('\n') {
+        if let Some(last) = segments.last() {
+            if !last.text.ends_with('\n') {
                 segments.push(Segment::line());
             }
         }

@@ -124,7 +124,15 @@ impl Bar {
 
 impl fmt::Display for Bar {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Bar({}, {}, {})", self.size, self.begin, self.end)
+        let mut console = Console::builder()
+            .width(f.width().unwrap_or(80))
+            .force_terminal(true)
+            .no_color(true)
+            .build();
+        console.begin_capture();
+        console.print(self);
+        let output = console.end_capture();
+        write!(f, "{}", output.trim_end_matches('\n'))
     }
 }
 
@@ -294,8 +302,11 @@ mod tests {
 
     #[test]
     fn test_display() {
-        let bar = Bar::new(100.0, 10.0, 90.0);
-        assert_eq!(format!("{bar}"), "Bar(100, 10, 90)");
+        let bar = Bar::new(100.0, 0.0, 100.0).with_width(10);
+        let output = format!("{bar}");
+        // Should render the visual bar, not a debug representation
+        assert!(output.contains(FULL_BLOCK));
+        assert_eq!(output.chars().count(), 10);
     }
 
     // -- Empty bar (begin >= end) -------------------------------------------

@@ -154,7 +154,7 @@ fn build_hunks(ops: &[DiffOp], context_lines: usize) -> Vec<Hunk> {
     let mut current_group: Vec<usize> = vec![change_indices[0]];
 
     for &idx in &change_indices[1..] {
-        let prev = *current_group.last().unwrap();
+        let prev = *current_group.last().expect("group is non-empty after push");
         // If the gap between changes is small enough, merge into same hunk
         if idx - prev <= context_lines * 2 + 1 {
             current_group.push(idx);
@@ -169,7 +169,7 @@ fn build_hunks(ops: &[DiffOp], context_lines: usize) -> Vec<Hunk> {
     let mut hunks = Vec::new();
     for group in &groups {
         let first_change = group[0];
-        let last_change = *group.last().unwrap();
+        let last_change = *group.last().expect("group is non-empty after push");
 
         let start = first_change.saturating_sub(context_lines);
         let end = (last_change + context_lines + 1).min(ops.len());

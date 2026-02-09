@@ -138,9 +138,6 @@ pub enum MarkupError {
     },
 }
 
-/// A general Result type alias for gilt operations.
-pub type GiltResult<T> = Result<T, Box<dyn std::error::Error>>;
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -416,18 +413,6 @@ mod tests {
         format!("{:?}", SegmentError::InvalidSegment("test".to_string()));
         format!("{:?}", CellError::InvalidWidth("test".to_string()));
         format!("{:?}", PaletteError::InvalidIndex(0));
-    }
-
-    #[test]
-    fn test_gilt_result_type_alias() {
-        // Test that GiltResult can be used with different error types
-        let result1: GiltResult<i32> = Ok(42);
-        assert!(result1.is_ok());
-
-        let result2: GiltResult<String> = Err(Box::new(ColorParseError::InvalidHexFormat(
-            "bad".to_string(),
-        )));
-        assert!(result2.is_err());
     }
 
     #[test]

@@ -42,7 +42,7 @@ impl std::error::Error for SpinnerError {}
 /// let mut spinner = Spinner::new("dots").unwrap();
 /// let frame = spinner.render(0.0);
 /// ```
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Spinner {
     /// Name of the spinner animation (e.g. "dots", "line").
     pub name: String,
@@ -116,7 +116,7 @@ impl Spinner {
             self.start_time = Some(time);
         }
 
-        let elapsed = time - self.start_time.unwrap();
+        let elapsed = time - self.start_time.expect("start_time is set above when None");
         let frame_no = (elapsed * self.speed) / (self.interval / 1000.0) + self.frame_no_offset;
         let frame_idx = (frame_no as usize) % self.frames.len();
 

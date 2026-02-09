@@ -39,5 +39,14 @@ pub use crate::syntax::Syntax;
 pub use crate::table::Table;
 pub use crate::tree::Tree;
 
+// Interactive
+pub use crate::bar::Bar;
+#[cfg(feature = "json")]
+pub use crate::json::Json;
+pub use crate::layout::Layout;
+pub use crate::live::Live;
+pub use crate::prompt::{MultiSelect, Prompt, Select};
+pub use crate::status::Status;
+
 // Markup
 pub use crate::markup::render as render_markup;

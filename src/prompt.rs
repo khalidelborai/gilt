@@ -61,7 +61,7 @@ impl rustyline::Helper for ListCompleter {}
 // ---------------------------------------------------------------------------
 
 /// Error indicating an invalid response from the user.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct InvalidResponse {
     /// Human-readable description of why the response was invalid.
     pub message: String,
@@ -366,7 +366,10 @@ impl Prompt {
 
             match editor.readline(&prompt_str) {
                 Ok(line) => {
-                    let value = line.trim_end_matches('\n').trim_end_matches('\r').to_string();
+                    let value = line
+                        .trim_end_matches('\n')
+                        .trim_end_matches('\r')
+                        .to_string();
 
                     // Empty input: return default if available
                     if value.trim().is_empty() {
@@ -661,8 +664,8 @@ impl Select {
 
     /// Parse and validate a single-number input string.
     ///
-    /// Returns `Ok(index)` with a 0-based index, or `Err(message)` on invalid input.
-    pub fn parse_input(&self, input: &str) -> Result<usize, String> {
+    /// Returns `Ok(index)` with a 0-based index, or `Err(InvalidResponse)` on invalid input.
+    pub fn parse_input(&self, input: &str) -> Result<usize, InvalidResponse> {
         let trimmed = input.trim();
 
         // Empty input with default
@@ -671,26 +674,29 @@ impl Select {
                 if default < self.choices.len() {
                     return Ok(default);
                 }
-                return Err(format!(
-                    "Default index {} is out of range (1-{})",
-                    default + 1,
-                    self.choices.len()
-                ));
+                return Err(InvalidResponse {
+                    message: format!(
+                        "Default index {} is out of range (1-{})",
+                        default + 1,
+                        self.choices.len()
+                    ),
+                });
             }
-            return Err("Please enter a number".to_string());
+            return Err(InvalidResponse {
+                message: "Please enter a number".to_string(),
+            });
         }
 
         // Parse number
-        let num: usize = trimmed
-            .parse()
-            .map_err(|_| format!("'{}' is not a valid number", trimmed))?;
+        let num: usize = trimmed.parse().map_err(|_| InvalidResponse {
+            message: format!("'{}' is not a valid number", trimmed),
+        })?;
 
         // Validate range (user enters 1-based)
         if num < 1 || num > self.choices.len() {
-            return Err(format!(
-                "Please enter a number between 1 and {}",
-                self.choices.len()
-            ));
+            return Err(InvalidResponse {
+                message: format!("Please enter a number between 1 and {}", self.choices.len()),
+            });
         }
 
         Ok(num - 1) // Convert to 0-based
@@ -900,8 +906,8 @@ impl MultiSelect {
     /// Parse and validate a comma-separated input string.
     ///
     /// Supports individual numbers, comma-separated numbers, and "all".
-    /// Returns `Ok(indices)` with 0-based indices, or `Err(message)` on invalid input.
-    pub fn parse_input(&self, input: &str) -> Result<Vec<usize>, String> {
+    /// Returns `Ok(indices)` with 0-based indices, or `Err(InvalidResponse)` on invalid input.
+    pub fn parse_input(&self, input: &str) -> Result<Vec<usize>, InvalidResponse> {
         let trimmed = input.trim();
 
         // Empty input with defaults
@@ -910,11 +916,13 @@ impl MultiSelect {
                 // Validate defaults are in range
                 for &d in &self.defaults {
                     if d >= self.choices.len() {
-                        return Err(format!(
-                            "Default index {} is out of range (1-{})",
-                            d + 1,
-                            self.choices.len()
-                        ));
+                        return Err(InvalidResponse {
+                            message: format!(
+                                "Default index {} is out of range (1-{})",
+                                d + 1,
+                                self.choices.len()
+                            ),
+                        });
                     }
                 }
                 return self.validate_count(&self.defaults);
@@ -936,15 +944,13 @@ impl MultiSelect {
             if part.is_empty() {
                 continue;
             }
-            let num: usize = part
-                .parse()
-                .map_err(|_| format!("'{}' is not a valid number", part))?;
+            let num: usize = part.parse().map_err(|_| InvalidResponse {
+                message: format!("'{}' is not a valid number", part),
+            })?;
             if num < 1 || num > self.choices.len() {
-                return Err(format!(
-                    "Number {} is out of range (1-{})",
-                    num,
-                    self.choices.len()
-                ));
+                return Err(InvalidResponse {
+                    message: format!("Number {} is out of range (1-{})", num, self.choices.len()),
+                });
             }
             let index = num - 1;
             if !indices.contains(&index) {
@@ -956,21 +962,25 @@ impl MultiSelect {
     }
 
     /// Validate selection count against min/max constraints.
-    fn validate_count(&self, indices: &[usize]) -> Result<Vec<usize>, String> {
+    fn validate_count(&self, indices: &[usize]) -> Result<Vec<usize>, InvalidResponse> {
         if indices.len() < self.min_selections {
-            return Err(format!(
-                "Please select at least {} option{}",
-                self.min_selections,
-                if self.min_selections == 1 { "" } else { "s" }
-            ));
+            return Err(InvalidResponse {
+                message: format!(
+                    "Please select at least {} option{}",
+                    self.min_selections,
+                    if self.min_selections == 1 { "" } else { "s" }
+                ),
+            });
         }
         if let Some(max) = self.max_selections {
             if indices.len() > max {
-                return Err(format!(
-                    "Please select at most {} option{}",
-                    max,
-                    if max == 1 { "" } else { "s" }
-                ));
+                return Err(InvalidResponse {
+                    message: format!(
+                        "Please select at most {} option{}",
+                        max,
+                        if max == 1 { "" } else { "s" }
+                    ),
+                });
             }
         }
         Ok(indices.to_vec())
@@ -1542,7 +1552,7 @@ mod tests {
         let s = Select::new("Pick", vec!["A".into(), "B".into()]);
         let result = s.parse_input("3");
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("between 1 and 2"));
+        assert!(result.unwrap_err().message.contains("between 1 and 2"));
     }
 
     #[test]
@@ -1557,7 +1567,7 @@ mod tests {
         let s = Select::new("Pick", vec!["A".into(), "B".into()]);
         let result = s.parse_input("abc");
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("not a valid number"));
+        assert!(result.unwrap_err().message.contains("not a valid number"));
     }
 
     // -- Select: default selection when input is empty ----------------------
@@ -1573,7 +1583,7 @@ mod tests {
         let s = Select::new("Pick", vec!["A".into(), "B".into()]);
         let result = s.parse_input("");
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("enter a number"));
+        assert!(result.unwrap_err().message.contains("enter a number"));
     }
 
     // -- Select: handle whitespace in input ---------------------------------
@@ -1752,7 +1762,7 @@ mod tests {
         let ms = MultiSelect::new("Pick", vec!["A".into(), "B".into(), "C".into()]).with_min(2);
         let result = ms.parse_input("1");
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("at least 2"));
+        assert!(result.unwrap_err().message.contains("at least 2"));
     }
 
     #[test]
@@ -1766,7 +1776,7 @@ mod tests {
         let ms = MultiSelect::new("Pick", vec!["A".into(), "B".into(), "C".into()]).with_max(1);
         let result = ms.parse_input("1,2");
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("at most 1"));
+        assert!(result.unwrap_err().message.contains("at most 1"));
     }
 
     #[test]
@@ -1805,7 +1815,7 @@ mod tests {
         let ms = MultiSelect::new("Pick", vec!["A".into(), "B".into()]);
         let result = ms.parse_input("3");
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("out of range"));
+        assert!(result.unwrap_err().message.contains("out of range"));
     }
 
     #[test]
@@ -1971,7 +1981,7 @@ mod tests {
         let ms = MultiSelect::new("Pick", vec!["A".into(), "B".into(), "C".into()]).with_max(2);
         let result = ms.parse_input("all");
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("at most 2"));
+        assert!(result.unwrap_err().message.contains("at most 2"));
     }
 
     // -- Select: negative number input --------------------------------------
@@ -1990,6 +2000,6 @@ mod tests {
         let ms = MultiSelect::new("Pick", vec!["A".into(), "B".into()]);
         let result = ms.parse_input("1,abc");
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("not a valid number"));
+        assert!(result.unwrap_err().message.contains("not a valid number"));
     }
 }

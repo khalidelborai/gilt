@@ -135,8 +135,8 @@ impl Task {
         if self.samples.len() < 2 {
             return None;
         }
-        let first = self.samples.front().unwrap();
-        let last = self.samples.back().unwrap();
+        let first = self.samples.front().expect("samples has >= 2 elements");
+        let last = self.samples.back().expect("samples has >= 2 elements");
         let time_delta = last.timestamp - first.timestamp;
         if time_delta <= 0.0 {
             return None;
@@ -723,7 +723,9 @@ pub struct DownloadColumn {
 impl DownloadColumn {
     /// Create a new `DownloadColumn` with SI decimal units (default).
     pub fn new() -> Self {
-        Self { binary_units: false }
+        Self {
+            binary_units: false,
+        }
     }
 
     /// Create a new `DownloadColumn` that uses IEC binary units.
@@ -779,7 +781,9 @@ pub struct TransferSpeedColumn {
 impl TransferSpeedColumn {
     /// Create a new `TransferSpeedColumn` with SI decimal units (default).
     pub fn new() -> Self {
-        Self { binary_units: false }
+        Self {
+            binary_units: false,
+        }
     }
 
     /// Create a new `TransferSpeedColumn` that uses IEC binary units.

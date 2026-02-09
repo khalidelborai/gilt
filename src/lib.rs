@@ -103,6 +103,7 @@ pub mod json;
 pub mod layout;
 pub mod live;
 pub mod live_render;
+#[cfg(feature = "logging")]
 pub mod logging_handler;
 #[cfg(feature = "markdown")]
 pub mod markdown;

@@ -34,13 +34,13 @@ const DEFAULT_KEYWORDS: &[&str] = &[
 /// - **Level** (color-coded, 8 chars wide)
 /// - **Message** (optionally parsed as markup, with keyword highlighting)
 /// - **Path** (`module::path`, dim style, plus line number)
-#[allow(dead_code)]
 pub struct RichHandler {
     console: Mutex<Console>,
     show_time: bool,
     show_level: bool,
     show_path: bool,
     markup: bool,
+    #[allow(dead_code)] // Placeholder for future traceback integration
     rich_tracebacks: bool,
     keywords: Vec<String>,
     level_styles: HashMap<log::Level, Style>,

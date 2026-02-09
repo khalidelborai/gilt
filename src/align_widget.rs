@@ -3,6 +3,8 @@
 //! Port of Python's `rich/align.py`. Named `align_widget` to avoid conflict
 //! with the `align` keyword.
 
+use std::fmt;
+
 use crate::console::{Console, ConsoleOptions, Renderable};
 use crate::measure::Measurement;
 use crate::segment::Segment;
@@ -223,14 +225,32 @@ impl Renderable for Align {
             }
         }
         // Always end with a newline
-        if !segments.is_empty() {
-            let last = segments.last().unwrap();
+        if let Some(last) = segments.last() {
             if last.text != "\n" {
                 segments.push(Segment::line());
             }
         }
 
         segments
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Display
+// ---------------------------------------------------------------------------
+
+impl fmt::Display for Align {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let w = f.width().unwrap_or(80);
+        let mut console = Console::builder()
+            .width(w)
+            .force_terminal(true)
+            .no_color(true)
+            .build();
+        console.begin_capture();
+        console.print(self);
+        let output = console.end_capture();
+        write!(f, "{}", output.trim_end_matches('\n'))
     }
 }
 
