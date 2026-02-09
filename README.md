@@ -14,7 +14,7 @@ gilt brings beautiful terminal output to Rust with styles, tables, trees, syntax
 
 ```toml
 [dependencies]
-gilt = "0.6"
+gilt = "0.7"
 ```
 
 ```rust
@@ -25,6 +25,12 @@ fn main() {
     console.print_text("Hello, [bold magenta]gilt[/bold magenta]!");
 }
 ```
+
+## v0.7.0 Highlights
+
+- **Builder standardization** -- all widget builders now use `with_` prefix (`Panel::new().with_title()`, `Table::new().with_box_chars()`, etc.)
+- **Comprehensive rustdoc** -- 731-line crate-level guide with 132 doctests covering every feature
+- **2,295 lib tests + 132 doctests** -- full coverage across all widgets
 
 ## v0.6.0 Highlights
 
@@ -84,13 +90,13 @@ All four heavy dependencies are **default-on**. Disable them for minimal builds:
 
 ```toml
 # Full (default) -- includes json, markdown, syntax, interactive
-gilt = "0.6"
+gilt = "0.7"
 
 # Minimal -- no heavy deps
-gilt = { version = "0.6", default-features = false }
+gilt = { version = "0.7", default-features = false }
 
 # Pick what you need
-gilt = { version = "0.6", default-features = false, features = ["json", "syntax"] }
+gilt = { version = "0.7", default-features = false, features = ["json", "syntax"] }
 ```
 
 | Feature | Default | Description |
