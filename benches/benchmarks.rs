@@ -2,11 +2,15 @@
 
 use criterion::{black_box, criterion_group, criterion_main, BatchSize, Criterion};
 
+use gilt::cells::set_cell_size;
 use gilt::color::{Color, ColorSystem};
 use gilt::color_triplet::ColorTriplet;
 use gilt::console::ConsoleBuilder;
+use gilt::control::{escape_control_codes, strip_control_codes};
+use gilt::emoji_replace::emoji_replace;
 use gilt::highlighter::{Highlighter, ReprHighlighter};
 use gilt::panel::Panel;
+use gilt::segment::Segment;
 use gilt::style::Style;
 use gilt::table::Table;
 use gilt::text::Text;
@@ -374,6 +378,270 @@ fn bench_markup_parsing(c: &mut Criterion) {
 }
 
 // ---------------------------------------------------------------------------
+// h) Control codes — Cow<str> optimization
+// ---------------------------------------------------------------------------
+
+fn bench_control_codes(c: &mut Criterion) {
+    let mut group = c.benchmark_group("control_codes");
+
+    let clean = "Hello, World! This is a perfectly normal ASCII string with no issues.";
+    group.bench_function("strip_no_control_chars", |b| {
+        b.iter(|| strip_control_codes(black_box(clean)));
+    });
+
+    let dirty = "Hello\rWorld\x07Beep\x08Back\x0BVtab\x0CFeed\x1b[31mRed";
+    group.bench_function("strip_with_control_chars", |b| {
+        b.iter(|| strip_control_codes(black_box(dirty)));
+    });
+
+    group.bench_function("escape_no_control_chars", |b| {
+        b.iter(|| escape_control_codes(black_box(clean)));
+    });
+
+    group.bench_function("escape_with_control_chars", |b| {
+        b.iter(|| escape_control_codes(black_box(dirty)));
+    });
+
+    let long_clean = "abcdefghij".repeat(100); // 1000 chars
+    group.bench_function("strip_long_clean", |b| {
+        b.iter(|| strip_control_codes(black_box(&long_clean)));
+    });
+
+    group.finish();
+}
+
+// ---------------------------------------------------------------------------
+// i) Cell sizing — Cow<str> optimization
+// ---------------------------------------------------------------------------
+
+fn bench_cell_sizing(c: &mut Criterion) {
+    let mut group = c.benchmark_group("cell_sizing");
+
+    group.bench_function("exact_width", |b| {
+        b.iter(|| set_cell_size(black_box("Hello"), 5));
+    });
+
+    group.bench_function("needs_padding", |b| {
+        b.iter(|| set_cell_size(black_box("Hi"), 10));
+    });
+
+    group.bench_function("needs_truncation", |b| {
+        b.iter(|| set_cell_size(black_box("Hello, World!"), 5));
+    });
+
+    // CJK chars: each is 2 cells wide, 3 chars = 6 cells
+    group.bench_function("unicode_exact", |b| {
+        b.iter(|| set_cell_size(black_box("\u{4E16}\u{754C}\u{4F60}"), 6));
+    });
+
+    // 3 CJK chars = 6 cells, truncate to 4
+    group.bench_function("unicode_truncate", |b| {
+        b.iter(|| set_cell_size(black_box("\u{4E16}\u{754C}\u{4F60}"), 4));
+    });
+
+    group.finish();
+}
+
+// ---------------------------------------------------------------------------
+// j) Emoji operations — Cow<str> optimization
+// ---------------------------------------------------------------------------
+
+fn bench_emoji_operations(c: &mut Criterion) {
+    let mut group = c.benchmark_group("emoji_operations");
+
+    group.bench_function("no_emojis", |b| {
+        b.iter(|| emoji_replace(black_box("Just a plain text string with no emoji codes."), None));
+    });
+
+    group.bench_function("single_emoji", |b| {
+        b.iter(|| emoji_replace(black_box("I :heart: Rust"), None));
+    });
+
+    group.bench_function("multiple_emojis", |b| {
+        b.iter(|| {
+            emoji_replace(
+                black_box(":heart: hello :thumbs_up: world :star: foo :fire: bar :rocket:"),
+                None,
+            )
+        });
+    });
+
+    let many = (0..50)
+        .map(|i| {
+            if i % 5 == 0 {
+                ":heart:".to_string()
+            } else if i % 5 == 1 {
+                ":star:".to_string()
+            } else if i % 5 == 2 {
+                ":fire:".to_string()
+            } else if i % 5 == 3 {
+                ":rocket:".to_string()
+            } else {
+                ":thumbs_up:".to_string()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" word ");
+    group.bench_function("many_emojis", |b| {
+        b.iter(|| emoji_replace(black_box(&many), None));
+    });
+
+    group.bench_function("no_match_colons", |b| {
+        b.iter(|| {
+            emoji_replace(
+                black_box("time is 10:30 and :foo: and :bar: and :baz: are not real"),
+                None,
+            )
+        });
+    });
+
+    group.finish();
+}
+
+// ---------------------------------------------------------------------------
+// k) Segment operations — CompactString benefit
+// ---------------------------------------------------------------------------
+
+fn bench_segment_operations(c: &mut Criterion) {
+    let mut group = c.benchmark_group("segment_operations");
+
+    group.bench_function("create_short", |b| {
+        b.iter(|| Segment::text(black_box("hi")));
+    });
+
+    group.bench_function("create_medium", |b| {
+        b.iter(|| Segment::text(black_box("Hello, World! Test")));
+    });
+
+    let long_str = "x".repeat(100);
+    group.bench_function("create_long", |b| {
+        b.iter(|| Segment::text(black_box(&*long_str)));
+    });
+
+    let short_seg = Segment::text("hi");
+    group.bench_function("clone_short", |b| {
+        b.iter(|| black_box(&short_seg).clone());
+    });
+
+    let long_seg = Segment::text(&"x".repeat(100));
+    group.bench_function("clone_long", |b| {
+        b.iter(|| black_box(&long_seg).clone());
+    });
+
+    let mixed_segments: Vec<Segment> = (0..100)
+        .map(|i| {
+            let style = if i % 3 == 0 {
+                Some(Style::parse("bold").unwrap())
+            } else if i % 3 == 1 {
+                Some(Style::parse("italic").unwrap())
+            } else {
+                None
+            };
+            Segment::new(&format!("seg{}", i), style, None)
+        })
+        .collect();
+    group.bench_function("simplify_100", |b| {
+        b.iter(|| Segment::simplify(black_box(&mixed_segments)));
+    });
+
+    let divide_segments = vec![Segment::text("The quick brown fox jumps over the lazy dog and more text here")];
+    group.bench_function("divide_many_cuts", |b| {
+        b.iter(|| {
+            Segment::divide(
+                black_box(&divide_segments),
+                black_box(&[4, 10, 16, 20, 26, 31, 35, 40, 45, 50]),
+            )
+        });
+    });
+
+    group.finish();
+}
+
+// ---------------------------------------------------------------------------
+// l) Export operations — write! optimization
+// ---------------------------------------------------------------------------
+
+fn bench_export_operations(c: &mut Criterion) {
+    let mut group = c.benchmark_group("export_operations");
+
+    // --- Small table (10 rows) ---
+    let mut table_10 = Table::new(&["Name", "Age", "City"]);
+    let cities = ["New York", "London", "Tokyo", "Paris", "Berlin"];
+    for i in 0..10 {
+        table_10.add_row(&[
+            &format!("Person {}", i),
+            &format!("{}", 20 + i),
+            cities[i % 5],
+        ]);
+    }
+
+    // --- Large table (100 rows) ---
+    let mut table_100 = Table::new(&["ID", "Name", "Score", "Status"]);
+    for i in 0..100 {
+        table_100.add_row(&[
+            &format!("{}", i),
+            &format!("Entry {}", i),
+            &format!("{:.2}", i as f64 * 1.7),
+            if i % 2 == 0 { "active" } else { "inactive" },
+        ]);
+    }
+
+    // Build a console with record=true and print the small table
+    let mut console_html_10 = ConsoleBuilder::new()
+        .width(80)
+        .force_terminal(true)
+        .color_system("truecolor")
+        .record(true)
+        .build();
+    console_html_10.print(&table_10);
+
+    group.bench_function("export_html_table_10", |b| {
+        b.iter(|| console_html_10.export_html(None, false, true));
+    });
+
+    // Build a console with record=true and print the large table
+    let mut console_html_100 = ConsoleBuilder::new()
+        .width(80)
+        .force_terminal(true)
+        .color_system("truecolor")
+        .record(true)
+        .build();
+    console_html_100.print(&table_100);
+
+    group.bench_function("export_html_table_100", |b| {
+        b.iter(|| console_html_100.export_html(None, false, true));
+    });
+
+    // SVG export — small table
+    let mut console_svg_10 = ConsoleBuilder::new()
+        .width(80)
+        .force_terminal(true)
+        .color_system("truecolor")
+        .record(true)
+        .build();
+    console_svg_10.print(&table_10);
+
+    group.bench_function("export_svg_table_10", |b| {
+        b.iter(|| console_svg_10.export_svg("Benchmark", None, false, None, 0.61));
+    });
+
+    // SVG export — large table
+    let mut console_svg_100 = ConsoleBuilder::new()
+        .width(80)
+        .force_terminal(true)
+        .color_system("truecolor")
+        .record(true)
+        .build();
+    console_svg_100.print(&table_100);
+
+    group.bench_function("export_svg_table_100", |b| {
+        b.iter(|| console_svg_100.export_svg("Benchmark", None, false, None, 0.61));
+    });
+
+    group.finish();
+}
+
+// ---------------------------------------------------------------------------
 // Criterion group and main
 // ---------------------------------------------------------------------------
 
@@ -386,5 +654,10 @@ criterion_group!(
     bench_console_render,
     bench_highlighter,
     bench_markup_parsing,
+    bench_control_codes,
+    bench_cell_sizing,
+    bench_emoji_operations,
+    bench_segment_operations,
+    bench_export_operations,
 );
 criterion_main!(benches);
