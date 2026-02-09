@@ -1,7 +1,7 @@
 //! Derive macros for the gilt terminal formatting library.
 //!
 //! This crate provides the `#[derive(Table)]`, `#[derive(Panel)]`, `#[derive(Tree)]`,
-//! `#[derive(Columns)]`, and `#[derive(Renderable)]` macros that generate widget
+//! `#[derive(Columns)]`, `#[derive(Rule)]`, `#[derive(Inspect)]`, and `#[derive(Renderable)]` macros that generate widget
 //! conversion methods and trait implementations for structs.
 //!
 //! # Table Example
@@ -2257,6 +2257,544 @@ fn derive_columns_impl(input: &DeriveInput) -> syn::Result<proc_macro2::TokenStr
 }
 
 // ---------------------------------------------------------------------------
+// Rule derive — attribute types
+// ---------------------------------------------------------------------------
+
+/// Parsed struct-level `#[rule(...)]` attributes.
+#[derive(Default)]
+struct RuleAttrs {
+    /// Custom title text (literal string). Overridden if a field has `#[rule(title)]`.
+    title: Option<LitStr>,
+    /// Character(s) used to draw the rule line (default "━").
+    characters: Option<LitStr>,
+    /// Style string for the rule line.
+    style: Option<LitStr>,
+    /// Title alignment: "left", "center", "right".
+    align: Option<LitStr>,
+    /// End string appended after the rule (default "\n").
+    end: Option<LitStr>,
+}
+
+/// A single key=value inside `#[rule(...)]` at the struct level.
+struct RuleAttr {
+    key: Ident,
+    value: RuleAttrValue,
+}
+
+enum RuleAttrValue {
+    Str(LitStr),
+}
+
+impl Parse for RuleAttr {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let key: Ident = input.parse()?;
+        if input.peek(Token![=]) {
+            let _eq: Token![=] = input.parse()?;
+            if input.peek(LitStr) {
+                let lit: LitStr = input.parse()?;
+                Ok(RuleAttr {
+                    key,
+                    value: RuleAttrValue::Str(lit),
+                })
+            } else {
+                Err(input.error("expected string literal"))
+            }
+        } else {
+            Err(input.error("expected `= \"...\"`"))
+        }
+    }
+}
+
+/// Parse all `#[rule(...)]` attributes from a `DeriveInput`.
+fn parse_rule_attrs(input: &DeriveInput) -> syn::Result<RuleAttrs> {
+    let mut attrs = RuleAttrs::default();
+
+    for attr in &input.attrs {
+        if !attr.path().is_ident("rule") {
+            continue;
+        }
+        let items: Punctuated<RuleAttr, Token![,]> =
+            attr.parse_args_with(Punctuated::parse_terminated)?;
+
+        for item in items {
+            let key_str = item.key.to_string();
+            match key_str.as_str() {
+                "title" => {
+                    attrs.title = Some(rule_expect_str(&item, "title")?);
+                }
+                "characters" => {
+                    attrs.characters = Some(rule_expect_str(&item, "characters")?);
+                }
+                "style" => {
+                    attrs.style = Some(rule_expect_str(&item, "style")?);
+                }
+                "align" => {
+                    attrs.align = Some(rule_expect_str(&item, "align")?);
+                }
+                "end" => {
+                    attrs.end = Some(rule_expect_str(&item, "end")?);
+                }
+                _ => {
+                    return Err(syn::Error::new_spanned(
+                        &item.key,
+                        format!("unknown rule attribute `{}`", key_str),
+                    ));
+                }
+            }
+        }
+    }
+
+    Ok(attrs)
+}
+
+fn rule_expect_str(attr: &RuleAttr, _name: &str) -> syn::Result<LitStr> {
+    match &attr.value {
+        RuleAttrValue::Str(s) => Ok(s.clone()),
+    }
+}
+
+/// Map an `align` string literal to a token stream for `gilt::align_widget::HorizontalAlign`.
+fn align_tokens(lit: &LitStr) -> syn::Result<proc_macro2::TokenStream> {
+    let val = lit.value();
+    match val.as_str() {
+        "left" => Ok(quote! { gilt::align_widget::HorizontalAlign::Left }),
+        "center" => Ok(quote! { gilt::align_widget::HorizontalAlign::Center }),
+        "right" => Ok(quote! { gilt::align_widget::HorizontalAlign::Right }),
+        other => Err(syn::Error::new_spanned(
+            lit,
+            format!(
+                "unknown align `{other}`. Expected one of: left, center, right"
+            ),
+        )),
+    }
+}
+
+/// Check whether a field has `#[rule(title)]`.
+fn has_rule_title_attr(field: &syn::Field) -> syn::Result<bool> {
+    for attr in &field.attrs {
+        if !attr.path().is_ident("rule") {
+            continue;
+        }
+        let ident: Ident = attr.parse_args()?;
+        if ident == "title" {
+            return Ok(true);
+        }
+        return Err(syn::Error::new_spanned(
+            &ident,
+            format!(
+                "unknown rule field attribute `{}`. Expected: title",
+                ident
+            ),
+        ));
+    }
+    Ok(false)
+}
+
+// ---------------------------------------------------------------------------
+// Rule derive entry point
+// ---------------------------------------------------------------------------
+
+/// Derive macro that generates a `to_rule(&self) -> gilt::rule::Rule` method.
+///
+/// # Struct-level attributes (`#[rule(...)]`)
+///
+/// | Attribute | Type | Description |
+/// |-----------|------|-------------|
+/// | `title` | string | Custom title text (default: struct name) |
+/// | `characters` | string | Character(s) for the rule line (default "━") |
+/// | `style` | string | Style string for the rule line |
+/// | `align` | string | Title alignment: "left", "center", "right" |
+/// | `end` | string | String appended after the rule (default "\n") |
+///
+/// # Field-level attributes (`#[rule(...)]`)
+///
+/// | Attribute | Description |
+/// |-----------|-------------|
+/// | `title` | Use this field's `.to_string()` as the rule title |
+///
+/// # Example
+///
+/// ```ignore
+/// use gilt_derive::Rule;
+///
+/// #[derive(Rule)]
+/// #[rule(characters = "─", style = "bold blue", align = "center")]
+/// struct SectionBreak {
+///     #[rule(title)]
+///     heading: String,
+/// }
+///
+/// let br = SectionBreak { heading: "Results".into() };
+/// let rule = br.to_rule();
+/// ```
+#[proc_macro_derive(Rule, attributes(rule))]
+pub fn derive_rule(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    match derive_rule_impl(&input) {
+        Ok(ts) => ts.into(),
+        Err(e) => e.to_compile_error().into(),
+    }
+}
+
+fn derive_rule_impl(input: &DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
+    let struct_name = &input.ident;
+    let struct_name_str = struct_name.to_string();
+
+    // Only support structs with named fields.
+    let fields = match &input.data {
+        Data::Struct(data_struct) => match &data_struct.fields {
+            Fields::Named(named) => &named.named,
+            Fields::Unnamed(_) => {
+                return Err(syn::Error::new_spanned(
+                    struct_name,
+                    "Rule derive only supports structs with named fields",
+                ));
+            }
+            Fields::Unit => {
+                return Err(syn::Error::new_spanned(
+                    struct_name,
+                    "Rule derive does not support unit structs",
+                ));
+            }
+        },
+        Data::Enum(_) => {
+            return Err(syn::Error::new_spanned(
+                struct_name,
+                "Rule derive does not support enums",
+            ));
+        }
+        Data::Union(_) => {
+            return Err(syn::Error::new_spanned(
+                struct_name,
+                "Rule derive does not support unions",
+            ));
+        }
+    };
+
+    // Parse struct-level #[rule(...)] attributes.
+    let rule_attrs = parse_rule_attrs(input)?;
+
+    // Find the field annotated with `#[rule(title)]`, if any.
+    let mut title_field: Option<Ident> = None;
+    for field in fields.iter() {
+        let ident = field
+            .ident
+            .as_ref()
+            .expect("named field must have ident")
+            .clone();
+        if has_rule_title_attr(field)? {
+            if title_field.is_some() {
+                return Err(syn::Error::new_spanned(
+                    &ident,
+                    "only one field may be annotated with `#[rule(title)]`",
+                ));
+            }
+            title_field = Some(ident);
+        }
+    }
+
+    // Determine the title source.
+    // Priority: field with #[rule(title)] > struct-level title attr > struct name.
+    let title_expr = if let Some(ref field_ident) = title_field {
+        quote! { self.#field_ident.to_string() }
+    } else if let Some(ref lit) = rule_attrs.title {
+        let val = lit.value();
+        quote! { #val.to_string() }
+    } else {
+        quote! { #struct_name_str.to_string() }
+    };
+
+    // Build configuration statements.
+    let mut rule_config = Vec::new();
+
+    if let Some(ref lit) = rule_attrs.characters {
+        let val = lit.value();
+        rule_config.push(quote! {
+            rule = rule.characters(#val);
+        });
+    }
+    if let Some(ref lit) = rule_attrs.style {
+        let val = lit.value();
+        rule_config.push(quote! {
+            rule = rule.style(gilt::style::Style::parse(#val));
+        });
+    }
+    if let Some(ref lit) = rule_attrs.align {
+        let align_ts = align_tokens(lit)?;
+        rule_config.push(quote! {
+            rule = rule.align(#align_ts);
+        });
+    }
+    if let Some(ref lit) = rule_attrs.end {
+        let val = lit.value();
+        rule_config.push(quote! {
+            rule = rule.end(#val);
+        });
+    }
+
+    let expanded = quote! {
+        impl #struct_name {
+            /// Generates a [`gilt::rule::Rule`] from this struct.
+            ///
+            /// The title is derived from the field annotated with `#[rule(title)]`,
+            /// the struct-level `title` attribute, or the struct name (in that order).
+            pub fn to_rule(&self) -> gilt::rule::Rule {
+                let title_text = #title_expr;
+                let mut rule = gilt::rule::Rule::with_title(&title_text);
+                #(#rule_config)*
+                rule
+            }
+        }
+    };
+
+    Ok(expanded)
+}
+
+// ===========================================================================
+// Inspect derive macro
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// Struct-level attribute: #[inspect(...)]
+// ---------------------------------------------------------------------------
+
+/// Parsed struct-level `#[inspect(...)]` attributes.
+#[derive(Default)]
+struct InspectAttrs {
+    title: Option<LitStr>,
+    label: Option<LitStr>,
+    doc: Option<LitStr>,
+    pretty: Option<LitBool>,
+}
+
+/// A single key=value (or standalone bool key) inside `#[inspect(...)]`.
+struct InspectAttr {
+    key: Ident,
+    value: InspectAttrValue,
+}
+
+enum InspectAttrValue {
+    Str(LitStr),
+    Bool(LitBool),
+    /// Standalone flag (no `= ...`), treated as `true`.
+    Flag,
+}
+
+impl Parse for InspectAttr {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let key: Ident = input.parse()?;
+        if input.peek(Token![=]) {
+            let _eq: Token![=] = input.parse()?;
+            if input.peek(LitStr) {
+                let lit: LitStr = input.parse()?;
+                Ok(InspectAttr {
+                    key,
+                    value: InspectAttrValue::Str(lit),
+                })
+            } else if input.peek(LitBool) {
+                let lit: LitBool = input.parse()?;
+                Ok(InspectAttr {
+                    key,
+                    value: InspectAttrValue::Bool(lit),
+                })
+            } else {
+                Err(input.error("expected string literal or bool"))
+            }
+        } else {
+            // Standalone flag
+            Ok(InspectAttr {
+                key,
+                value: InspectAttrValue::Flag,
+            })
+        }
+    }
+}
+
+/// Parse all `#[inspect(...)]` attributes from a `DeriveInput`.
+fn parse_inspect_attrs(input: &DeriveInput) -> syn::Result<InspectAttrs> {
+    let mut attrs = InspectAttrs::default();
+
+    for attr in &input.attrs {
+        if !attr.path().is_ident("inspect") {
+            continue;
+        }
+        let items: Punctuated<InspectAttr, Token![,]> =
+            attr.parse_args_with(Punctuated::parse_terminated)?;
+
+        for item in items {
+            let key_str = item.key.to_string();
+            match key_str.as_str() {
+                "title" => {
+                    attrs.title = Some(inspect_expect_str(&item, "title")?);
+                }
+                "label" => {
+                    attrs.label = Some(inspect_expect_str(&item, "label")?);
+                }
+                "doc" => {
+                    attrs.doc = Some(inspect_expect_str(&item, "doc")?);
+                }
+                "pretty" => {
+                    attrs.pretty = Some(inspect_expect_bool(&item, "pretty")?);
+                }
+                _ => {
+                    return Err(syn::Error::new_spanned(
+                        &item.key,
+                        format!("unknown inspect attribute `{}`", key_str),
+                    ));
+                }
+            }
+        }
+    }
+
+    Ok(attrs)
+}
+
+fn inspect_expect_str(attr: &InspectAttr, name: &str) -> syn::Result<LitStr> {
+    match &attr.value {
+        InspectAttrValue::Str(s) => Ok(s.clone()),
+        _ => Err(syn::Error::new_spanned(
+            &attr.key,
+            format!("`{}` expects a string literal", name),
+        )),
+    }
+}
+
+fn inspect_expect_bool(attr: &InspectAttr, _name: &str) -> syn::Result<LitBool> {
+    match &attr.value {
+        InspectAttrValue::Bool(b) => Ok(b.clone()),
+        InspectAttrValue::Flag => Ok(LitBool::new(true, attr.key.span())),
+        _ => Err(syn::Error::new_spanned(
+            &attr.key,
+            format!("`{}` expects a bool", _name),
+        )),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Inspect derive entry point
+// ---------------------------------------------------------------------------
+
+/// Derive macro that generates a `to_inspect(&self) -> gilt::inspect::Inspect`
+/// method on structs that implement `Debug`.
+///
+/// The generated method creates an [`Inspect`] widget for the value, applying
+/// any struct-level `#[inspect(...)]` configuration attributes.
+///
+/// # Struct-level attributes (`#[inspect(...)]`)
+///
+/// | Attribute | Type | Description |
+/// |-----------|------|-------------|
+/// | `title` | string | Custom title for the inspect panel (default: "Inspect: TypeName") |
+/// | `label` | string | Label for the inspected value |
+/// | `doc` | string | Documentation text to display |
+/// | `pretty` | bool | Pretty-print the Debug output (default true) |
+///
+/// # Requirements
+///
+/// The struct must implement `Debug` (or derive it). The generated impl adds
+/// a `where Self: std::fmt::Debug + 'static` bound.
+///
+/// # Example
+///
+/// ```ignore
+/// use gilt_derive::Inspect;
+///
+/// #[derive(Debug, Inspect)]
+/// #[inspect(title = "Server Info", label = "web-01")]
+/// struct ServerStatus {
+///     host: String,
+///     cpu: f32,
+///     memory: f32,
+/// }
+///
+/// let status = ServerStatus {
+///     host: "web-01".into(),
+///     cpu: 42.5,
+///     memory: 67.3,
+/// };
+/// let widget = status.to_inspect();
+/// ```
+#[proc_macro_derive(Inspect, attributes(inspect))]
+pub fn derive_inspect(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    match derive_inspect_impl(&input) {
+        Ok(ts) => ts.into(),
+        Err(e) => e.to_compile_error().into(),
+    }
+}
+
+fn derive_inspect_impl(input: &DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
+    let struct_name = &input.ident;
+
+    // Only support structs (not enums or unions).
+    match &input.data {
+        Data::Struct(_) => {}
+        Data::Enum(_) => {
+            return Err(syn::Error::new_spanned(
+                struct_name,
+                "Inspect derive does not support enums",
+            ));
+        }
+        Data::Union(_) => {
+            return Err(syn::Error::new_spanned(
+                struct_name,
+                "Inspect derive does not support unions",
+            ));
+        }
+    }
+
+    // Parse struct-level #[inspect(...)] attributes.
+    let inspect_attrs = parse_inspect_attrs(input)?;
+
+    // Build configuration chain calls.
+    let mut config_calls = Vec::new();
+
+    if let Some(ref lit) = inspect_attrs.title {
+        let val = lit.value();
+        config_calls.push(quote! {
+            .with_title(#val)
+        });
+    }
+    if let Some(ref lit) = inspect_attrs.label {
+        let val = lit.value();
+        config_calls.push(quote! {
+            .with_label(#val)
+        });
+    }
+    if let Some(ref lit) = inspect_attrs.doc {
+        let val = lit.value();
+        config_calls.push(quote! {
+            .with_doc(#val)
+        });
+    }
+    if let Some(ref lit) = inspect_attrs.pretty {
+        let val = lit.value;
+        config_calls.push(quote! {
+            .with_pretty(#val)
+        });
+    }
+
+    let expanded = quote! {
+        impl #struct_name {
+            /// Creates a [`gilt::inspect::Inspect`] widget for this value.
+            ///
+            /// The struct must implement `Debug`. The inspect widget displays the
+            /// type name, optional label/documentation, and the Debug representation
+            /// with syntax highlighting.
+            pub fn to_inspect(&self) -> gilt::inspect::Inspect<'_>
+            where
+                Self: std::fmt::Debug + 'static,
+            {
+                gilt::inspect::Inspect::new(self)
+                    #(#config_calls)*
+            }
+        }
+    };
+
+    Ok(expanded)
+}
+
+// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
@@ -3475,4 +4013,271 @@ mod tests {
             result.unwrap_err().to_string().contains("unknown field attribute"),
         );
     }
+
+    // -- Rule derive -------------------------------------------------------
+
+    #[test]
+    fn test_derive_rule_basic() {
+        let input: DeriveInput = syn::parse_quote! {
+            struct Section {
+                heading: String,
+            }
+        };
+        let result = derive_rule_impl(&input);
+        assert!(result.is_ok(), "derive_rule_impl failed: {:?}", result.err());
+        let tokens = result.unwrap().to_string();
+        assert!(tokens.contains("to_rule"), "should generate to_rule method");
+        assert!(tokens.contains("Rule"), "should reference Rule type");
+        assert!(tokens.contains("with_title"), "should use with_title constructor");
+        // Default title should be the struct name.
+        assert!(tokens.contains("\"Section\""), "default title should be struct name");
+    }
+
+    #[test]
+    fn test_derive_rule_with_style() {
+        let input: DeriveInput = syn::parse_quote! {
+            #[rule(style = "bold blue")]
+            struct Divider {
+                label: String,
+            }
+        };
+        let result = derive_rule_impl(&input);
+        assert!(result.is_ok(), "derive_rule_impl failed: {:?}", result.err());
+        let tokens = result.unwrap().to_string();
+        assert!(tokens.contains("to_rule"), "should generate to_rule method");
+        assert!(tokens.contains("Style :: parse"), "should parse style string");
+        assert!(tokens.contains("\"bold blue\""), "should contain style value");
+    }
+
+    #[test]
+    fn test_derive_rule_with_characters() {
+        let input: DeriveInput = syn::parse_quote! {
+            #[rule(characters = "=")]
+            struct Break {
+                text: String,
+            }
+        };
+        let result = derive_rule_impl(&input);
+        assert!(result.is_ok(), "derive_rule_impl failed: {:?}", result.err());
+        let tokens = result.unwrap().to_string();
+        assert!(tokens.contains("characters"), "should call characters method");
+        assert!(tokens.contains("\"=\""), "should contain custom character");
+    }
+
+    #[test]
+    fn test_derive_rule_with_align() {
+        let input: DeriveInput = syn::parse_quote! {
+            #[rule(align = "left")]
+            struct Header {
+                text: String,
+            }
+        };
+        let result = derive_rule_impl(&input);
+        assert!(result.is_ok(), "derive_rule_impl failed: {:?}", result.err());
+        let tokens = result.unwrap().to_string();
+        assert!(tokens.contains("align"), "should call align method");
+        assert!(tokens.contains("Left"), "should contain Left variant");
+    }
+
+    #[test]
+    fn test_derive_rule_title_field() {
+        let input: DeriveInput = syn::parse_quote! {
+            struct Section {
+                #[rule(title)]
+                heading: String,
+                extra: u32,
+            }
+        };
+        let result = derive_rule_impl(&input);
+        assert!(result.is_ok(), "derive_rule_impl failed: {:?}", result.err());
+        let tokens = result.unwrap().to_string();
+        assert!(tokens.contains("to_rule"), "should generate to_rule method");
+        // Should use the field `heading` as the title source.
+        assert!(tokens.contains("heading"), "should reference heading field");
+        assert!(tokens.contains("to_string"), "should call to_string on field");
+        // Should NOT fall back to struct name.
+        assert!(!tokens.contains("\"Section\""), "should not use struct name as title");
+    }
+
+    #[test]
+    fn test_derive_rule_rejects_enum() {
+        let input: DeriveInput = syn::parse_quote! {
+            enum Foo { A, B }
+        };
+        let result = derive_rule_impl(&input);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("does not support enums"));
+    }
+
+    // -- RuleAttr parsing --------------------------------------------------
+
+    #[test]
+    fn test_parse_rule_attr_str() {
+        let tokens: proc_macro2::TokenStream = syn::parse_quote! { style = "bold red" };
+        let attr: RuleAttr = syn::parse2(tokens).unwrap();
+        assert_eq!(attr.key, "style");
+        match attr.value {
+            RuleAttrValue::Str(s) => assert_eq!(s.value(), "bold red"),
+        }
+    }
+
+    #[test]
+    fn test_rule_expect_str_ok() {
+        let tokens: proc_macro2::TokenStream = syn::parse_quote! { characters = "─" };
+        let attr: RuleAttr = syn::parse2(tokens).unwrap();
+        let result = rule_expect_str(&attr, "characters");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().value(), "─");
+    }
+
+    // -- Inspect derive tests ----------------------------------------------
+
+    #[test]
+    fn test_derive_inspect_basic() {
+        let input: DeriveInput = syn::parse_quote! {
+            struct Config {
+                host: String,
+                port: u16,
+            }
+        };
+        let result = derive_inspect_impl(&input);
+        assert!(result.is_ok(), "derive_inspect_impl failed: {:?}", result.err());
+        let tokens = result.unwrap().to_string();
+        assert!(tokens.contains("to_inspect"), "should generate to_inspect method");
+        assert!(tokens.contains("Inspect"), "should reference Inspect type");
+        assert!(tokens.contains("Debug"), "should have Debug bound");
+    }
+
+    #[test]
+    fn test_derive_inspect_with_title() {
+        let input: DeriveInput = syn::parse_quote! {
+            #[inspect(title = "Server Info")]
+            struct Config {
+                host: String,
+                port: u16,
+            }
+        };
+        let result = derive_inspect_impl(&input);
+        assert!(result.is_ok(), "derive_inspect_impl failed: {:?}", result.err());
+        let tokens = result.unwrap().to_string();
+        assert!(tokens.contains("\"Server Info\""), "should contain custom title");
+        assert!(tokens.contains("with_title"), "should call with_title");
+    }
+
+    #[test]
+    fn test_derive_inspect_with_all_attrs() {
+        let input: DeriveInput = syn::parse_quote! {
+            #[inspect(title = "My Widget", label = "web-01", doc = "A web server", pretty = false)]
+            struct Server {
+                host: String,
+                cpu: f32,
+            }
+        };
+        let result = derive_inspect_impl(&input);
+        assert!(result.is_ok(), "derive_inspect_impl failed: {:?}", result.err());
+        let tokens = result.unwrap().to_string();
+        assert!(tokens.contains("with_title"), "should call with_title");
+        assert!(tokens.contains("with_label"), "should call with_label");
+        assert!(tokens.contains("with_doc"), "should call with_doc");
+        assert!(tokens.contains("with_pretty"), "should call with_pretty");
+    }
+
+    #[test]
+    fn test_derive_inspect_pretty_false() {
+        let input: DeriveInput = syn::parse_quote! {
+            #[inspect(pretty = false)]
+            struct Config {
+                host: String,
+            }
+        };
+        let result = derive_inspect_impl(&input);
+        assert!(result.is_ok());
+        let tokens = result.unwrap().to_string();
+        assert!(tokens.contains("with_pretty"), "should call with_pretty");
+    }
+
+    #[test]
+    fn test_derive_inspect_rejects_enum() {
+        let input: DeriveInput = syn::parse_quote! {
+            enum Foo { A, B }
+        };
+        let result = derive_inspect_impl(&input);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("does not support enums"));
+    }
+
+    #[test]
+    fn test_derive_inspect_rejects_unknown_attr() {
+        let input: DeriveInput = syn::parse_quote! {
+            #[inspect(nonexistent = "value")]
+            struct Rec {
+                a: String,
+            }
+        };
+        let result = derive_inspect_impl(&input);
+        assert!(result.is_err());
+        assert!(
+            result.unwrap_err().to_string().contains("unknown inspect attribute"),
+        );
+    }
+
+    // -- InspectAttr parsing -----------------------------------------------
+
+    #[test]
+    fn test_parse_inspect_attr_str() {
+        let tokens: proc_macro2::TokenStream = syn::parse_quote! { title = "My Inspect" };
+        let attr: InspectAttr = syn::parse2(tokens).unwrap();
+        assert_eq!(attr.key, "title");
+        match attr.value {
+            InspectAttrValue::Str(s) => assert_eq!(s.value(), "My Inspect"),
+            _ => panic!("expected Str"),
+        }
+    }
+
+    #[test]
+    fn test_parse_inspect_attr_bool() {
+        let tokens: proc_macro2::TokenStream = syn::parse_quote! { pretty = false };
+        let attr: InspectAttr = syn::parse2(tokens).unwrap();
+        assert_eq!(attr.key, "pretty");
+        match attr.value {
+            InspectAttrValue::Bool(b) => assert!(!b.value),
+            _ => panic!("expected Bool"),
+        }
+    }
+
+    #[test]
+    fn test_inspect_expect_str_ok() {
+        let tokens: proc_macro2::TokenStream = syn::parse_quote! { title = "hello" };
+        let attr: InspectAttr = syn::parse2(tokens).unwrap();
+        let result = inspect_expect_str(&attr, "title");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().value(), "hello");
+    }
+
+    #[test]
+    fn test_inspect_expect_str_wrong_type() {
+        let tokens: proc_macro2::TokenStream = syn::parse_quote! { title = true };
+        let attr: InspectAttr = syn::parse2(tokens).unwrap();
+        let result = inspect_expect_str(&attr, "title");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_inspect_expect_bool_flag() {
+        let tokens: proc_macro2::TokenStream = syn::parse_quote! { pretty };
+        let attr: InspectAttr = syn::parse2(tokens).unwrap();
+        let result = inspect_expect_bool(&attr, "pretty");
+        assert!(result.is_ok());
+        assert!(result.unwrap().value);
+    }
+
+    #[test]
+    fn test_inspect_expect_bool_ok() {
+        let tokens: proc_macro2::TokenStream = syn::parse_quote! { pretty = false };
+        let attr: InspectAttr = syn::parse2(tokens).unwrap();
+        let result = inspect_expect_bool(&attr, "pretty");
+        assert!(result.is_ok());
+        assert!(!result.unwrap().value);
+    }
+
 }

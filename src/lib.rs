@@ -148,6 +148,10 @@ pub use gilt_derive::Renderable;
 pub use gilt_derive::Table;
 #[cfg(feature = "derive")]
 pub use gilt_derive::Tree;
+#[cfg(feature = "derive")]
+pub use gilt_derive::Rule as DeriveRule;
+#[cfg(feature = "derive")]
+pub use gilt_derive::Inspect as DeriveInspect;
 
 use std::sync::LazyLock;
 use std::sync::Mutex;
