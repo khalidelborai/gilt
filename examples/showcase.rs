@@ -7,26 +7,37 @@
 //! status spinners, and more.
 
 use std::collections::HashMap;
+use std::io;
 use std::thread;
 use std::time::Duration;
 
+use gilt::align_widget::Align;
+use gilt::ansi::AnsiDecoder;
 use gilt::bar::Bar;
 use gilt::color::Color;
 use gilt::color_triplet::ColorTriplet;
 use gilt::columns::Columns;
 use gilt::console::Console;
+use gilt::constrain::Constrain;
 use gilt::emoji::Emoji;
 use gilt::emoji_replace::emoji_replace;
 use gilt::filesize;
 use gilt::gradient::Gradient;
 use gilt::highlighter::*;
 use gilt::inspect::Inspect;
+use gilt::layout::Layout;
+use gilt::padding::{Padding, PaddingDimensions};
 use gilt::panel::Panel;
 use gilt::prelude::*;
 use gilt::pretty::Pretty;
 use gilt::progress::Progress;
 use gilt::rule::Rule;
+use gilt::scope::Scope;
+use gilt::spinners::SPINNERS;
 use gilt::status::Status;
+use gilt::styled::Styled;
+use gilt::theme::Theme;
+use gilt::traceback::{Frame, Traceback};
 use gilt::tree::Tree;
 
 use serde_json::json;
@@ -614,6 +625,506 @@ Gilt supports **bold**, *italic*, and `inline code` in markdown.
         let decimal = filesize::decimal(*size, 1, " ");
         let line = format!("  {name:.<20} {decimal:>12}");
         console.print(&Text::new(&line, Style::null()));
+    }
+    pause();
+
+    // =========================================================================
+    // 22. Layout
+    // =========================================================================
+    console.rule(Some("Layout"));
+
+    {
+        let mut layout_console = Console::builder()
+            .width(90)
+            .height(12)
+            .force_terminal(true)
+            .no_color(false)
+            .build();
+
+        let mut layout = Layout::new(None, Some("root".to_string()), None, None, None, None);
+        let header = Layout::new(
+            Some("HEADER: gilt layout system".to_string()),
+            Some("header".to_string()),
+            Some(3),
+            None,
+            None,
+            None,
+        );
+        let mut body = Layout::new(None, Some("body".to_string()), None, None, Some(1), None);
+        let sidebar = Layout::new(
+            Some("Sidebar".to_string()),
+            Some("sidebar".to_string()),
+            Some(20),
+            None,
+            None,
+            None,
+        );
+        let main = Layout::new(
+            Some("Main content area".to_string()),
+            Some("main".to_string()),
+            None,
+            None,
+            Some(1),
+            None,
+        );
+        body.split_row(vec![sidebar, main]);
+        let footer = Layout::new(
+            Some("FOOTER".to_string()),
+            Some("footer".to_string()),
+            Some(3),
+            None,
+            None,
+            None,
+        );
+        layout.split_column(vec![header, body, footer]);
+        layout_console.print(&layout);
+    }
+    pause();
+
+    // =========================================================================
+    // 23. Align
+    // =========================================================================
+    console.rule(Some("Alignment"));
+
+    let left = Align::left(Text::new("Left-aligned text", Style::null()));
+    console.print(&left);
+
+    let center = Align::center(Text::new("Center-aligned text", Style::null()));
+    console.print(&center);
+
+    let right = Align::right(Text::new("Right-aligned text", Style::null()));
+    console.print(&right);
+    pause();
+
+    // =========================================================================
+    // 24. Padding
+    // =========================================================================
+    console.rule(Some("Padding"));
+
+    let padded = Padding::new(
+        Text::new(
+            "This text has padding: top=1, right=4, bottom=1, left=8",
+            Style::null(),
+        ),
+        PaddingDimensions::Full(1, 4, 1, 8),
+        Style::null(),
+        true,
+    );
+    console.print(&padded);
+
+    let indented = Padding::indent(Text::new("Indented text (left=6)", Style::null()), 6);
+    console.print(&indented);
+    pause();
+
+    // =========================================================================
+    // 25. Constrain
+    // =========================================================================
+    console.rule(Some("Constrain"));
+
+    let wide_text = Text::new(
+        "This text would normally fill the full 90-column width, but Constrain limits it to 50 characters, causing it to wrap earlier.",
+        Style::null(),
+    );
+    let constrained = Constrain::new(wide_text, Some(50));
+    console.print(&constrained);
+    pause();
+
+    // =========================================================================
+    // 26. Styled Containers
+    // =========================================================================
+    console.rule(Some("Styled Containers"));
+
+    let inner = Text::new("Bold + italic overlay via Styled container", Style::null());
+    let styled_widget = Styled::new(inner, Style::parse("bold italic cyan").unwrap());
+    console.print(&styled_widget);
+
+    let inner2 = Text::new("Red on dark background", Style::parse("red").unwrap());
+    let styled_widget2 = Styled::new(inner2, Style::parse("on grey11").unwrap());
+    console.print(&styled_widget2);
+    pause();
+
+    // =========================================================================
+    // 27. Text Justify Modes
+    // =========================================================================
+    console.rule(Some("Text Justification"));
+
+    let justify_modes = [
+        ("Left", JustifyMethod::Left),
+        ("Center", JustifyMethod::Center),
+        ("Right", JustifyMethod::Right),
+        ("Full", JustifyMethod::Full),
+    ];
+
+    for (label, justify) in &justify_modes {
+        let mut text = Text::new(
+            &format!("{label}: The quick brown fox jumps over the lazy dog near the riverbank."),
+            Style::null(),
+        );
+        text.justify = Some(*justify);
+        let panel = Panel::fit(text)
+            .title(Text::new(label, Style::parse("bold").unwrap()))
+            .border_style(Style::parse("dim").unwrap());
+        console.print(&panel);
+    }
+    pause();
+
+    // =========================================================================
+    // 28. Text Overflow
+    // =========================================================================
+    console.rule(Some("Text Overflow"));
+
+    let overflow_modes = [
+        ("Fold", OverflowMethod::Fold),
+        ("Crop", OverflowMethod::Crop),
+        ("Ellipsis", OverflowMethod::Ellipsis),
+    ];
+
+    for (label, overflow) in &overflow_modes {
+        let mut text = Text::new(
+            "Superlongwordwithoutanyspacesthatexceedsthenormalwidth_and_continues_going_forever",
+            Style::null(),
+        );
+        text.overflow = Some(*overflow);
+        let constrained_overflow = Constrain::new(text, Some(40));
+        console.print(&Text::new(
+            &format!("  {label}:"),
+            Style::parse("bold").unwrap(),
+        ));
+        console.print(&constrained_overflow);
+    }
+    pause();
+
+    // =========================================================================
+    // 29. Scope
+    // =========================================================================
+    console.rule(Some("Scope"));
+
+    let scope = Scope::from_pairs(&[
+        ("host", "localhost"),
+        ("port", "8080"),
+        ("debug", "true"),
+        ("workers", "4"),
+        ("database_url", "postgres://localhost/myapp"),
+    ])
+    .title("Server Config");
+    console.print(&scope);
+    pause();
+
+    // =========================================================================
+    // 30. Logging
+    // =========================================================================
+    console.rule(Some("Logging (console.log)"));
+
+    console.log("Application started");
+    console.log("[bold green]Server[/bold green] listening on port 8080");
+    console.log("[yellow]Warning:[/yellow] cache miss for key 'user:42'");
+    console.log("[red]Error:[/red] connection timeout after 30s");
+    pause();
+
+    // =========================================================================
+    // 31. Color Systems
+    // =========================================================================
+    console.rule(Some("Color Systems"));
+
+    let color_systems = [
+        ("truecolor", "TrueColor (16M)"),
+        ("256", "256 colors"),
+        ("standard", "Standard (16)"),
+    ];
+
+    for (cs, label) in &color_systems {
+        let mut cs_console = Console::builder()
+            .width(90)
+            .force_terminal(true)
+            .color_system(cs)
+            .build();
+        cs_console.begin_capture();
+        cs_console.print(&Text::styled(
+            &format!("  {label}: Hello from rgb(255,102,0) on rgb(0,51,102)"),
+            Style::parse("rgb(255,102,0) on rgb(0,51,102) bold").unwrap(),
+        ));
+        let captured = cs_console.end_capture();
+        console.print(&Text::new(captured.trim_end(), Style::null()));
+    }
+
+    // No color
+    {
+        let mut nc_console = Console::builder()
+            .width(90)
+            .force_terminal(true)
+            .no_color(true)
+            .build();
+        nc_console.begin_capture();
+        nc_console.print(&Text::styled(
+            "  No Color: Hello (styles stripped)",
+            Style::parse("bold red").unwrap(),
+        ));
+        let captured = nc_console.end_capture();
+        console.print(&Text::new(captured.trim_end(), Style::null()));
+    }
+    pause();
+
+    // =========================================================================
+    // 32. Theme Push/Pop
+    // =========================================================================
+    console.rule(Some("Theme Push/Pop"));
+
+    console.print_text("[bold]Default theme:[/bold] [info]info style[/info]");
+
+    let mut custom_styles = HashMap::new();
+    custom_styles.insert(
+        "info".to_string(),
+        Style::parse("bold magenta on grey15").unwrap(),
+    );
+    let custom_theme = Theme::new(Some(custom_styles), true);
+    console.push_theme(custom_theme);
+
+    console.print_text("[bold]Custom theme:[/bold] [info]info is now magenta on grey[/info]");
+
+    console.pop_theme();
+    console.print_text("[bold]After pop:[/bold] [info]info reverted to default[/info]");
+    pause();
+
+    // =========================================================================
+    // 33. Console Capture & Export
+    // =========================================================================
+    console.rule(Some("Console Capture"));
+
+    {
+        let mut cap_console = Console::builder()
+            .width(60)
+            .force_terminal(true)
+            .no_color(true)
+            .build();
+
+        cap_console.begin_capture();
+        cap_console.print(&Text::new("First captured line", Style::null()));
+        cap_console.print(&Text::new("Second captured line", Style::null()));
+        cap_console.print(&Text::new("Third captured line", Style::null()));
+        let captured = cap_console.end_capture();
+
+        console.print(&Text::new(
+            "  Captured output (3 lines):",
+            Style::parse("bold").unwrap(),
+        ));
+        for line in captured.lines() {
+            console.print(&Text::new(
+                &format!("    | {line}"),
+                Style::parse("dim").unwrap(),
+            ));
+        }
+    }
+    pause();
+
+    // =========================================================================
+    // 34. Synchronized Output
+    // =========================================================================
+    console.rule(Some("Synchronized Output"));
+
+    console.synchronized(|c| {
+        c.print(&Text::new(
+            "  These lines are rendered atomically",
+            Style::parse("bold green").unwrap(),
+        ));
+        c.print(&Text::new(
+            "  inside a DEC Mode 2026 sync block.",
+            Style::parse("green").unwrap(),
+        ));
+        c.print(&Text::new(
+            "  The terminal buffers until the block ends.",
+            Style::parse("dim green").unwrap(),
+        ));
+    });
+    pause();
+
+    // =========================================================================
+    // 35. Traceback
+    // =========================================================================
+    console.rule(Some("Traceback"));
+
+    // Error chain traceback
+    let inner_err = io::Error::new(io::ErrorKind::ConnectionRefused, "connection refused");
+    let outer_err = io::Error::other(format!("failed to connect to database: {}", inner_err));
+    let tb = Traceback::from_error(&outer_err);
+    console.print(&tb);
+
+    // Custom traceback with source lines
+    let frames = vec![
+        Frame::new("src/database.rs", Some(87), "Database::connect")
+            .with_source_line("    let conn = TcpStream::connect(&self.addr)?;"),
+        Frame::new("src/main.rs", Some(28), "main")
+            .with_source_line("    server.run(handle_request).await?;"),
+    ];
+    let tb = Traceback {
+        title: "ConnectionError".to_string(),
+        message: "failed to establish connection".to_string(),
+        frames,
+        ..Traceback::new()
+    };
+    console.print(&tb);
+    pause();
+
+    // =========================================================================
+    // 36. Wrap Modes
+    // =========================================================================
+    console.rule(Some("Text Wrapping"));
+
+    let long_text = "word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12 word13 word14 word15";
+    let wrapped = Text::new(long_text, Style::null());
+    let lines = wrapped.wrap(
+        40,
+        Some(JustifyMethod::Left),
+        Some(OverflowMethod::Fold),
+        8,
+        false,
+    );
+    console.print(&Text::new(
+        "  Wrapped at 40 cols:",
+        Style::parse("bold").unwrap(),
+    ));
+    for line in lines.iter() {
+        console.print(&Text::new(
+            &format!("    {}", line.plain()),
+            Style::parse("dim").unwrap(),
+        ));
+    }
+
+    let tab_text = Text::new("col1\tcol2\tcol3\tcol4", Style::null());
+    let tab_lines = tab_text.wrap(60, Some(JustifyMethod::Left), None, 8, false);
+    console.print(&Text::new(
+        "  Tab stops (tab_size=8):",
+        Style::parse("bold").unwrap(),
+    ));
+    for line in tab_lines.iter() {
+        console.print(&Text::new(
+            &format!("    {}", line.plain()),
+            Style::parse("dim").unwrap(),
+        ));
+    }
+    pause();
+
+    // =========================================================================
+    // 37. #[derive(Table)] (feature-gated)
+    // =========================================================================
+    #[cfg(feature = "derive")]
+    {
+        console.rule(Some("Derive Table"));
+
+        use gilt::Table as DeriveTable;
+
+        #[derive(DeriveTable)]
+        struct Planet {
+            name: String,
+            distance_au: f64,
+            moons: u32,
+        }
+
+        let planets = vec![
+            Planet {
+                name: "Mercury".into(),
+                distance_au: 0.39,
+                moons: 0,
+            },
+            Planet {
+                name: "Venus".into(),
+                distance_au: 0.72,
+                moons: 0,
+            },
+            Planet {
+                name: "Earth".into(),
+                distance_au: 1.00,
+                moons: 1,
+            },
+            Planet {
+                name: "Mars".into(),
+                distance_au: 1.52,
+                moons: 2,
+            },
+        ];
+
+        let table = Planet::to_table(&planets);
+        console.print(&table);
+        pause();
+    }
+
+    // =========================================================================
+    // 38. Spinners Gallery
+    // =========================================================================
+    console.rule(Some("Spinner Gallery"));
+
+    let spinner_names = [
+        "dots",
+        "dots2",
+        "dots3",
+        "line",
+        "pipe",
+        "simpleDots",
+        "star",
+        "arc",
+        "bouncingBar",
+        "moon",
+    ];
+
+    for name in &spinner_names {
+        if let Some(data) = SPINNERS.get(name) {
+            let frames_preview: String = data
+                .frames
+                .iter()
+                .take(10)
+                .cloned()
+                .collect::<Vec<_>>()
+                .join(" ");
+            let line = format!("  {:<20} {}", name, frames_preview);
+            console.print(&Text::new(&line, Style::null()));
+        }
+    }
+    pause();
+
+    // =========================================================================
+    // 39. ANSI Parsing
+    // =========================================================================
+    console.rule(Some("ANSI Parsing"));
+
+    let ansi_input = "\x1b[1mBold\x1b[0m \x1b[31mRed\x1b[0m \x1b[32mGreen\x1b[0m \x1b[1;34mBold Blue\x1b[0m Normal";
+    let mut decoder = AnsiDecoder::new();
+    let decoded_lines = decoder.decode(ansi_input);
+    console.print(&Text::new(
+        "  Raw ANSI input parsed into styled Text:",
+        Style::parse("bold").unwrap(),
+    ));
+    for line in &decoded_lines {
+        console.print(line);
+    }
+    pause();
+
+    // =========================================================================
+    // 40. Color Palette
+    // =========================================================================
+    console.rule(Some("Standard Color Palette"));
+
+    let color_names = [
+        ("black", "color(0)"),
+        ("red", "color(1)"),
+        ("green", "color(2)"),
+        ("yellow", "color(3)"),
+        ("blue", "color(4)"),
+        ("magenta", "color(5)"),
+        ("cyan", "color(6)"),
+        ("white", "color(7)"),
+        ("bright_black", "color(8)"),
+        ("bright_red", "color(9)"),
+        ("bright_green", "color(10)"),
+        ("bright_yellow", "color(11)"),
+        ("bright_blue", "color(12)"),
+        ("bright_magenta", "color(13)"),
+        ("bright_cyan", "color(14)"),
+        ("bright_white", "color(15)"),
+    ];
+
+    for (name, color_spec) in &color_names {
+        let combined = format!("  \u{2588}\u{2588}  {name}");
+        let combined_style = Style::parse(color_spec).unwrap_or_else(|_| Style::null());
+        console.print(&Text::styled(&combined, combined_style));
     }
     pause();
 
