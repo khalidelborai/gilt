@@ -117,7 +117,7 @@ pub fn is_type<T: 'static>(value: &dyn Any) -> bool {
 /// # Examples
 ///
 /// ```
-/// use gilt::protocol::RichCast;
+/// use gilt::protocol::{RichCast, IntoRenderable};
 /// use gilt::prelude::*;
 ///
 /// struct User {
@@ -317,9 +317,9 @@ impl Renderable for RenderableBox {
 /// use gilt::prelude::*;
 ///
 /// let text = Text::from("Hello");
-/// if let Some(renderable) = as_renderable_ref(&text) {
-///     // text can be used as &dyn Renderable
-/// }
+/// let renderable = as_renderable_ref(&text);
+/// // renderable is &dyn Renderable
+/// // Use renderable here
 /// ```
 pub fn as_renderable_ref<T: Renderable>(value: &T) -> &dyn Renderable {
     value
@@ -349,7 +349,7 @@ pub fn as_renderable_mut<T: Renderable>(value: &mut T) -> &mut dyn Renderable {
 /// # Future Usage
 ///
 /// ```ignore
-/// use gilt::protocol::RichCast;
+/// use gilt::protocol::{RichCast, IntoRenderable};
 ///
 /// #[derive(RichCast)]
 /// #[rich(panel)]
@@ -375,7 +375,7 @@ macro_rules! derive_gilt_cast {
 /// # Examples
 ///
 /// ```
-/// use gilt::protocol::gilt_cast_impl;
+/// use gilt::gilt_cast_impl;
 /// use gilt::prelude::*;
 ///
 /// struct Status { code: u16, message: String }

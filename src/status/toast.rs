@@ -123,7 +123,7 @@ impl ToastType {
 ///
 /// ```
 /// use gilt::prelude::*;
-/// use gilt::toast::Toast;
+/// use gilt::toast::{Toast, ToastType};
 /// use std::time::Duration;
 ///
 /// let mut console = Console::new();
