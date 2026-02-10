@@ -1267,7 +1267,7 @@ impl Table {
 
     /// Measure the table, returning minimum and maximum widths.
     ///
-    /// Used by the [`Renderable`] trait to determine how much space the table
+    /// Used by the [`crate::console::Renderable`] trait to determine how much space the table
     /// requires.
     pub fn measure(&self, console: &Console, options: &ConsoleOptions) -> Measurement {
         let mut max_width = options.max_width;
