@@ -343,7 +343,7 @@ impl Renderable for Layout {
     ///
     /// Each row of the terminal is built by merging segments from all
     /// regions that occupy that row.
-    fn rich_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
+    fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         let width = options.max_width;
         let height = options.height.unwrap_or(options.size.height);
         let opts = options.update_dimensions(width, height);
@@ -1100,7 +1100,7 @@ mod tests {
         let mut layout = Layout::default_layout();
         layout.update("Test".to_string());
 
-        let segments = layout.rich_console(&console, &options);
+        let segments = layout.gilt_console(&console, &options);
         let text: String = segments.iter().map(|s| s.text.as_str()).collect();
         assert!(text.contains("Test"));
     }
@@ -1113,7 +1113,7 @@ mod tests {
         let mut layout = Layout::default_layout();
         layout.update("X".to_string());
 
-        let segments = layout.rich_console(&console, &options);
+        let segments = layout.gilt_console(&console, &options);
         // Count newlines — should be exactly height (one per row)
         let newlines = segments.iter().filter(|s| s.text == "\n").count();
         assert_eq!(newlines, 5);

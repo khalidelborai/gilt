@@ -171,7 +171,7 @@ impl Align {
 }
 
 impl Renderable for Align {
-    fn rich_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
+    fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         let width = self.width.unwrap_or(options.max_width);
         let pad_style = self.style.clone().unwrap_or_else(Style::null);
 
@@ -308,7 +308,7 @@ mod tests {
         let console = make_console(10);
         let align = Align::left(Text::new("Hi", Style::null()));
         let opts = console.options();
-        let segments = align.rich_console(&console, &opts);
+        let segments = align.gilt_console(&console, &opts);
         let output = segments_to_text(&segments);
         let lines = get_content_lines(&output);
         assert!(!lines.is_empty());
@@ -323,7 +323,7 @@ mod tests {
         let console = make_console(10);
         let align = Align::center(Text::new("AB", Style::null()));
         let opts = console.options();
-        let segments = align.rich_console(&console, &opts);
+        let segments = align.gilt_console(&console, &opts);
         let output = segments_to_text(&segments);
         let lines = get_content_lines(&output);
         let line = lines[0];
@@ -337,7 +337,7 @@ mod tests {
         let console = make_console(10);
         let align = Align::right(Text::new("AB", Style::null()));
         let opts = console.options();
-        let segments = align.rich_console(&console, &opts);
+        let segments = align.gilt_console(&console, &opts);
         let output = segments_to_text(&segments);
         let lines = get_content_lines(&output);
         let line = lines[0];
@@ -350,7 +350,7 @@ mod tests {
         let console = make_console(11);
         let align = Align::center(Text::new("AB", Style::null()));
         let opts = console.options();
-        let segments = align.rich_console(&console, &opts);
+        let segments = align.gilt_console(&console, &opts);
         let output = segments_to_text(&segments);
         let lines = get_content_lines(&output);
         let line = lines[0];
@@ -375,7 +375,7 @@ mod tests {
             None,
         );
         let opts = console.options();
-        let segments = align.rich_console(&console, &opts);
+        let segments = align.gilt_console(&console, &opts);
         let output = segments_to_text(&segments);
         let lines = get_content_lines(&output);
         let line = lines[0];
@@ -398,7 +398,7 @@ mod tests {
             Some(5),
         );
         let opts = console.options();
-        let segments = align.rich_console(&console, &opts);
+        let segments = align.gilt_console(&console, &opts);
         let output = segments_to_text(&segments);
         let lines = get_content_lines(&output);
         // 1 content line + 4 blank = 5 total
@@ -419,7 +419,7 @@ mod tests {
             Some(5),
         );
         let opts = console.options();
-        let segments = align.rich_console(&console, &opts);
+        let segments = align.gilt_console(&console, &opts);
         let output = segments_to_text(&segments);
         let lines = get_content_lines(&output);
         assert_eq!(lines.len(), 5);
@@ -440,7 +440,7 @@ mod tests {
             Some(5),
         );
         let opts = console.options();
-        let segments = align.rich_console(&console, &opts);
+        let segments = align.gilt_console(&console, &opts);
         let output = segments_to_text(&segments);
         let lines = get_content_lines(&output);
         assert_eq!(lines.len(), 5);
@@ -463,7 +463,7 @@ mod tests {
             None,
         );
         let opts = console.options();
-        let segments = align.rich_console(&console, &opts);
+        let segments = align.gilt_console(&console, &opts);
         let output = segments_to_text(&segments);
         let lines = get_content_lines(&output);
         let line = lines[0];
@@ -503,7 +503,7 @@ mod tests {
         let console = make_console(5);
         let align = Align::center(Text::new("ABCDE", Style::null()));
         let opts = console.options();
-        let segments = align.rich_console(&console, &opts);
+        let segments = align.gilt_console(&console, &opts);
         let output = segments_to_text(&segments);
         let lines = get_content_lines(&output);
         assert!(lines[0].contains("ABCDE"));
@@ -525,7 +525,7 @@ mod tests {
             None,
         );
         let opts = console.options();
-        let segments = align.rich_console(&console, &opts);
+        let segments = align.gilt_console(&console, &opts);
         // Padding segments should have the bold style
         let padding_segments: Vec<&Segment> = segments
             .iter()

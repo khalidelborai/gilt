@@ -14,7 +14,7 @@ pub use crate::console::{Console, ConsoleBuilder, ConsoleOptions, Renderable};
 pub use crate::color::{Color, ColorSystem};
 pub use crate::segment::Segment;
 pub use crate::style::Style;
-pub use crate::styled_str::{StyledStr, Stylize};
+pub use crate::utils::styled_str::{StyledStr, Stylize};
 pub use crate::text::{JustifyMethod, OverflowMethod, Text};
 
 // Widgets

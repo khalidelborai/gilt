@@ -287,7 +287,7 @@ fn align_title_segments(
 // ---------------------------------------------------------------------------
 
 impl Renderable for Panel {
-    fn rich_console(&self, _console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
+    fn gilt_console(&self, _console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         let bx = self.box_chars;
         let (pad_top, pad_right, pad_bottom, pad_left) = self.padding.unpack();
         let horizontal_padding = pad_left + pad_right;
@@ -340,7 +340,7 @@ impl Renderable for Panel {
 
         // Render content lines.
         // We wrap the content text ourselves and render each line individually
-        // to avoid the double-newline issue that occurs when Text.rich_console's
+        // to avoid the double-newline issue that occurs when Text.gilt_console's
         // wrap (which includes separators in line text) combines with the
         // between-lines Segment::line().
         let inner_width = child_width.saturating_sub(horizontal_padding).max(1);
@@ -546,7 +546,7 @@ mod tests {
 
     fn render_panel(console: &Console, panel: &Panel) -> String {
         let opts = console.options();
-        let segments = panel.rich_console(console, &opts);
+        let segments = panel.gilt_console(console, &opts);
         segments_to_text(&segments)
     }
 
@@ -1062,7 +1062,7 @@ mod tests {
         let panel =
             Panel::new(Text::new("X", Style::null())).with_border_style(border_style.clone());
         let opts = console.options();
-        let segments = panel.rich_console(&console, &opts);
+        let segments = panel.gilt_console(&console, &opts);
 
         // The border segments should carry the border_style
         let border_segs: Vec<&Segment> = segments
@@ -1119,7 +1119,7 @@ mod tests {
         let panel =
             Panel::new(Text::new("value=42 name='hello'", Style::null())).with_highlight(true);
         let opts = console.options();
-        let segments = panel.rich_console(&console, &opts);
+        let segments = panel.gilt_console(&console, &opts);
         // The content should still contain the text
         let text = segments_to_text(&segments);
         assert!(text.contains("42"));

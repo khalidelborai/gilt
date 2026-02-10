@@ -278,9 +278,9 @@ impl CsvTable {
 // ---------------------------------------------------------------------------
 
 impl Renderable for CsvTable {
-    fn rich_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
+    fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         let table = self.to_table();
-        table.rich_console(console, options)
+        table.gilt_console(console, options)
     }
 }
 
@@ -456,7 +456,7 @@ mod tests {
         let csv = CsvTable::from_csv_str("Name,Age\nAlice,30").unwrap();
         let console = make_console(60);
         let opts = console.options();
-        let segments = csv.rich_console(&console, &opts);
+        let segments = csv.gilt_console(&console, &opts);
         let text: String = segments.iter().map(|s| s.text.as_str()).collect();
         assert!(text.contains("Name"));
         assert!(text.contains("Alice"));

@@ -5,7 +5,7 @@
 //! and hyperlinks.
 
 use crate::color::{blend_rgb, Color, ColorSystem};
-use crate::errors::StyleError;
+use crate::error::StyleError;
 use crate::terminal_theme::TerminalTheme;
 use std::fmt;
 use std::fmt::Write as _;

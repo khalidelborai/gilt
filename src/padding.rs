@@ -102,7 +102,7 @@ impl Padding {
 }
 
 impl Renderable for Padding {
-    fn rich_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
+    fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         let mut segments = Vec::new();
 
         // Compute the total available width
@@ -248,7 +248,7 @@ mod tests {
         let text = Text::new("Hello", Style::null());
         let padding = Padding::new(text, PaddingDimensions::Uniform(0), Style::null(), false);
         let opts = console.options();
-        let segments = padding.rich_console(&console, &opts);
+        let segments = padding.gilt_console(&console, &opts);
         let output = segments_to_text(&segments);
         assert!(output.contains("Hello"));
     }
@@ -264,7 +264,7 @@ mod tests {
             true,
         );
         let opts = console.options();
-        let segments = padding.rich_console(&console, &opts);
+        let segments = padding.gilt_console(&console, &opts);
         let output = segments_to_text(&segments);
         // Should have 4 spaces before "Hi"
         assert!(output.contains("    Hi"));
@@ -281,7 +281,7 @@ mod tests {
             true,
         );
         let opts = console.options();
-        let segments = padding.rich_console(&console, &opts);
+        let segments = padding.gilt_console(&console, &opts);
         let output = segments_to_text(&segments);
         let lines: Vec<&str> = output.split('\n').collect();
         // 2 top blank lines + 1 content line + 3 bottom blank lines = 6 lines
@@ -296,7 +296,7 @@ mod tests {
         let text = Text::new("Hi", Style::null());
         let padding = Padding::new(text, PaddingDimensions::Uniform(1), Style::null(), true);
         let opts = console.options();
-        let segments = padding.rich_console(&console, &opts);
+        let segments = padding.gilt_console(&console, &opts);
         let output = segments_to_text(&segments);
         let lines: Vec<&str> = output.split('\n').collect();
         // First non-empty line (top padding) should be 30 chars wide
@@ -315,7 +315,7 @@ mod tests {
             false,
         );
         let opts = console.options();
-        let segments = padding.rich_console(&console, &opts);
+        let segments = padding.gilt_console(&console, &opts);
         let output = segments_to_text(&segments);
         // Width should be content(2) + left(1) + right(1) = 4
         let first_line: &str = output.split('\n').next().unwrap();
@@ -328,7 +328,7 @@ mod tests {
         let text = Text::new("indented", Style::null());
         let padding = Padding::indent(text, 8);
         let opts = console.options();
-        let segments = padding.rich_console(&console, &opts);
+        let segments = padding.gilt_console(&console, &opts);
         let output = segments_to_text(&segments);
         assert!(output.contains("        indented"));
     }
@@ -372,7 +372,7 @@ mod tests {
         let text = Text::styled("Bold", Style::parse("bold").unwrap());
         let padding = Padding::new(text, PaddingDimensions::Uniform(1), Style::null(), true);
         let opts = console.options();
-        let segments = padding.rich_console(&console, &opts);
+        let segments = padding.gilt_console(&console, &opts);
         let plain: String = segments.iter().map(|s| s.text.as_str()).collect();
         assert!(plain.contains("Bold"));
     }

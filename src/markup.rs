@@ -7,7 +7,7 @@ use std::fmt;
 use regex::Regex;
 use std::sync::LazyLock;
 
-use crate::errors::MarkupError;
+use crate::error::MarkupError;
 use crate::style::Style;
 use crate::text::{Span, Text};
 

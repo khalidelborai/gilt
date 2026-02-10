@@ -116,7 +116,7 @@ impl TableContext {
 // ---------------------------------------------------------------------------
 
 impl Renderable for Markdown {
-    fn rich_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
+    fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         let mut segments: Vec<Segment> = Vec::new();
         let width = options.max_width;
 
@@ -188,7 +188,7 @@ impl Renderable for Markdown {
                     // Render heading text
                     let heading_opts =
                         options.update_width(width.saturating_sub(blockquote_depth * 4));
-                    let heading_segs = text_buffer.rich_console(console, &heading_opts);
+                    let heading_segs = text_buffer.gilt_console(console, &heading_opts);
                     segments.extend(heading_segs);
                     segments.push(Segment::line());
 
@@ -198,7 +198,7 @@ impl Renderable for Markdown {
                             .get_style("markdown.hr")
                             .unwrap_or_else(|_| Style::null());
                         let rule = Rule::new().with_style(rule_style).with_end("");
-                        let rule_segs = rule.rich_console(console, options);
+                        let rule_segs = rule.gilt_console(console, options);
                         segments.extend(rule_segs);
                         segments.push(Segment::line());
                     }
@@ -240,7 +240,7 @@ impl Renderable for Markdown {
                         let bq_prefix = format!("{}\u{2502} ", indent);
 
                         // Let Text wrap normally then split into lines
-                        let text_segs = text_buffer.rich_console(console, &para_opts);
+                        let text_segs = text_buffer.gilt_console(console, &para_opts);
                         let rendered_text: String =
                             text_segs.iter().map(|s| s.text.as_str()).collect();
 
@@ -255,7 +255,7 @@ impl Renderable for Markdown {
                             segments.push(Segment::line());
                         }
                     } else {
-                        let text_segs = text_buffer.rich_console(console, &para_opts);
+                        let text_segs = text_buffer.gilt_console(console, &para_opts);
                         segments.extend(text_segs);
                     }
 
@@ -375,7 +375,7 @@ impl Renderable for Markdown {
                             .with_box_chars(&HEAVY)
                             .with_style(code_style)
                             .with_expand(true);
-                        let panel_segs = panel.rich_console(console, options);
+                        let panel_segs = panel.gilt_console(console, options);
                         segments.extend(panel_segs);
 
                         needs_newline = true;
@@ -436,7 +436,7 @@ impl Renderable for Markdown {
                     let item_width =
                         width.saturating_sub((list_stack.len().saturating_sub(1)) * 4 + 3);
                     let item_opts = options.update_width(item_width);
-                    let item_segs = text_buffer.rich_console(console, &item_opts);
+                    let item_segs = text_buffer.gilt_console(console, &item_opts);
                     segments.extend(item_segs);
 
                     text_buffer = Text::new("", Style::null());
@@ -530,7 +530,7 @@ impl Renderable for Markdown {
                         .get_style("markdown.hr")
                         .unwrap_or_else(|_| Style::parse("dim").unwrap());
                     let rule = Rule::new().with_style(hr_style).with_end("");
-                    let rule_segs = rule.rich_console(console, options);
+                    let rule_segs = rule.gilt_console(console, options);
                     segments.extend(rule_segs);
                     segments.push(Segment::line());
                     needs_newline = true;
@@ -595,7 +595,7 @@ impl Renderable for Markdown {
         // with well-formed markdown, but handle gracefully)
         if !text_buffer.plain().is_empty() {
             text_buffer.end = String::new();
-            let final_segs = text_buffer.rich_console(console, options);
+            let final_segs = text_buffer.gilt_console(console, options);
             segments.extend(final_segs);
             segments.push(Segment::line());
         }
@@ -637,7 +637,7 @@ fn render_table(console: &Console, options: &ConsoleOptions, ctx: &TableContext)
         table.add_row(&cells);
     }
 
-    table.rich_console(console, options)
+    table.gilt_console(console, options)
 }
 
 // ---------------------------------------------------------------------------
@@ -678,13 +678,13 @@ mod tests {
 
     fn render_markdown(console: &Console, md: &Markdown) -> String {
         let opts = console.options();
-        let segments = md.rich_console(console, &opts);
+        let segments = md.gilt_console(console, &opts);
         segments.iter().map(|s| s.text.as_str()).collect()
     }
 
     fn render_segments(console: &Console, md: &Markdown) -> Vec<Segment> {
         let opts = console.options();
-        md.rich_console(console, &opts)
+        md.gilt_console(console, &opts)
     }
 
     // -- Simple paragraph ---------------------------------------------------
@@ -1040,7 +1040,7 @@ mod tests {
 
         let md = Markdown::new("Hello, **world**!");
         let opts = console.options();
-        let segments = md.rich_console(&console, &opts);
+        let segments = md.gilt_console(&console, &opts);
 
         // Should produce non-empty output
         assert!(!segments.is_empty());

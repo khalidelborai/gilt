@@ -103,7 +103,7 @@ impl Default for Rule {
 }
 
 impl Renderable for Rule {
-    fn rich_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
+    fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         let width = options.max_width;
 
         // Resolve the style: try "rule.line" from the console theme, fall back to self.style
@@ -315,7 +315,7 @@ mod tests {
 
     fn render_rule(console: &Console, rule: &Rule) -> String {
         let opts = console.options();
-        let segments = rule.rich_console(console, &opts);
+        let segments = rule.gilt_console(console, &opts);
         segments_to_text(&segments)
     }
 
@@ -418,7 +418,7 @@ mod tests {
         let rule = Rule::new();
         let mut opts = console.options();
         opts.encoding = "ascii".to_string();
-        let segments = rule.rich_console(&console, &opts);
+        let segments = rule.gilt_console(&console, &opts);
         let output = segments_to_text(&segments);
         let line = output.trim_end_matches('\n');
         // All characters should be ASCII (dash)
@@ -434,7 +434,7 @@ mod tests {
         let custom_style = Style::parse("bold").unwrap();
         let rule = Rule::new().with_style(custom_style);
         let opts = console.options();
-        let segments = rule.rich_console(&console, &opts);
+        let segments = rule.gilt_console(&console, &opts);
         // The rule line segment should have a style
         let rule_segs: Vec<&Segment> = segments
             .iter()

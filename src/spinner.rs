@@ -165,7 +165,7 @@ impl Spinner {
 }
 
 impl Renderable for Spinner {
-    fn rich_console(&self, _console: &Console, _options: &ConsoleOptions) -> Vec<Segment> {
+    fn gilt_console(&self, _console: &Console, _options: &ConsoleOptions) -> Vec<Segment> {
         // We need a mutable self to call render, so we clone and render at time 0.
         let mut spinner_clone = Spinner {
             name: self.name.clone(),
@@ -380,7 +380,7 @@ mod tests {
         let spinner = Spinner::new("dots").unwrap();
         let console = Console::builder().width(80).build();
         let opts = console.options();
-        let segments = spinner.rich_console(&console, &opts);
+        let segments = spinner.gilt_console(&console, &opts);
         assert!(!segments.is_empty());
         let combined: String = segments.iter().map(|s| s.text.as_str()).collect();
         assert!(!combined.is_empty());
@@ -393,7 +393,7 @@ mod tests {
             .with_text(Text::new("Loading", Style::null()));
         let console = Console::builder().width(80).build();
         let opts = console.options();
-        let segments = spinner.rich_console(&console, &opts);
+        let segments = spinner.gilt_console(&console, &opts);
         let combined: String = segments.iter().map(|s| s.text.as_str()).collect();
         assert!(combined.contains("Loading"));
     }

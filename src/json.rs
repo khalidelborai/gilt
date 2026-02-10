@@ -148,8 +148,8 @@ impl Json {
 }
 
 impl Renderable for Json {
-    fn rich_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
-        self.text.rich_console(console, options)
+    fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
+        self.text.gilt_console(console, options)
     }
 }
 
@@ -380,7 +380,7 @@ mod tests {
         let json = Json::new(r#"{"x": 1}"#, JsonOptions::default()).unwrap();
         let console = Console::builder().width(80).build();
         let opts = console.options();
-        let segments = json.rich_console(&console, &opts);
+        let segments = json.gilt_console(&console, &opts);
         let combined: String = segments.iter().map(|s| s.text.as_str()).collect();
         assert!(combined.contains('x'));
         assert!(combined.contains('1'));

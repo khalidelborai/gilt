@@ -219,7 +219,7 @@ struct StackFrame<'a> {
 }
 
 impl Renderable for Tree {
-    fn rich_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
+    fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         let mut segments: Vec<Segment> = Vec::new();
         let ascii_only = options.ascii_only();
         let newline = Segment::line();
@@ -381,7 +381,7 @@ mod tests {
     fn render_tree(tree: &Tree, width: usize) -> String {
         let console = test_console(width);
         let opts = console.options();
-        let segments = tree.rich_console(&console, &opts);
+        let segments = tree.gilt_console(&console, &opts);
         segments
             .iter()
             .filter(|s| !s.is_control())
@@ -503,7 +503,7 @@ mod tests {
             .build();
         let mut opts = console.options();
         opts.encoding = "ascii".to_string();
-        let segments = tree.rich_console(&console, &opts);
+        let segments = tree.gilt_console(&console, &opts);
         let output: String = segments
             .iter()
             .filter(|s| !s.is_control())
@@ -810,7 +810,7 @@ mod tests {
 
         let console = test_console(80);
         let opts = console.options();
-        let segments = tree.rich_console(&console, &opts);
+        let segments = tree.gilt_console(&console, &opts);
 
         let newline_count = segments.iter().filter(|s| s.text == "\n").count();
         assert_eq!(newline_count, 2, "Expected 2 newlines (one per line)");

@@ -22,7 +22,7 @@ body {
 
 /// SVG template for console export.
 /// See Python rich's _export_format.py for full variable list.
-pub const CONSOLE_SVG_FORMAT: &str = r##"<svg class="rich-terminal" viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg">
+pub const CONSOLE_SVG_FORMAT: &str = r##"<svg class="gilt-terminal" viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg">
     <!-- Generated with gilt https://github.com/gilt-rs -->
     <style>
 

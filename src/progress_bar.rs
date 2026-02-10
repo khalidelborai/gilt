@@ -11,7 +11,7 @@ use std::fmt;
 use std::time::SystemTime;
 
 use crate::color::{blend_rgb, Color, ColorSystem};
-use crate::color_triplet::ColorTriplet;
+use crate::color::color_triplet::ColorTriplet;
 use crate::console::{Console, ConsoleOptions, Renderable};
 use crate::measure::Measurement;
 use crate::segment::Segment;
@@ -279,7 +279,7 @@ impl fmt::Display for ProgressBar {
 // ---------------------------------------------------------------------------
 
 impl Renderable for ProgressBar {
-    fn rich_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
+    fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         let width = match self.width {
             Some(w) => w.min(options.max_width),
             None => options.max_width,
@@ -392,7 +392,7 @@ mod tests {
             .color_system("truecolor")
             .build();
         let opts = make_options(max_width);
-        bar.rich_console(&console, &opts)
+        bar.gilt_console(&console, &opts)
     }
 
     /// Render a ProgressBar and return the concatenated text (ignoring styles).
@@ -704,7 +704,7 @@ mod tests {
             .color_system("truecolor")
             .build();
         let opts = make_options(10);
-        let segments = bar.rich_console(&console, &opts);
+        let segments = bar.gilt_console(&console, &opts);
         // Should use the "green" (finished) style, not "red" (complete)
         assert!(!segments.is_empty());
         let first = &segments[0];
@@ -724,7 +724,7 @@ mod tests {
             .color_system("truecolor")
             .build();
         let opts = make_options(10);
-        let segments = bar.rich_console(&console, &opts);
+        let segments = bar.gilt_console(&console, &opts);
         assert!(!segments.is_empty());
         let first = &segments[0];
         let complete = console.get_style("red").unwrap();
@@ -779,7 +779,7 @@ mod tests {
             .color_system("truecolor")
             .build();
         let opts = make_options(PULSE_SIZE);
-        let segments = bar.rich_console(&console, &opts);
+        let segments = bar.gilt_console(&console, &opts);
 
         // Collect unique styles to verify gradient (not all the same)
         let styles: Vec<_> = segments.iter().map(|s| s.style.clone()).collect();
@@ -883,7 +883,7 @@ mod tests {
             .build();
         let opts = make_options(80);
         let renderable: &dyn Renderable = &bar;
-        let segments = renderable.rich_console(&console, &opts);
+        let segments = renderable.gilt_console(&console, &opts);
         assert!(!segments.is_empty());
     }
 

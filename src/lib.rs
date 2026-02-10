@@ -638,7 +638,7 @@
 //! struct Greeting { name: String }
 //!
 //! impl Renderable for Greeting {
-//!     fn rich_console(&self, _console: &Console, _options: &ConsoleOptions) -> Vec<Segment> {
+//!     fn gilt_console(&self, _console: &Console, _options: &ConsoleOptions) -> Vec<Segment> {
 //!         vec![
 //!             Segment::text(&format!("Hello, {}!", self.name)),
 //!             Segment::line(),
@@ -730,89 +730,87 @@
 //! | [`box_chars`] | 19 box-drawing character sets |
 //! | [`prelude`] | Convenience re-exports |
 
-pub mod accessibility;
-pub mod align_widget;
-pub mod ansi;
+// Module hierarchy - organized by functionality
+pub mod color;
+pub mod error;
+pub mod live;
+pub mod progress;
+pub mod status;
+pub mod text;
+pub mod utils;
+pub mod widgets;
+
+// Core modules (at root level)
+pub mod accordion;
+pub mod badge;
 #[cfg(feature = "anstyle")]
 pub mod anstyle_adapter;
-pub mod bar;
-pub mod box_chars;
+pub mod breadcrumbs;
 pub mod canvas;
-pub mod cells;
-pub mod color;
-pub mod color_env;
-pub mod color_triplet;
 pub mod columns;
 pub mod console;
-pub mod constrain;
-pub mod containers;
-pub mod control;
 pub mod csv_table;
-pub mod default_styles;
 pub mod diff;
-pub mod emoji;
-pub mod emoji_codes;
-pub mod emoji_replace;
-pub mod errors;
 pub mod export_format;
-#[cfg(feature = "eyre")]
-pub mod eyre_handler;
 pub mod figlet;
-pub mod filesize;
 pub mod gradient;
 pub mod group;
-pub mod highlighter;
-pub mod inspect;
-#[cfg(feature = "json")]
-pub mod json;
 pub mod layout;
-pub mod live;
-pub mod live_render;
-#[cfg(feature = "logging")]
-pub mod logging_handler;
 #[cfg(feature = "markdown")]
 pub mod markdown;
 pub mod markup;
 pub mod measure;
-#[cfg(feature = "miette")]
-pub mod miette_handler;
-pub mod padding;
 pub mod pager;
-pub mod palette;
 pub mod panel;
 pub mod prelude;
-pub mod pretty;
-pub mod progress;
 pub mod progress_bar;
 pub mod prompt;
-pub mod ratio;
 pub mod region;
 pub mod rule;
-pub mod scope;
-pub mod screen;
 pub mod segment;
 pub mod sparkline;
-pub mod spinner;
-pub mod spinners;
-pub mod status;
 pub mod style;
-pub mod styled;
-pub mod styled_str;
+// styled and styled_str are now in utils/
+pub use utils::styled;
+pub use utils::styled_str;
+#[cfg(feature = "syntax")]
+pub mod syntax;
+pub mod tree;
+pub mod wrap;
+
+// Feature-gated modules
+#[cfg(feature = "async")]
+pub mod r#async;
+#[cfg(feature = "http")]
+pub mod http;
+#[cfg(feature = "json")]
+pub mod json;
+
+// Backward compatible re-exports
+// Backward compatible re-exports for moved modules
+pub use color::{accessibility, color_env, color_triplet, palette, terminal_theme, theme};
+pub use error::traceback;
+#[cfg(feature = "eyre")]
+pub use error::eyre_handler;
+#[cfg(feature = "miette")]
+pub use error::miette_handler;
+pub use error::logging_handler;
+#[cfg(feature = "tracing")]
+pub use error::tracing_layer;
+pub use live::{live_render, screen};
+pub use status::{spinner, spinners, toast};
+
+// Re-export commonly used utils for backward compatibility
+pub use utils::{align_widget, ansi, bar, box_chars, cells, constrain, containers, control,
+    default_styles, diagnose, emoji, emoji_codes, emoji_replace, filesize, highlighter,
+    inspect, padding, pretty, protocol, ratio, scope};
+
+// Backward compatible re-exports for widgets
+pub use widgets::table;
 
 // Re-export cache management functions
 pub use style::{clear_style_cache, style_cache_size};
 pub use color::{clear_color_cache, color_cache_size};
-#[cfg(feature = "syntax")]
-pub mod syntax;
-pub mod table;
-pub mod terminal_theme;
-pub mod text;
-pub mod theme;
-pub mod traceback;
-#[cfg(feature = "tracing")]
-pub mod tracing_layer;
-pub mod tree;
-pub mod wrap;
 
 #[cfg(feature = "derive")]
 pub use gilt_derive::Columns as DeriveColumns;

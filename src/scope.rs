@@ -137,7 +137,7 @@ impl Scope {
             .unwrap_or_else(|_| Style::null());
 
         // Render the grid table to get its content as text
-        let table_segments = grid.rich_console(console, options);
+        let table_segments = grid.gilt_console(console, options);
 
         // Convert segments to a single Text for the panel content
         let mut content_text = String::new();
@@ -160,7 +160,7 @@ impl Scope {
             panel = panel.with_title(Text::new(title, Style::null()));
         }
 
-        panel.rich_console(console, options)
+        panel.gilt_console(console, options)
     }
 }
 
@@ -169,7 +169,7 @@ impl Scope {
 // ---------------------------------------------------------------------------
 
 impl Renderable for Scope {
-    fn rich_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
+    fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         self.render_panel(console, options)
     }
 }
@@ -225,7 +225,7 @@ pub fn render_scope(scope: &[(&str, &str)], title: Option<&str>, sort_keys: bool
         builder.title = Some(t.to_string());
     }
 
-    builder.rich_console(&console, &options)
+    builder.gilt_console(&console, &options)
 }
 
 // ---------------------------------------------------------------------------
@@ -252,7 +252,7 @@ mod tests {
     fn render_scope_output(scope: &Scope, width: usize) -> String {
         let console = make_console(width);
         let opts = console.options();
-        let segments = scope.rich_console(&console, &opts);
+        let segments = scope.gilt_console(&console, &opts);
         segments_to_text(&segments)
     }
 
@@ -418,7 +418,7 @@ mod tests {
         let scope = Scope::from_pairs(&[("a", "1")]);
         let console = make_console(40);
         let opts = console.options();
-        let segments = scope.rich_console(&console, &opts);
+        let segments = scope.gilt_console(&console, &opts);
         assert!(!segments.is_empty());
         let text = segments_to_text(&segments);
         assert!(text.contains("a"));
@@ -430,7 +430,7 @@ mod tests {
         let scope = Scope::from_pairs(&[("x", "10")]);
         let console = make_console(30);
         let opts = console.options();
-        let segments = scope.rich_console(&console, &opts);
+        let segments = scope.gilt_console(&console, &opts);
         let text = segments_to_text(&segments);
         // Panel should have border characters (rounded box)
         assert!(
@@ -562,7 +562,7 @@ mod tests {
         let scope = Scope::from_pairs(&[("x", "1")]);
         let console = make_console(30);
         let opts = console.options();
-        let segments = scope.rich_console(&console, &opts);
+        let segments = scope.gilt_console(&console, &opts);
         let text = segments_to_text(&segments);
         let lines: Vec<&str> = text.split('\n').filter(|l| !l.is_empty()).collect();
         // Should have at least 3 lines: top border, content, bottom border

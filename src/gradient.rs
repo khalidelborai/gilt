@@ -161,7 +161,7 @@ impl Gradient {
 // ---------------------------------------------------------------------------
 
 impl Renderable for Gradient {
-    fn rich_console(&self, _console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
+    fn gilt_console(&self, _console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         let justify = self.justify.or(options.justify);
 
         let lines: Vec<&str> = self.text.split('\n').collect();
@@ -251,7 +251,7 @@ mod tests {
         );
         let console = Console::builder().width(80).force_terminal(true).build();
         let options = console.options();
-        let segments = g.rich_console(&console, &options);
+        let segments = g.gilt_console(&console, &options);
         // 5 char segments + 1 trailing newline
         assert_eq!(segments.len(), 6);
         // First 5 segments should each be one character
@@ -265,7 +265,7 @@ mod tests {
         let g = Gradient::rainbow("Rainbow!");
         let console = Console::builder().width(80).force_terminal(true).build();
         let options = console.options();
-        let segments = g.rich_console(&console, &options);
+        let segments = g.gilt_console(&console, &options);
         // 8 characters + 1 trailing newline
         assert_eq!(segments.len(), 9);
     }
@@ -310,7 +310,7 @@ mod tests {
         );
         let console = Console::builder().width(80).force_terminal(true).build();
         let options = console.options();
-        let segments = g.rich_console(&console, &options);
+        let segments = g.gilt_console(&console, &options);
 
         // First character should be red
         let first_style = segments[0].style.as_ref().unwrap();
@@ -333,7 +333,7 @@ mod tests {
         let g = Gradient::two_color("", Color::from_rgb(255, 0, 0), Color::from_rgb(0, 0, 255));
         let console = Console::builder().width(80).force_terminal(true).build();
         let options = console.options();
-        let segments = g.rich_console(&console, &options);
+        let segments = g.gilt_console(&console, &options);
         // Only the trailing newline
         assert_eq!(segments.len(), 1);
         assert_eq!(segments[0].text, "\n");
@@ -348,7 +348,7 @@ mod tests {
         );
         let console = Console::builder().width(80).force_terminal(true).build();
         let options = console.options();
-        let segments = g.rich_console(&console, &options);
+        let segments = g.gilt_console(&console, &options);
         // 1 char segment + 1 trailing newline
         assert_eq!(segments.len(), 2);
         assert_eq!(segments[0].text, "X");
@@ -372,7 +372,7 @@ mod tests {
         );
         let console = Console::builder().width(80).force_terminal(true).build();
         let options = console.options();
-        let segments = g.rich_console(&console, &options);
+        let segments = g.gilt_console(&console, &options);
 
         // Line 1: A, B | newline | Line 2: C, D | trailing newline
         // = 2 + 1 + 2 + 1 = 6
@@ -448,7 +448,7 @@ mod tests {
         let g = Gradient::new("Hi", vec![]);
         let console = Console::builder().width(80).force_terminal(true).build();
         let options = console.options();
-        let segments = g.rich_console(&console, &options);
+        let segments = g.gilt_console(&console, &options);
         // 2 chars + trailing newline
         assert_eq!(segments.len(), 3);
     }
@@ -458,7 +458,7 @@ mod tests {
         let g = Gradient::new("ABC", vec![Color::from_rgb(0, 128, 255)]);
         let console = Console::builder().width(80).force_terminal(true).build();
         let options = console.options();
-        let segments = g.rich_console(&console, &options);
+        let segments = g.gilt_console(&console, &options);
         // All chars get the same color
         for seg in &segments[..3] {
             let fg = seg

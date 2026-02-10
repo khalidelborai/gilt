@@ -496,7 +496,7 @@ impl Syntax {
 
 /// Implement the Renderable trait so Syntax can be printed by Console.
 impl Renderable for Syntax {
-    fn rich_console(&self, _console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
+    fn gilt_console(&self, _console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         self.render_syntax(options.max_width)
     }
 }
@@ -764,7 +764,7 @@ mod tests {
         let syntax = Syntax::new("fn main() {}\n", "rs");
         let console = Console::builder().width(80).build();
         let options = console.options();
-        let segments = syntax.rich_console(&console, &options);
+        let segments = syntax.gilt_console(&console, &options);
         assert!(!segments.is_empty());
         let text: String = segments.iter().map(|s| s.text.as_str()).collect();
         assert!(text.contains("fn"));

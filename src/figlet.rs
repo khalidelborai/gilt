@@ -454,7 +454,7 @@ impl Figlet {
 // ---------------------------------------------------------------------------
 
 impl Renderable for Figlet {
-    fn rich_console(&self, _console: &Console, _options: &ConsoleOptions) -> Vec<Segment> {
+    fn gilt_console(&self, _console: &Console, _options: &ConsoleOptions) -> Vec<Segment> {
         let lines = self.render_lines();
         let mut segments = Vec::new();
         for line in &lines {
@@ -626,7 +626,7 @@ mod tests {
         let f = Figlet::new("A").with_style(style);
         let console = make_console(80);
         let opts = console.options();
-        let segments = f.rich_console(&console, &opts);
+        let segments = f.gilt_console(&console, &opts);
         // Non-newline segments should carry the style
         let styled_segs: Vec<_> = segments.iter().filter(|s| s.text != "\n").collect();
         assert!(!styled_segs.is_empty());
@@ -711,7 +711,7 @@ mod tests {
         let f = Figlet::new("A");
         let console = make_console(80);
         let opts = console.options();
-        let segments = f.rich_console(&console, &opts);
+        let segments = f.gilt_console(&console, &opts);
         // Should have 7 content segments + 7 newline segments = 14
         assert_eq!(segments.len(), CHAR_HEIGHT * 2);
     }

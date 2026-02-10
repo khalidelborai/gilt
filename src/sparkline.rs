@@ -192,7 +192,7 @@ impl fmt::Display for Sparkline {
 // ---------------------------------------------------------------------------
 
 impl Renderable for Sparkline {
-    fn rich_console(&self, _console: &Console, _options: &ConsoleOptions) -> Vec<Segment> {
+    fn gilt_console(&self, _console: &Console, _options: &ConsoleOptions) -> Vec<Segment> {
         let text = self.render_bars();
         if text.is_empty() {
             return vec![Segment::line()];
@@ -348,7 +348,7 @@ mod tests {
         let spark = Sparkline::new(&[1.0, 2.0, 3.0]).with_style(style.clone());
         let console = Console::builder().width(80).build();
         let opts = make_options(80);
-        let segments = spark.rich_console(&console, &opts);
+        let segments = spark.gilt_console(&console, &opts);
         assert_eq!(segments[0].style.as_ref(), Some(&style));
     }
 
@@ -368,7 +368,7 @@ mod tests {
         let spark = Sparkline::new(&[1.0, 2.0, 3.0]);
         let console = Console::builder().width(80).build();
         let opts = make_options(80);
-        let segments = spark.rich_console(&console, &opts);
+        let segments = spark.gilt_console(&console, &opts);
         assert_eq!(segments.len(), 2); // content + newline
         assert_eq!(segments[1].text.as_str(), "\n");
     }
@@ -379,7 +379,7 @@ mod tests {
         let spark = Sparkline::new(&[]);
         let console = Console::builder().width(80).build();
         let opts = make_options(80);
-        let segments = spark.rich_console(&console, &opts);
+        let segments = spark.gilt_console(&console, &opts);
         assert_eq!(segments.len(), 1);
         assert_eq!(segments[0].text.as_str(), "\n");
     }

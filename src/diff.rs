@@ -589,7 +589,7 @@ fn pad_or_truncate(s: &str, width: usize) -> String {
 // ---------------------------------------------------------------------------
 
 impl Renderable for Diff {
-    fn rich_console(&self, _console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
+    fn gilt_console(&self, _console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         let max_width = options.max_width;
         match self.style {
             DiffStyle::Unified => self.render_unified(max_width),
@@ -921,7 +921,7 @@ mod tests {
         let diff = Diff::new("old line\n", "new line\n");
         let console = make_console();
         let options = console.options();
-        let segments = diff.rich_console(&console, &options);
+        let segments = diff.gilt_console(&console, &options);
 
         // Should produce segments
         assert!(!segments.is_empty());
@@ -936,7 +936,7 @@ mod tests {
         let diff = Diff::side_by_side("old\n", "new\n");
         let console = make_console();
         let options = console.options();
-        let segments = diff.rich_console(&console, &options);
+        let segments = diff.gilt_console(&console, &options);
 
         assert!(!segments.is_empty());
     }
@@ -1043,7 +1043,7 @@ mod tests {
         let diff = Diff::new("same\ntext\n", "same\ntext\n");
         let console = make_console();
         let options = console.options();
-        let segments = diff.rich_console(&console, &options);
+        let segments = diff.gilt_console(&console, &options);
         // No changes, no output
         assert!(segments.is_empty());
     }

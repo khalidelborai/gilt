@@ -7,7 +7,7 @@ use crate::cells::cell_len;
 use crate::color::ColorSystem;
 use crate::color_env::{detect_color_env, ColorEnvOverride};
 use crate::control::Control;
-use crate::errors::ConsoleError;
+use crate::error::ConsoleError;
 use crate::export_format::{CONSOLE_HTML_FORMAT, CONSOLE_SVG_FORMAT};
 #[cfg(feature = "json")]
 use crate::json::{Json, JsonOptions};
@@ -21,7 +21,7 @@ use crate::style::Style;
 use crate::terminal_theme::{TerminalTheme, DEFAULT_TERMINAL_THEME, SVG_EXPORT_THEME};
 use crate::text::{JustifyMethod, OverflowMethod, Text};
 use crate::theme::{Theme, ThemeStack};
-use crate::traceback::Traceback;
+use crate::error::traceback::Traceback;
 use std::borrow::Cow;
 use std::fmt::Write as _;
 
@@ -185,11 +185,11 @@ impl ConsoleOptions {
 /// Trait for objects that can produce `Segment`s for console rendering.
 pub trait Renderable {
     /// Produce segments for rendering on the given console with given options.
-    fn rich_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment>;
+    fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment>;
 }
 
 impl Renderable for Text {
-    fn rich_console(&self, _console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
+    fn gilt_console(&self, _console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         let mut text = self.clone();
         if let Some(justify) = &options.justify {
             text.justify = Some(*justify);
@@ -220,15 +220,15 @@ impl Renderable for Text {
 }
 
 impl Renderable for str {
-    fn rich_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
+    fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         let text = console.render_str(self, None, options.justify, options.overflow);
-        text.rich_console(console, options)
+        text.gilt_console(console, options)
     }
 }
 
 impl Renderable for String {
-    fn rich_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
-        self.as_str().rich_console(console, options)
+    fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
+        self.as_str().gilt_console(console, options)
     }
 }
 
@@ -681,7 +681,7 @@ impl Console {
     ) -> Vec<Segment> {
         let default_opts = self.options();
         let opts = options.unwrap_or(&default_opts);
-        renderable.rich_console(self, opts)
+        renderable.gilt_console(self, opts)
     }
 
     /// Render a Renderable into lines of Segments, with optional padding and newlines.
@@ -695,7 +695,7 @@ impl Console {
     ) -> Vec<Vec<Segment>> {
         let default_opts = self.options();
         let opts = options.unwrap_or(&default_opts);
-        let segments = renderable.rich_console(self, opts);
+        let segments = renderable.gilt_console(self, opts);
 
         // Apply base style if present
         let segments = if let Some(base) = &self.base_style {
@@ -733,20 +733,20 @@ impl Console {
             None => Style::null(),
         };
 
-        let mut rich_text = if self.markup_enabled {
+        let mut gilt_text = if self.markup_enabled {
             markup::render(text, base_style.clone()).unwrap_or_else(|_| Text::new(text, base_style))
         } else {
             Text::new(text, base_style)
         };
 
         if let Some(j) = justify {
-            rich_text.justify = Some(j);
+            gilt_text.justify = Some(j);
         }
         if let Some(o) = overflow {
-            rich_text.overflow = Some(o);
+            gilt_text.overflow = Some(o);
         }
 
-        rich_text
+        gilt_text
     }
 
     // -- Print --------------------------------------------------------------
@@ -797,7 +797,7 @@ impl Console {
             opts.no_wrap = true;
         }
 
-        let mut segments = renderable.rich_console(self, &opts);
+        let mut segments = renderable.gilt_console(self, &opts);
 
         // Apply additional style
         if let Some(style_str) = style {
@@ -850,8 +850,8 @@ impl Console {
     /// assert!(output.contains("Hello, terminal!"));
     /// ```
     pub fn print_text(&mut self, text: &str) {
-        let rich_text = self.render_str(text, None, None, None);
-        self.print(&rich_text);
+        let gilt_text = self.render_str(text, None, None, None);
+        self.print(&gilt_text);
     }
 
     // -- Convenience methods ------------------------------------------------
@@ -899,11 +899,11 @@ impl Console {
         let body = self.render_str(text, None, None, None);
 
         // Combine: time + space + body
-        let mut segments = time_text.rich_console(self, &self.options());
+        let mut segments = time_text.gilt_console(self, &self.options());
         // Remove trailing newline from time segments
         segments.retain(|s| s.text != "\n");
         segments.push(Segment::text(" "));
-        segments.extend(body.rich_console(self, &self.options()));
+        segments.extend(body.gilt_console(self, &self.options()));
 
         // Ensure trailing newline
         if let Some(last) = segments.last() {
@@ -950,7 +950,7 @@ impl Console {
     pub fn input(&mut self, prompt: &str) -> Result<String, std::io::Error> {
         // Render and print the prompt (without trailing newline)
         let text = self.render_str(prompt, None, None, None);
-        let mut segments = text.rich_console(self, &self.options());
+        let mut segments = text.gilt_console(self, &self.options());
         // Remove trailing newlines so the cursor stays on the prompt line
         segments.retain(|s| s.text != "\n");
         self.write_segments(&segments);
@@ -976,7 +976,7 @@ impl Console {
     pub fn input_password(&mut self, prompt: &str) -> Result<String, std::io::Error> {
         // Render and print the prompt (without trailing newline)
         let text = self.render_str(prompt, None, None, None);
-        let mut segments = text.rich_console(self, &self.options());
+        let mut segments = text.gilt_console(self, &self.options());
         segments.retain(|s| s.text != "\n");
         self.write_segments(&segments);
 
@@ -1051,7 +1051,7 @@ impl Console {
     /// ```
     pub fn measure(&self, renderable: &dyn Renderable) -> Measurement {
         let opts = self.options();
-        let segments = renderable.rich_console(self, &opts);
+        let segments = renderable.gilt_console(self, &opts);
         // Collect all text, split by newlines to find line widths
         let full_text: String = segments
             .iter()
@@ -2602,7 +2602,7 @@ mod tests {
         let console = Console::builder().width(80).build();
         let text = Text::new("Renderable text", Style::null());
         let opts = console.options();
-        let segments = text.rich_console(&console, &opts);
+        let segments = text.gilt_console(&console, &opts);
         assert!(!segments.is_empty());
         let combined: String = segments.iter().map(|s| s.text.as_str()).collect();
         assert!(combined.contains("Renderable text"));
@@ -2615,7 +2615,7 @@ mod tests {
         let console = Console::builder().width(80).markup(false).build();
         let opts = console.options();
         let text = "Hello from str";
-        let segments = text.rich_console(&console, &opts);
+        let segments = text.gilt_console(&console, &opts);
         assert!(!segments.is_empty());
         let combined: String = segments.iter().map(|s| s.text.as_str()).collect();
         assert!(combined.contains("Hello from str"));
@@ -2626,7 +2626,7 @@ mod tests {
         let console = Console::builder().width(80).markup(false).build();
         let opts = console.options();
         let text = String::from("Hello from String");
-        let segments = text.rich_console(&console, &opts);
+        let segments = text.gilt_console(&console, &opts);
         assert!(!segments.is_empty());
         let combined: String = segments.iter().map(|s| s.text.as_str()).collect();
         assert!(combined.contains("Hello from String"));

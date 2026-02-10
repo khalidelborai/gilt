@@ -187,7 +187,7 @@ impl Default for Columns {
 }
 
 impl Renderable for Columns {
-    fn rich_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
+    fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         // Convert all string renderables to Text
         let renderables: Vec<Text> = self
             .renderables
@@ -330,7 +330,7 @@ impl Renderable for Columns {
         }
 
         // Render the table
-        table.rich_console(console, options)
+        table.gilt_console(console, options)
     }
 }
 
@@ -376,7 +376,7 @@ mod tests {
     fn render_columns(columns: &Columns, width: usize) -> String {
         let console = make_console(width);
         let opts = console.options();
-        let segments = columns.rich_console(&console, &opts);
+        let segments = columns.gilt_console(&console, &opts);
         segments_to_text(&segments)
     }
 
@@ -720,7 +720,7 @@ mod tests {
         cols.add_renderable("hello");
         cols.add_renderable("world");
         let opts = console.options();
-        let segments = cols.rich_console(&console, &opts);
+        let segments = cols.gilt_console(&console, &opts);
         assert!(!segments.is_empty());
         let text = segments_to_text(&segments);
         assert!(text.contains("hello"));

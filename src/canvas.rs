@@ -286,7 +286,7 @@ impl fmt::Display for Canvas {
 // ---------------------------------------------------------------------------
 
 impl Renderable for Canvas {
-    fn rich_console(&self, _console: &Console, _options: &ConsoleOptions) -> Vec<Segment> {
+    fn gilt_console(&self, _console: &Console, _options: &ConsoleOptions) -> Vec<Segment> {
         let mut segments = Vec::new();
         for (i, row) in self.pixels.iter().enumerate() {
             let line: String = row
@@ -541,7 +541,7 @@ mod tests {
         let c = Canvas::new(3, 2);
         let console = Console::builder().width(80).build();
         let opts = make_options(80);
-        let segments = c.rich_console(&console, &opts);
+        let segments = c.gilt_console(&console, &opts);
         // Should have: row0, newline, row1, newline
         assert!(!segments.is_empty());
         assert_eq!(segments.last().unwrap().text.as_str(), "\n");
@@ -554,7 +554,7 @@ mod tests {
         let c = Canvas::new(2, 1).with_style(style.clone());
         let console = Console::builder().width(80).build();
         let opts = make_options(80);
-        let segments = c.rich_console(&console, &opts);
+        let segments = c.gilt_console(&console, &opts);
         assert_eq!(segments[0].style.as_ref(), Some(&style));
     }
 
