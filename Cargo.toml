@@ -3,7 +3,7 @@ members = ["crates/gilt-derive"]
 
 [package]
 name = "gilt"
-version = "0.8.0"
+version = "0.9.0"
 edition = "2021"
 exclude = [".claude/", "vlc.zip"]
 description = "A fast, rich terminal formatting library — Rust port of Python's rich"
@@ -26,7 +26,7 @@ pulldown-cmark = { version = "0.12", optional = true }
 log = { version = "0.4", features = ["std"], optional = true }
 syntect = { version = "5", default-features = false, features = ["default-syntaxes", "default-themes", "regex-fancy"], optional = true }
 rpassword = { version = "7", optional = true }
-gilt-derive = { version = "0.8.0", path = "crates/gilt-derive", optional = true }
+gilt-derive = { version = "0.9.0", path = "crates/gilt-derive", optional = true }
 tracing = { version = "0.1", optional = true }
 tracing-subscriber = { version = "0.3", features = ["registry"], optional = true }
 miette = { version = "7", optional = true }
@@ -34,6 +34,11 @@ eyre = { version = "0.6", optional = true }
 rustyline = { version = "15", optional = true }
 anstyle = { version = "1", optional = true }
 csv = { version = "1", optional = true }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "fs"], optional = true }
+reqwest = { version = "0.12", features = ["json", "stream"], optional = true }
+futures-core = { version = "0.3", optional = true }
+futures-util = { version = "0.3", optional = true }
+bytes = { version = "1", optional = true }
 compact_str = "0.8"
 lru = "0.12"
 
@@ -51,6 +56,8 @@ eyre = ["dep:eyre"]
 readline = ["dep:rustyline"]
 anstyle = ["dep:anstyle"]
 csv = ["dep:csv"]
+async = ["dep:tokio", "dep:futures-core", "dep:futures-util"]
+http = ["dep:reqwest", "dep:bytes", "async", "json"]
 
 [dev-dependencies]
 pretty_assertions = "1"
