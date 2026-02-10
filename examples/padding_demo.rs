@@ -72,7 +72,8 @@ fn main() {
 
     // -- 1.5 Indent (Left Padding Only) --------------------------------------
     console.print_text("[bold]5. Indent (left=10 only)[/bold]");
-    let content = Text::from_markup("[italic]Indented text using Padding::indent()[/italic]").unwrap();
+    let content =
+        Text::from_markup("[italic]Indented text using Padding::indent()[/italic]").unwrap();
     let indented = Padding::indent(content, 10);
     console.print(&indented);
     console.print_text("");
@@ -138,7 +139,9 @@ fn main() {
     // Section 3: Styled Padding
     // ========================================================================
 
-    console.print(&Rule::with_title("Styled Padding (Dim Style for Padding Area)"));
+    console.print(&Rule::with_title(
+        "Styled Padding (Dim Style for Padding Area)",
+    ));
 
     // -- 3.1 Dim Padding Style -----------------------------------------------
     console.print_text("[bold]Padding with dim style:[/bold]");
@@ -180,9 +183,13 @@ fn main() {
     // Section 4: Visual Comparison
     // ========================================================================
 
-    console.print(&Rule::with_title("Visual Comparison: Same Content, Different Padding"));
+    console.print(&Rule::with_title(
+        "Visual Comparison: Same Content, Different Padding",
+    ));
 
-    let sample_text = Text::from_markup("[bold]Sample Content[/bold]\nThis demonstrates padding effects.").unwrap();
+    let sample_text =
+        Text::from_markup("[bold]Sample Content[/bold]\nThis demonstrates padding effects.")
+            .unwrap();
 
     // Create a comparison table using multiple panels
     console.print_text("[bold]Comparing padding configurations side by side:[/bold]\n");
@@ -250,10 +257,9 @@ fn main() {
 
     // -- 5.1 Card-like Display -----------------------------------------------
     console.print_text("[bold]1. Card-like Display with Padding + Panel[/bold]");
-    let card_content = Text::from_markup(
-        "[bold green]Success![/bold green]\nYour changes have been saved.",
-    )
-    .unwrap();
+    let card_content =
+        Text::from_markup("[bold green]Success![/bold green]\nYour changes have been saved.")
+            .unwrap();
     let card = Panel::new(card_content)
         .with_title("Notification")
         .with_padding(PaddingDimensions::Uniform(2))
@@ -291,7 +297,8 @@ fn main() {
     // -- 5.4 Nested Padding Effect -------------------------------------------
     console.print_text("[bold]4. Multiple Padded Elements[/bold]");
     for i in 1..=3 {
-        let item = Text::from_markup(&format!("[bold]Item {}[/bold]\nDescription here", i)).unwrap();
+        let item =
+            Text::from_markup(&format!("[bold]Item {}[/bold]\nDescription here", i)).unwrap();
         let padded_item = Padding::new(
             item,
             PaddingDimensions::Uniform(1),

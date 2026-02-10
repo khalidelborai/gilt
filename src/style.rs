@@ -1735,9 +1735,9 @@ mod tests {
 // LRU Cache for Style Parsing
 // ============================================================================
 
-use std::sync::Mutex;
 use lru::LruCache;
 use std::num::NonZeroUsize;
+use std::sync::Mutex;
 
 /// Global LRU cache for parsed styles with capacity for 256 entries.
 static STYLE_CACHE: Mutex<Option<LruCache<String, Style>>> = Mutex::new(None);

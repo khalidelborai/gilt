@@ -72,7 +72,9 @@ fn main() {
     // 3. Vertical Alignment
     // ========================================================================
 
-    console.print(&Rule::with_title("3. Vertical Alignment (with fixed height)"));
+    console.print(&Rule::with_title(
+        "3. Vertical Alignment (with fixed height)",
+    ));
 
     let v_content = Text::new("Vertical Content", Style::null());
 

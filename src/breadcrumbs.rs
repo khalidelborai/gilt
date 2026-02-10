@@ -327,7 +327,9 @@ impl Renderable for Breadcrumbs {
 
             // Determine the style for this item
             let item_style = if is_last {
-                self.active_style.clone().unwrap_or_else(|| self.style.clone())
+                self.active_style
+                    .clone()
+                    .unwrap_or_else(|| self.style.clone())
             } else {
                 self.style.clone()
             };
@@ -337,7 +339,10 @@ impl Renderable for Breadcrumbs {
 
             // Add separator if not the last item
             if !is_last {
-                segments.push(Segment::styled(&self.separator, self.separator_style.clone()));
+                segments.push(Segment::styled(
+                    &self.separator,
+                    self.separator_style.clone(),
+                ));
             }
         }
 

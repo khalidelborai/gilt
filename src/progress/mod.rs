@@ -18,6 +18,6 @@ pub use task::{format_time, ProgressSample, Task, TaskId};
 
 // Re-export column types
 pub use columns::{
-    BarColumn, FileSizeColumn, MofNCompleteColumn, SpinnerColumn, TaskProgressColumn,
-    TextColumn, TimeElapsedColumn, TimeRemainingColumn, TotalFileSizeColumn,
+    BarColumn, FileSizeColumn, MofNCompleteColumn, SpinnerColumn, TaskProgressColumn, TextColumn,
+    TimeElapsedColumn, TimeRemainingColumn, TotalFileSizeColumn,
 };

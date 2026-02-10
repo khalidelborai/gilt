@@ -25,9 +25,9 @@ fn main() {
         "dim cyan",
         "underline magenta",
         "strike yellow",
-        "bold red",           // Duplicate
+        "bold red",             // Duplicate
         "italic green on blue", // Duplicate
-        "dim cyan",           // Duplicate
+        "dim cyan",             // Duplicate
     ];
 
     // First pass - populate cache
@@ -51,7 +51,10 @@ fn main() {
     // Show improvement
     if first_pass > second_pass {
         let ratio = first_pass.as_nanos() as f64 / second_pass.as_nanos() as f64;
-        console.print_text(&format!("\n[green]✓[/green] Cache speedup: {:.1}x faster", ratio));
+        console.print_text(&format!(
+            "\n[green]✓[/green] Cache speedup: {:.1}x faster",
+            ratio
+        ));
     }
 
     // ========================================================================
@@ -65,9 +68,9 @@ fn main() {
         "rgb(100, 150, 200)",
         "blue",
         "#00FF00",
-        "red",        // Duplicate
-        "#FF5733",    // Duplicate
-        "blue",       // Duplicate
+        "red",     // Duplicate
+        "#FF5733", // Duplicate
+        "blue",    // Duplicate
     ];
 
     // First pass
@@ -90,7 +93,10 @@ fn main() {
 
     if first_pass > second_pass {
         let ratio = first_pass.as_nanos() as f64 / second_pass.as_nanos() as f64;
-        console.print_text(&format!("\n[green]✓[/green] Cache speedup: {:.1}x faster", ratio));
+        console.print_text(&format!(
+            "\n[green]✓[/green] Cache speedup: {:.1}x faster",
+            ratio
+        ));
     }
 
     // ========================================================================
@@ -134,10 +140,20 @@ fn main() {
 
     // Simulate applying a theme with many styled elements
     let theme_styles = [
-        "bold", "dim", "italic", "underline",
-        "red", "green", "blue", "yellow",
-        "on_red", "on_green", "on_blue",
-        "bold red", "italic green", "underline blue",
+        "bold",
+        "dim",
+        "italic",
+        "underline",
+        "red",
+        "green",
+        "blue",
+        "yellow",
+        "on_red",
+        "on_green",
+        "on_blue",
+        "bold red",
+        "italic green",
+        "underline blue",
     ];
 
     let start = Instant::now();

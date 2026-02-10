@@ -4,23 +4,22 @@
 //! along with supporting types `Span`, `Lines`, and related enums.
 //! Port of Python's rich/text.py.
 
-
 use std::cmp::min;
 use std::fmt;
 use std::ops::Add;
 
 use regex::Regex;
 
-use crate::utils::ansi::AnsiDecoder;
-use crate::utils::cells::{cell_len, set_cell_size};
 use crate::error::MarkupError;
 use crate::measure::Measurement;
 use crate::segment::Segment;
 use crate::style::Style;
+use crate::utils::ansi::AnsiDecoder;
+use crate::utils::cells::{cell_len, set_cell_size};
 use crate::wrap::divide_line;
 
 use super::{JustifyMethod, Lines, OverflowMethod, Span};
-use crate::text::helpers::{char_slice, strip_control_codes, gcd};
+use crate::text::helpers::{char_slice, gcd, strip_control_codes};
 
 /// A building block for [`Text::assemble`], representing one segment of text.
 pub enum TextPart {

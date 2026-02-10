@@ -22,11 +22,14 @@ fn main() {
 
     // Or access the structured data
     let report = diagnose::DiagnosticReport::generate();
-    
+
     println!("\n");
     println!("Additional structured information:");
     println!("  Terminal type: {}", report.terminal.term);
     println!("  Is terminal:   {}", report.terminal.is_terminal);
     println!("  Color support: {:?}", report.color_support);
-    println!("  Platform:      {} on {}", report.platform.os, report.platform.arch);
+    println!(
+        "  Platform:      {} on {}",
+        report.platform.os, report.platform.arch
+    );
 }

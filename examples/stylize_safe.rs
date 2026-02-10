@@ -21,7 +21,10 @@ struct StyleConfig {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut console = Console::new();
 
-    console.print(&Text::new("Safe Stylize Demo", Style::parse("bold underline")?));
+    console.print(&Text::new(
+        "Safe Stylize Demo",
+        Style::parse("bold underline")?,
+    ));
 
     // =======================================================================
     // PART 1: The Problem - Panicking Methods
@@ -106,7 +109,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 console.print(&styled);
             }
             Err(ColorParseError::InvalidHexFormat(msg)) => {
-                console.print(&format!("✗ '{}' has invalid hex format: {}", color, msg).red().dim());
+                console.print(
+                    &format!("✗ '{}' has invalid hex format: {}", color, msg)
+                        .red()
+                        .dim(),
+                );
             }
             Err(ColorParseError::UnknownColorName(msg)) => {
                 console.print(&format!("✗ '{}' is an unknown color name", msg).red().dim());
@@ -142,7 +149,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     console.print(&styled);
 
     // Invalid color - falls back to gray
-    console.print(&"Warning: 'invalid_color_name' is not a valid color, using grey50".dim().yellow());
+    console.print(
+        &"Warning: 'invalid_color_name' is not a valid color, using grey50"
+            .dim()
+            .yellow(),
+    );
     let styled = style_with_fallback("This falls back to gray", "invalid_color_name");
     console.print(&styled);
 
@@ -207,10 +218,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ));
 
     let style_tests = vec![
-        "bold red",      // Valid
-        "invalid_attr",  // Unknown attribute
-        "bold on",       // Missing background color
-        "not",           // Missing attribute after 'not'
+        "bold red",     // Valid
+        "invalid_attr", // Unknown attribute
+        "bold on",      // Missing background color
+        "not",          // Missing attribute after 'not'
     ];
 
     for style_str in style_tests {
@@ -227,10 +238,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     console.print(&Text::new("", Style::null()));
-    console.print(&Text::new(
-        "Demo Complete",
-        Style::parse("bold underline")?,
-    ));
+    console.print(&Text::new("Demo Complete", Style::parse("bold underline")?));
     console.print(&Text::new(
         "Use try_fg(), try_bg(), try_styled(), and try_attr() for robust error handling!",
         Style::parse("dim italic")?,
@@ -268,7 +276,10 @@ fn apply_user_style(text: &str, config: &StyleConfig) -> StyledStr {
     styled = match styled.clone().try_bg(&config.background_color) {
         Ok(s) => s,
         Err(_) => {
-            println!("Warning: Invalid background color '{}'", config.background_color);
+            println!(
+                "Warning: Invalid background color '{}'",
+                config.background_color
+            );
             styled // Skip background
         }
     };

@@ -28,14 +28,23 @@ fn main() {
     println!("[2] track() with Vec iteration");
     println!("    Tracking processing of string items\n");
 
-    let items = vec!["apple", "banana", "cherry", "date", "elderberry", "fig", "grape"];
+    let items = vec![
+        "apple",
+        "banana",
+        "cherry",
+        "date",
+        "elderberry",
+        "fig",
+        "grape",
+    ];
 
-    let uppercased: Vec<String> = track(items.iter(), "Processing fruits", Some(items.len() as f64))
-        .map(|fruit| {
-            thread::sleep(Duration::from_millis(200));
-            fruit.to_uppercase()
-        })
-        .collect();
+    let uppercased: Vec<String> =
+        track(items.iter(), "Processing fruits", Some(items.len() as f64))
+            .map(|fruit| {
+                thread::sleep(Duration::from_millis(200));
+                fruit.to_uppercase()
+            })
+            .collect();
 
     println!("\n    Results: {:?}\n", uppercased);
 
@@ -70,9 +79,9 @@ fn main() {
     println!("    Automatically detects length from Vec\n");
 
     let data = vec![
-        "alpha", "bravo", "charlie", "delta", "echo", "foxtrot", "golf", "hotel",
-        "india", "juliet", "kilo", "lima", "mike", "november", "oscar", "papa",
-        "quebec", "romeo", "sierra", "tango",
+        "alpha", "bravo", "charlie", "delta", "echo", "foxtrot", "golf", "hotel", "india",
+        "juliet", "kilo", "lima", "mike", "november", "oscar", "papa", "quebec", "romeo", "sierra",
+        "tango",
     ];
 
     let collected: Vec<&str> = data
@@ -109,9 +118,10 @@ fn main() {
 
     let custom_columns: Vec<Box<dyn gilt::progress::ProgressColumn>> = vec![
         Box::new(SpinnerColumn::new("dots")),
-        Box::new(TextColumn::new("{task.description}").with_style(
-            Style::parse("bold cyan").unwrap_or_else(|_| Style::null()),
-        )),
+        Box::new(
+            TextColumn::new("{task.description}")
+                .with_style(Style::parse("bold cyan").unwrap_or_else(|_| Style::null())),
+        ),
         Box::new(BarColumn::default()),
         Box::new(TimeRemainingColumn::new()),
     ];

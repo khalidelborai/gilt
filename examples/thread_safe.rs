@@ -6,9 +6,9 @@
 //! Run: cargo run --example thread_safe
 
 use gilt::prelude::*;
+use std::sync::{Arc, Barrier};
 use std::thread;
 use std::time::Duration;
-use std::sync::{Arc, Barrier};
 
 fn main() {
     let mut console = Console::new();
@@ -47,22 +47,22 @@ fn main() {
     console.print_text("Demonstrating shared progress state:\n");
 
     let barrier = Arc::new(Barrier::new(3));
-    
+
     let handles: Vec<_> = (0..3)
         .map(|i| {
             let b = barrier.clone();
             thread::spawn(move || {
                 let mut c = Console::new();
                 b.wait(); // Synchronize start
-                
+
                 for step in 0..5 {
-                    c.print_text(&format!(
-                        "  [dim]Task {}: step {}/5[/dim]", 
-                        i + 1, step + 1
-                    ));
+                    c.print_text(&format!("  [dim]Task {}: step {}/5[/dim]", i + 1, step + 1));
                     thread::sleep(Duration::from_millis(50 + (i * 20) as u64));
                 }
-                c.print_text(&format!("  [bold green]Task {} complete![/bold green]", i + 1));
+                c.print_text(&format!(
+                    "  [bold green]Task {} complete![/bold green]",
+                    i + 1
+                ));
             })
         })
         .collect();

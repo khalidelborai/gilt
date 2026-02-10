@@ -57,12 +57,17 @@ impl protocol::RichCast for User {
     fn __gilt__(self) -> Box<dyn Renderable> {
         let status_icon = if self.active { "🟢" } else { "🔴" };
         let status_text = if self.active { "Active" } else { "Inactive" };
-        
+
         let content = Text::from(format!(
             "👤 Username: {}\n📧 Email: {}\n🛡️  Role: [{}]{}[/]\n{} Status: {}",
-            self.username, self.email, self.role.style(), self.role.as_str(), status_icon, status_text
+            self.username,
+            self.email,
+            self.role.style(),
+            self.role.as_str(),
+            status_icon,
+            status_text
         ));
-        
+
         Box::new(
             Panel::new(content)
                 .with_title("User Profile")
@@ -82,21 +87,22 @@ struct Service {
 
 impl protocol::RichCast for Service {
     fn __gilt__(self) -> Box<dyn Renderable> {
-        let health_style = if self.healthy { "bold green" } else { "bold red" };
+        let health_style = if self.healthy {
+            "bold green"
+        } else {
+            "bold red"
+        };
         let health_status = if self.healthy { "HEALTHY" } else { "UNHEALTHY" };
-        
+
         let mut table = Table::new(&["Property", "Value"]);
         table.add_row(&["Name", &self.name]);
         table.add_row(&["Version", &self.version]);
-        table.add_row(&[
-            "Status",
-            &format!("[{}]{}[/]", health_style, health_status),
-        ]);
+        table.add_row(&["Status", &format!("[{}]{}[/]", health_style, health_status)]);
         table.add_row(&["Latency", &format!("{}ms", self.latency_ms)]);
         table.add_row(&["Uptime", &format!("{:.2}%", self.uptime_percent)]);
-        
+
         let border_style = if self.healthy { "green" } else { "red" };
-        
+
         Box::new(
             table
                 .with_title(&format!("Service: {}", self.name))
@@ -166,14 +172,14 @@ struct ServiceDashboard {
 impl protocol::RichCast for ServiceDashboard {
     fn __gilt__(self) -> Box<dyn Renderable> {
         let mut table = Table::new(&["Service", "Version", "Status", "Latency", "Uptime"]);
-        
+
         for service in self.services {
             let status = if service.healthy {
                 "[green]✓ HEALTHY[/]"
             } else {
                 "[red]✗ UNHEALTHY[/]"
             };
-            
+
             table.add_row(&[
                 &service.name,
                 &service.version,
@@ -182,7 +188,7 @@ impl protocol::RichCast for ServiceDashboard {
                 &format!("{:.1}%", service.uptime_percent),
             ]);
         }
-        
+
         Box::new(
             table
                 .with_title("Service Dashboard")
@@ -396,7 +402,10 @@ fn main() {
         .map(|u| protocol::IntoRenderable::into_renderable(u))
         .collect();
 
-    println!("Printing {} user profiles from collection:\n", renderables.len());
+    println!(
+        "Printing {} user profiles from collection:\n",
+        renderables.len()
+    );
     for (i, renderable) in renderables.iter().enumerate() {
         println!("User {}:", i + 1);
         console.print(&**renderable);
@@ -414,7 +423,10 @@ fn main() {
         protocol::RenderableBox::new(Rule::with_title("Rule item")),
     ];
 
-    println!("Storing {} different renderable types in one collection:\n", items.len());
+    println!(
+        "Storing {} different renderable types in one collection:\n",
+        items.len()
+    );
     for (i, item) in items.iter().enumerate() {
         println!("Item {}:", i + 1);
         console.print(item);
@@ -434,7 +446,10 @@ fn main() {
     console.rule(Some("9. Using rich_cast_impl Macro"));
     println!();
 
-    let quick = QuickStatus { label: "Count", value: 42 };
+    let quick = QuickStatus {
+        label: "Count",
+        value: 42,
+    };
     console.print(&*protocol::IntoRenderable::into_renderable(quick));
     println!();
 
@@ -455,9 +470,9 @@ fn main() {
                }\n\
            }\n\n\
          Both protocols allow custom types to define their visual representation\n\
-         when rendered to the console."
+         when rendered to the console.",
     );
-    
+
     console.print(&Panel::new(explanation).with_title("Protocol Comparison"));
     println!();
 

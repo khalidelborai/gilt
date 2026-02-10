@@ -77,7 +77,7 @@ pub trait ProgressStreamExt: Stream {
     ///
     /// #[tokio::main]
     /// async fn main() {
-///     let stream = tokio::fs::read_dir("./src").await.unwrap();
+    ///     let stream = tokio::fs::read_dir("./src").await.unwrap();
     ///     let progress_stream = stream.track_progress("Scanning files", Some(100.0));
     /// }
     /// ```
@@ -628,21 +628,15 @@ impl ProgressChannel {
     /// ```
     pub async fn run(mut self) {
         self.progress.start();
-        
+
         // Small delay to ensure display is initialized before processing updates
         tokio::time::sleep(Duration::from_millis(50)).await;
 
         while let Some(update) = self.receiver.recv().await {
             match update {
                 ProgressUpdate::Set(completed) => {
-                    self.progress.update(
-                        self.task,
-                        Some(completed),
-                        None,
-                        None,
-                        None,
-                        None,
-                    );
+                    self.progress
+                        .update(self.task, Some(completed), None, None, None, None);
                     // Refresh display immediately after each update
                     self.progress.refresh();
                 }
@@ -651,14 +645,8 @@ impl ProgressChannel {
                     // (the auto-finish logic will set finished_time when completed >= total)
                     if let Some(task) = self.progress.get_task(self.task) {
                         if let Some(total) = task.total {
-                            self.progress.update(
-                                self.task,
-                                Some(total),
-                                None,
-                                None,
-                                None,
-                                None,
-                            );
+                            self.progress
+                                .update(self.task, Some(total), None, None, None, None);
                         }
                     }
                     self.progress.refresh();
@@ -784,11 +772,7 @@ pub mod fs {
     ///     println!("Copied {} bytes", bytes_copied);
     /// }
     /// ```
-    pub async fn copy_with_progress(
-        src: &Path,
-        dst: &Path,
-        description: &str,
-    ) -> io::Result<u64> {
+    pub async fn copy_with_progress(src: &Path, dst: &Path, description: &str) -> io::Result<u64> {
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
         // Get source file metadata
@@ -933,7 +917,8 @@ mod tests {
         live.start().await;
         assert!(live.is_started());
 
-        live.update(Text::new("Updated", crate::style::Style::null())).await;
+        live.update(Text::new("Updated", crate::style::Style::null()))
+            .await;
 
         live.stop().await;
         assert!(!live.is_started());

@@ -1217,9 +1217,8 @@ mod tests {
 // LRU Cache for Color Parsing
 // ============================================================================
 
-use std::sync::Mutex;
 use lru::LruCache;
-
+use std::sync::Mutex;
 
 /// Global LRU cache for parsed colors with capacity for 512 entries.
 static COLOR_CACHE: Mutex<Option<LruCache<String, Color>>> = Mutex::new(None);

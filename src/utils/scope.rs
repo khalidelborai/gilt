@@ -9,12 +9,12 @@
 use std::fmt;
 
 use crate::console::{Console, ConsoleOptions, Renderable};
-use crate::utils::padding::PaddingDimensions;
 use crate::panel::Panel;
 use crate::segment::Segment;
 use crate::style::Style;
 use crate::table::{ColumnOptions, Table};
 use crate::text::{JustifyMethod, Text};
+use crate::utils::padding::PaddingDimensions;
 
 // ---------------------------------------------------------------------------
 // Scope

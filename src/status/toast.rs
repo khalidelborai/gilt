@@ -31,14 +31,14 @@
 
 use std::time::Duration;
 
-use crate::utils::box_chars::{BoxChars, ROUNDED};
 use crate::console::{Console, Renderable};
-use crate::utils::padding::PaddingDimensions;
 use crate::panel::Panel;
 use crate::progress_bar::ProgressBar;
 use crate::segment::Segment;
 use crate::style::Style;
 use crate::text::Text;
+use crate::utils::box_chars::{BoxChars, ROUNDED};
+use crate::utils::padding::PaddingDimensions;
 
 // ---------------------------------------------------------------------------
 // ToastType
@@ -343,7 +343,9 @@ impl Toast {
 
     /// Get the icon to display (custom or default).
     fn get_icon(&self) -> &str {
-        self.icon.as_deref().unwrap_or_else(|| self.toast_type.default_icon())
+        self.icon
+            .as_deref()
+            .unwrap_or_else(|| self.toast_type.default_icon())
     }
 
     /// Build the content text for the toast.
@@ -417,29 +419,19 @@ impl Toast {
         // Set styles based on toast type
         match self.toast_type {
             ToastType::Success => {
-                bar = bar
-                    .with_complete_style("green")
-                    .with_style("dim green");
+                bar = bar.with_complete_style("green").with_style("dim green");
             }
             ToastType::Error => {
-                bar = bar
-                    .with_complete_style("red")
-                    .with_style("dim red");
+                bar = bar.with_complete_style("red").with_style("dim red");
             }
             ToastType::Warning => {
-                bar = bar
-                    .with_complete_style("yellow")
-                    .with_style("dim yellow");
+                bar = bar.with_complete_style("yellow").with_style("dim yellow");
             }
             ToastType::Info => {
-                bar = bar
-                    .with_complete_style("blue")
-                    .with_style("dim blue");
+                bar = bar.with_complete_style("blue").with_style("dim blue");
             }
             ToastType::Custom(_) => {
-                bar = bar
-                    .with_complete_style("bold")
-                    .with_style("dim");
+                bar = bar.with_complete_style("bold").with_style("dim");
             }
         }
 
@@ -487,7 +479,11 @@ impl Toast {
 }
 
 impl Renderable for Toast {
-    fn gilt_console(&self, console: &Console, _options: &crate::console::ConsoleOptions) -> Vec<Segment> {
+    fn gilt_console(
+        &self,
+        console: &Console,
+        _options: &crate::console::ConsoleOptions,
+    ) -> Vec<Segment> {
         let panel = self.build_panel(None);
         panel.gilt_console(console, _options)
     }

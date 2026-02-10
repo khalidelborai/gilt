@@ -506,17 +506,17 @@ impl Renderable for Accordion {
 
         // Build header line: icon + space + title
         let icon = self.current_icon();
-        
+
         // Icon segment
         if !self.icon_style.is_null() {
             segments.push(Segment::styled(icon, self.icon_style.clone()));
         } else {
             segments.push(Segment::text(icon));
         }
-        
+
         // Space after icon
         segments.push(Segment::text(" "));
-        
+
         // Title segment
         let title_text = if !self.title_style.is_null() {
             Segment::styled(&self.title, self.title_style.clone())
@@ -526,7 +526,7 @@ impl Renderable for Accordion {
             Segment::text(&self.title)
         };
         segments.push(title_text);
-        
+
         // End of header line
         segments.push(Segment::line());
 
@@ -643,9 +643,12 @@ mod tests {
     #[test]
     fn test_accordion_expanded() {
         let console = make_console(80);
-        let accordion = Accordion::new("Section Title", Text::new("Content line 1\nContent line 2", Style::null()));
+        let accordion = Accordion::new(
+            "Section Title",
+            Text::new("Content line 1\nContent line 2", Style::null()),
+        );
         let output = render_accordion(&console, &accordion);
-        
+
         // Should show icon, title, and content
         assert!(output.contains("▼"));
         assert!(output.contains("Section Title"));
@@ -657,11 +660,12 @@ mod tests {
     fn test_accordion_collapsed() {
         let console = make_console(80);
         let accordion = Accordion::new(
-            "Section Title", 
-            Text::new("Content line 1\nContent line 2", Style::null())
-        ).collapsed(true);
+            "Section Title",
+            Text::new("Content line 1\nContent line 2", Style::null()),
+        )
+        .collapsed(true);
         let output = render_accordion(&console, &accordion);
-        
+
         // Should show icon and title only (collapsed state)
         assert!(output.contains("▶"));
         assert!(output.contains("Section Title"));
@@ -675,14 +679,14 @@ mod tests {
     #[test]
     fn test_toggle() {
         let mut accordion = Accordion::new("Test", Text::new("Content", Style::null()));
-        
+
         // Default is expanded
         assert!(!accordion.is_collapsed());
-        
+
         // Toggle to collapsed
         accordion.toggle();
         assert!(accordion.is_collapsed());
-        
+
         // Toggle back to expanded
         accordion.toggle();
         assert!(!accordion.is_collapsed());
@@ -691,10 +695,10 @@ mod tests {
     #[test]
     fn test_expand_collapse() {
         let mut accordion = Accordion::new("Test", Text::new("Content", Style::null()));
-        
+
         accordion.collapse();
         assert!(accordion.is_collapsed());
-        
+
         accordion.expand();
         assert!(!accordion.is_collapsed());
     }
@@ -703,19 +707,18 @@ mod tests {
 
     #[test]
     fn test_custom_icons() {
-        let accordion = Accordion::new("Test", Text::new("Content", Style::null()))
-            .icons("+", "−");
-        
+        let accordion = Accordion::new("Test", Text::new("Content", Style::null())).icons("+", "−");
+
         assert_eq!(accordion.expand_icon, "+");
         assert_eq!(accordion.collapse_icon, "−");
-        
+
         // When expanded, should show collapse icon
         assert_eq!(accordion.current_icon(), "−");
-        
+
         let collapsed = Accordion::new("Test", Text::new("Content", Style::null()))
             .icons("+", "−")
             .collapsed(true);
-        
+
         // When collapsed, should show expand icon
         assert_eq!(collapsed.current_icon(), "+");
     }
@@ -723,12 +726,11 @@ mod tests {
     #[test]
     fn test_custom_icons_rendering() {
         let console = make_console(80);
-        
-        let expanded = Accordion::new("Test", Text::new("Content", Style::null()))
-            .icons("►", "▼");
+
+        let expanded = Accordion::new("Test", Text::new("Content", Style::null())).icons("►", "▼");
         let output = render_accordion(&console, &expanded);
         assert!(output.contains("▼"));
-        
+
         let collapsed = Accordion::new("Test", Text::new("Content", Style::null()))
             .icons("►", "▼")
             .collapsed(true);
@@ -741,10 +743,10 @@ mod tests {
     #[test]
     fn test_indentation() {
         let console = make_console(80);
-        let accordion = Accordion::new("Title", Text::new("Line 1\nLine 2", Style::null()))
-            .indent(4);
+        let accordion =
+            Accordion::new("Title", Text::new("Line 1\nLine 2", Style::null())).indent(4);
         let output = render_accordion(&console, &accordion);
-        
+
         // Check that content is indented
         let lines: Vec<&str> = output.lines().collect();
         // First line is header, second line should have 4-space indent
@@ -759,16 +761,15 @@ mod tests {
             Accordion::new("A", Text::new("Content A", Style::null())),
             Accordion::new("B", Text::new("Content B", Style::null())),
         ]);
-        
+
         assert_eq!(group.items.len(), 2);
         assert!(group.allow_multiple_open);
     }
 
     #[test]
     fn test_accordion_group_allow_multiple_open() {
-        let group = AccordionGroup::new(vec![])
-            .allow_multiple_open(false);
-        
+        let group = AccordionGroup::new(vec![]).allow_multiple_open(false);
+
         assert!(!group.allow_multiple_open);
     }
 
@@ -778,9 +779,9 @@ mod tests {
             Accordion::new("A", Text::new("...", Style::null())).collapsed(true),
             Accordion::new("B", Text::new("...", Style::null())).collapsed(true),
         ]);
-        
+
         group.expand_all();
-        
+
         assert!(!group.items[0].is_collapsed());
         assert!(!group.items[1].is_collapsed());
     }
@@ -791,9 +792,9 @@ mod tests {
             Accordion::new("A", Text::new("...", Style::null())),
             Accordion::new("B", Text::new("...", Style::null())),
         ]);
-        
+
         group.collapse_all();
-        
+
         assert!(group.items[0].is_collapsed());
         assert!(group.items[1].is_collapsed());
     }
@@ -802,7 +803,7 @@ mod tests {
     fn test_accordion_group_push() {
         let mut group = AccordionGroup::new(vec![]);
         group.push(Accordion::new("New", Text::new("Content", Style::null())));
-        
+
         assert_eq!(group.items.len(), 1);
     }
 
@@ -814,15 +815,15 @@ mod tests {
             Accordion::new("C", Text::new("...", Style::null())),
         ])
         .allow_multiple_open(false);
-        
+
         // Initially all expanded
         assert!(!group.items[0].is_collapsed());
         assert!(!group.items[1].is_collapsed());
         assert!(!group.items[2].is_collapsed());
-        
+
         // Expand item 1 - should collapse others
         group.expand_item(1);
-        
+
         assert!(group.items[0].is_collapsed());
         assert!(!group.items[1].is_collapsed());
         assert!(group.items[2].is_collapsed());
@@ -835,11 +836,11 @@ mod tests {
             Accordion::new("First", Text::new("Content 1", Style::null())),
             Accordion::new("Second", Text::new("Content 2", Style::null())),
         ]);
-        
+
         let opts = console.options();
         let segments = group.gilt_console(&console, &opts);
         let output = segments_to_text(&segments);
-        
+
         // Should contain both titles and content
         assert!(output.contains("First"));
         assert!(output.contains("Second"));
@@ -858,7 +859,7 @@ mod tests {
             .icon_style(Style::parse("cyan").unwrap())
             .icons("+", "−")
             .indent(4);
-        
+
         assert!(accordion.collapsed);
         assert!(!accordion.style.is_null());
         assert!(!accordion.title_style.is_null());
@@ -874,18 +875,19 @@ mod tests {
     fn test_accordion_display() {
         let accordion = Accordion::new("Title", Text::new("Content", Style::null()));
         let output = format!("{}", accordion);
-        
+
         assert!(output.contains("Title"));
         assert!(output.contains("Content"));
     }
 
     #[test]
     fn test_accordion_group_display() {
-        let group = AccordionGroup::new(vec![
-            Accordion::new("A", Text::new("Content A", Style::null())),
-        ]);
+        let group = AccordionGroup::new(vec![Accordion::new(
+            "A",
+            Text::new("Content A", Style::null()),
+        )]);
         let output = format!("{}", group);
-        
+
         assert!(output.contains("A"));
         assert!(output.contains("Content A"));
     }
@@ -897,7 +899,7 @@ mod tests {
         let console = make_console(80);
         let accordion = Accordion::new("Title", Text::new("", Style::null()));
         let output = render_accordion(&console, &accordion);
-        
+
         // Should still render header
         assert!(output.contains("Title"));
         assert!(output.contains("▼"));
@@ -908,7 +910,7 @@ mod tests {
         let console = make_console(80);
         let accordion = Accordion::new("", Text::new("Content", Style::null()));
         let output = render_accordion(&console, &accordion);
-        
+
         // Should still render icon and content
         assert!(output.contains("▼"));
         assert!(output.contains("Content"));
@@ -917,25 +919,29 @@ mod tests {
     #[test]
     fn test_long_content_wrapping() {
         let console = make_console(40);
-        let long_text = "This is a very long line that should wrap when rendered in a narrow console width.";
+        let long_text =
+            "This is a very long line that should wrap when rendered in a narrow console width.";
         let accordion = Accordion::new("Title", Text::new(long_text, Style::null()));
         let output = render_accordion(&console, &accordion);
-        
+
         // Content should be wrapped (multiple lines)
         let line_count = output.lines().count();
         // Header (▼ Title) + at least one content line (may wrap to 2+ lines)
-        assert!(line_count >= 2, "Expected at least 2 lines, got {}", line_count);
+        assert!(
+            line_count >= 2,
+            "Expected at least 2 lines, got {}",
+            line_count
+        );
     }
 
     #[test]
     fn test_expand_item_out_of_bounds() {
-        let mut group = AccordionGroup::new(vec![
-            Accordion::new("A", Text::new("...", Style::null())),
-        ]);
-        
+        let mut group =
+            AccordionGroup::new(vec![Accordion::new("A", Text::new("...", Style::null()))]);
+
         // Should not panic with out-of-bounds index
         group.expand_item(10);
-        
+
         // Original item should remain unchanged
         assert!(!group.items[0].is_collapsed());
     }
@@ -944,10 +950,10 @@ mod tests {
     fn test_accordion_group_empty() {
         let console = make_console(80);
         let group = AccordionGroup::new(vec![]);
-        
+
         let opts = console.options();
         let segments = group.gilt_console(&console, &opts);
-        
+
         // Empty group should produce no segments
         assert!(segments.is_empty());
     }

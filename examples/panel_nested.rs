@@ -11,8 +11,8 @@
 //!
 //! Run: cargo run --example panel_nested
 
-use gilt::prelude::*;
 use gilt::box_chars::{ASCII, DOUBLE, HEAVY, ROUNDED, SQUARE};
+use gilt::prelude::*;
 
 fn main() {
     let mut console = Console::builder()

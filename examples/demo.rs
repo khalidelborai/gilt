@@ -16,7 +16,6 @@ use std::io::{self, Write};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use gilt::prelude::*;
 use gilt::accordion::Accordion;
 use gilt::badge::Badge;
 use gilt::box_chars::{DOUBLE, HEAVY, ROUNDED, SIMPLE};
@@ -25,10 +24,11 @@ use gilt::color::Color;
 use gilt::emoji_replace::emoji_replace;
 use gilt::figlet::Figlet;
 use gilt::highlighter::{Highlighter, ISODateHighlighter, URLHighlighter, UUIDHighlighter};
+use gilt::prelude::*;
+use gilt::style::Style;
 use gilt::table::ColumnOptions;
 use gilt::text::Text;
 use gilt::toast::Toast;
-use gilt::style::Style;
 
 // ---------------------------------------------------------------------------
 // Demo Configuration
@@ -214,7 +214,12 @@ fn show_text_styling(console: &mut Console) {
     console.print_text("[bold magenta]TrueColor (RGB)[/bold magenta]");
     console.print(&"  Orange (#ff6600)".fg("#ff6600"));
     console.print(&"  Sky Blue (#00ccff)".fg("#00ccff"));
-    console.print(&"  Lime (#00ff88) on Dark".bold().fg("#00ff88").bg("#222222"));
+    console.print(
+        &"  Lime (#00ff88) on Dark"
+            .bold()
+            .fg("#00ff88")
+            .bg("#222222"),
+    );
     console.line(1);
 
     // Combinations
@@ -228,7 +233,9 @@ fn show_text_styling(console: &mut Console) {
     console.print_text("[bold magenta]BBCode-style Markup[/bold magenta]");
     console.print_text("  [bold red]Error:[/bold red] Something went wrong");
     console.print_text("  [green]✓[/green] Success! [dim](took 42ms)[/dim]");
-    console.print_text("  [bold cyan]Info:[/bold cyan] Use [code][tag][/code] for [italic]inline styling[/italic]");
+    console.print_text(
+        "  [bold cyan]Info:[/bold cyan] Use [code][tag][/code] for [italic]inline styling[/italic]",
+    );
     console.line(1);
 }
 
@@ -357,15 +364,35 @@ fn show_widgets(console: &mut Console) {
     console.print_text("[bold blue]Rule[/bold blue] — Horizontal dividers");
     console.print(&Rule::new());
     console.print(&Rule::with_title("Centered Title"));
-    console.print(&Rule::with_title("Heavy Rule").with_characters("━").with_style(Style::parse("red").unwrap()));
-    console.print(&Rule::with_title("Double Line").with_characters("=").with_style(Style::parse("green").unwrap()));
+    console.print(
+        &Rule::with_title("Heavy Rule")
+            .with_characters("━")
+            .with_style(Style::parse("red").unwrap()),
+    );
+    console.print(
+        &Rule::with_title("Double Line")
+            .with_characters("=")
+            .with_style(Style::parse("green").unwrap()),
+    );
     console.line(1);
 
     // Columns
     console.print_text("[bold blue]Columns[/bold blue] — Multi-column layouts");
     let items = [
-        "Rust", "Python", "Go", "TypeScript", "Java", "C++", "Ruby",
-        "Swift", "Kotlin", "Haskell", "Elixir", "Zig", "Scala", "Clojure",
+        "Rust",
+        "Python",
+        "Go",
+        "TypeScript",
+        "Java",
+        "C++",
+        "Ruby",
+        "Swift",
+        "Kotlin",
+        "Haskell",
+        "Elixir",
+        "Zig",
+        "Scala",
+        "Clojure",
     ];
 
     let mut cols = Columns::new().with_equal(true);
@@ -407,11 +434,7 @@ fn show_new_features(console: &mut Console) {
     // Breadcrumbs
     console.print_text("[bold green]Breadcrumbs[/bold green] — Navigation paths");
 
-    let default_crumbs = Breadcrumbs::new(vec![
-        "Home".into(),
-        "Settings".into(),
-        "Profile".into(),
-    ]);
+    let default_crumbs = Breadcrumbs::new(vec!["Home".into(), "Settings".into(), "Profile".into()]);
     console.print(&default_crumbs);
 
     let file_path = Breadcrumbs::slash(vec![
@@ -471,9 +494,11 @@ fn show_new_features(console: &mut Console) {
 
     // Theme Showcase
     console.print_text("[bold green]Built-in Themes[/bold green] — Pre-defined color palettes");
-    console.print_text("  Available themes: [cyan]monokai[/cyan], [cyan]solarized_dark[/cyan], \
+    console.print_text(
+        "  Available themes: [cyan]monokai[/cyan], [cyan]solarized_dark[/cyan], \
                       [cyan]solarized_light[/cyan], [cyan]dracula[/cyan], [cyan]nord[/cyan], \
-                      [cyan]one_dark[/cyan], [cyan]github_dark[/cyan], [cyan]github_light[/cyan]");
+                      [cyan]one_dark[/cyan], [cyan]github_dark[/cyan], [cyan]github_light[/cyan]",
+    );
     console.line(1);
 }
 
@@ -488,9 +513,8 @@ fn show_advanced_features(console: &mut Console) {
 
     // Gradient Text
     console.print_text("[bold yellow]Gradient Text[/bold yellow] — Smooth color transitions");
-    let rainbow = Gradient::rainbow(
-        "ROYGBIV: Red Orange Yellow Green Blue Indigo Violet — full spectrum!"
-    );
+    let rainbow =
+        Gradient::rainbow("ROYGBIV: Red Orange Yellow Green Blue Indigo Violet — full spectrum!");
     console.print(&rainbow);
 
     let blue_to_green = Gradient::two_color(
@@ -560,7 +584,8 @@ fn main() {
     {
         console.print_text("[bold yellow]JSON Pretty-Printing[/bold yellow] — Structured data");
         let json_str = r#"{"name": "gilt", "version": "0.8.0", "features": ["syntax", "markdown", "json"], "metadata": {"stars": 42, "active": true}}"#;
-        let json_widget = gilt::json::Json::new(json_str, gilt::json::JsonOptions::default()).unwrap();
+        let json_widget =
+            gilt::json::Json::new(json_str, gilt::json::JsonOptions::default()).unwrap();
         console.print(&json_widget);
         console.line(1);
     }
@@ -575,11 +600,15 @@ fn main() {
             .force_terminal(true)
             .build();
 
-        let mut live = Live::new(Text::new("Starting...", Style::null())).with_console(live_console);
+        let mut live =
+            Live::new(Text::new("Starting...", Style::null())).with_console(live_console);
         live.start();
 
         for i in 0..=5 {
-            let text = Text::new(&format!("Processing... {}/5", i), Style::parse("cyan").unwrap());
+            let text = Text::new(
+                &format!("Processing... {}/5", i),
+                Style::parse("cyan").unwrap(),
+            );
             live.update_renderable(text, true);
             thread::sleep(Duration::from_millis(300));
         }
@@ -596,9 +625,7 @@ fn main() {
     console.print_text("[dim]Simulating async tasks...[/dim]");
 
     {
-        let status_console = Console::builder()
-            .force_terminal(true)
-            .build();
+        let status_console = Console::builder().force_terminal(true).build();
 
         let messages = [
             "Connecting to server...",
@@ -726,7 +753,10 @@ fn make_test_card(console: &mut Console) -> Table {
              [bold yellow]✓[/bold yellow] Automatic color conversion",
         )
         .unwrap();
-        table.add_row_text(&[Text::from_markup("[bold red]Colors[/]").unwrap(), color_demo]);
+        table.add_row_text(&[
+            Text::from_markup("[bold red]Colors[/]").unwrap(),
+            color_demo,
+        ]);
     }
 
     // Row 2: Styles
@@ -763,10 +793,9 @@ fn make_test_card(console: &mut Console) -> Table {
         }
         justify_table.add_row_text(&[t_left, t_center, t_right]);
 
-        let header = Text::from_markup(
-            "Justify: [green]left[/], [yellow]center[/], [blue]right[/]",
-        )
-        .unwrap();
+        let header =
+            Text::from_markup("Justify: [green]left[/], [yellow]center[/], [blue]right[/]")
+                .unwrap();
 
         let mut combined = header;
         combined.append_str("\n", None);
@@ -909,7 +938,12 @@ fn make_test_card(console: &mut Console) -> Table {
     // Row 10: Progress
     {
         let mut bar_text = Text::empty();
-        let levels: &[(f64, &str)] = &[(0.0, "  0%"), (30.0, " 30%"), (70.0, " 70%"), (100.0, "100%")];
+        let levels: &[(f64, &str)] = &[
+            (0.0, "  0%"),
+            (30.0, " 30%"),
+            (70.0, " 70%"),
+            (100.0, "100%"),
+        ];
 
         for (completed, label) in levels {
             let label_t = Text::from_markup(&format!("[dim]{label}[/dim] ")).unwrap();
@@ -924,7 +958,10 @@ fn make_test_card(console: &mut Console) -> Table {
             bar_text.append_str("\n", None);
         }
 
-        table.add_row_text(&[Text::from_markup("[bold red]Progress[/]").unwrap(), bar_text]);
+        table.add_row_text(&[
+            Text::from_markup("[bold red]Progress[/]").unwrap(),
+            bar_text,
+        ]);
     }
 
     // Row 11: Gradient
@@ -1025,13 +1062,21 @@ fn show_export(console: &mut Console) {
     console.line(1);
 
     console.print_text("[bold]Plain Text:[/bold]");
-    console.print(&Panel::new(Text::new(&plain, Style::null()))
-        .with_box_chars(&SIMPLE)
-        .with_border_style(Style::parse("dim").unwrap()));
+    console.print(
+        &Panel::new(Text::new(&plain, Style::null()))
+            .with_box_chars(&SIMPLE)
+            .with_border_style(Style::parse("dim").unwrap()),
+    );
 
     console.line(1);
-    console.print_text(&format!("[bold]HTML Export:[/bold] [dim]{} bytes[/dim]", html.len()));
-    console.print_text(&format!("[bold]SVG Export:[/bold]  [dim]{} bytes[/dim]", svg.len()));
+    console.print_text(&format!(
+        "[bold]HTML Export:[/bold] [dim]{} bytes[/dim]",
+        html.len()
+    ));
+    console.print_text(&format!(
+        "[bold]SVG Export:[/bold]  [dim]{} bytes[/dim]",
+        svg.len()
+    ));
 
     // Try to save to temp directory
     let html_path = "/tmp/gilt_demo_export.html";
@@ -1080,7 +1125,7 @@ fn show_farewell(console: &mut Console) {
     let farewell_panel = Panel::new(farewell_content)
         .with_title(Text::styled(
             " gilt v0.8.0 ",
-            Style::parse("bold green").unwrap()
+            Style::parse("bold green").unwrap(),
         ))
         .with_box_chars(&ROUNDED)
         .with_border_style(Style::parse("green").unwrap());

@@ -8,9 +8,9 @@
 //!
 //! Run: cargo run --example columns_demo
 
-use gilt::prelude::*;
 use gilt::box_chars::{ASCII, DOUBLE, HEAVY, ROUNDED, SQUARE};
 use gilt::panel::Panel;
+use gilt::prelude::*;
 use gilt::table::Table;
 use gilt::text::JustifyMethod;
 
@@ -28,9 +28,21 @@ fn main() {
     console.print_text("Auto-fitting columns with plain text items:\n");
 
     let languages = vec![
-        "Rust", "Python", "Go", "TypeScript", "Java",
-        "C++", "Ruby", "Swift", "Kotlin", "Haskell",
-        "Elixir", "Zig", "C#", "PHP", "Lua",
+        "Rust",
+        "Python",
+        "Go",
+        "TypeScript",
+        "Java",
+        "C++",
+        "Ruby",
+        "Swift",
+        "Kotlin",
+        "Haskell",
+        "Elixir",
+        "Zig",
+        "C#",
+        "PHP",
+        "Lua",
     ];
 
     let mut cols = Columns::new();
@@ -66,10 +78,8 @@ fn main() {
     console.rule(Some("3. Equal-Width Columns"));
     console.print_text("Items distributed in equal-width columns:\n");
 
-    let mut cols = Columns::new()
-        .with_equal(true)
-        .with_expand(true);
-    
+    let mut cols = Columns::new().with_equal(true).with_expand(true);
+
     for lang in &languages {
         cols.add_renderable(lang);
     }
@@ -94,7 +104,7 @@ fn main() {
         let panel = Panel::fit(Text::from_markup(desc).unwrap())
             .with_title(name)
             .with_border_style(Style::parse(color).unwrap());
-        
+
         // Capture panel output as string
         let mut temp_console = Console::builder()
             .width(30)
@@ -106,9 +116,8 @@ fn main() {
         panel_strings.push(temp_console.end_capture());
     }
 
-    let mut cols = Columns::new()
-        .with_padding((1, 2, 1, 2));
-    
+    let mut cols = Columns::new().with_padding((1, 2, 1, 2));
+
     for panel_str in &panel_strings {
         cols.add_renderable(panel_str.trim());
     }
@@ -124,15 +133,24 @@ fn main() {
 
     // Create small stat tables
     for (title, rows) in vec![
-        ("CPU", vec![("User", "45%"), ("System", "12%"), ("Idle", "43%")]),
-        ("Memory", vec![("Used", "8.2 GB"), ("Free", "7.8 GB"), ("Cache", "2.1 GB")]),
-        ("Disk", vec![("Read", "120 MB/s"), ("Write", "85 MB/s"), ("IOPS", "2.4k")]),
+        (
+            "CPU",
+            vec![("User", "45%"), ("System", "12%"), ("Idle", "43%")],
+        ),
+        (
+            "Memory",
+            vec![("Used", "8.2 GB"), ("Free", "7.8 GB"), ("Cache", "2.1 GB")],
+        ),
+        (
+            "Disk",
+            vec![("Read", "120 MB/s"), ("Write", "85 MB/s"), ("IOPS", "2.4k")],
+        ),
     ] {
         let mut table = Table::grid(&["Metric", "Value"]);
         for (k, v) in rows {
             table.add_row(&[k, v]);
         }
-        
+
         let mut temp_console = Console::builder()
             .width(25)
             .force_terminal(true)
@@ -140,15 +158,14 @@ fn main() {
             .build();
         temp_console.begin_capture();
         temp_console.print(&table);
-        
+
         // Add title above the table
         let output = format!("[bold]{}[/bold]\n{}", title, temp_console.end_capture());
         table_strings.push(output);
     }
 
-    let mut cols = Columns::new()
-        .with_padding((0, 3, 0, 3));
-    
+    let mut cols = Columns::new().with_padding((0, 3, 0, 3));
+
     for table_str in &table_strings {
         cols.add_renderable(table_str);
     }
@@ -194,18 +211,20 @@ fn main() {
     console.rule(Some("7. Dynamic Column Count"));
     console.print_text("Auto-fitting based on terminal width (resize to see effect):\n");
 
-    let items: Vec<String> = (1..=20)
-        .map(|i| format!("Item {:02}", i))
-        .collect();
+    let items: Vec<String> = (1..=20).map(|i| format!("Item {:02}", i)).collect();
 
     // Simulate different terminal widths
-    for (width, label) in vec![(120, "Wide (120 cols)"), (80, "Medium (80 cols)"), (50, "Narrow (50 cols)")] {
+    for (width, label) in vec![
+        (120, "Wide (120 cols)"),
+        (80, "Medium (80 cols)"),
+        (50, "Narrow (50 cols)"),
+    ] {
         console.print_text(&format!("\n[dim]{}:[/dim]", label));
         let mut cols = Columns::new();
         for item in &items {
             cols.add_renderable(item);
         }
-        
+
         // Use a console with specific width to demonstrate
         let mut temp_console = Console::builder()
             .width(width)
@@ -244,9 +263,8 @@ fn main() {
         file_strings.push(entry);
     }
 
-    let mut cols = Columns::new()
-        .with_padding((0, 2, 1, 2));
-    
+    let mut cols = Columns::new().with_padding((0, 2, 1, 2));
+
     for file_str in &file_strings {
         cols.add_renderable(file_str);
     }
@@ -273,7 +291,8 @@ fn main() {
             Text::from_markup(&format!(
                 "{}\n[bold {}]{}[/bold {}]\n[dim]{}[/dim]",
                 label, color, value, color, change
-            )).unwrap()
+            ))
+            .unwrap(),
         )
         .with_title(format!("{} {}", icon, label))
         .with_box_chars(&ROUNDED)
@@ -289,9 +308,8 @@ fn main() {
         card_strings.push(temp_console.end_capture());
     }
 
-    let mut cols = Columns::new()
-        .with_padding((1, 2, 1, 2));
-    
+    let mut cols = Columns::new().with_padding((1, 2, 1, 2));
+
     for card_str in &card_strings {
         cols.add_renderable(card_str.trim());
     }
@@ -304,7 +322,11 @@ fn main() {
     console.print_text("Image gallery with captions:\n");
 
     let gallery_items = vec![
-        ("[yellow]█[/yellow][green]▄[/green]", "Landscape", "1920x1080"),
+        (
+            "[yellow]█[/yellow][green]▄[/green]",
+            "Landscape",
+            "1920x1080",
+        ),
         ("[blue]▓[/blue][cyan]▒[/cyan]░", "Portrait", "1080x1920"),
         ("[red]▪[/red][magenta]◆[/magenta]", "Abstract", "800x600"),
         ("[white]▓[/white][dim]█[/dim]", "B&W Photo", "2048x1536"),
@@ -326,7 +348,7 @@ fn main() {
         .with_width(12)
         .with_align(JustifyMethod::Center)
         .with_padding((1, 2, 1, 2));
-    
+
     for item in &gallery_strings {
         cols.add_renderable(item);
     }
@@ -338,14 +360,10 @@ fn main() {
     console.rule(Some("11. Column-First Ordering"));
     console.print_text("Items fill top-to-bottom first, then left-to-right:\n");
 
-    let numbered: Vec<String> = (1..=12)
-        .map(|i| format!("Item {}", i))
-        .collect();
+    let numbered: Vec<String> = (1..=12).map(|i| format!("Item {}", i)).collect();
 
-    let mut cols = Columns::new()
-        .with_column_first(true)
-        .with_width(10);
-    
+    let mut cols = Columns::new().with_column_first(true).with_width(10);
+
     for item in &numbered {
         cols.add_renderable(item);
     }
@@ -381,9 +399,8 @@ fn main() {
         style_strings.push(temp_console.end_capture());
     }
 
-    let mut cols = Columns::new()
-        .with_padding((1, 1, 1, 1));
-    
+    let mut cols = Columns::new().with_padding((1, 1, 1, 1));
+
     for style_str in &style_strings {
         cols.add_renderable(style_str.trim());
     }
@@ -404,12 +421,12 @@ fn main() {
     let paradigms = vec![
         "Object-Oriented",
         "Functional",
-        "Procedural", 
+        "Procedural",
         "Declarative",
         "Concurrent",
         "Logic",
     ];
-    
+
     for p in &paradigms {
         cols.add_renderable(p);
     }
@@ -432,7 +449,7 @@ fn main() {
             "Database" => vec![("PostgreSQL", "✓"), ("TimescaleDB", "✓")],
             _ => vec![],
         };
-        
+
         for (tech, status) in rows {
             table.add_row(&[tech, status]);
         }
@@ -452,9 +469,8 @@ fn main() {
         complex_strings.push(temp_console.end_capture());
     }
 
-    let mut cols = Columns::new()
-        .with_padding((0, 2, 0, 2));
-    
+    let mut cols = Columns::new().with_padding((0, 2, 0, 2));
+
     for complex_str in &complex_strings {
         cols.add_renderable(complex_str.trim());
     }

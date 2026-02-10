@@ -381,7 +381,7 @@ macro_rules! derive_gilt_cast {
 /// struct Status { code: u16, message: String }
 ///
 /// gilt_cast_impl! { Status => |s|
-///     Box::new(Panel::new(Text::from(format!("Status {}: {}", 
+///     Box::new(Panel::new(Text::from(format!("Status {}: {}",
 ///         s.code, s.message))))
 /// }
 /// ```
@@ -406,7 +406,7 @@ mod tests {
     fn test_gilt_cast_success() {
         let text = Text::from("Hello, World!");
         let boxed: Box<dyn Any> = Box::new(text);
-        
+
         let cast_result = gilt_cast::<Text>(boxed);
         assert!(cast_result.is_some());
     }
@@ -415,7 +415,7 @@ mod tests {
     fn test_gilt_cast_failure() {
         let text = Text::from("Hello");
         let boxed: Box<dyn Any> = Box::new(text);
-        
+
         // Trying to cast Text to Panel should fail
         let cast_result = gilt_cast::<Panel>(boxed);
         assert!(cast_result.is_none());
@@ -425,7 +425,7 @@ mod tests {
     fn test_gilt_cast_with_panel() {
         let panel = Panel::new(Text::from("Content"));
         let boxed: Box<dyn Any> = Box::new(panel);
-        
+
         let cast_result = gilt_cast::<Panel>(boxed);
         assert!(cast_result.is_some());
     }
@@ -445,28 +445,26 @@ mod tests {
     fn test_gilt_cast_trait() {
         let data = TestData { value: 42 };
         let renderable = data.into_renderable();
-        
+
         // The renderable should be usable
-        let mut console = crate::console::Console::builder()
-            .width(80)
-            .build();
+        let mut console = crate::console::Console::builder().width(80).build();
         console.begin_capture();
         console.print(&*renderable);
         let output = console.end_capture();
-        
+
         assert!(output.contains("Value: 42"));
     }
 
     #[test]
     fn test_into_renderable_blanket_impl() {
         struct SimpleData(&'static str);
-        
+
         impl RichCast for SimpleData {
             fn __gilt__(self) -> Box<dyn Renderable> {
                 Box::new(Text::from(self.0))
             }
         }
-        
+
         let data = SimpleData("Test");
         let _renderable: Box<dyn Renderable> = data.into_renderable();
         // If this compiles, the blanket implementation works
@@ -476,15 +474,13 @@ mod tests {
     fn test_renderable_box() {
         let text = Text::from("Boxed text");
         let boxed = RenderableBox::new(text);
-        
+
         // Can be used as a renderable
-        let mut console = crate::console::Console::builder()
-            .width(80)
-            .build();
+        let mut console = crate::console::Console::builder().width(80).build();
         console.begin_capture();
         console.print(&boxed);
         let output = console.end_capture();
-        
+
         assert!(output.contains("Boxed text"));
     }
 
@@ -492,16 +488,14 @@ mod tests {
     fn test_renderable_box_from_panel() {
         let panel = Panel::new(Text::from("Panel content"));
         let boxed = RenderableBox::new(panel);
-        
+
         let inner = boxed.into_inner();
         // inner is Box<dyn Renderable>
-        let mut console = crate::console::Console::builder()
-            .width(80)
-            .build();
+        let mut console = crate::console::Console::builder().width(80).build();
         console.begin_capture();
         console.print(&*inner);
         let output = console.end_capture();
-        
+
         assert!(output.contains("Panel content"));
     }
 
@@ -509,14 +503,12 @@ mod tests {
     fn test_renderable_ext() {
         let text = Text::from("Extended");
         let boxed = text.into_boxed_renderable();
-        
-        let mut console = crate::console::Console::builder()
-            .width(80)
-            .build();
+
+        let mut console = crate::console::Console::builder().width(80).build();
         console.begin_capture();
         console.print(&boxed);
         let output = console.end_capture();
-        
+
         assert!(output.contains("Extended"));
     }
 
@@ -531,36 +523,35 @@ mod tests {
     fn test_as_renderable_ref() {
         let text = Text::from("Reference");
         let renderable_ref = as_renderable_ref(&text);
-        
+
         // Should be usable as a renderable reference
-        let mut console = crate::console::Console::builder()
-            .width(80)
-            .build();
+        let mut console = crate::console::Console::builder().width(80).build();
         console.begin_capture();
         console.print(renderable_ref);
         let output = console.end_capture();
-        
+
         assert!(output.contains("Reference"));
     }
 
     #[test]
     fn test_gilt_cast_impl_macro() {
-        struct QuickData { x: i32, y: i32 }
-        
+        struct QuickData {
+            x: i32,
+            y: i32,
+        }
+
         gilt_cast_impl! { QuickData => |p|
             Box::new(Text::from(format!("Point: ({}, {})", p.x, p.y)))
         }
-        
+
         let data = QuickData { x: 10, y: 20 };
         let renderable = data.into_renderable();
-        
-        let mut console = crate::console::Console::builder()
-            .width(80)
-            .build();
+
+        let mut console = crate::console::Console::builder().width(80).build();
         console.begin_capture();
         console.print(&*renderable);
         let output = console.end_capture();
-        
+
         assert!(output.contains("Point: (10, 20)"));
     }
 
@@ -571,16 +562,14 @@ mod tests {
             RenderableBox::new(Panel::new(Text::from("Item 2"))),
             RenderableBox::new(Rule::with_title("Item 3")),
         ];
-        
-        let mut console = crate::console::Console::builder()
-            .width(80)
-            .build();
+
+        let mut console = crate::console::Console::builder().width(80).build();
         console.begin_capture();
-        
+
         for item in &items {
             console.print(item);
         }
-        
+
         let output = console.end_capture();
         assert!(output.contains("Item 1"));
         assert!(output.contains("Item 2"));

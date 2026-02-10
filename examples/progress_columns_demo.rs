@@ -8,8 +8,8 @@
 
 use gilt::prelude::*;
 use gilt::progress::{
-    BarColumn, DownloadColumn, FileSizeColumn, Progress, SpinnerColumn,
-    TextColumn, TimeElapsedColumn, TimeRemainingColumn, TransferSpeedColumn,
+    BarColumn, DownloadColumn, FileSizeColumn, Progress, SpinnerColumn, TextColumn,
+    TimeElapsedColumn, TimeRemainingColumn, TransferSpeedColumn,
 };
 use std::thread;
 use std::time::Duration;

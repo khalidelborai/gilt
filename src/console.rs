@@ -7,6 +7,7 @@ use crate::cells::cell_len;
 use crate::color::ColorSystem;
 use crate::color_env::{detect_color_env, ColorEnvOverride};
 use crate::control::Control;
+use crate::error::traceback::Traceback;
 use crate::error::ConsoleError;
 use crate::export_format::{CONSOLE_HTML_FORMAT, CONSOLE_SVG_FORMAT};
 #[cfg(feature = "json")]
@@ -21,7 +22,6 @@ use crate::style::Style;
 use crate::terminal_theme::{TerminalTheme, DEFAULT_TERMINAL_THEME, SVG_EXPORT_THEME};
 use crate::text::{JustifyMethod, OverflowMethod, Text};
 use crate::theme::{Theme, ThemeStack};
-use crate::error::traceback::Traceback;
 use std::borrow::Cow;
 use std::fmt::Write as _;
 

@@ -76,8 +76,8 @@ use bytes::Bytes;
 use reqwest::{Client, RequestBuilder, Response, StatusCode};
 
 use crate::progress::{
-    BarColumn, DownloadColumn, Progress, ProgressColumn, TaskId, TextColumn,
-    TimeRemainingColumn, TransferSpeedColumn,
+    BarColumn, DownloadColumn, Progress, ProgressColumn, TaskId, TextColumn, TimeRemainingColumn,
+    TransferSpeedColumn,
 };
 
 // Re-export reqwest types for convenience
@@ -400,7 +400,10 @@ impl ProgressResponse {
     /// # }
     /// ```
     pub fn status(&self) -> StatusCode {
-        self.inner.as_ref().map(|r| r.status()).unwrap_or(StatusCode::OK)
+        self.inner
+            .as_ref()
+            .map(|r| r.status())
+            .unwrap_or(StatusCode::OK)
     }
 
     /// Returns the content length of the response if available.
@@ -536,7 +539,9 @@ impl ProgressResponse {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn json<T: serde::de::DeserializeOwned>(mut self) -> std::result::Result<T, JsonError> {
+    pub async fn json<T: serde::de::DeserializeOwned>(
+        mut self,
+    ) -> std::result::Result<T, JsonError> {
         let bytes = self.collect_body().await.map_err(JsonError::Reqwest)?;
         self.stop_progress();
         serde_json::from_slice(&bytes).map_err(JsonError::Json)
@@ -570,14 +575,7 @@ impl ProgressResponse {
         if let Some(mut progress) = self.progress.take() {
             // Mark task as complete
             if let Some(total) = self.total {
-                progress.update(
-                    self.task_id,
-                    Some(total),
-                    None,
-                    None,
-                    None,
-                    None,
-                );
+                progress.update(self.task_id, Some(total), None, None, None, None);
             }
             progress.stop();
         }

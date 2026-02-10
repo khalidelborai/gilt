@@ -11,15 +11,15 @@ pub use enums::{JustifyMethod, OverflowMethod};
 pub use helpers::strip_control_codes;
 
 // Re-export core types
+pub use core::{Text, TextOrStr, TextPart};
 pub use lines::Lines;
 pub use span::Span;
-pub use core::{Text, TextOrStr, TextPart};
 
+mod core;
 pub mod enums;
 mod helpers;
 mod lines;
 mod span;
-mod core;
 
 // ---------------------------------------------------------------------------
 // Tests (kept here temporarily - will be moved to tests/ in Phase 3)

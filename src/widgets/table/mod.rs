@@ -14,11 +14,11 @@
 //! ```
 
 mod column;
+mod core;
 mod render;
 mod row;
-mod core;
 
 // Re-exports for backward compatibility
 pub use column::{Column, ColumnOptions};
-pub use row::{CellContent, Row};
 pub use core::Table;
+pub use row::{CellContent, Row};

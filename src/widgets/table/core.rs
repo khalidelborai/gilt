@@ -4,12 +4,12 @@
 
 use crate::console::{Console, ConsoleOptions, ConsoleOptionsUpdates};
 use crate::measure::Measurement;
+use crate::segment::Segment;
+use crate::style::Style;
 use crate::text::{JustifyMethod, OverflowMethod, Text};
 use crate::utils::align_widget::VerticalAlign;
 use crate::utils::box_chars::{BoxChars, RowLevel, HEAVY_HEAD};
 use crate::utils::ratio::{ratio_distribute, ratio_reduce};
-use crate::segment::Segment;
-use crate::style::Style;
 use crate::widgets::table::{CellContent, Column, ColumnOptions, Row};
 
 /// A single cell in the table (internal).

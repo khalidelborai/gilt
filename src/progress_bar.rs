@@ -10,8 +10,8 @@ use std::f64::consts::PI;
 use std::fmt;
 use std::time::SystemTime;
 
-use crate::color::{blend_rgb, Color, ColorSystem};
 use crate::color::color_triplet::ColorTriplet;
+use crate::color::{blend_rgb, Color, ColorSystem};
 use crate::console::{Console, ConsoleOptions, Renderable};
 use crate::measure::Measurement;
 use crate::segment::Segment;

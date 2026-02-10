@@ -51,7 +51,11 @@ impl Span {
 
     /// Crop the end to `min(offset, self.end)`.
     pub fn right_crop(&self, offset: usize) -> Span {
-        Span::new(self.start, std::cmp::min(offset, self.end), self.style.clone())
+        Span::new(
+            self.start,
+            std::cmp::min(offset, self.end),
+            self.style.clone(),
+        )
     }
 
     /// Extend end by `cells`.

@@ -6,8 +6,10 @@
 use std::time::Duration;
 
 use gilt::console::Console;
-use gilt::toast::{toast_error, toast_info, toast_success, toast_warning, Toast, ToastManager, ToastType};
 use gilt::style::Style;
+use gilt::toast::{
+    toast_error, toast_info, toast_success, toast_warning, Toast, ToastManager, ToastType,
+};
 
 fn main() {
     let mut console = Console::builder()
@@ -20,17 +22,13 @@ fn main() {
 
     println!("=== Basic Toast Types ===\n");
 
-    Toast::success("Operation completed successfully")
-        .show(&mut console);
+    Toast::success("Operation completed successfully").show(&mut console);
 
-    Toast::error("Failed to save file")
-        .show(&mut console);
+    Toast::error("Failed to save file").show(&mut console);
 
-    Toast::warning("Disk space low")
-        .show(&mut console);
+    Toast::warning("Disk space low").show(&mut console);
 
-    Toast::info("3 new notifications")
-        .show(&mut console);
+    Toast::info("3 new notifications").show(&mut console);
 
     // -- Section 2: Custom Icons ----------------------------------------------
 
@@ -44,13 +42,9 @@ fn main() {
         .icon("🔌")
         .show(&mut console);
 
-    Toast::warning("Battery low")
-        .icon("🔋")
-        .show(&mut console);
+    Toast::warning("Battery low").icon("🔋").show(&mut console);
 
-    Toast::info("New email")
-        .icon("📧")
-        .show(&mut console);
+    Toast::info("New email").icon("📧").show(&mut console);
 
     // -- Section 3: Custom Styling --------------------------------------------
 

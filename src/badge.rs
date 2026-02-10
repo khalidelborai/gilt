@@ -21,7 +21,6 @@ use crate::console::{Console, ConsoleOptions, Renderable};
 use crate::segment::Segment;
 use crate::style::Style;
 
-
 // -----------------------------------------------------------------------------
 // BadgeStyle
 // -----------------------------------------------------------------------------
@@ -167,9 +166,7 @@ impl Badge {
     /// let badge = Badge::success("Complete");
     /// ```
     pub fn success(text: impl Into<String>) -> Self {
-        Badge::new(text)
-            .style(BadgeStyle::Success)
-            .icon("✓")
+        Badge::new(text).style(BadgeStyle::Success).icon("✓")
     }
 
     /// Create an error badge (red background, white text, ✗ icon).
@@ -182,9 +179,7 @@ impl Badge {
     /// let badge = Badge::error("Failed");
     /// ```
     pub fn error(text: impl Into<String>) -> Self {
-        Badge::new(text)
-            .style(BadgeStyle::Error)
-            .icon("✗")
+        Badge::new(text).style(BadgeStyle::Error).icon("✗")
     }
 
     /// Create a warning badge (yellow background, black text, ⚠ icon).
@@ -197,9 +192,7 @@ impl Badge {
     /// let badge = Badge::warning("Caution");
     /// ```
     pub fn warning(text: impl Into<String>) -> Self {
-        Badge::new(text)
-            .style(BadgeStyle::Warning)
-            .icon("⚠")
+        Badge::new(text).style(BadgeStyle::Warning).icon("⚠")
     }
 
     /// Create an info badge (blue background, white text, ℹ icon).
@@ -212,9 +205,7 @@ impl Badge {
     /// let badge = Badge::info("Note");
     /// ```
     pub fn info(text: impl Into<String>) -> Self {
-        Badge::new(text)
-            .style(BadgeStyle::Info)
-            .icon("ℹ")
+        Badge::new(text).style(BadgeStyle::Info).icon("ℹ")
     }
 
     /// Set the icon displayed before the text.
@@ -323,7 +314,7 @@ impl Renderable for Badge {
         middle.push_str(&content);
         middle.push(' ');
         middle.push(vert);
-        
+
         // The middle row needs both background and foreground styling
         // We create a combined style
         let combined_style = fg_style + bg_style.clone();
@@ -450,7 +441,7 @@ mod tests {
             .style(BadgeStyle::Info)
             .icon("→")
             .rounded(true);
-        
+
         assert_eq!(badge.text(), "Test");
         assert_eq!(badge.badge_style(), &BadgeStyle::Info);
         assert_eq!(badge.icon_str(), Some("→"));
@@ -477,7 +468,7 @@ mod tests {
         let console = make_console(80);
         let badge = Badge::new("OK");
         let output = render_badge(&console, &badge);
-        
+
         // Should contain square box characters
         assert!(output.contains('┌'));
         assert!(output.contains('┐'));
@@ -491,7 +482,7 @@ mod tests {
         let console = make_console(80);
         let badge = Badge::new("OK").rounded(true);
         let output = render_badge(&console, &badge);
-        
+
         // Should contain rounded box characters
         assert!(output.contains('╭'));
         assert!(output.contains('╮'));
@@ -505,7 +496,7 @@ mod tests {
         let console = make_console(80);
         let badge = Badge::success("Done");
         let output = render_badge(&console, &badge);
-        
+
         assert!(output.contains("✓"));
         assert!(output.contains("Done"));
     }
@@ -515,7 +506,7 @@ mod tests {
         let console = make_console(80);
         let badge = Badge::new("Plain").icon("");
         let output = render_badge(&console, &badge);
-        
+
         // Just text with padding, no icon
         assert!(output.contains(" Plain "));
     }
@@ -525,7 +516,7 @@ mod tests {
         let console = make_console(80);
         let badge = Badge::new("Test");
         let output = render_badge(&console, &badge);
-        
+
         // Badge should be 3 lines (top, middle, bottom)
         let lines: Vec<&str> = output.lines().collect();
         assert_eq!(lines.len(), 3);
@@ -557,7 +548,7 @@ mod tests {
     fn test_badge_style_equality() {
         assert_eq!(BadgeStyle::Success, BadgeStyle::Success);
         assert_ne!(BadgeStyle::Success, BadgeStyle::Error);
-        
+
         let style1 = BadgeStyle::Custom(Style::parse("red").unwrap());
         let style2 = BadgeStyle::Custom(Style::parse("red").unwrap());
         assert_eq!(style1, style2);
@@ -616,7 +607,7 @@ mod tests {
     fn test_clone() {
         let badge = Badge::success("Done").rounded(true);
         let cloned = badge.clone();
-        
+
         assert_eq!(badge.text(), cloned.text());
         assert_eq!(badge.badge_style(), cloned.badge_style());
         assert_eq!(badge.icon_str(), cloned.icon_str());

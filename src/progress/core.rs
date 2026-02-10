@@ -4,9 +4,7 @@ use std::io::{self, Read};
 
 use crate::console::{Console, ConsoleOptions, Renderable};
 use crate::live::Live;
-use crate::progress::columns::{
-    BarColumn, TaskProgressColumn, TextColumn, TimeRemainingColumn,
-};
+use crate::progress::columns::{BarColumn, TaskProgressColumn, TextColumn, TimeRemainingColumn};
 use crate::progress::task::{current_time_secs, Task, TaskId};
 use crate::segment::Segment;
 use crate::style::Style;

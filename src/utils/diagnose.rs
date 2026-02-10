@@ -295,12 +295,7 @@ fn rustc_version() -> String {
         .map(|s| s.to_string())
         .unwrap_or_else(|| {
             // Fallback: use a compile-time version string
-            format!(
-                "{}.{}.{}",
-                env!("CARGO_PKG_RUST_VERSION"),
-                "x",
-                "x"
-            )
+            format!("{}.{}.{}", env!("CARGO_PKG_RUST_VERSION"), "x", "x")
         })
 }
 
@@ -423,8 +418,14 @@ fn format_report(report: &DiagnosticReport) -> String {
     output.push_str("━ Platform Information ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
     output.push_str(&format!("  OS:              {}\n", report.platform.os));
     output.push_str(&format!("  Architecture:    {}\n", report.platform.arch));
-    output.push_str(&format!("  Rust Version:    {}\n", report.platform.rust_version));
-    output.push_str(&format!("  gilt Version:    {}\n", report.platform.gilt_version));
+    output.push_str(&format!(
+        "  Rust Version:    {}\n",
+        report.platform.rust_version
+    ));
+    output.push_str(&format!(
+        "  gilt Version:    {}\n",
+        report.platform.gilt_version
+    ));
     output.push('\n');
 
     // Terminal Information
@@ -436,7 +437,11 @@ fn format_report(report: &DiagnosticReport) -> String {
     ));
     output.push_str(&format!(
         "  Interactive:     {}\n",
-        if report.terminal.is_terminal { "Yes" } else { "No" }
+        if report.terminal.is_terminal {
+            "Yes"
+        } else {
+            "No"
+        }
     ));
     if let Some(ref emulator) = report.terminal.emulator {
         output.push_str(&format!("  Emulator:        {}\n", emulator));
@@ -445,7 +450,10 @@ fn format_report(report: &DiagnosticReport) -> String {
 
     // Color Support
     output.push_str("━ Color Support ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
-    output.push_str(&format!("  Level:           {}\n", report.color_support.name()));
+    output.push_str(&format!(
+        "  Level:           {}\n",
+        report.color_support.name()
+    ));
     output.push_str(&format!(
         "  Standard (16):   {}\n",
         if report.color_support as u8 >= ColorSupport::Standard as u8 {
@@ -517,7 +525,13 @@ fn format_report(report: &DiagnosticReport) -> String {
 
     // Color-related variables
     output.push_str("  Color-related:\n");
-    for var in ["NO_COLOR", "FORCE_COLOR", "CLICOLOR", "CLICOLOR_FORCE", "COLORTERM"] {
+    for var in [
+        "NO_COLOR",
+        "FORCE_COLOR",
+        "CLICOLOR",
+        "CLICOLOR_FORCE",
+        "COLORTERM",
+    ] {
         if let Ok(val) = env::var(var) {
             output.push_str(&format!("    {} = \"{}\"\n", var, val));
         } else {
@@ -599,8 +613,6 @@ fn format_report(report: &DiagnosticReport) -> String {
     output
 }
 
-
-
 // -----------------------------------------------------------------------------
 // Tests
 // -----------------------------------------------------------------------------
@@ -670,7 +682,10 @@ mod tests {
             ColorSupport::Standard.color_system(),
             Some(ColorSystem::Standard)
         );
-        assert_eq!(ColorSupport::Two56.color_system(), Some(ColorSystem::EightBit));
+        assert_eq!(
+            ColorSupport::Two56.color_system(),
+            Some(ColorSystem::EightBit)
+        );
         assert_eq!(
             ColorSupport::TrueColor.color_system(),
             Some(ColorSystem::TrueColor)

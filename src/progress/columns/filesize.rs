@@ -1,9 +1,9 @@
 //! File size columns for progress bars.
 
-use crate::utils::filesize;
 use crate::progress::{ProgressColumn, Task};
 use crate::style::Style;
 use crate::text::Text;
+use crate::utils::filesize;
 
 /// A column that shows the completed amount as a human-readable file size.
 #[derive(Debug, Clone)]

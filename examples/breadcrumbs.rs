@@ -20,11 +20,7 @@ fn main() {
     // -- Default separator -----------------------------------------------------
     console.print(&Rule::with_title("Default Separator ( > )"));
 
-    let default_crumbs = Breadcrumbs::new(vec![
-        "Home".into(),
-        "Settings".into(),
-        "Profile".into(),
-    ]);
+    let default_crumbs = Breadcrumbs::new(vec!["Home".into(), "Settings".into(), "Profile".into()]);
     console.print(&default_crumbs);
     console.print_text("");
 
@@ -90,12 +86,8 @@ fn main() {
     // -- Custom separator ------------------------------------------------------
     console.print(&Rule::with_title("Custom Separator"));
 
-    let custom_sep = Breadcrumbs::new(vec![
-        "First".into(),
-        "Second".into(),
-        "Third".into(),
-    ])
-    .separator(" | ");
+    let custom_sep =
+        Breadcrumbs::new(vec!["First".into(), "Second".into(), "Third".into()]).separator(" | ");
     console.print(&custom_sep);
     console.print_text("");
 

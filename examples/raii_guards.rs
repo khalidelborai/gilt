@@ -57,12 +57,12 @@ fn main() {
     console.rule(Some("Capture Pattern"));
 
     console.print_text("The console supports capture mode:");
-    
+
     console.begin_capture();
     console.print_text("  This text is being captured...");
     console.print_text("  It won't appear on screen!");
     let captured = console.end_capture();
-    
+
     console.print_text("\nCaptured output:");
     console.print(&Text::new(&captured, Style::null()));
 

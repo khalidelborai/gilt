@@ -349,14 +349,14 @@ impl Live {
             // which causes the tracked shape (N lines) to mismatch the actual
             // output (N+1 lines), leaking 1 line per refresh frame.
             let opts = s.console.options();
-            
+
             // First render to compute shape (shape is stored in live_render)
             let render_segments = s.live_render.gilt_console(&s.console, &opts);
-            
+
             // Now position cursor using the computed shape
             let position_segments = s.live_render.position_cursor();
             emit_control_segments(&mut s.console, &position_segments);
-            
+
             s.console.write_segments(&render_segments);
         }
     }

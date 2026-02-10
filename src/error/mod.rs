@@ -4,13 +4,13 @@
 //! of the gilt library, mirroring Python rich's error hierarchy while leveraging
 //! Rust's type system for better error handling ergonomics.
 
-pub mod traceback;
 #[cfg(feature = "eyre")]
 pub mod eyre_handler;
-#[cfg(feature = "miette")]
-pub mod miette_handler;
 #[cfg(feature = "logging")]
 pub mod logging_handler;
+#[cfg(feature = "miette")]
+pub mod miette_handler;
+pub mod traceback;
 #[cfg(feature = "tracing")]
 pub mod tracing_layer;
 

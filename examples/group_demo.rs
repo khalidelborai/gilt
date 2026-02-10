@@ -2,9 +2,9 @@
 //!
 //! Run: cargo run --example group_demo
 
-use gilt::prelude::*;
 use gilt::group::Group;
 use gilt::panel::Panel;
+use gilt::prelude::*;
 use gilt::rule::Rule;
 use gilt::table::Table;
 use gilt::text::Text;
@@ -85,7 +85,10 @@ fn main() {
     // Fit mode false (fills available width) - uses Group::new()
     console.print(&Rule::with_title("Fit mode: false (fills width)"));
     let fill_group = Group::new(vec![
-        Text::from_markup("[on bright_black]This group fills the available width[/on bright_black]").unwrap(),
+        Text::from_markup(
+            "[on bright_black]This group fills the available width[/on bright_black]",
+        )
+        .unwrap(),
         Text::from_markup("Notice how the content expands to fill the terminal").unwrap(),
     ]);
     console.print(&fill_group);
@@ -134,15 +137,18 @@ fn main() {
     // Mixed content - various types combined
     console.print(&Rule::with_title("Mixed Content Group"));
 
-    let info_panel = Panel::fit(Text::from_markup("[bold]Info[/bold]\nThis demonstrates mixed content").unwrap())
-        .with_border_style(Style::parse("blue").unwrap());
+    let info_panel = Panel::fit(
+        Text::from_markup("[bold]Info[/bold]\nThis demonstrates mixed content").unwrap(),
+    )
+    .with_border_style(Style::parse("blue").unwrap());
     let info_text = render_to_text(&console, &info_panel);
 
     let mixed_content = Group::fit(vec![
         Text::from_markup("[bold underline]Summary[/bold underline]").unwrap(),
         info_text,
         Text::from_markup("[dim]───────────────[/dim]").unwrap(),
-        Text::from_markup("Status: [green]Active[/green] | Load: [yellow]Moderate[/yellow]").unwrap(),
+        Text::from_markup("Status: [green]Active[/green] | Load: [yellow]Moderate[/yellow]")
+            .unwrap(),
     ]);
     console.print(&mixed_content);
 
@@ -163,7 +169,10 @@ fn main() {
     let inner_group_text = render_to_text(&console, &inner_group);
 
     let panel_with_group = Panel::new(inner_group_text)
-        .with_title(Text::new("Panel Containing Group", Style::parse("bold magenta").unwrap()))
+        .with_title(Text::new(
+            "Panel Containing Group",
+            Style::parse("bold magenta").unwrap(),
+        ))
         .with_border_style(Style::parse("green").unwrap());
     console.print(&panel_with_group);
 
@@ -189,8 +198,10 @@ fn main() {
         render_to_text(&console, &group_b),
     ]);
 
-    let outer_panel = Panel::new(render_to_text(&console, &combined))
-        .with_title(Text::new("Container with Nested Groups", Style::parse("bold cyan").unwrap()));
+    let outer_panel = Panel::new(render_to_text(&console, &combined)).with_title(Text::new(
+        "Container with Nested Groups",
+        Style::parse("bold cyan").unwrap(),
+    ));
     console.print(&outer_panel);
 
     // Nested groups (group within a group)

@@ -79,13 +79,17 @@ fn main() {
     console.print(&Rule::with_title("Custom Styles"));
 
     let custom = Badge::new("Experimental")
-        .style(BadgeStyle::Custom(Style::parse("magenta on black").unwrap()))
+        .style(BadgeStyle::Custom(
+            Style::parse("magenta on black").unwrap(),
+        ))
         .icon("🧪");
     console.print(&custom);
     console.print_text("");
 
     let purple_rounded = Badge::new("Beta")
-        .style(BadgeStyle::Custom(Style::parse("bold white on purple").unwrap()))
+        .style(BadgeStyle::Custom(
+            Style::parse("bold white on purple").unwrap(),
+        ))
         .icon("β")
         .rounded(true);
     console.print(&purple_rounded);

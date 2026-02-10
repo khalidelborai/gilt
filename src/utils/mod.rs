@@ -34,15 +34,18 @@ pub use align_widget::{Align, HorizontalAlign, VerticalAlign};
 pub use ansi::AnsiDecoder;
 pub use bar::Bar;
 pub use box_chars::{
-    ASCII, ASCII2, ASCII_DOUBLE_HEAD, DOUBLE, DOUBLE_EDGE, HEAVY, HEAVY_EDGE, HEAVY_HEAD,
+    BoxChars, ASCII, ASCII2, ASCII_DOUBLE_HEAD, DOUBLE, DOUBLE_EDGE, HEAVY, HEAVY_EDGE, HEAVY_HEAD,
     HORIZONTALS, MARKDOWN, MINIMAL, MINIMAL_DOUBLE_HEAD, MINIMAL_HEAVY_HEAD, ROUNDED, SIMPLE,
-    SIMPLE_HEAD, SIMPLE_HEAVY, SQUARE, SQUARE_DOUBLE_HEAD, BoxChars,
+    SIMPLE_HEAD, SIMPLE_HEAVY, SQUARE, SQUARE_DOUBLE_HEAD,
 };
 pub use cells::{cell_len, get_character_cell_size, set_cell_size};
 pub use constrain::Constrain;
 pub use control::{escape_control_codes, strip_control_codes, Control};
 pub use default_styles::DEFAULT_STYLES;
-pub use diagnose::{ColorSupport, DiagnosticReport, PlatformInfo, TerminalInfo, UnicodeSupport, print_report, report};
+pub use diagnose::{
+    print_report, report, ColorSupport, DiagnosticReport, PlatformInfo, TerminalInfo,
+    UnicodeSupport,
+};
 pub use emoji::{Emoji, NoEmoji};
 pub use filesize::{binary, decimal, pick_unit_and_suffix};
 pub use group::Group;

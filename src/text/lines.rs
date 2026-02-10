@@ -2,7 +2,6 @@
 
 use std::ops::{Index, IndexMut};
 
-
 use super::{JustifyMethod, OverflowMethod, Span, Text};
 
 /// A collection of [`Text`] lines, typically produced by wrapping or splitting.

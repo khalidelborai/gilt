@@ -5,8 +5,8 @@
 //!
 //! Run: cargo run --example unicode_width_demo
 
-use gilt::prelude::*;
 use gilt::cells::cell_len;
+use gilt::prelude::*;
 
 fn main() {
     let mut console = Console::new();
@@ -29,7 +29,11 @@ fn main() {
 
     for (text, desc, expected) in &basics {
         let actual = cell_len(text);
-        let status = if actual == *expected { "[green]✓[/green]" } else { "[red]✗[/red]" };
+        let status = if actual == *expected {
+            "[green]✓[/green]"
+        } else {
+            "[red]✗[/red]"
+        };
         console.print_text(&format!(
             "{} {:6} {:20} expected={}, actual={}",
             status, text, desc, expected, actual
@@ -51,7 +55,11 @@ fn main() {
 
     for (text, desc, expected) in &emojis {
         let actual = cell_len(text);
-        let status = if actual == *expected { "[green]✓[/green]" } else { "[red]✗[/red]" };
+        let status = if actual == *expected {
+            "[green]✓[/green]"
+        } else {
+            "[red]✗[/red]"
+        };
         console.print_text(&format!(
             "{} {:6} {:25} expected={}, actual={}",
             status, text, desc, expected, actual
@@ -72,7 +80,11 @@ fn main() {
 
     for (text, desc, expected) in &zwj {
         let actual = cell_len(text);
-        let status = if actual == *expected { "[green]✓[/green]" } else { "[red]✗[/red]" };
+        let status = if actual == *expected {
+            "[green]✓[/green]"
+        } else {
+            "[red]✗[/red]"
+        };
         console.print_text(&format!(
             "{} {:10} {:25} expected={}, actual={}",
             status, text, desc, expected, actual
@@ -94,7 +106,11 @@ fn main() {
 
     for (text, desc, expected) in &flags {
         let actual = cell_len(text);
-        let status = if actual == *expected { "[green]✓[/green]" } else { "[red]✗[/red]" };
+        let status = if actual == *expected {
+            "[green]✓[/green]"
+        } else {
+            "[red]✗[/red]"
+        };
         console.print_text(&format!(
             "{} {:6} {:20} expected={}, actual={}",
             status, text, desc, expected, actual
@@ -117,7 +133,11 @@ fn main() {
 
     for (text, desc, expected) in &guides {
         let actual = cell_len(text);
-        let status = if actual == *expected { "[green]✓[/green]" } else { "[red]✗[/red]" };
+        let status = if actual == *expected {
+            "[green]✓[/green]"
+        } else {
+            "[red]✗[/red]"
+        };
         console.print_text(&format!(
             "{} {:10} {:25} expected={}, actual={}",
             status, text, desc, expected, actual
