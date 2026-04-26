@@ -7,6 +7,10 @@ use std::sync::Arc;
 /// Content of a table cell -- either a plain string (parsed with markup),
 /// a pre-styled [`Text`] object, or any [`Renderable`] widget (Panel, Tree,
 /// nested Table, etc.).
+// Variant-size disparity (Plain=24 B, Styled=240 B) is intentional for now.
+// L2 (StyleId interner) in v0.11.0 will shrink `Text` enough to drop this
+// allow; boxing `Styled(Box<Text>)` here would be a public API break.
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone)]
 pub enum CellContent {
     // Note: PartialEq is implemented manually below (Plain compares string).

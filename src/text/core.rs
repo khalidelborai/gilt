@@ -6,6 +6,7 @@
 use std::cmp::min;
 use std::fmt;
 use std::ops::Add;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use regex::Regex;
 
@@ -57,7 +58,7 @@ pub enum TextOrStr<'a> {
 /// assert_eq!(text.spans()[0], Span::new(0, 5, Style::parse("bold").unwrap()));
 /// # }
 /// ```
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Text {
     text: String,
     /// The style spans applied to ranges of text.
@@ -73,6 +74,26 @@ pub struct Text {
     pub end: String,
     /// Tab stop width override; `None` uses the default of 8.
     pub tab_size: Option<usize>,
+    // Memoized `text.chars().count()`. `usize::MAX` sentinel = uninitialized
+    // (impossible real value: 18 EB on 64-bit). `AtomicUsize` (8 B) keeps
+    // `Text: Sync` and avoids the size penalty of `OnceLock<usize>`.
+    char_len_cache: AtomicUsize,
+}
+
+impl Clone for Text {
+    fn clone(&self) -> Self {
+        Text {
+            text: self.text.clone(),
+            spans: self.spans.clone(),
+            style: self.style.clone(),
+            justify: self.justify,
+            overflow: self.overflow,
+            no_wrap: self.no_wrap,
+            end: self.end.clone(),
+            tab_size: self.tab_size,
+            char_len_cache: AtomicUsize::new(self.char_len_cache.load(Ordering::Relaxed)),
+        }
+    }
 }
 
 impl Text {
@@ -102,6 +123,7 @@ impl Text {
             no_wrap: None,
             end: "\n".to_string(),
             tab_size: None,
+            char_len_cache: AtomicUsize::new(usize::MAX),
         }
     }
 
@@ -210,6 +232,7 @@ impl Text {
             !span.is_empty()
         });
         self.text = new_text.into_owned();
+        self.set_char_len(new_len);
     }
 
     /// Return the style spans applied to this text.
@@ -224,7 +247,25 @@ impl Text {
 
     /// Return the length of the text in Unicode characters.
     pub fn len(&self) -> usize {
-        self.text.chars().count()
+        let cached = self.char_len_cache.load(Ordering::Relaxed);
+        if cached != usize::MAX {
+            return cached;
+        }
+        let computed = self.text.chars().count();
+        self.char_len_cache.store(computed, Ordering::Relaxed);
+        computed
+    }
+
+    // Drop the cached `chars().count()` so the next `len()` recomputes.
+    // Call from every site that mutates `self.text`.
+    fn invalidate_char_len(&mut self) {
+        self.char_len_cache.store(usize::MAX, Ordering::Relaxed);
+    }
+
+    // Re-prime the cache to a known value after a mutation. Cheaper than
+    // invalidate-then-recompute when the new length is already in hand.
+    fn set_char_len(&self, value: usize) {
+        self.char_len_cache.store(value, Ordering::Relaxed);
     }
 
     /// Return `true` if the text is empty.
@@ -283,6 +324,7 @@ impl Text {
             no_wrap: self.no_wrap,
             end: self.end.clone(),
             tab_size: self.tab_size,
+            char_len_cache: AtomicUsize::new(usize::MAX),
         }
     }
 
@@ -307,6 +349,9 @@ impl Text {
         let offset = self.len();
         let new_len = text.chars().count();
         self.text.push_str(&text);
+        // Invalidate then re-prime: we already know the new length.
+        self.invalidate_char_len();
+        self.set_char_len(offset + new_len);
         if let Some(s) = style {
             if !s.is_null() {
                 self.spans.push(Span::new(offset, offset + new_len, s));
@@ -318,7 +363,10 @@ impl Text {
     /// Append another [`Text`] object, preserving its spans with adjusted offsets.
     pub fn append_text(&mut self, text: &Text) -> &mut Self {
         let offset = self.len();
+        let other_len = text.len();
         self.text.push_str(&text.text);
+        self.invalidate_char_len();
+        self.set_char_len(offset + other_len);
         for span in &text.spans {
             self.spans.push(span.move_span(offset));
         }
@@ -590,11 +638,15 @@ impl Text {
         if amount >= length {
             self.text.clear();
             self.spans.clear();
+            self.invalidate_char_len();
+            self.set_char_len(0);
             return;
         }
         let new_length = length - amount;
         let new_text = char_slice(&self.text, 0, new_length).to_string();
         self.text = new_text;
+        self.invalidate_char_len();
+        self.set_char_len(new_length);
         self.spans.retain_mut(|span| {
             if span.start >= new_length {
                 return false;
@@ -662,12 +714,15 @@ impl Text {
             return;
         }
         let padding: String = std::iter::repeat_n(character, count).collect();
+        let old_len = self.len();
         // Shift all spans right by count
         for span in &mut self.spans {
             span.start += count;
             span.end += count;
         }
         self.text = format!("{}{}", padding, self.text);
+        self.invalidate_char_len();
+        self.set_char_len(old_len + count);
     }
 
     /// Append `count` copies of `character` to the right side of the text.
@@ -676,7 +731,10 @@ impl Text {
             return;
         }
         let padding: String = std::iter::repeat_n(character, count).collect();
+        let old_len = self.len();
         self.text.push_str(&padding);
+        self.invalidate_char_len();
+        self.set_char_len(old_len + count);
     }
 
     /// Remove trailing whitespace from the text, adjusting spans.
@@ -911,6 +969,7 @@ impl Text {
 
         self.text = new_text;
         self.spans = new_spans;
+        self.invalidate_char_len();
     }
 
     /// Append `spaces` whitespace characters and extend any spans that reach
@@ -928,6 +987,8 @@ impl Text {
         }
         let padding: String = std::iter::repeat_n(' ', spaces).collect();
         self.text.push_str(&padding);
+        self.invalidate_char_len();
+        self.set_char_len(old_len + spaces);
     }
 
     // -- Advanced -----------------------------------------------------------
