@@ -47,9 +47,9 @@ impl From<&Color> for Option<anstyle::Color> {
                 Some(anstyle::Color::Ansi(ansi))
             }
             Color::EightBit(n) => Some(anstyle::Color::Ansi256(anstyle::Ansi256Color(n))),
-            Color::TrueColor(t) => {
-                Some(anstyle::Color::Rgb(anstyle::RgbColor(t.red, t.green, t.blue)))
-            }
+            Color::TrueColor(t) => Some(anstyle::Color::Rgb(anstyle::RgbColor(
+                t.red, t.green, t.blue,
+            ))),
         }
     }
 }
