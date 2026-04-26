@@ -647,7 +647,7 @@ impl Progress {
     /// immediate paint.
     ///
     /// State-mutating helpers (`update`, `advance`, `start_task`,
-    /// `stop_task`) call [`mark_dirty`](Self::mark_dirty) instead of this —
+    /// `stop_task`) call an internal `mark_dirty` instead of this —
     /// they rebuild the stored renderable without forcing a paint, so the
     /// auto-refresh thread paints at the configured rate (default 10 Hz).
     /// Tight `advance()` loops therefore generate at most one paint per
