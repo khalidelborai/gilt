@@ -19,11 +19,13 @@ use crate::rule::Rule;
 use crate::segment::Segment;
 use crate::status::Status;
 use crate::style::Style;
+use crate::style_interner::StyleInterner;
 use crate::terminal_theme::{TerminalTheme, DEFAULT_TERMINAL_THEME, SVG_EXPORT_THEME};
 use crate::text::{JustifyMethod, OverflowMethod, Text};
 use crate::theme::{Theme, ThemeStack};
 use std::borrow::Cow;
 use std::fmt::Write as _;
+use std::sync::{Arc, Mutex};
 
 // ---------------------------------------------------------------------------
 // ConsoleDimensions
@@ -454,6 +456,7 @@ impl ConsoleBuilder {
             is_alt_screen: false,
             capture_buffer: None,
             live_stack: Vec::new(),
+            style_interner: Arc::new(Mutex::new(StyleInterner::new())),
         }
     }
 }
@@ -505,6 +508,15 @@ pub struct Console {
     /// allows Progress + Live + Status etc. to nest without each one
     /// clobbering the others' state.
     live_stack: Vec<usize>,
+
+    /// Per-console style interner (foundation for L2 — see
+    /// `.review/V0_11_DESIGN.md`). **Dormant in v0.11.0-alpha.1**: no
+    /// caller currently interns or resolves through it. Wired in PR1b
+    /// when `Segment::style` is converted from a field to a method.
+    /// `Arc<Mutex<...>>` so the handle returned by `style_interner()` can
+    /// be shared across threads (e.g. by a future Live integration) and
+    /// to leave room for cross-Console resegmenting in PR3.
+    style_interner: Arc<Mutex<StyleInterner>>,
 }
 
 impl Console {
@@ -678,6 +690,17 @@ impl Console {
         Style::parse(name).map_err(|e| {
             ConsoleError::RenderError(format!("Failed to get style '{}': {}", name, e))
         })
+    }
+
+    /// Per-console style interner. **Dormant in v0.11.0-alpha.1** — no
+    /// internal callers route through it yet. Exposed so `Segment` (PR1b)
+    /// and the eventual L2 activation (PR3) can intern/resolve through
+    /// the same id space as the parent `Console`.
+    ///
+    /// The returned handle is `Arc<Mutex<…>>` because a `Console::copy`
+    /// (e.g. `begin_capture`) shares the id space with its origin.
+    pub fn style_interner(&self) -> &Arc<Mutex<StyleInterner>> {
+        &self.style_interner
     }
 
     /// Push a new theme onto the theme stack.
