@@ -1,6 +1,5 @@
 //! Interactive prompt module for styled user input with validation, choices, and defaults.
 //!
-//! Port of Python's rich/prompt.py. Provides `Prompt` for string input,
 //! `confirm()` for yes/no questions, `ask_int()` for integer input, and
 //! `ask_float()` for float input.
 
@@ -120,7 +119,7 @@ pub struct Prompt {
 impl Prompt {
     /// Create a new prompt with the given text.
     ///
-    /// The prompt string is parsed as Rich markup.
+    /// The prompt string is parsed as gilt markup.
     pub fn new(prompt: &str) -> Self {
         let prompt_text = crate::markup::render(prompt, Style::null())
             .unwrap_or_else(|_| Text::new(prompt, Style::null()));

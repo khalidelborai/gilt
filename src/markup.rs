@@ -1,6 +1,5 @@
-//! Rich markup parser — parses `[bold red]text[/]` syntax into styled `Text`.
+//! gilt markup parser — parses `[bold red]text[/]` syntax into styled `Text`.
 //!
-//! Port of Python's rich/markup.py.
 
 use std::fmt;
 
@@ -61,7 +60,7 @@ static RE_MARKUP: LazyLock<Regex> =
 // escape
 // ---------------------------------------------------------------------------
 
-/// Escape `markup` so that it will not be interpreted as Rich markup.
+/// Escape `markup` so that it will not be interpreted as gilt markup.
 ///
 /// Potential `[tag]` sequences are escaped by prepending `\` before the
 /// opening bracket.  Existing backslashes before a tag are doubled.
@@ -176,7 +175,7 @@ fn parse_tag_inner(inner: &str) -> Tag {
 // render
 // ---------------------------------------------------------------------------
 
-/// Render Rich markup into a styled `Text` object.
+/// Render gilt markup into a styled `Text` object.
 ///
 /// # Errors
 ///
@@ -257,7 +256,7 @@ pub fn render(markup: &str, style: Style) -> Result<Text, MarkupError> {
         }
     }
 
-    // Close any remaining unclosed tags (unclosed tags are valid in Rich).
+    // Close any remaining unclosed tags (unclosed tags are valid in gilt).
     for (start, open_tag) in style_stack.into_iter().rev() {
         if !open_tag.name.starts_with('@') {
             let tag_style = resolve_tag_style(&open_tag);

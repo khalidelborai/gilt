@@ -1,6 +1,5 @@
 //! Table widget module -- rich table rendering with columns, rows, and box borders.
 //!
-//! Port of Python's `rich/table.py`.
 //!
 //! # Example
 //!

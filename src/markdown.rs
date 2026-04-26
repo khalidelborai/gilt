@@ -1,6 +1,5 @@
 //! Markdown rendering module -- parses CommonMark and produces styled terminal output.
 //!
-//! Port of Python's `rich/markdown.py`, using the `pulldown-cmark` crate
 //! (a CommonMark-compliant markdown parser) instead of Python's `markdown_it`.
 
 use pulldown_cmark::{Alignment, Event, HeadingLevel, Options, Parser, Tag, TagEnd};
@@ -370,7 +369,7 @@ impl Renderable for Markdown {
                         let trimmed = code_text.trim_end_matches('\n');
                         let code_content = Text::styled(trimmed, code_style.clone());
 
-                        // Wrap in a panel (like Python rich does)
+                        // Wrap in a panel (like  does)
                         let panel = Panel::new(code_content)
                             .with_box_chars(&HEAVY)
                             .with_style(code_style)

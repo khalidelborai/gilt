@@ -39,7 +39,7 @@ pub enum JsonError {
 /// Configuration for JSON rendering.
 ///
 /// Use the builder methods or `Default` to construct. The defaults match
-/// Python rich's behaviour: 2-space indent, highlighting enabled, keys not
+/// the behaviour: 2-space indent, highlighting enabled, keys not
 /// explicitly sorted (serde_json's default ordering is used).
 #[derive(Debug, Clone)]
 pub struct JsonOptions {

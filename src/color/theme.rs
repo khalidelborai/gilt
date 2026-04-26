@@ -50,7 +50,7 @@ impl Theme {
 
     /// Returns an INI-format config string representing this theme.
     ///
-    /// The output is compatible with Python rich's Theme.config property:
+    /// The output is compatible with the Theme.config property:
     /// ```text
     /// [styles]
     /// bar.back = grey23

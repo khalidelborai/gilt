@@ -1,6 +1,6 @@
 //! Emoji code mappings from name to Unicode character.
 //!
-//! This is a data file — auto-generated from Python rich's `_emoji_codes.py`.
+//! This is a data file — auto-generated from the `_emoji_codes.py`.
 
 use std::collections::HashMap;
 use std::sync::LazyLock;

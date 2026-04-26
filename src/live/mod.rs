@@ -1,6 +1,5 @@
 //! Live display module -- a terminal display that refreshes at regular intervals.
 //!
-//! Port of Python's `rich/live.py`. Provides a `Live` struct that can display
 //! content that updates in-place using cursor movement control codes and an
 //! optional background refresh thread.
 

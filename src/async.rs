@@ -104,7 +104,7 @@ impl<S: Stream> ProgressStreamExt for S {
 /// # Examples
 ///
 /// ```rust,no_run
-/// use futures::stream::{self, StreamExt};
+/// use futures_util::stream::{self, StreamExt};
 /// use gilt::r#async::ProgressStreamExt;
 ///
 /// #[tokio::main]
@@ -822,7 +822,7 @@ pub mod fs {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use futures::stream::{self, StreamExt};
+    use futures_util::stream::{self, StreamExt};
 
     // Helper to create a test console
     fn test_console() -> crate::console::Console {

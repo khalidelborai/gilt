@@ -1,6 +1,5 @@
 //! Measurement module for tracking minimum and maximum rendering widths.
 //!
-//! Rust port of Python's `rich/measure.py`.
 
 use std::fmt;
 use std::ops::Add;

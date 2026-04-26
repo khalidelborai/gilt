@@ -1,12 +1,11 @@
-//! # gilt -- Rich Terminal Formatting for Rust
+//! # gilt — Beautiful Terminal Formatting for Rust
 //!
 //! [![Crates.io](https://img.shields.io/crates/v/gilt.svg)](https://crates.io/crates/gilt)
 //! [![Documentation](https://docs.rs/gilt/badge.svg)](https://docs.rs/gilt)
 //! [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/khalidelborai/gilt/blob/main/LICENSE)
 //!
-//! A Rust port of Python's [rich](https://github.com/Textualize/rich) library -- beautiful
-//! terminal output with styles, tables, trees, syntax highlighting, progress bars, and
-//! more, all rendered as ANSI escape sequences.
+//! Beautiful terminal output for Rust: styles, tables, trees, syntax highlighting,
+//! progress bars, and more, all rendered as ANSI escape sequences.
 //!
 //! # Quick Start
 //!
@@ -393,7 +392,7 @@
 //!
 //! # Rust-Native Features
 //!
-//! These features go beyond what Python's rich provides, taking advantage of
+//! These features go beyond what the upstream library provides, taking advantage of
 //! Rust's type system and ecosystem.
 //!
 //! ## Gradients
@@ -702,7 +701,7 @@
 //! |--------|-------------|
 //! | [`console`] | Console engine: rendering, capture, export |
 //! | [`style`] | Text styles: colors, attributes, hyperlinks |
-//! | [`text`] | Rich text with markup parsing and word wrapping |
+//! | [`text`] | Text with markup parsing and word wrapping |
 //! | [`table`] | Unicode box-drawing tables |
 //! | [`panel`] | Bordered content panels |
 //! | [`tree`] | Hierarchical tree display |
@@ -851,7 +850,7 @@ where
 
 /// Print a renderable to the default console.
 ///
-/// This is the Rust equivalent of Python rich's `rich.print()`.
+/// This is the Rust equivalent of the `gilt::print()`.
 pub fn print(renderable: &dyn console::Renderable) {
     with_console(|c| c.print(renderable));
 }

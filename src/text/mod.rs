@@ -1,8 +1,7 @@
-//! Rich text module - the core text manipulation type.
+//! Text module - the core text manipulation type.
 //!
 //! This module provides the `Text` type which represents styled terminal text,
 //! along with supporting types `Span`, `Lines`, and related enums.
-//! Port of Python's rich/text.py.
 
 // Re-export enums
 pub use enums::{JustifyMethod, OverflowMethod};

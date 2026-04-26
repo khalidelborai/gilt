@@ -67,7 +67,7 @@ fn v(m1: f64, m2: f64, mut hue: f64) -> f64 {
 struct ColorBox;
 
 impl Renderable for ColorBox {
-    fn rich_console(&self, _console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
+    fn gilt_console(&self, _console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         let mut segments = Vec::new();
         let width = options.max_width;
         for y in 0..5u32 {

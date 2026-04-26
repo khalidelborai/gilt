@@ -1,6 +1,5 @@
 //! Live render module -- a renderable that can be updated and tracks its dimensions.
 //!
-//! Port of Python's `rich/live_render.py`. Used by `Live` to display content
 //! that can be refreshed in-place by emitting cursor movement control codes.
 
 use std::cell::Cell;

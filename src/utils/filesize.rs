@@ -1,8 +1,5 @@
 //! Functions for reporting file sizes in human-readable form.
 //!
-//! Port of Python `rich/filesize.py`, originally borrowed from
-//! [pyfilesystem2](https://github.com/PyFilesystem/pyfilesystem2).
-//!
 //! Provides [`decimal`] to format sizes using powers of 1000 (SI prefixes)
 //! and [`binary`] to format sizes using powers of 1024 (IEC binary prefixes).
 //!

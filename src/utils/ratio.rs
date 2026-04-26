@@ -1,6 +1,4 @@
 //! Algorithms for distributing integers proportionally.
-//!
-//! Port of Python `rich/_ratio.py`.
 
 /// Trait for items that participate in proportional distribution.
 ///

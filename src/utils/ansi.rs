@@ -1,7 +1,7 @@
 //! ANSI escape code parsing and conversion to styled Text.
 //!
 //! This module parses ANSI escape codes from terminal output and converts them
-//! to styled `Text` objects. It is a port of Python's `rich/ansi.py`.
+//! to styled `Text` objects. It is a port of Python/ansi.py`.
 
 use regex::Regex;
 use std::sync::LazyLock;

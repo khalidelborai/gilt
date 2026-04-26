@@ -1,6 +1,5 @@
 //! Progress tracking system -- configurable progress bars with live display.
 //!
-//! Port of Python's `rich/progress.py`. Provides task tracking with
 //! completion percentages, configurable columns (text, bar, spinner,
 //! time, speed), live-updating display, and iterator wrapping.
 

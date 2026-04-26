@@ -1,6 +1,5 @@
 //! Columns module -- displays renderables in neat auto-fitted columns.
 //!
-//! Port of Python's `rich/columns.py`. Uses `Table::grid()` internally
 //! to lay out items in a grid of columns that fits within the available
 //! console width.
 

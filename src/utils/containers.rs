@@ -4,7 +4,6 @@
 //! in sequence, and implements the `Renderable` trait for `Lines` so that
 //! collections of `Text` objects can be rendered to the console.
 //!
-//! Port of Python's `rich/containers.py`.
 
 use crate::console::{Console, ConsoleOptions, Renderable};
 use crate::measure::Measurement;
@@ -17,7 +16,7 @@ use crate::text::Text;
 
 /// A container of renderable items that renders them in sequence.
 ///
-/// This is the Rust equivalent of Python's `rich.containers.Renderables`.
+/// This is the Rust equivalent of Renderables`.
 /// In gilt, renderables are `Text` objects.
 #[derive(Clone, Debug, Default)]
 pub struct Renderables {
@@ -49,7 +48,7 @@ impl Renderables {
     ///
     /// The minimum width is the maximum of all individual minimums,
     /// and the maximum width is the maximum of all individual maximums.
-    /// If there are no items, returns `Measurement(1, 1)` (matching Python's rich).
+    /// If there are no items, returns `Measurement(1, 1)` (matching Python).
     pub fn measure(&self) -> Measurement {
         if self.items.is_empty() {
             return Measurement::new(1, 1);

@@ -1024,7 +1024,7 @@ impl Console {
     /// Print an exception (error) with its causal chain as a styled traceback.
     ///
     /// This is a convenience alias for [`print_error`](Console::print_error) that
-    /// matches the Python Rich `Console.print_exception()` API name.
+    /// matches the  `Console.print_exception()` API name.
     pub fn print_exception(&mut self, error: &dyn std::error::Error) {
         self.print_error(error);
     }

@@ -1,6 +1,5 @@
 //! Spinner animation widget.
 //!
-//! Port of Python rich's `spinner.py`. A spinner selects frames from a named
 //! animation based on elapsed time, optionally combined with descriptive text.
 
 use std::fmt;
@@ -135,9 +134,9 @@ impl Spinner {
             None => frame,
             Some(text) => Text::assemble(
                 &[
-                    TextPart::Rich(frame),
+                    TextPart::Inner(frame),
                     TextPart::Raw(" ".to_string()),
-                    TextPart::Rich(text.clone()),
+                    TextPart::Inner(text.clone()),
                 ],
                 Style::null(),
             ),

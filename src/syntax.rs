@@ -2,7 +2,7 @@
 //!
 //! Provides the `Syntax` struct for rendering syntax-highlighted code with
 //! line numbers, themes, word wrap, and padding. Uses `syntect` for syntax
-//! highlighting (analogous to Python rich's use of Pygments).
+//! highlighting (analogous to the use of Pygments).
 
 use std::path::Path;
 
@@ -808,14 +808,12 @@ mod tests {
 
     #[test]
     fn test_from_path_reads_self() {
-        // Read this very test file
-        let path = file!();
-        // This file may be at a relative path; use the full crate root
-        let full_path = format!("/mnt/data/Velocity/rusty_rich/gilt/{}", path);
-        if std::path::Path::new(&full_path).exists() {
-            let result = Syntax::from_path(&full_path);
-            assert!(result.is_ok());
-            let syntax = result.unwrap();
+        // Read this very test file relative to CARGO_MANIFEST_DIR so the test
+        // works in any working tree.
+        let manifest_dir = env!("CARGO_MANIFEST_DIR");
+        let full_path = std::path::Path::new(manifest_dir).join(file!());
+        if full_path.exists() {
+            let syntax = Syntax::from_path(full_path.to_str().unwrap()).unwrap();
             assert!(syntax.code.contains("fn test_from_path_reads_self"));
         }
     }

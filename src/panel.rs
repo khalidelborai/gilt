@@ -1,6 +1,5 @@
 //! Panel widget -- a bordered box around content with optional title/subtitle.
 //!
-//! Port of Python's `rich/panel.py`.
 
 use crate::align_widget::HorizontalAlign;
 use crate::box_chars::{BoxChars, ROUNDED};

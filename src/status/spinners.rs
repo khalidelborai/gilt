@@ -1,6 +1,6 @@
 //! Spinner animation frame data.
 //!
-//! Ported from Python rich's `_spinners.py`, which sources data from cli-spinners
+//! Ported from the `_spinners.py`, which sources data from cli-spinners
 //! (MIT License, Copyright (c) Sindre Sorhus).
 
 use std::collections::HashMap;

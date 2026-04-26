@@ -2,19 +2,19 @@
 //!
 //! This module provides utilities for checking renderability, casting objects,
 //! and converting types to renderable representations. It implements Rust equivalents
-//! of Python's `__gilt__` protocol from the Rich library.
+//! of Python's `__gilt__` protocol from the library.
 //!
 //! # The `__gilt__` Protocol
 //!
-//! In Python's Rich library, objects can implement a `__gilt__` method that returns
+//! In Python's library, objects can implement a `__gilt__` method that returns
 //! a renderable representation. This module brings that same concept to Rust through
-//! the [`RichCast`] trait.
+//! the [`GiltCast`] trait.
 //!
 //! ## Key Types
 //!
-//! - [`RichCast`] - The core trait for objects that can be converted to renderables.
+//! - [`GiltCast`] - The core trait for objects that can be converted to renderables.
 //!   Implement this on your types to make them printable with gilt.
-//! - [`IntoRenderable`] - A conversion trait that allows any `RichCast` type to be
+//! - [`IntoRenderable`] - A conversion trait that allows any `GiltCast` type to be
 //!   converted to a `Box<dyn Renderable>`.
 //! - [`gilt_cast`] - Attempt to downcast a `Box<dyn Any>` to a concrete renderable type.
 //! - [`RenderableBox`] - A type-erased wrapper for renderable values.
@@ -22,16 +22,16 @@
 //! # Examples
 //!
 //! ```
-//! use gilt::protocol::{RichCast, IntoRenderable};
+//! use gilt::protocol::{GiltCast, IntoRenderable};
 //! use gilt::prelude::*;
 //!
-//! // Implement RichCast for a custom type
+//! // Implement GiltCast for a custom type
 //! struct MyData {
 //!     name: String,
 //!     value: i32,
 //! }
 //!
-//! impl RichCast for MyData {
+//! impl GiltCast for MyData {
 //!     fn __gilt__(self) -> Box<dyn gilt::console::Renderable> {
 //!         let text = Text::from(format!("{} = {}", self.name, self.value));
 //!         Box::new(Panel::new(text))
@@ -117,7 +117,7 @@ pub fn is_type<T: 'static>(value: &dyn Any) -> bool {
 /// # Examples
 ///
 /// ```
-/// use gilt::protocol::{RichCast, IntoRenderable};
+/// use gilt::protocol::{GiltCast, IntoRenderable};
 /// use gilt::prelude::*;
 ///
 /// struct User {
@@ -126,7 +126,7 @@ pub fn is_type<T: 'static>(value: &dyn Any) -> bool {
 ///     active: bool,
 /// }
 ///
-/// impl RichCast for User {
+/// impl GiltCast for User {
 ///     fn __gilt__(self) -> Box<dyn gilt::console::Renderable> {
 ///         let status = if self.active { "✓ Active" } else { "✗ Inactive" };
 ///         let content = Text::from(format!(
@@ -146,7 +146,7 @@ pub fn is_type<T: 'static>(value: &dyn Any) -> bool {
 /// // Convert to renderable and print
 /// let renderable = user.into_renderable();
 /// ```
-pub trait RichCast: Sized + 'static {
+pub trait GiltCast: Sized + 'static {
     /// Convert this value to a renderable representation.
     ///
     /// This method should create a widget (like a [`Panel`](crate::panel::Panel),
@@ -162,11 +162,11 @@ pub trait RichCast: Sized + 'static {
 /// Trait for types that can be converted into a `Box<dyn Renderable>`.
 ///
 /// This trait provides a uniform way to convert various types into renderable
-/// objects. It's automatically implemented for any type implementing [`RichCast`]
+/// objects. It's automatically implemented for any type implementing [`GiltCast`]
 /// via a blanket implementation.
 ///
 /// You typically won't need to implement this trait directly - instead, implement
-/// [`RichCast`] and get this trait for free.
+/// [`GiltCast`] and get this trait for free.
 ///
 /// # Examples
 ///
@@ -174,10 +174,10 @@ pub trait RichCast: Sized + 'static {
 /// use gilt::protocol::IntoRenderable;
 /// use gilt::prelude::*;
 ///
-/// // Types that implement RichCast also implement IntoRenderable
+/// // Types that implement GiltCast also implement IntoRenderable
 /// struct Message(String);
 ///
-/// impl gilt::protocol::RichCast for Message {
+/// impl gilt::protocol::GiltCast for Message {
 ///     fn __gilt__(self) -> Box<dyn gilt::console::Renderable> {
 ///         Box::new(Panel::new(Text::from(self.0)))
 ///     }
@@ -195,8 +195,8 @@ pub trait IntoRenderable {
     fn into_renderable(self) -> Box<dyn Renderable>;
 }
 
-// Blanket implementation: any RichCast type automatically implements IntoRenderable
-impl<T: RichCast> IntoRenderable for T {
+// Blanket implementation: any GiltCast type automatically implements IntoRenderable
+impl<T: GiltCast> IntoRenderable for T {
     fn into_renderable(self) -> Box<dyn Renderable> {
         self.__gilt__()
     }
@@ -340,18 +340,18 @@ pub fn as_renderable_mut<T: Renderable>(value: &mut T) -> &mut dyn Renderable {
     value
 }
 
-/// Macro to derive RichCast implementation (placeholder for future derive macro).
+/// Macro to derive GiltCast implementation (placeholder for future derive macro).
 ///
 /// This macro is a marker for the planned derive macro that will automatically
-/// implement `RichCast` for structs and enums. Currently, it does nothing but
+/// implement `GiltCast` for structs and enums. Currently, it does nothing but
 /// documents the intended usage.
 ///
 /// # Future Usage
 ///
 /// ```ignore
-/// use gilt::protocol::{RichCast, IntoRenderable};
+/// use gilt::protocol::{GiltCast, IntoRenderable};
 ///
-/// #[derive(RichCast)]
+/// #[derive(GiltCast)]
 /// #[rich(panel)]
 /// struct User {
 ///     name: String,
@@ -366,9 +366,9 @@ macro_rules! derive_gilt_cast {
     };
 }
 
-/// Macro to implement RichCast using a closure-like syntax.
+/// Macro to implement GiltCast using a closure-like syntax.
 ///
-/// This macro provides a concise way to implement `RichCast` without writing
+/// This macro provides a concise way to implement `GiltCast` without writing
 /// out the full impl block. The syntax uses a closure pattern where you specify
 /// a parameter name for `self`.
 ///
@@ -388,7 +388,7 @@ macro_rules! derive_gilt_cast {
 #[macro_export]
 macro_rules! gilt_cast_impl {
     ($type:ty => |$this:ident| $body:expr) => {
-        impl $crate::protocol::RichCast for $type {
+        impl $crate::protocol::GiltCast for $type {
             fn __gilt__(self) -> Box<dyn $crate::console::Renderable> {
                 let $this = self;
                 $body
@@ -430,12 +430,12 @@ mod tests {
         assert!(cast_result.is_some());
     }
 
-    // Test RichCast implementation
+    // Test GiltCast implementation
     struct TestData {
         value: i32,
     }
 
-    impl RichCast for TestData {
+    impl GiltCast for TestData {
         fn __gilt__(self) -> Box<dyn Renderable> {
             Box::new(Panel::new(Text::from(format!("Value: {}", self.value))))
         }
@@ -459,7 +459,7 @@ mod tests {
     fn test_into_renderable_blanket_impl() {
         struct SimpleData(&'static str);
 
-        impl RichCast for SimpleData {
+        impl GiltCast for SimpleData {
             fn __gilt__(self) -> Box<dyn Renderable> {
                 Box::new(Text::from(self.0))
             }

@@ -1,8 +1,7 @@
-//! Rich text module - the core text manipulation type.
+//! Text module - the core text manipulation type.
 //!
 //! This module provides the `Text` type which represents styled terminal text,
 //! along with supporting types `Span`, `Lines`, and related enums.
-//! Port of Python's rich/text.py.
 
 use std::cmp::min;
 use std::fmt;
@@ -28,7 +27,7 @@ pub enum TextPart {
     /// Text with an explicit style.
     Styled(String, Style),
     /// An existing [`Text`] object to embed.
-    Rich(Text),
+    Inner(Text),
 }
 
 /// Either a string slice or a [`Text`] reference, for use with [`Text::append`].
@@ -39,7 +38,7 @@ pub enum TextOrStr<'a> {
     Text(&'a Text),
 }
 
-/// Rich text with styles, spans, and formatting metadata.
+/// Text with styles, spans, and formatting metadata.
 ///
 /// `Text` is the central type for styled terminal output. It stores a plain-text
 /// string alongside a list of [`Span`]s that apply styles to character ranges,
@@ -150,7 +149,7 @@ impl Text {
                 TextPart::Styled(s, st) => {
                     result.append_str(s, Some(st.clone()));
                 }
-                TextPart::Rich(t) => {
+                TextPart::Inner(t) => {
                     result.append_text(t);
                 }
             }
@@ -229,7 +228,7 @@ impl Text {
 
     /// Measure the text, returning minimum (longest word) and maximum (longest line) widths.
     ///
-    /// This is the Rust equivalent of Python's `Text.__rich_measure__`.
+    /// This is the Rust equivalent of Python's `Text.__gilt_measure__`.
     pub fn measure(&self) -> Measurement {
         let text = self.plain();
         if text.is_empty() {

@@ -1,9 +1,8 @@
-//! Rich logging handler for the `log` crate.
+//! Logging handler for the `log` crate.
 //!
 //! This module provides a [`RichHandler`] that implements [`log::Log`],
 //! producing styled, formatted log output through gilt's [`Console`].
 //!
-//! Port of Python's `rich/logging.py`.
 
 use std::collections::HashMap;
 use std::sync::Mutex;

@@ -1,7 +1,7 @@
 //! Error types used throughout the gilt library.
 //!
 //! This module provides domain-specific error types for different components
-//! of the gilt library, mirroring Python rich's error hierarchy while leveraging
+//! of the gilt library, mirroring the error hierarchy while leveraging
 //! Rust's type system for better error handling ergonomics.
 
 #[cfg(feature = "eyre")]
@@ -128,7 +128,7 @@ pub enum PaletteError {
     NotAvailable(String),
 }
 
-/// Errors that can occur when parsing Rich markup.
+/// Errors that can occur when parsing gilt markup.
 #[derive(Error, Debug, Clone, PartialEq)]
 pub enum MarkupError {
     /// Closing tag doesn't match any open tag.

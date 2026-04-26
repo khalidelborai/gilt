@@ -1,6 +1,5 @@
 //! Tree widget for rendering hierarchical structures with guide characters.
 //!
-//! Port of Python's `rich/tree.py`.
 
 use crate::cells::cell_len;
 use crate::console::{Console, ConsoleOptions, Renderable};

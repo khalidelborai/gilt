@@ -2,7 +2,7 @@
 //!
 //! Provides the `Traceback` struct for rendering Rust backtraces, error chains,
 //! and panic messages with syntax highlighting and source context. Adapted from
-//! Python rich's `traceback.py` for Rust-specific backtrace formats.
+//! the `traceback.py` for Rust-specific backtrace formats.
 
 use std::sync::LazyLock;
 
@@ -87,7 +87,7 @@ impl std::fmt::Display for Frame {
 // ---------------------------------------------------------------------------
 
 /// A formatted traceback that renders error information with syntax
-/// highlighting and source context, similar to Python rich's Traceback.
+/// highlighting and source context, similar to the Traceback.
 #[derive(Debug, Clone)]
 pub struct Traceback {
     /// Title displayed at the top (error type or custom title).

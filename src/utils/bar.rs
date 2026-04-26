@@ -1,6 +1,5 @@
 //! Bar renderable -- a solid block-character bar.
 //!
-//! Rust port of Python's `rich/bar.py`.
 //!
 //! Renders a horizontal bar using Unicode block elements, useful for progress
 //! indicators, sparklines, and other proportional visualisations.

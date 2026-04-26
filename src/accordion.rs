@@ -1,6 +1,5 @@
 //! Accordion widget -- collapsible content panels for organizing complex output.
 //!
-//! Port of Python's `rich` collapsible panels concept.
 
 use crate::console::{Console, ConsoleOptions, Renderable};
 use crate::segment::Segment;
