@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.11.0-alpha.1] - 2026-04-26
+
+First slice of the v0.11.0 break bundle. **Pre-release:** API surface is
+stable but `Segment.style` will change in `0.11.0-alpha.2` (PR1b).
+Don't depend on alpha.1 unless you're tracking the bundle progress.
+
+### Added
+
+- **`gilt::style_interner`** module with [`StyleInterner`] and
+  [`StyleId`]. Content-deduplicating interner for `Style` values backed
+  by `HashMap<Arc<Style>, StyleId>` (works because `Arc<T>: Hash + Eq`
+  delegates to `T`). `StyleId(u32)` is `Copy`; `StyleId::NULL` is
+  pre-seeded with `Style::null()`. Foundation for L2 — see
+  `.review/V0_11_DESIGN.md`.
+- `Console::style_interner() -> &Arc<Mutex<StyleInterner>>` accessor.
+- 6 unit tests covering null pre-seed, dedup, distinct ids, null
+  intern, unknown lookup, id stability.
+
+### Changed
+
+- `Console` now holds a `style_interner: Arc<Mutex<StyleInterner>>`
+  field. Construction allocates the interner and pre-seeds `NULL`. **No
+  caller routes through the interner yet** — it is dormant. Per-Console
+  cost: one `Arc<Mutex<…>>` allocation + a `HashMap` with one entry.
+
+### Notes
+
+The skeleton stays dormant on purpose. PR1b (`v0.11.0-alpha.2`) will
+convert `Segment.style: Option<Style>` (a public field accessed at 246
+sites) into a method that resolves through the interner. PR3 activates
+interning at `Segment` construction sites and lands the actual perf
+win. This split was chosen via AskUserQuestion to derisk the 246-site
+mass rewrite — it stays in its own PR rather than mixing with the type
+introduction.
+
 ## [0.10.3] - 2026-04-26
 
 T8 lock-free `Live` writers. Realistic Progress workload throughput

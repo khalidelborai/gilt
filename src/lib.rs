@@ -769,6 +769,7 @@ pub mod rule;
 pub mod segment;
 pub mod sparkline;
 pub mod style;
+pub mod style_interner;
 // styled and styled_str are now in utils/
 pub use utils::styled;
 pub use utils::styled_str;
