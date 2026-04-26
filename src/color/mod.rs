@@ -257,7 +257,11 @@ impl Color {
         }
     }
 
-    /// Gets the ANSI escape codes for this color.
+    /// Gets the ANSI escape codes for this color as a `Vec<String>`.
+    ///
+    /// **Note:** the production render path uses [`Color::write_ansi_codes`]
+    /// which writes directly into a pre-allocated buffer (no allocation).
+    /// Prefer that method when calling per-segment.
     ///
     /// # Arguments
     /// * `foreground` - If true, returns foreground codes; otherwise background codes.

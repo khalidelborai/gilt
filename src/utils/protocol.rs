@@ -273,25 +273,22 @@ impl RenderableBox {
         self.inner
     }
 
-    /// Try to downcast to a concrete type.
+    /// Always returns `None`.
     ///
-    /// # Examples
+    /// **This method does not actually downcast.** `RenderableBox` does not
+    /// store type information alongside the inner `dyn Renderable`, and
+    /// `dyn Renderable` is not `Any`-castable, so a real downcast would
+    /// require either changing the `Renderable` trait bound to `Any` (a
+    /// breaking change) or storing a parallel `TypeId`. Neither has been
+    /// done; this method is preserved as a deprecated no-op.
     ///
-    /// ```
-    /// use gilt::protocol::{RenderableBox, RenderableExt};
-    /// use gilt::prelude::*;
-    ///
-    /// let text = Text::from("Hello");
-    /// let boxed = text.into_boxed_renderable();
-    ///
-    /// if let Some(text) = boxed.downcast_ref::<Text>() {
-    ///     println!("It's a Text!");
-    /// }
-    /// ```
+    /// If you need downcasting, store the concrete type directly rather than
+    /// erasing it through `RenderableBox`.
+    #[deprecated(
+        note = "downcast_ref always returns None — RenderableBox does not store TypeId. \
+                Store concrete types instead."
+    )]
     pub fn downcast_ref<T: Renderable + 'static>(&self) -> Option<&T> {
-        // We can't downcast dyn Renderable directly, but we can try to
-        // get a reference and use Any::downcast_ref if we had stored the type
-        // For now, this returns None since we don't store type information
         None
     }
 }

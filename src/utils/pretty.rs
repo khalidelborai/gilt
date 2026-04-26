@@ -240,9 +240,12 @@ impl Pretty {
             return self.text.clone();
         }
 
-        let guide_style = Style::parse("dim green").unwrap_or_else(|_| Style::null());
+        // Cache the parsed style across calls — was re-parsing on every render.
+        static GUIDE_STYLE: std::sync::LazyLock<Style> = std::sync::LazyLock::new(|| {
+            Style::parse("dim green").unwrap_or_else(|_| Style::null())
+        });
         self.text
-            .with_indent_guides(Some(self.indent_size), '\u{2502}', guide_style)
+            .with_indent_guides(Some(self.indent_size), '\u{2502}', GUIDE_STYLE.clone())
     }
 
     // -- Measurement --------------------------------------------------------

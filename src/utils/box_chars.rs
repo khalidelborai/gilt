@@ -185,7 +185,10 @@ impl BoxChars {
     /// Example for widths `[5, 3]` with SQUARE box:
     /// `"┌─────┬───┐"`
     pub fn get_top(&self, widths: &[usize]) -> String {
-        let mut s = String::new();
+        // Final size is exactly (sum widths) + (num dividers) + 2 corners.
+        // Each char may be up to 4 bytes (CJK box-drawing chars are 3).
+        let cap = widths.iter().sum::<usize>() * 3 + widths.len() + 2;
+        let mut s = String::with_capacity(cap);
         s.push(self.top_left);
         for (i, &width) in widths.iter().enumerate() {
             for _ in 0..width {
@@ -231,7 +234,8 @@ impl BoxChars {
             ),
         };
 
-        let mut s = String::new();
+        let cap = widths.iter().sum::<usize>() * 3 + widths.len() + if edge { 2 } else { 0 };
+        let mut s = String::with_capacity(cap);
         if edge {
             s.push(left);
         }
@@ -254,7 +258,8 @@ impl BoxChars {
     /// Example for widths `[5, 3]` with SQUARE box:
     /// `"└─────┴───┘"`
     pub fn get_bottom(&self, widths: &[usize]) -> String {
-        let mut s = String::new();
+        let cap = widths.iter().sum::<usize>() * 3 + widths.len() + 2;
+        let mut s = String::with_capacity(cap);
         s.push(self.bottom_left);
         for (i, &width) in widths.iter().enumerate() {
             for _ in 0..width {

@@ -460,9 +460,10 @@ impl Style {
             return text.to_string();
         }
 
-        // Build semicolon-separated SGR codes directly into a buffer,
-        // avoiding per-code String allocations.
-        let mut sgr = String::new();
+        // Build semicolon-separated SGR codes directly into a buffer.
+        // Pre-size for the typical "bold + 256-color fg + 256-color bg"
+        // sequence (≈ "1;38;5;NNN;48;5;NNN" → ~20 chars).
+        let mut sgr = String::with_capacity(32);
 
         // Add attribute codes
         let attrs: [(u16, &str); 13] = [
@@ -518,7 +519,8 @@ impl Style {
             ul_color.write_underline_color_codes(&mut sgr);
         }
 
-        let mut result = String::new();
+        // Pre-size: text + SGR opener (~5 + sgr) + reset (~4) + slack.
+        let mut result = String::with_capacity(text.len() + sgr.len() + 12);
 
         if sgr.is_empty() {
             result.push_str(text);
@@ -598,7 +600,8 @@ impl Style {
         }
     }
 
-    /// Returns a deep copy of this style.
+    /// Returns a deep copy of this style. Equivalent to [`Clone::clone`].
+    #[deprecated(note = "Use `style.clone()` directly — `Style::copy` is a no-op alias")]
     pub fn copy(&self) -> Style {
         self.clone()
     }
@@ -770,9 +773,19 @@ impl fmt::Display for Style {
             parts.push(bgcolor.name.clone());
         }
 
-        // Underline style
+        // Underline style — match to a static &'static str (avoids two
+        // allocations from `format!("{:?}").to_lowercase()`).
         if let Some(ul_style) = &self.underline_style {
-            parts.push(format!("{:?}", ul_style).to_lowercase());
+            parts.push(
+                match ul_style {
+                    UnderlineStyle::Single => "single",
+                    UnderlineStyle::Double => "double",
+                    UnderlineStyle::Curly => "curly",
+                    UnderlineStyle::Dotted => "dotted",
+                    UnderlineStyle::Dashed => "dashed",
+                }
+                .to_string(),
+            );
         }
 
         // Underline color
@@ -1559,6 +1572,7 @@ mod tests {
     #[test]
     fn test_copy() {
         let style = Style::parse("bold red").unwrap();
+        #[allow(deprecated)]
         let copied = style.copy();
         assert_eq!(style, copied);
     }

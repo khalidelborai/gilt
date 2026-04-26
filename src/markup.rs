@@ -244,8 +244,8 @@ pub fn render(markup: &str, style: Style) -> Result<Text, MarkupError> {
                 }
             } else {
                 // Opening tag — push onto the stack.
-                let normalized_name = tag.name.to_lowercase();
-                let normalized_name = normalized_name.trim().to_string();
+                // Trim before lowercasing so we make one allocation, not two.
+                let normalized_name = tag.name.trim().to_lowercase();
                 let open_tag = Tag {
                     name: normalized_name,
                     parameters: tag.parameters.clone(),

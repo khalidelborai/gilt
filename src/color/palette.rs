@@ -49,14 +49,15 @@ impl Palette {
             let green_diff = green1 - green2;
             let blue_diff = blue1 - blue2;
 
-            // Redmean weighted Euclidean distance
-            let distance = (((512 + red_mean) * red_diff * red_diff) as f64 / 256.0
+            // Redmean weighted Euclidean distance squared. sqrt() is monotonic
+            // — comparing squared distances picks the same minimum without
+            // 256 sqrt() calls per match_color call.
+            let distance_sq = ((512 + red_mean) * red_diff * red_diff) as f64 / 256.0
                 + 4.0 * (green_diff * green_diff) as f64
-                + ((767 - red_mean) * blue_diff * blue_diff) as f64 / 256.0)
-                .sqrt();
+                + ((767 - red_mean) * blue_diff * blue_diff) as f64 / 256.0;
 
-            if distance < min_distance {
-                min_distance = distance;
+            if distance_sq < min_distance {
+                min_distance = distance_sq;
                 min_index = index;
             }
         }
