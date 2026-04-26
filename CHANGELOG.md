@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.10.2] - 2026-04-26
+
+T8 prep release: enable shared-`Live` use across threads and ship the
+threaded contention bench that justifies the v0.10.6 lock-free split.
+
+### Changed
+
+- **`Live::update_renderable` and `Live::update` now take `&self`** instead
+  of `&mut self`. The body only touches the internal
+  `Arc<Mutex<SharedState>>`; the previous `&mut` was an unnecessary API
+  restriction that prevented sharing a `Live` across threads. Strict
+  loosening — all existing callers continue to work; the only side effect
+  is that some `let mut live` bindings now warn `unused_mut`.
+
+### Added
+
+- **`benches/live_threaded.rs`**: criterion bench measuring
+  `update_renderable` throughput under N=1/2/4/8 writer threads (and a
+  variant with a renderer thread also calling `refresh()`). Confirms
+  negative scaling on writers due to single-mutex contention — at 8
+  writers, throughput is ~40% of single-writer (5% efficiency vs linear
+  ideal). Justifies the v0.10.6 lock-free `Live::SharedState` split.
+
+### Notes
+
+- **Q9 (table divider hoist) verified already optimal.** Audit found the
+  divider-construction block at `widgets/table/core.rs:1301` is already
+  hoisted outside the line/cell loops; the remaining `divider.clone()`
+  per cell-per-line is unavoidable `Vec<Segment>` push semantics. No
+  code change needed.
+
 ## [0.10.1] - 2026-04-26
 
 Performance patch. No public API changes.
