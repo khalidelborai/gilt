@@ -441,7 +441,7 @@ mod tests {
             .collect();
         assert!(!rule_segs.is_empty());
         for seg in &rule_segs {
-            assert!(seg.style.is_some());
+            assert!(seg.style().is_some());
         }
     }
 

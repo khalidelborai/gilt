@@ -382,7 +382,7 @@ impl Toast {
 
             let mut pb_text = Text::empty();
             for seg in &segments {
-                pb_text.append_str(&seg.text, seg.style.clone());
+                pb_text.append_str(&seg.text, seg.style().cloned());
             }
 
             content.append_text(&pb_text);

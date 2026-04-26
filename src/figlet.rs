@@ -631,7 +631,7 @@ mod tests {
         let styled_segs: Vec<_> = segments.iter().filter(|s| s.text != "\n").collect();
         assert!(!styled_segs.is_empty());
         for seg in styled_segs {
-            assert!(seg.style.is_some());
+            assert!(seg.style().is_some());
         }
     }
 

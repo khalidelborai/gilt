@@ -61,7 +61,7 @@ impl CellContent {
                 let segs = console.render(r.as_ref(), None);
                 let mut t = Text::empty();
                 for seg in &segs {
-                    t.append_str(&seg.text, seg.style.clone());
+                    t.append_str(&seg.text, seg.style().cloned());
                 }
                 t
             }
