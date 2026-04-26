@@ -2,7 +2,7 @@
 //!
 //! Run with: `cargo run --example spinners`
 //!
-//! Port of Python rich's spinners.py demo. Shows a table of all
+//! Port of spinners.py demo. Shows a table of all
 //! spinner names along with their frame counts and intervals.
 
 use gilt::console::Console;

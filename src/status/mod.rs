@@ -1,6 +1,5 @@
 //! Status indicator with a spinner animation.
 //!
-//! Port of Python rich's `status.py`. Displays a status message alongside a
 //! spinning animation, using a [`Live`] display for in-place terminal updates.
 //!
 //! # Examples

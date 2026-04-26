@@ -1,6 +1,6 @@
 //! Demonstrates traceback rendering with frame suppression/filtering.
 //!
-//! Port of Python rich's `suppress.py`. In the Python original, rich's
+//! Port of `suppress.py`. In the Python original, rich's
 //! `install(suppress=[click])` hides frames from the `click` library to
 //! reduce noise. In Rust/gilt, we demonstrate the concept by:
 //!

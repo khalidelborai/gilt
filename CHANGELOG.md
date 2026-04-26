@@ -5,6 +5,147 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.10.0] - 2026-04-26
+
+A rich-v15.0.0 sync release. Ports every behavioural fix from rich
+v14.0.0–v15.0.0, adds significant new APIs surfaced by the deep-dive
+review, and fixes three user-reported runtime bugs.
+
+### Added
+
+- **Rich v14.0.0 — TTY env-var overrides**: `TTY_COMPATIBLE=0/1` forces
+  TTY mode independent of platform detection; `TTY_INTERACTIVE=0/1`
+  forces interactive mode independent of TTY status. Surfaced via
+  `Console::is_terminal()` (now consults `TTY_COMPATIBLE`) and the new
+  `Console::is_interactive()` method. New `TtyOverride` enum and two
+  `detect_tty_*` functions in `color::color_env`.
+- **Rich v14.1.0 — `Syntax.padding` four-tuple**: changed from
+  `(top, bottom)` to `(top, right, bottom, left)` matching the CSS
+  shorthand. New `PaddingSpec` enum + `unpack_padding()` helper for
+  ergonomic construction from any of the four shorthand forms.
+- **Rich v15.0.0 — `Text::from_ansi` newline preservation**: input's
+  trailing newlines are no longer stripped (`from_ansi("Hello\n")
+  .plain() == "Hello\n"`).
+- **`Progress::open_file(path, description)` /
+  `Progress::wrap_file<R: Read+Seek>(reader, description)`** —
+  one-call file-progress wiring (top-10 use case previously requiring
+  6 lines of manual setup).
+- **`Console::out(text, style)`** — raw print with no markup, emoji,
+  highlight, or wrap parsing. Use when content already contains
+  literal `[` brackets or `:tags:` that shouldn't be interpreted.
+- **`Style::pick_first(&[Option<&Style>])`** — selects first non-null
+  style from candidates; mirrors rich's helper used in render
+  pipelines that layer theme/row/column/cell overrides.
+- **OSC 8 hyperlink `id=` parameter** — every emitted hyperlink now
+  carries a process-monotonic `id=` so iTerm2/Kitty/WezTerm group
+  multi-line link runs as a single clickable target.
+- **`RichHandler` config**: `with_omit_repeated_times(bool)` (default
+  `true`) blanks duplicate timestamps; `with_enable_link_path(bool)`
+  renders `module::path:line` as an OSC 8 `file://` link;
+  `with_gilt_tracebacks(bool)` routes multi-line ERROR records
+  through `Traceback::from_panic` for Panel-wrapped styled output.
+- **`Traceback::with_suppress(Vec<String>)` and
+  `Traceback::install_panic_hook[_with]`** — filter library frames by
+  filename substring; install a `std::panic::set_hook` that prints
+  styled tracebacks to stderr using `Backtrace::force_capture`.
+- **`Table::add_row_renderable(Vec<Arc<dyn Renderable + Send + Sync>>)`**
+  — cells can now hold any Renderable (Panel, Tree, nested Table)
+  rather than only `&str` or `Text`. New `CellContent::Renderable`
+  variant.
+- **`Text::markup() -> String`** — round-trips a styled Text back to a
+  parseable markup string, escaping literal brackets and emitting
+  open/close tags for every span.
+- **`Text::get_style_at_offset_themed(console, offset)`** — extends
+  `get_style_at_offset` with theme-stack lookup so named styles like
+  `"highlight"` resolve through `console.get_style()`.
+- **`Syntax` default theme** changed to `"base16-mocha.dark"` (closest
+  near-Monokai available in `syntect`'s bundled themes), aligning the
+  visual baseline with rich's `"monokai"` default.
+- **3 new test binaries** (`tests/table_unit.rs`, `progress_unit.rs`,
+  `segment_unit.rs`) with 45 scenarios ported from rich's pytest
+  suite plus inline filesize coverage.
+
+### Fixed
+
+- **Rich v14.0.0 — `NO_COLOR=""` semantics**: empty value no longer
+  disables color (must be a non-empty value to opt out, per the
+  no-color.org convention).
+- **Rich v14.0.0 — `FORCE_COLOR=""` semantics**: empty value no
+  longer force-enables color; falls through to no-override.
+- **Rich v14.3.0 — Live spurious newline on stop**: `Live::stop()` no
+  longer emits a trailing `\n` when the live region rendered nothing
+  (gates on `last_render_height() > 0`).
+- **Rich v14.3.0 — Table padding consistency**: `get_padding_width`
+  (measure path) and per-cell padding application (render path) were
+  computing `collapse_padding` differently — measure said `pad_left=0`
+  always, render did `pad_left.saturating_sub(pad_right)`. Both paths
+  now agree per rich v14.3.0: `pad_left=0` only for `column_index>0`.
+  First-column text could previously overflow its measured width.
+- **Rich v15.0.0 — Markdown table inline code dropped**: `Event::Code`
+  inside a table cell was routing to the wrong accumulator and the
+  styled inline code disappeared on close. `TableContext` now stores
+  `Vec<Text>` rather than `Vec<String>`, and the event handler guards
+  on `in_table_cell` to preserve styling end-to-end.
+- **`Table::measure(width=Some(0))`** now returns `Measurement(0,0)`
+  matching rich's fully-collapsed semantics.
+- **`Progress` mutators don't refresh the live display**: `advance`,
+  `update`, `start_task`, `stop_task` now call `self.refresh()` after
+  mutating, so progress bars actually update on screen instead of
+  showing only `[?25l[?25h]` (cursor hide/show with no content).
+- **`SpinnerColumn` always rendered frame 0**: `Spinner::render(time)`
+  was treating its first call's `time` as `start_time` and computing
+  `elapsed = time - start_time = 0`, so a fresh-per-render Spinner
+  (which is what `SpinnerColumn` constructs) never advanced. Stateless
+  callers now have `time` interpreted as elapsed seconds directly.
+- **Hyperlinks fragmented into per-segment OSC 8 wrappers**:
+  `[link=URL]Visit [bold]X[/bold] now[/link]` was emitting three
+  open/close pairs, breaking single-link recognition in many
+  terminals. `Console::render_buffer` now coalesces consecutive
+  same-link segments under one wrapper.
+- Bit-rotted examples: `testcard` updated for the renamed `gilt_console`
+  trait method; `stylize_safe` import path corrected. Three orphan
+  example files (`themes`, `http_demo`, `async_demo`) removed —
+  they referenced APIs that no longer exist.
+
+### Changed (breaking)
+
+- **`Renderable::rich_console` → `Renderable::gilt_console`**, and
+  the related identifiers `RichCast` → `GiltCast`, `rich_cast` →
+  `gilt_cast`, `rich_cast_impl!` → `gilt_cast_impl!`,
+  `TextPart::Rich` → `TextPart::Inner`. The `__rich_*__` protocol
+  hook names were renamed to `__gilt_*__` in doc comments. This
+  removes any "rich" identity from gilt's public API surface.
+- **`Syntax.padding`** type changed from `(usize, usize)` (top, bottom)
+  to `(usize, usize, usize, usize)` (top, right, bottom, left).
+- **`Style::render`** now emits OSC 8 with an `id=N;` prefix.
+  Existing tests asserting the exact byte sequence need to match by
+  structure rather than equality.
+
+### Internal — quality
+
+- Deleted 9 orphaned root-level files in `src/` (`file_proxy`,
+  `spinner`, `spinners`, `align_widget`, `bar`, `padding`, `scope`,
+  `styled`, `styled_str`) that were duplicates of files already
+  declared under `utils/` or `status/` and never compiled.
+- Promoted `traceback.rs`'s per-call regexes to module-level
+  `LazyLock<Regex>`; collapsed two byte-identical regexes in
+  `markup.rs`; replaced `Regex::new()` with `str::match_indices` in
+  `Text::split` (literal-string only).
+- Removed unnecessary `unsafe` in `async.rs::ProgressStream::poll_next`
+  (the `S: Unpin` bound makes the safe `get_mut()` sufficient).
+- `STYLE_CACHE` lookups now recover from a poisoned mutex via
+  `into_inner` rather than panicking on access.
+- `COLOR_CACHE` was declared with public `clear`/`size` functions in
+  v0.8.0 but `Color::parse()` never used it — wired through so the
+  documented LRU caching now actually works.
+- `tests/unit/console_tests.rs` `set_var` calls now serialise via the
+  same `ENV_LOCK` pattern used in `color_env`'s tests.
+- Doc comments across 51 source files cleaned of "Port of Python
+  rich/X.py" attribution and similar "Python rich" references.
+- Version strings in `lib.rs` quickstart, `tracing_layer` docs, and
+  README install examples updated from `"0.6"` / `"0.7"` / `"0.8"` /
+  `"0.1"` to the current major.
+
 ## [0.8.0] - 2026-02-09
 
 ### Added

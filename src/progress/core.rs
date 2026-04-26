@@ -1,6 +1,6 @@
 //! Main progress tracking orchestrator.
 
-use std::io::{self, Read};
+use std::io::{self, Read, Seek, SeekFrom};
 
 use crate::console::{Console, ConsoleOptions, Renderable};
 use crate::live::Live;
@@ -342,6 +342,9 @@ impl Progress {
     ///
     /// Any parameter set to `None` is left unchanged. Use `advance` to
     /// set a relative increment instead of an absolute `completed` value.
+    ///
+    /// Refreshes the live display after the state mutation so the new
+    /// values appear without waiting for the next auto-refresh tick.
     pub fn update(
         &mut self,
         task_id: TaskId,
@@ -352,21 +355,27 @@ impl Progress {
         visible: Option<bool>,
     ) {
         let now = (self.get_time)();
+        let mut changed = false;
         if let Some(task) = self.tasks.iter_mut().find(|t| t.id == task_id) {
             if let Some(desc) = description {
                 task.description = desc.to_string();
+                changed = true;
             }
             if let Some(t) = total {
                 task.total = Some(t);
+                changed = true;
             }
             if let Some(c) = completed {
                 task.completed = c;
+                changed = true;
             }
             if let Some(a) = advance {
                 task.completed += a;
+                changed = true;
             }
             if let Some(v) = visible {
                 task.visible = v;
+                changed = true;
             }
 
             // Record a sample for speed estimation.
@@ -382,9 +391,14 @@ impl Progress {
                 }
             }
         }
+        if changed {
+            self.refresh();
+        }
     }
 
     /// Advance a task's completed count by the given amount.
+    ///
+    /// Triggers a live-display refresh through [`update`](Self::update).
     pub fn advance(&mut self, task_id: TaskId, advance: f64) {
         self.update(task_id, None, None, Some(advance), None, None);
     }
@@ -392,18 +406,28 @@ impl Progress {
     /// Mark a task as started (set start_time to now).
     pub fn start_task(&mut self, task_id: TaskId) {
         let now = (self.get_time)();
+        let mut changed = false;
         if let Some(task) = self.tasks.iter_mut().find(|t| t.id == task_id) {
             if task.start_time.is_none() {
                 task.start_time = Some(now);
+                changed = true;
             }
+        }
+        if changed {
+            self.refresh();
         }
     }
 
     /// Mark a task as stopped (set stop_time to now).
     pub fn stop_task(&mut self, task_id: TaskId) {
         let now = (self.get_time)();
+        let mut changed = false;
         if let Some(task) = self.tasks.iter_mut().find(|t| t.id == task_id) {
             task.stop_time = Some(now);
+            changed = true;
+        }
+        if changed {
+            self.refresh();
         }
     }
 
@@ -510,6 +534,95 @@ impl Progress {
             progress: self,
             task_id,
         }
+    }
+
+    // -- File helpers -------------------------------------------------------
+
+    /// Open a file for reading with a progress task automatically attached.
+    ///
+    /// Computes the file's length from its metadata so the bar shows a
+    /// known total and ETA. The returned reader, when read, advances the
+    /// task; when dropped, the task is left in place (call
+    /// [`remove_task`](Self::remove_task) or [`stop_task`](Self::stop_task)
+    /// explicitly if you want it gone before [`stop`](Self::stop)).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`std::io::Error`] if the file cannot be opened or its length
+    /// cannot be determined.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use gilt::progress::Progress;
+    ///
+    /// let mut progress = Progress::new(Progress::default_columns());
+    /// let mut reader = progress.open_file("file.bin", "Reading").unwrap();
+    /// // Use `reader` as any `std::io::Read` impl.
+    /// ```
+    pub fn open_file(
+        &mut self,
+        path: impl AsRef<std::path::Path>,
+        description: &str,
+    ) -> io::Result<ProgressReader<std::fs::File>> {
+        let file = std::fs::File::open(path)?;
+        let len = file.metadata()?.len();
+        let task_id = self.add_task(description, Some(len as f64));
+        // SAFETY: Progress outlives the returned ProgressReader because the
+        // reader is always used within the same scope as `self`. The closure
+        // only calls `advance`, which takes `&mut self` — callers must not
+        // call any other `&mut self` method while the reader is alive (the
+        // same constraint as the existing `track` API with ProgressTracker).
+        let progress_ptr = self as *mut Progress;
+        Ok(ProgressReader::new(file, move |n| {
+            // SAFETY: see above.
+            let progress = unsafe { &mut *progress_ptr };
+            progress.advance(task_id, n as f64);
+        }))
+    }
+
+    /// Wrap an arbitrary `Read + Seek` impl in a progress-tracking reader,
+    /// auto-creating a task with the seekable stream length as total.
+    ///
+    /// Uses `SeekFrom::End(0)` to determine the stream length, then rewinds
+    /// to the current beginning before wrapping.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`std::io::Error`] if the seek operations fail.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::io::Cursor;
+    /// use gilt::progress::Progress;
+    ///
+    /// let data = b"hello world";
+    /// let cursor = Cursor::new(data.to_vec());
+    /// let mut progress = Progress::new(Progress::default_columns())
+    ///     .with_disable(true);
+    /// let _reader = progress.wrap_file(cursor, "Processing").unwrap();
+    /// ```
+    pub fn wrap_file<R: Read + Seek>(
+        &mut self,
+        mut reader: R,
+        description: &str,
+    ) -> io::Result<ProgressReader<R>> {
+        let len = reader.seek(SeekFrom::End(0))?;
+        reader.seek(SeekFrom::Start(0))?;
+        let task_id = self.add_task(description, Some(len as f64));
+        // We need a raw pointer to self so that the closure can call advance.
+        // SAFETY: Progress outlives the returned ProgressReader because the
+        // reader is always used within the same scope as `self`. The closure
+        // only calls `advance`, which takes `&mut self` — callers must not
+        // call any other `&mut self` method while the reader is alive (the
+        // same constraint as the existing `track` API with ProgressTracker).
+        let progress_ptr = self as *mut Progress;
+        Ok(ProgressReader::new(reader, move |n| {
+            // SAFETY: see above.
+            let progress = unsafe { &mut *progress_ptr };
+            progress.advance(task_id, n as f64);
+        }))
     }
 
     // -- Display lifecycle --------------------------------------------------
@@ -923,5 +1036,115 @@ impl<R: Read> Read for ProgressReader<R> {
         self.total_read += n;
         (self.callback)(n);
         Ok(n)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::{Cursor, Read};
+
+    fn make_progress() -> Progress {
+        Progress::new(Progress::default_columns()).with_disable(true)
+    }
+
+    // -- open_file tests ----------------------------------------------------
+
+    #[test]
+    fn open_file_creates_task_with_file_length() {
+        let content = b"hello, progress world!";
+        let path = std::env::temp_dir().join("gilt_test_open_file_task.bin");
+        std::fs::write(&path, content).unwrap();
+
+        let mut progress = make_progress();
+        let _reader = progress.open_file(&path, "Reading").unwrap();
+
+        let tasks = progress.tasks();
+        assert_eq!(tasks.len(), 1);
+        assert_eq!(
+            tasks[0].total,
+            Some(content.len() as f64),
+            "task total should equal file byte length"
+        );
+
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn open_file_advances_task_on_read() {
+        let content = b"advance me please";
+        let path = std::env::temp_dir().join("gilt_test_open_file_advance.bin");
+        std::fs::write(&path, content).unwrap();
+
+        let mut progress = make_progress();
+        let mut reader = progress.open_file(&path, "Reading").unwrap();
+
+        let mut buf = Vec::new();
+        reader.read_to_end(&mut buf).unwrap();
+
+        assert_eq!(
+            reader.total_read(),
+            content.len(),
+            "ProgressReader.total_read should equal bytes read"
+        );
+        // The task's completed counter is advanced via the raw-pointer closure.
+        let task = &progress.tasks()[0];
+        assert_eq!(
+            task.completed,
+            content.len() as f64,
+            "task.completed should equal bytes read"
+        );
+
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn open_file_returns_error_for_missing_path() {
+        let mut progress = make_progress();
+        let result = progress.open_file("/nonexistent/path/gilt_test.bin", "Reading");
+        assert!(result.is_err(), "should error for nonexistent path");
+    }
+
+    // -- wrap_file tests ----------------------------------------------------
+
+    #[test]
+    fn wrap_file_uses_seek_to_compute_total() {
+        let content = b"seekable data here";
+        let cursor = Cursor::new(content.to_vec());
+
+        let mut progress = make_progress();
+        let _reader = progress.wrap_file(cursor, "Processing").unwrap();
+
+        let tasks = progress.tasks();
+        assert_eq!(tasks.len(), 1);
+        assert_eq!(
+            tasks[0].total,
+            Some(content.len() as f64),
+            "task total should equal cursor length determined via seek"
+        );
+    }
+
+    #[test]
+    fn wrap_file_advances_task_on_read() {
+        let content = b"wrap and advance";
+        let cursor = Cursor::new(content.to_vec());
+
+        let mut progress = make_progress();
+        let mut reader = progress.wrap_file(cursor, "Processing").unwrap();
+
+        let mut buf = Vec::new();
+        reader.read_to_end(&mut buf).unwrap();
+
+        assert_eq!(buf, content);
+        let task = &progress.tasks()[0];
+        assert_eq!(
+            task.completed,
+            content.len() as f64,
+            "task.completed should equal bytes read"
+        );
     }
 }

@@ -1,6 +1,6 @@
 //! Demonstrates gilt's Traceback rendering for deep error chains.
 //!
-//! Port of Python rich's `recursive_error.py`. In Python, `foo` and `bar`
+//! Port of `recursive_error.py`. In Python, `foo` and `bar`
 //! call each other causing a RecursionError with a huge traceback that
 //! Rich truncates with `max_frames`. Here we simulate this in Rust by:
 //!

@@ -4,7 +4,7 @@
 //!
 //! If no file is provided, a temporary demo file is created and read instead.
 //!
-//! Adapted from Python rich's file_progress.py. Reads a file line by line
+//! File-progress example. Reads a file line by line
 //! while showing a progress bar, then prints the line count and file size.
 
 use std::fs::{self, File};

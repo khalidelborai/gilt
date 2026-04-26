@@ -1,6 +1,5 @@
 //! Padding widget -- adds whitespace around renderable content.
 //!
-//! Port of Python's `rich/padding.py`.
 
 use crate::console::{Console, ConsoleOptions, Renderable};
 use crate::measure::Measurement;

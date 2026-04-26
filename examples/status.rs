@@ -2,7 +2,7 @@
 //!
 //! Run with: `cargo run --example status`
 //!
-//! Port of Python rich's status.py demo. Demonstrates the Status widget
+//! Port of status.py demo. Demonstrates the Status widget
 //! which combines a Spinner with a Live display for animated feedback.
 
 use std::thread;

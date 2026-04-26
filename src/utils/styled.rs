@@ -1,6 +1,5 @@
 //! Apply a style to a renderable.
 //!
-//! Rust port of Python's `rich/styled.py`. The `Styled` struct wraps a
 //! renderable (`Text`) together with an additional `Style` that is applied
 //! on top of whatever styles the renderable already carries.
 
@@ -15,7 +14,7 @@ use crate::text::Text;
 /// A renderable with an additional style layered on top.
 ///
 /// When rendered, the extra style is combined with every segment produced
-/// by the inner renderable, exactly mirroring Python rich's `Styled` class.
+/// by the inner renderable, exactly mirroring the `Styled` class.
 #[derive(Debug, Clone)]
 pub struct Styled {
     /// The inner renderable content.

@@ -2,7 +2,7 @@
 //!
 //! This module provides a `Stylize` extension trait that enables method chaining
 //! on `&str`, `String`, and `StyledStr` to build styled text, similar to the
-//! `colored` crate's API. This is a distinctly Rusty API that Python's rich
+//! `colored` crate's API. This is a distinctly Rusty API that Python
 //! cannot offer.
 //!
 //! # Examples

@@ -1,6 +1,6 @@
 //! Inspect any Rust value in a beautifully formatted panel.
 //!
-//! This is the Rust equivalent of Python's `rich.inspect()`. Since Rust
+//! This is the Rust equivalent of the inspect helper`. Since Rust
 //! doesn't have runtime reflection, it uses the `Debug` trait to display
 //! structured information about values.
 //!

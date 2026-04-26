@@ -6,7 +6,7 @@
 //!
 //! Run: cargo run --example stylize_safe
 
-use gilt::errors::{ColorParseError, StyleError};
+use gilt::error::{ColorParseError, StyleError};
 use gilt::prelude::*;
 use gilt::styled_str::Stylize;
 use gilt::text::Text;

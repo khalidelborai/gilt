@@ -1,4 +1,4 @@
-//! Animated-style table construction demo — inspired by Python rich's table_movie.py.
+//! Animated-style table construction demo —.
 //!
 //! Builds a Star Wars table step by step, printing each stage with a Rule
 //! separator.  Rather than using Live (which requires threading), this example

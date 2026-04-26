@@ -2,7 +2,7 @@
 //!
 //! This module provides the [`Pager`] struct, which pipes content through
 //! an external pager program (e.g., `less -r`). It mirrors the functionality
-//! of Python rich's `Pager` class.
+//! of the `Pager` class.
 
 use std::io::Write;
 use std::process::{Command, Stdio};

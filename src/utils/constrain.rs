@@ -1,6 +1,5 @@
 //! Constrain widget -- limits the width of a renderable to a given number of characters.
 //!
-//! Port of Python's `rich/constrain.py`.
 
 use std::cmp::min;
 use std::fmt;

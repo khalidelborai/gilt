@@ -1,7 +1,7 @@
 //! Protocol utilities example -- demonstrates the `__gilt__` protocol and casting utilities.
 //!
 //! This example shows how to use gilt's protocol utilities to:
-//! - Implement the `RichCast` trait for custom types
+//! - Implement the `GiltCast` trait for custom types
 //! - Check if values are renderable
 //! - Cast boxed values to concrete renderable types
 //! - Convert custom types to renderable representations
@@ -14,7 +14,7 @@ use gilt::prelude::*;
 use gilt::protocol;
 
 // =============================================================================
-// Custom Types Implementing RichCast
+// Custom Types Implementing GiltCast
 // =============================================================================
 
 /// A user in the system
@@ -53,7 +53,7 @@ impl UserRole {
     }
 }
 
-impl protocol::RichCast for User {
+impl protocol::GiltCast for User {
     fn __gilt__(self) -> Box<dyn Renderable> {
         let status_icon = if self.active { "🟢" } else { "🔴" };
         let status_text = if self.active { "Active" } else { "Inactive" };
@@ -85,7 +85,7 @@ struct Service {
     uptime_percent: f64,
 }
 
-impl protocol::RichCast for Service {
+impl protocol::GiltCast for Service {
     fn __gilt__(self) -> Box<dyn Renderable> {
         let health_style = if self.healthy {
             "bold green"
@@ -150,7 +150,7 @@ impl LogLevel {
     }
 }
 
-impl protocol::RichCast for LogEntry {
+impl protocol::GiltCast for LogEntry {
     fn __gilt__(self) -> Box<dyn Renderable> {
         let content = Text::from(format!(
             "[dim]{}[/] [[{}]{}[/]] [bold]{}[/]: {}",
@@ -169,7 +169,7 @@ struct ServiceDashboard {
     services: Vec<Service>,
 }
 
-impl protocol::RichCast for ServiceDashboard {
+impl protocol::GiltCast for ServiceDashboard {
     fn __gilt__(self) -> Box<dyn Renderable> {
         let mut table = Table::new(&["Service", "Version", "Status", "Latency", "Uptime"]);
 
@@ -198,13 +198,13 @@ impl protocol::RichCast for ServiceDashboard {
     }
 }
 
-/// Quick status struct using the macro for RichCast
+/// Quick status struct using the macro for GiltCast
 struct QuickStatus {
     label: &'static str,
     value: i32,
 }
 
-gilt::rich_cast_impl! { QuickStatus => |s|
+gilt::gilt_cast_impl! { QuickStatus => |s|
     Box::new(Panel::new(Text::from(format!("{}: {}", s.label, s.value)))
         .with_title("Quick Status"))
 }
@@ -220,8 +220,8 @@ fn main() {
         .no_color(false)
         .build();
 
-    // ── 1. RichCast - Custom User Type ──────────────────────────────────────
-    console.rule(Some("1. RichCast - Custom User Type"));
+    // ── 1. GiltCast - Custom User Type ──────────────────────────────────────
+    console.rule(Some("1. GiltCast - Custom User Type"));
     println!();
 
     let user = User {
@@ -231,7 +231,7 @@ fn main() {
         active: true,
     };
 
-    // Convert the user to a renderable using RichCast
+    // Convert the user to a renderable using GiltCast
     let user_renderable = protocol::IntoRenderable::into_renderable(user);
     console.print(&*user_renderable);
     println!();
@@ -247,7 +247,7 @@ fn main() {
     println!();
 
     // ── 2. Service Status Display ───────────────────────────────────────────
-    console.rule(Some("2. Service Status with RichCast"));
+    console.rule(Some("2. Service Status with GiltCast"));
     println!();
 
     let auth_service = Service {
@@ -347,8 +347,8 @@ fn main() {
     console.print(&*protocol::IntoRenderable::into_renderable(dashboard));
     println!();
 
-    // ── 5. Type Casting with rich_cast ──────────────────────────────────────
-    console.rule(Some("5. Type Casting with rich_cast"));
+    // ── 5. Type Casting with gilt_cast ──────────────────────────────────────
+    console.rule(Some("5. Type Casting with gilt_cast"));
     println!();
 
     // Create a boxed Any containing a Text
@@ -356,7 +356,7 @@ fn main() {
     let boxed: Box<dyn std::any::Any> = Box::new(original_text);
 
     // Try to cast it back to Text
-    match protocol::rich_cast::<Text>(boxed) {
+    match protocol::gilt_cast::<Text>(boxed) {
         Some(text) => {
             println!("✓ Successfully cast back to Text!");
             console.print(&*text);
@@ -371,7 +371,7 @@ fn main() {
     let text2 = Text::from("Another text");
     let boxed2: Box<dyn std::any::Any> = Box::new(text2);
 
-    match protocol::rich_cast::<Panel>(boxed2) {
+    match protocol::gilt_cast::<Panel>(boxed2) {
         Some(_) => println!("✓ Unexpectedly succeeded casting Text to Panel"),
         None => println!("✓ Correctly failed to cast Text to Panel (expected)"),
     }
@@ -442,8 +442,8 @@ fn main() {
     console.print(&boxed);
     println!();
 
-    // ── 9. Using rich_cast_impl Macro ───────────────────────────────────────
-    console.rule(Some("9. Using rich_cast_impl Macro"));
+    // ── 9. Using gilt_cast_impl Macro ───────────────────────────────────────
+    console.rule(Some("9. Using gilt_cast_impl Macro"));
     println!();
 
     let quick = QuickStatus {
@@ -458,13 +458,13 @@ fn main() {
     println!();
 
     let explanation = Text::from(
-        "The RichCast trait is Rust's equivalent of Python's __gilt__ protocol.\n\n\
+        "The GiltCast trait is Rust's equivalent of Python's __gilt__ protocol.\n\n\
          Python Rich:\n\
            class MyClass:\n\
                def __gilt__(self):\n\
                    return Panel(str(self))\n\n\
          Rust gilt:\n\
-           impl RichCast for MyClass {\n\
+           impl GiltCast for MyClass {\n\
                fn __gilt__(self) -> Box<dyn Renderable> {\n\
                    Box::new(Panel::new(Text::from(...)))\n\
                }\n\

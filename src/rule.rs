@@ -1,6 +1,5 @@
 //! Rule widget -- a horizontal line with optional title.
 //!
-//! Port of Python's `rich/rule.py`.
 
 use crate::align_widget::HorizontalAlign;
 use crate::cells::{cell_len, set_cell_size};

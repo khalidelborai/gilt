@@ -1,6 +1,6 @@
 //! Diagnostic tool for reporting terminal capabilities.
 //!
-//! Similar to Python Rich's diagnose.py, this module provides functionality
+//! Similar to the diagnose.py, this module provides functionality
 //! to inspect and report terminal capabilities for debugging purposes.
 //!
 //! # Example

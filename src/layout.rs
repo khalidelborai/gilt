@@ -1,6 +1,5 @@
 //! Layout module — a recursive screen-splitting layout system.
 //!
-//! Port of Python's `rich/layout.py`. Provides [`Layout`] for dividing a
 //! fixed-height terminal area into rows and columns, with flexible or
 //! fixed sizing via [`ratio_resolve`].
 

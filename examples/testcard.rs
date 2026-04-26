@@ -1,8 +1,7 @@
-//! Test card example -- showcases gilt's features in a single grid table.
+//! Test card -- showcases gilt's features in a single grid table.
 //!
-//! Inspired by Python rich's `__main__.py` test card, this example builds one
-//! large grid table where each row demonstrates a feature category, then renders
-//! it with cold/warm timing.
+//! Builds one large grid table where each row demonstrates a feature
+//! category, then renders it with cold/warm timing.
 //!
 //! Run with: `cargo run --example testcard --all-features`
 
@@ -67,7 +66,7 @@ fn v(m1: f64, m2: f64, mut hue: f64) -> f64 {
 struct ColorBox;
 
 impl Renderable for ColorBox {
-    fn rich_console(&self, _console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
+    fn gilt_console(&self, _console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         let mut segments = Vec::new();
         let width = options.max_width;
         for y in 0..5u32 {

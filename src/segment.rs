@@ -739,7 +739,7 @@ impl Segment {
 
     /// Split segments into lines on newlines, then adjust each line to the given width.
     ///
-    /// Port of Python rich's `Segment.split_and_crop_lines`.
+    /// Port of the `Segment.split_and_crop_lines`.
     ///
     /// # Examples
     ///
@@ -809,7 +809,7 @@ impl Segment {
     /// Split segments into lines, returning each line with a boolean indicating
     /// whether it was terminated by a newline character.
     ///
-    /// Port of Python rich's `Segment.split_lines_terminator`.
+    /// Port of the `Segment.split_lines_terminator`.
     ///
     /// # Examples
     ///

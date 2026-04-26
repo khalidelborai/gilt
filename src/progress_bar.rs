@@ -1,6 +1,5 @@
 //! Progress bar renderable -- a styled progress bar with pulse animation.
 //!
-//! Rust port of Python's `rich/progress_bar.py`.
 //!
 //! Renders a horizontal progress bar using Unicode box-drawing characters,
 //! with support for completed/remaining portions, pulse animation, and

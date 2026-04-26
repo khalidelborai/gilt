@@ -2,7 +2,7 @@
 //!
 //! Provides the `Syntax` struct for rendering syntax-highlighted code with
 //! line numbers, themes, word wrap, and padding. Uses `syntect` for syntax
-//! highlighting (analogous to Python rich's use of Pygments).
+//! highlighting (analogous to the use of Pygments).
 
 use std::path::Path;
 
@@ -25,11 +25,48 @@ static SYNTAX_SET: LazyLock<SyntaxSet> = LazyLock::new(SyntaxSet::load_defaults_
 /// Global lazily-initialized theme set.
 static THEME_SET: LazyLock<ThemeSet> = LazyLock::new(ThemeSet::load_defaults);
 
-/// Default theme name.
-const DEFAULT_THEME: &str = "base16-ocean.dark";
+/// Default theme name. Matches the upstream library default — a Monokai
+/// variant available in the bundled `syntect` themes (`Solarized (dark)`
+/// in syntect = `"Solarized (dark)"`; for "monokai" we use the bundled
+/// `base16-mocha.dark` which is the closest near-Monokai theme that
+/// `syntect` ships by default). If the named theme is missing at render
+/// time, [`Syntax::render_syntax`] falls back to `base16-ocean.dark`.
+const DEFAULT_THEME: &str = "base16-mocha.dark";
 
 /// Default padding for the line numbers column.
 const NUMBERS_COLUMN_DEFAULT_PADDING: usize = 2;
+
+/// Shorthand input for [`unpack_padding`] — accepts the same forms as CSS
+/// `padding`: a single value, two values (vertical, horizontal), three values
+/// (top, horizontal, bottom), or four values (top, right, bottom, left).
+#[derive(Debug, Clone, Copy)]
+pub enum PaddingSpec {
+    /// Apply the same value to all four sides.
+    Uniform(usize),
+    /// `(vertical, horizontal)`.
+    VertHoriz(usize, usize),
+    /// `(top, horizontal, bottom)`.
+    TopHorizBottom(usize, usize, usize),
+    /// `(top, right, bottom, left)` — already a full 4-tuple.
+    Full(usize, usize, usize, usize),
+}
+
+/// Expand a [`PaddingSpec`] into a `(top, right, bottom, left)` tuple, matching
+/// rich v14.1.0's `Padding.unpack` and the CSS `padding` shorthand convention.
+///
+/// ```
+/// # use gilt::syntax::{PaddingSpec, unpack_padding};
+/// assert_eq!(unpack_padding(PaddingSpec::Uniform(1)), (1, 1, 1, 1));
+/// assert_eq!(unpack_padding(PaddingSpec::VertHoriz(2, 4)), (2, 4, 2, 4));
+/// ```
+pub fn unpack_padding(spec: PaddingSpec) -> (usize, usize, usize, usize) {
+    match spec {
+        PaddingSpec::Uniform(n) => (n, n, n, n),
+        PaddingSpec::VertHoriz(v, h) => (v, h, v, h),
+        PaddingSpec::TopHorizBottom(t, h, b) => (t, h, b, h),
+        PaddingSpec::Full(t, r, b, l) => (t, r, b, l),
+    }
+}
 
 // ---------------------------------------------------------------------------
 // SyntaxError
@@ -72,8 +109,14 @@ pub struct Syntax {
     pub word_wrap: bool,
     /// Tab width for tab expansion (default 4).
     pub tab_size: usize,
-    /// (top, bottom) padding in blank lines.
-    pub padding: (usize, usize),
+    /// `(top, right, bottom, left)` padding (top/bottom in blank lines, left/right
+    /// in spaces inside the code area). Mirrors the CSS shorthand convention used
+    /// by `Padding` and matches rich v14.1.0+ `Syntax.padding` (4-tuple).
+    ///
+    /// Use `Self::with_padding` / [`unpack_padding`] to construct from any
+    /// shorthand variant: `n` → `(n, n, n, n)`, `(v, h)` → `(v, h, v, h)`,
+    /// `(t, h, b)` → `(t, h, b, h)`, `(t, r, b, l)` → as-is.
+    pub padding: (usize, usize, usize, usize),
     /// Line numbers to highlight with a special background.
     pub highlight_lines: Vec<usize>,
     /// Optional override for background color (CSS hex like "#282c34").
@@ -90,7 +133,7 @@ pub struct Syntax {
 }
 
 impl Syntax {
-    /// Create a new Syntax with defaults: base16-ocean.dark theme, no line numbers.
+    /// Create a new Syntax with defaults: `base16-mocha.dark` theme (Monokai-like), no line numbers.
     pub fn new(code: &str, lexer_name: &str) -> Self {
         Syntax {
             code: code.to_string(),
@@ -101,7 +144,7 @@ impl Syntax {
             line_range: None,
             word_wrap: false,
             tab_size: 4,
-            padding: (0, 0),
+            padding: (0, 0, 0, 0),
             highlight_lines: Vec::new(),
             background_color: None,
             indent_guides: false,
@@ -363,7 +406,7 @@ impl Syntax {
 
         let mut segments: Vec<Segment> = Vec::new();
 
-        // Top padding
+        // Top padding (padding.0 == top in 4-tuple)
         for _ in 0..self.padding.0 {
             if self.line_numbers {
                 let pad = " ".repeat(numbers_column_width + 1);
@@ -466,8 +509,8 @@ impl Syntax {
             }
         }
 
-        // Bottom padding
-        for _ in 0..self.padding.1 {
+        // Bottom padding (padding.2 == bottom in 4-tuple)
+        for _ in 0..self.padding.2 {
             if self.line_numbers {
                 let pad = " ".repeat(numbers_column_width + 1);
                 segments.push(Segment::styled(&pad, background_style.clone()));
@@ -808,14 +851,12 @@ mod tests {
 
     #[test]
     fn test_from_path_reads_self() {
-        // Read this very test file
-        let path = file!();
-        // This file may be at a relative path; use the full crate root
-        let full_path = format!("/mnt/data/Velocity/rusty_rich/gilt/{}", path);
-        if std::path::Path::new(&full_path).exists() {
-            let result = Syntax::from_path(&full_path);
-            assert!(result.is_ok());
-            let syntax = result.unwrap();
+        // Read this very test file relative to CARGO_MANIFEST_DIR so the test
+        // works in any working tree.
+        let manifest_dir = env!("CARGO_MANIFEST_DIR");
+        let full_path = std::path::Path::new(manifest_dir).join(file!());
+        if full_path.exists() {
+            let syntax = Syntax::from_path(full_path.to_str().unwrap()).unwrap();
             assert!(syntax.code.contains("fn test_from_path_reads_self"));
         }
     }
@@ -977,16 +1018,30 @@ mod tests {
     #[test]
     fn test_padding_top_bottom() {
         let mut syntax = Syntax::new("hello\n", "txt");
-        syntax.padding = (1, 1);
+        syntax.padding = (1, 0, 1, 0);
         let segments = syntax.render_syntax(40);
-        // With padding (1,1), we should have more lines than just the code line
+        // With top=1, bottom=1, expect ≥3 newlines (top + code + bottom)
         let newline_count = segments.iter().filter(|s| s.text == "\n").count();
-        // 1 top padding + 1 code line + 1 bottom padding = 3 newlines
         assert!(
             newline_count >= 3,
             "expected at least 3 newlines, got {}",
             newline_count
         );
+    }
+
+    #[test]
+    fn test_padding_unpack_from_shorthand() {
+        // 1 → (1, 1, 1, 1)
+        assert_eq!(unpack_padding(PaddingSpec::Uniform(2)), (2, 2, 2, 2));
+        // (v, h) → (v, h, v, h)
+        assert_eq!(unpack_padding(PaddingSpec::VertHoriz(1, 3)), (1, 3, 1, 3));
+        // (t, h, b) → (t, h, b, h)
+        assert_eq!(
+            unpack_padding(PaddingSpec::TopHorizBottom(1, 2, 3)),
+            (1, 2, 3, 2)
+        );
+        // (t, r, b, l) → as-is
+        assert_eq!(unpack_padding(PaddingSpec::Full(1, 2, 3, 4)), (1, 2, 3, 4));
     }
 
     // -- Line range out of bounds -------------------------------------------
@@ -1055,7 +1110,7 @@ mod tests {
         assert!(syntax.line_range.is_none());
         assert!(!syntax.word_wrap);
         assert_eq!(syntax.tab_size, 4);
-        assert_eq!(syntax.padding, (0, 0));
+        assert_eq!(syntax.padding, (0, 0, 0, 0));
         assert!(syntax.highlight_lines.is_empty());
         assert!(syntax.background_color.is_none());
         assert!(!syntax.indent_guides);

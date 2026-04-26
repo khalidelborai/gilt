@@ -104,7 +104,7 @@ impl<S: Stream> ProgressStreamExt for S {
 /// # Examples
 ///
 /// ```rust,no_run
-/// use futures::stream::{self, StreamExt};
+/// use futures_util::stream::{self, StreamExt};
 /// use gilt::r#async::ProgressStreamExt;
 ///
 /// #[tokio::main]
@@ -165,8 +165,8 @@ impl<S: Stream + Unpin> Stream for ProgressStream<S> {
     type Item = S::Item;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        // SAFETY: We're not moving out of self, just getting mutable access to fields
-        let this = unsafe { self.get_unchecked_mut() };
+        // `S: Unpin` makes `ProgressStream<S>: Unpin`, so safe `get_mut()` is enough.
+        let this = self.get_mut();
 
         // Start progress on first poll
         if !this.started {
@@ -822,7 +822,7 @@ pub mod fs {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use futures::stream::{self, StreamExt};
+    use futures_util::stream::{self, StreamExt};
 
     // Helper to create a test console
     fn test_console() -> crate::console::Console {

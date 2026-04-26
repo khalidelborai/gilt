@@ -71,6 +71,26 @@ impl Color {
     /// - color(N): "color(100)"
     /// - RGB: "rgb(255,0,0)"
     pub fn parse(color: &str) -> Result<Color, ColorParseError> {
+        // Check cache first — colors are heavily reused during render.
+        {
+            let mut guard = get_color_cache();
+            if let Some(cache) = guard.as_mut() {
+                if let Some(hit) = cache.get(color) {
+                    return Ok(hit.clone());
+                }
+            }
+        }
+
+        let parsed = Self::parse_uncached(color)?;
+
+        let mut guard = get_color_cache();
+        if let Some(cache) = guard.as_mut() {
+            cache.put(color.to_string(), parsed.clone());
+        }
+        Ok(parsed)
+    }
+
+    fn parse_uncached(color: &str) -> Result<Color, ColorParseError> {
         let color_lower = color.to_lowercase();
         let color_trimmed = color_lower.trim();
 
@@ -1218,23 +1238,68 @@ mod tests {
 // ============================================================================
 
 use lru::LruCache;
+use std::num::NonZeroUsize;
 use std::sync::Mutex;
 
 /// Global LRU cache for parsed colors with capacity for 512 entries.
 static COLOR_CACHE: Mutex<Option<LruCache<String, Color>>> = Mutex::new(None);
 
+/// Lazily initialize and return the cache guard.
+///
+/// Recovers from a poisoned mutex: the cache is purely a parse accelerator
+/// and contains no invariants that a previous-thread panic could corrupt.
+fn get_color_cache() -> std::sync::MutexGuard<'static, Option<LruCache<String, Color>>> {
+    let mut cache = COLOR_CACHE
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    if cache.is_none() {
+        *cache = Some(LruCache::new(NonZeroUsize::new(512).unwrap()));
+    }
+    cache
+}
+
 /// Clears the global color cache.
 pub fn clear_color_cache() {
-    if let Ok(mut cache) = COLOR_CACHE.lock() {
-        *cache = None;
-    }
+    let mut cache = COLOR_CACHE
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    *cache = None;
 }
 
 /// Returns the current number of entries in the color cache.
 pub fn color_cache_size() -> usize {
-    if let Ok(cache) = COLOR_CACHE.lock() {
-        cache.as_ref().map(|c| c.len()).unwrap_or(0)
-    } else {
-        0
+    let cache = COLOR_CACHE
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    cache.as_ref().map(|c| c.len()).unwrap_or(0)
+}
+
+#[cfg(test)]
+mod cache_tests {
+    use super::*;
+
+    use std::sync::Mutex;
+    static CACHE_TEST_LOCK: Mutex<()> = Mutex::new(());
+
+    #[test]
+    fn color_cache_populates_on_parse() {
+        // Cache is process-global; serialise across tests that mutate it.
+        let _g = CACHE_TEST_LOCK.lock().unwrap_or_else(|p| p.into_inner());
+        clear_color_cache();
+        let before = color_cache_size();
+        let _ = Color::parse("color(199)").unwrap();
+        let _ = Color::parse("#abcdef").unwrap();
+        let _ = Color::parse("color(98)").unwrap();
+        assert!(color_cache_size() >= before + 3);
+    }
+
+    #[test]
+    fn color_cache_returns_equivalent_value() {
+        let _g = CACHE_TEST_LOCK.lock().unwrap_or_else(|p| p.into_inner());
+        clear_color_cache();
+        let first = Color::parse("blue").unwrap();
+        let second = Color::parse("blue").unwrap();
+        assert_eq!(first.name, second.name);
+        assert_eq!(first.number, second.number);
     }
 }

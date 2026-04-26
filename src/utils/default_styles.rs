@@ -1,7 +1,7 @@
 //! Default style definitions for the gilt library.
 //!
 //! This module provides a comprehensive set of 153 named styles that map to
-//! the default styles in Python's rich library. These styles are used by
+//! the default styles in upstream library. These styles are used by
 //! various components for consistent terminal formatting.
 
 use std::collections::HashMap;

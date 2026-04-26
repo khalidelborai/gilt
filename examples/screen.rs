@@ -2,7 +2,7 @@
 //!
 //! Run with: `cargo run --example screen`
 //!
-//! Port of Python rich's screen.py demo. Uses the Screen widget to
+//! Port of screen.py demo. Uses the Screen widget to
 //! fill the entire terminal with a centered message, similar to the
 //! Hitchhiker's Guide to the Galaxy.
 

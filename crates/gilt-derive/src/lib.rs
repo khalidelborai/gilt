@@ -1862,13 +1862,13 @@ fn derive_renderable_impl(input: &DeriveInput) -> syn::Result<proc_macro2::Token
 
     let expanded = quote! {
         impl gilt::console::Renderable for #struct_name {
-            fn rich_console(
+            fn gilt_console(
                 &self,
                 console: &gilt::console::Console,
                 options: &gilt::console::ConsoleOptions,
             ) -> Vec<gilt::segment::Segment> {
                 #delegate_call
-                widget.rich_console(console, options)
+                widget.gilt_console(console, options)
             }
         }
     };
@@ -3857,8 +3857,8 @@ mod tests {
             "should implement Renderable trait"
         );
         assert!(
-            tokens.contains("rich_console"),
-            "should generate rich_console method"
+            tokens.contains("gilt_console"),
+            "should generate gilt_console method"
         );
         assert!(tokens.contains("to_panel"), "should delegate to to_panel()");
         assert!(
@@ -3888,8 +3888,8 @@ mod tests {
             "should implement Renderable trait"
         );
         assert!(
-            tokens.contains("rich_console"),
-            "should generate rich_console method"
+            tokens.contains("gilt_console"),
+            "should generate gilt_console method"
         );
         assert!(tokens.contains("to_tree"), "should delegate to to_tree()");
         assert!(

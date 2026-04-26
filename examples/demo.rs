@@ -892,7 +892,7 @@ fn make_test_card(console: &mut Console) -> Table {
         let syntax = Syntax::new(code, "rs").with_line_numbers(true);
 
         let data = serde_json::json!({
-            "foo": [3.142, ["Alice", "Bob"]],
+            "foo": [3.5, ["Alice", "Bob"]],
             "active": true
         });
         let pretty = Pretty::from_json(&data);

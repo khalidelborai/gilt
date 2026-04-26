@@ -1,6 +1,5 @@
 //! Live display module -- a terminal display that refreshes at regular intervals.
 //!
-//! Port of Python's `rich/live.py`. Provides a `Live` struct that can display
 //! content that updates in-place using cursor movement control codes and an
 //! optional background refresh thread.
 
@@ -302,7 +301,11 @@ impl Live {
             // Move to a new line so the terminal prompt doesn't overlap
             // the last rendered content (do_refresh omits trailing newlines
             // to keep shape tracking accurate).
-            s.console.write_segments(&[Segment::line()]);
+            // Only emit the trailing newline if the live region actually
+            // rendered visible content (Rich fix b08e00fc / v14.3.0).
+            if s.live_render.last_render_height() > 0 {
+                s.console.write_segments(&[Segment::line()]);
+            }
         }
 
         // Restore terminal state.
@@ -895,6 +898,79 @@ mod tests {
     fn test_vertical_overflow_ellipsis_default() {
         let live = Live::new(Text::empty());
         assert_eq!(live.vertical_overflow, VerticalOverflowMethod::Ellipsis);
+    }
+
+    // -- Rich fix b08e00fc: no spurious trailing newline when nothing rendered --
+
+    /// When Live is stopped without ever calling `update()` / `refresh()`,
+    /// `last_render_height` is 0 and no trailing `\n` should be emitted.
+    #[test]
+    fn live_stop_with_no_render_emits_no_newline() {
+        let console = Console::builder()
+            .width(80)
+            .height(25)
+            .quiet(false)
+            .markup(false)
+            .no_color(true)
+            .force_terminal(true)
+            .build();
+
+        let mut live = Live::new(Text::new("hello", Style::null()))
+            .with_console(console)
+            .with_auto_refresh(false);
+
+        // Begin capture before start so all writes are recorded.
+        live.state.lock().unwrap().console.begin_capture();
+
+        live.start();
+        // Deliberately skip refresh / update — nothing is rendered.
+        live.stop();
+
+        let captured = live.state.lock().unwrap().console.end_capture();
+        // The captured text should not contain a bare newline emitted by stop().
+        // Control sequences (hide/show cursor) have no printable text, so the
+        // only text character that could appear is the spurious '\n'.
+        assert!(
+            !captured.contains('\n'),
+            "expected no trailing newline when nothing was rendered, got: {:?}",
+            captured
+        );
+    }
+
+    /// When Live renders at least one frame and is then stopped, a trailing
+    /// `\n` must still be emitted so the shell prompt doesn't overwrite content.
+    #[test]
+    fn live_stop_after_render_emits_newline() {
+        let console = Console::builder()
+            .width(80)
+            .height(25)
+            .quiet(false)
+            .markup(false)
+            .no_color(true)
+            .force_terminal(true)
+            .build();
+
+        let mut live = Live::new(Text::new("progress", Style::null()))
+            .with_console(console)
+            .with_auto_refresh(false);
+
+        // Begin capture before start.
+        live.state.lock().unwrap().console.begin_capture();
+
+        live.start();
+        // Render at least one frame so last_render_height > 0.
+        live.refresh();
+        live.stop();
+
+        let captured = live.state.lock().unwrap().console.end_capture();
+        // The trailing '\n' is emitted before show_cursor (which itself emits
+        // an escape sequence), so it won't be the very last byte — but it must
+        // be present in the output.
+        assert!(
+            captured.contains('\n'),
+            "expected a trailing newline after rendering, got: {:?}",
+            captured
+        );
     }
 
     #[test]

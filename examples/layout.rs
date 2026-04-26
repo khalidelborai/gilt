@@ -2,7 +2,7 @@
 //!
 //! Run with: `cargo run --example layout`
 //!
-//! Port of Python rich's layout.py demo. Demonstrates the Layout widget
+//! Port of layout.py demo. Demonstrates the Layout widget
 //! which divides a fixed-height area into rows and columns.
 
 use gilt::console::Console;

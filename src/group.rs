@@ -8,7 +8,6 @@
 //! - **Fit (`fit`)**: constrains the width to the widest item in the group
 //!   (measurement returns the combined measurement of all items).
 //!
-//! Rust port of Python's `rich.console.Group`.
 
 use std::fmt;
 
@@ -23,7 +22,7 @@ use crate::text::Text;
 
 /// A group of renderables that are rendered in sequence.
 ///
-/// When `fit` is `true` (the default, matching Python rich), the group's
+/// When `fit` is `true` (the default, matching ), the group's
 /// measurement is derived from its contents so that it occupies only as much
 /// width as the widest item requires. When `fit` is `false`, the group fills
 /// the entire available width.
@@ -62,7 +61,7 @@ impl Group {
     /// Create a new `Group` that constrains its width to the widest item.
     ///
     /// This is equivalent to `Group::new(items)` with `fit` set to `true`,
-    /// matching Python rich's `Group(*renderables, fit=True)`.
+    /// matching the `Group(*renderables, fit=True)`.
     pub fn fit(items: Vec<Text>) -> Self {
         Group { items, fit: true }
     }

@@ -1,7 +1,7 @@
 //! Regex-based text highlighting.
 //!
 //! This module provides a trait hierarchy for applying regex-based highlighting
-//! to [`Text`] objects. It is a port of Python's `rich/highlighter.py`.
+//! to [`Text`] objects. It is a port of Python/highlighter.py`.
 //!
 //! The core abstraction is the [`Highlighter`] trait, which defines how to
 //! apply highlighting in-place to a [`Text`] instance. Several pre-configured

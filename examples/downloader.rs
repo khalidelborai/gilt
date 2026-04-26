@@ -2,7 +2,7 @@
 //!
 //! Run with: `cargo run --example downloader`
 //!
-//! Port of Python rich's downloader.py. Simulates downloading multiple files
+//! Downloader example. Simulates downloading multiple files
 //! with progress bars showing transfer speed and file size columns.
 
 use std::thread;

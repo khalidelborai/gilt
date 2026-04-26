@@ -1,6 +1,5 @@
 //! Screen module -- a renderable that fills the terminal screen and crops excess.
 //!
-//! Port of Python's `rich/screen.py`.
 
 use crate::console::{Console, ConsoleOptions, Renderable};
 use crate::segment::Segment;

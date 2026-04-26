@@ -3,7 +3,6 @@
 //! Run with: `cargo run --example progress`
 //!
 //! Shows three concurrent tasks with different speeds, similar to
-//! Python rich's download progress demo.
 
 use std::thread;
 use std::time::Duration;

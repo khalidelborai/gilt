@@ -1,6 +1,5 @@
 //! Scope module -- renders a mapping of key-value pairs in a panel.
 //!
-//! Port of Python's `rich/scope.py`.
 //!
 //! In Python, `render_scope` introspects a `dict` and displays variable names
 //! and their repr values inside a bordered panel. In Rust we accept

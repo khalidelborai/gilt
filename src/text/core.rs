@@ -1,8 +1,7 @@
-//! Rich text module - the core text manipulation type.
+//! Text module - the core text manipulation type.
 //!
 //! This module provides the `Text` type which represents styled terminal text,
 //! along with supporting types `Span`, `Lines`, and related enums.
-//! Port of Python's rich/text.py.
 
 use std::cmp::min;
 use std::fmt;
@@ -28,7 +27,7 @@ pub enum TextPart {
     /// Text with an explicit style.
     Styled(String, Style),
     /// An existing [`Text`] object to embed.
-    Rich(Text),
+    Inner(Text),
 }
 
 /// Either a string slice or a [`Text`] reference, for use with [`Text::append`].
@@ -39,7 +38,7 @@ pub enum TextOrStr<'a> {
     Text(&'a Text),
 }
 
-/// Rich text with styles, spans, and formatting metadata.
+/// Text with styles, spans, and formatting metadata.
 ///
 /// `Text` is the central type for styled terminal output. It stores a plain-text
 /// string alongside a list of [`Span`]s that apply styles to character ranges,
@@ -150,7 +149,7 @@ impl Text {
                 TextPart::Styled(s, st) => {
                     result.append_str(s, Some(st.clone()));
                 }
-                TextPart::Rich(t) => {
+                TextPart::Inner(t) => {
                     result.append_text(t);
                 }
             }
@@ -171,9 +170,22 @@ impl Text {
 
     /// Create a `Text` from a string containing ANSI escape codes.
     ///
-    /// Delegates to [`AnsiDecoder::decode_line`].
+    /// Preserves trailing newlines in the input, matching the behavior of
+    /// rich v15.0.0 (`Text.from_ansi("Hello\n").plain == "Hello\n"`).
     pub fn from_ansi(text: &str) -> Text {
-        AnsiDecoder::new().decode_line(text)
+        Self::from_ansi_decoded(&mut AnsiDecoder::new(), text)
+    }
+
+    /// Private helper: decode `text` via `decoder`, joining all lines into
+    /// a single `Text`.  Added near `from_ansi` to avoid touching unrelated
+    /// functions; `decode_line` is left unchanged for backward compatibility.
+    fn from_ansi_decoded(decoder: &mut AnsiDecoder, text: &str) -> Text {
+        let lines = decoder.decode(text);
+        let mut result = Text::new("", Style::null());
+        for line in lines {
+            result.append_text(&line);
+        }
+        result
     }
 
     // -- Properties ---------------------------------------------------------
@@ -229,7 +241,7 @@ impl Text {
 
     /// Measure the text, returning minimum (longest word) and maximum (longest line) widths.
     ///
-    /// This is the Rust equivalent of Python's `Text.__rich_measure__`.
+    /// This is the Rust equivalent of Python's `Text.__gilt_measure__`.
     pub fn measure(&self) -> Measurement {
         let text = self.plain();
         if text.is_empty() {
@@ -388,41 +400,32 @@ impl Text {
     /// end of each resulting line.  When `allow_blank` is `false`, empty lines
     /// are removed from the result.
     pub fn split(&self, separator: &str, include_separator: bool, allow_blank: bool) -> Lines {
-        let re = Regex::new(&regex::escape(separator)).unwrap();
         let plain = &self.text;
+        let sep_byte_len = separator.len();
 
         if include_separator {
             let mut offsets = Vec::new();
-            // Collect char-index positions of separator ends
-            for mat in re.find_iter(plain) {
-                let byte_end = mat.end();
-                let char_end = plain[..byte_end].chars().count();
-                offsets.push(char_end);
+            for (byte_start, _) in plain.match_indices(separator) {
+                let byte_end = byte_start + sep_byte_len;
+                offsets.push(plain[..byte_end].chars().count());
             }
             let lines = self.divide(&offsets);
-            if !allow_blank {
-                // Check if text ends with separator — if so, remove trailing empty
-                if plain.ends_with(separator) {
-                    let mut lines = lines;
-                    if let Some(last) = lines.lines.last() {
-                        if last.is_empty() {
-                            lines.pop();
-                        }
+            if !allow_blank && plain.ends_with(separator) {
+                let mut lines = lines;
+                if let Some(last) = lines.lines.last() {
+                    if last.is_empty() {
+                        lines.pop();
                     }
-                    return lines;
                 }
+                return lines;
             }
             lines
         } else {
-            // Split at separator boundaries but exclude separator text
             let mut offsets = Vec::new();
-            for mat in re.find_iter(plain) {
-                let byte_start = mat.start();
-                let byte_end = mat.end();
-                let char_start = plain[..byte_start].chars().count();
-                let char_end = plain[..byte_end].chars().count();
-                offsets.push(char_start);
-                offsets.push(char_end);
+            for (byte_start, _) in plain.match_indices(separator) {
+                let byte_end = byte_start + sep_byte_len;
+                offsets.push(plain[..byte_start].chars().count());
+                offsets.push(plain[..byte_end].chars().count());
             }
 
             let divided = self.divide(&offsets);
@@ -1237,6 +1240,138 @@ impl Text {
         style
     }
 
+    /// Get the resolved style at the given character offset, with theme resolution.
+    ///
+    /// Like `get_style_at_offset`, but uses `console` to resolve the text's
+    /// base style through the active theme stack before combining span styles.
+    /// This means named theme styles (e.g. `"highlight"`) in the text's base
+    /// style are resolved correctly.
+    pub fn get_style_at_offset_themed(
+        &self,
+        console: &crate::console::Console,
+        offset: usize,
+    ) -> Style {
+        // Resolve the text's base style through the console's theme stack.
+        let base_str = self.style.to_string();
+        let base = if base_str == "none" {
+            Style::null()
+        } else {
+            console
+                .get_style(&base_str)
+                .unwrap_or_else(|_| self.style.clone())
+        };
+        let mut style = base;
+        for span in &self.spans {
+            if offset >= span.start && offset < span.end {
+                // Resolve each span's style through the console's theme stack.
+                let span_str = span.style.to_string();
+                let resolved = if span_str == "none" {
+                    span.style.clone()
+                } else {
+                    console
+                        .get_style(&span_str)
+                        .unwrap_or_else(|_| span.style.clone())
+                };
+                style = style + resolved;
+            }
+        }
+        style
+    }
+
+    /// Convert this `Text` back into a markup string.
+    ///
+    /// Produces a string that, when re-parsed via [`Text::from_markup`], yields
+    /// an equivalent `Text` (same plain text and equivalent style spans).
+    ///
+    /// Plain-text characters that would be interpreted as markup tags are
+    /// escaped automatically.  Null-style spans (e.g. those produced from
+    /// unresolved theme names) are omitted — they carry no information that can
+    /// be round-tripped without a console present.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() {
+    /// use gilt::text::Text;
+    /// let text = Text::from_markup("[bold]Hello[/bold] world").unwrap();
+    /// let m = text.markup();
+    /// let rt = Text::from_markup(&m).unwrap();
+    /// assert_eq!(rt.plain(), text.plain());
+    /// # }
+    /// ```
+    pub fn markup(&self) -> String {
+        use crate::markup::escape;
+        use std::collections::BTreeMap;
+
+        // Collect open/close tags keyed by char offset.
+        // At each offset: opens come AFTER emitting text up to that point;
+        // closes come BEFORE emitting text (i.e. they appear after the last
+        // char of their range, which is *before* any new opens at the same offset).
+        // Ordering at a boundary: closes first, then opens.
+        let mut opens: BTreeMap<usize, Vec<String>> = BTreeMap::new();
+        let mut closes: BTreeMap<usize, Vec<String>> = BTreeMap::new();
+
+        for span in &self.spans {
+            let style_str = span.style.to_string();
+            // Skip null/unresolved styles — nothing to round-trip.
+            if style_str == "none" {
+                continue;
+            }
+            opens.entry(span.start).or_default().push(style_str.clone());
+            closes.entry(span.end).or_default().push(style_str);
+        }
+
+        // Gather all unique boundary offsets.
+        let mut boundaries: Vec<usize> = opens.keys().chain(closes.keys()).copied().collect();
+        boundaries.sort_unstable();
+        boundaries.dedup();
+
+        // Collect chars once for O(n) slicing.
+        let chars: Vec<char> = self.text.chars().collect();
+        let text_len = chars.len();
+
+        let mut result = String::new();
+        let mut prev = 0usize;
+
+        for &boundary in &boundaries {
+            // 1. Emit escaped plain text from prev to boundary.
+            if prev < boundary {
+                let end = boundary.min(text_len);
+                if prev < end {
+                    let segment: String = chars[prev..end].iter().collect();
+                    result.push_str(&escape(&segment));
+                }
+                prev = boundary;
+            }
+
+            // 2. Emit close tags (they end *at* this boundary, so appear here).
+            if let Some(tags) = closes.get(&boundary) {
+                for tag in tags {
+                    result.push_str("[/");
+                    result.push_str(tag);
+                    result.push(']');
+                }
+            }
+
+            // 3. Emit open tags (they start *at* this boundary).
+            if let Some(tags) = opens.get(&boundary) {
+                for tag in tags {
+                    result.push('[');
+                    result.push_str(tag);
+                    result.push(']');
+                }
+            }
+        }
+
+        // 4. Emit any remaining plain text after the last boundary.
+        if prev < text_len {
+            let segment: String = chars[prev..].iter().collect();
+            result.push_str(&escape(&segment));
+        }
+
+        result
+    }
+
     /// Flatten overlapping spans into non-overlapping spans.
     ///
     /// Each resulting span covers a contiguous range with a single resolved
@@ -1355,5 +1490,133 @@ impl From<&String> for Text {
 impl From<std::borrow::Cow<'_, str>> for Text {
     fn from(s: std::borrow::Cow<'_, str>) -> Self {
         Text::new(&s, Style::null())
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::style::Style;
+    use crate::text::Span;
+
+    // -- markup() round-trip tests ------------------------------------------
+
+    /// Simple bold round-trip: `[bold]Hi[/bold]` → markup → re-parse → equivalent.
+    #[test]
+    fn markup_roundtrip_simple_text() {
+        let original = Text::from_markup("[bold]Hi[/bold]").unwrap();
+        let m = original.markup();
+        let roundtripped = Text::from_markup(&m).unwrap();
+        assert_eq!(roundtripped.plain(), original.plain());
+        assert_eq!(roundtripped.spans().len(), original.spans().len());
+        for (a, b) in roundtripped.spans().iter().zip(original.spans().iter()) {
+            assert_eq!(a.start, b.start);
+            assert_eq!(a.end, b.end);
+            assert_eq!(a.style, b.style);
+        }
+    }
+
+    /// Plain text with no spans → `markup()` returns just the escaped plain text.
+    #[test]
+    fn markup_roundtrip_no_spans() {
+        let text = Text::new("hello world", Style::null());
+        let m = text.markup();
+        assert_eq!(m, "hello world");
+        let rt = Text::from_markup(&m).unwrap();
+        assert_eq!(rt.plain(), "hello world");
+        assert_eq!(rt.spans().len(), 0);
+    }
+
+    /// Literal `[tag]` in plain text is escaped so it is not interpreted as markup.
+    #[test]
+    fn markup_escapes_literal_brackets() {
+        let text = Text::new("foo[bar]", Style::null());
+        let m = text.markup();
+        // The `[bar]` sequence looks like a tag so escape() should prefix it with `\`.
+        assert!(
+            m.contains(r"\[bar]"),
+            "expected escaped bracket, got: {m:?}"
+        );
+        // Re-parsing should recover the original plain text.
+        let rt = Text::from_markup(&m).unwrap();
+        assert_eq!(rt.plain(), "foo[bar]");
+    }
+
+    /// Empty text returns an empty markup string.
+    #[test]
+    fn markup_roundtrip_empty_text() {
+        let text = Text::new("", Style::null());
+        assert_eq!(text.markup(), "");
+    }
+
+    /// Overlapping spans round-trip: the re-parsed Text has spans covering the
+    /// same ranges with the same styles (order may differ after sort).
+    #[test]
+    fn markup_roundtrip_overlapping_spans() {
+        // Build a Text with two overlapping spans manually:
+        //   green: [0, 2)   → "XY"
+        //   bold:  [1, 3)   → "YZ"
+        // plain = "XYZ"
+        let mut text = Text::new("XYZ", Style::null());
+        text.spans_mut()
+            .push(Span::new(0, 2, Style::parse("green").unwrap()));
+        text.spans_mut()
+            .push(Span::new(1, 3, Style::parse("bold").unwrap()));
+
+        let m = text.markup();
+        let rt = Text::from_markup(&m).unwrap();
+
+        assert_eq!(rt.plain(), "XYZ");
+        assert_eq!(rt.spans().len(), 2);
+
+        // Verify both original spans are present (order-independent comparison).
+        let has_green = rt
+            .spans()
+            .iter()
+            .any(|s| s.start == 0 && s.end == 2 && s.style == Style::parse("green").unwrap());
+        let has_bold = rt
+            .spans()
+            .iter()
+            .any(|s| s.start == 1 && s.end == 3 && s.style == Style::parse("bold").unwrap());
+        assert!(has_green, "missing green span in round-trip");
+        assert!(has_bold, "missing bold span in round-trip");
+    }
+
+    // -- get_style_at_offset_themed tests -----------------------------------
+
+    /// A Console with a theme entry "highlight" → bold red; a Text whose span
+    /// carries the resolved highlight style should return bold red from
+    /// `get_style_at_offset_themed`.
+    #[test]
+    fn get_style_at_offset_themed_resolves_named_style() {
+        use crate::color::theme::Theme;
+        use crate::console::Console;
+        use std::collections::HashMap;
+
+        // Build a theme that maps "highlight" → bold red.
+        let highlight_style = Style::parse("bold red").unwrap();
+        let mut styles = HashMap::new();
+        styles.insert("highlight".to_string(), highlight_style.clone());
+        let theme = Theme::new(Some(styles), false);
+
+        let console = Console::builder().theme(theme).build();
+
+        // Build a Text with a span that carries the "highlight" style.
+        // We look the style up from the console so the span stores the resolved Style.
+        let resolved = console.get_style("highlight").unwrap();
+        let mut text = Text::new("hello", Style::null());
+        text.spans_mut().push(Span::new(0, 5, resolved));
+
+        let style_at_0 = text.get_style_at_offset_themed(&console, 0);
+        assert_eq!(style_at_0.bold(), Some(true), "expected bold");
+        assert_eq!(
+            style_at_0.color().map(|c| c.name.as_str()),
+            Some("red"),
+            "expected red foreground"
+        );
     }
 }

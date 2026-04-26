@@ -602,12 +602,38 @@ impl Console {
     }
 
     /// Whether the console is connected to a terminal.
+    ///
+    /// Resolution order:
+    /// 1. Explicit `force_terminal` set on the builder
+    /// 2. `TTY_COMPATIBLE=1`/`0` environment override
+    /// 3. `TERM` is set in the environment
     pub fn is_terminal(&self) -> bool {
         if let Some(forced) = self.force_terminal {
             return forced;
         }
-        // Check environment variables as a heuristic
+        match crate::color::color_env::detect_tty_compatible() {
+            crate::color::color_env::TtyOverride::ForceTty => return true,
+            crate::color::color_env::TtyOverride::ForceNotTty => return false,
+            crate::color::color_env::TtyOverride::None => {}
+        }
         std::env::var("TERM").is_ok()
+    }
+
+    /// Whether the console should treat the user as interactive (prompts,
+    /// progress bars with refresh, live updates, etc.).
+    ///
+    /// Resolution order:
+    /// 1. `TTY_INTERACTIVE=1`/`0` environment override
+    /// 2. Falls back to [`is_terminal`](Self::is_terminal)
+    ///
+    /// This is intentionally independent of TTY status so a user can pipe
+    /// output to a file but still be prompted on stdin.
+    pub fn is_interactive(&self) -> bool {
+        match crate::color::color_env::detect_tty_interactive() {
+            crate::color::color_env::TtyOverride::ForceTty => true,
+            crate::color::color_env::TtyOverride::ForceNotTty => false,
+            crate::color::color_env::TtyOverride::None => self.is_terminal(),
+        }
     }
 
     /// Whether this is a "dumb" terminal with no styling support.
@@ -854,6 +880,25 @@ impl Console {
         self.print(&gilt_text);
     }
 
+    /// Low-level raw print: write `text` verbatim to the buffer with the
+    /// optional `style`, **without** markup parsing, emoji substitution,
+    /// highlighting, or word wrap.
+    ///
+    /// Use this when you have content that already contains literal `[`
+    /// brackets, `:tags:`, or other markup-like sequences and you don't want
+    /// the console to interpret them. A trailing newline is appended.
+    pub fn out(&mut self, text: &str, style: Option<&Style>) {
+        let segment = match style {
+            Some(s) => Segment::styled(text, s.clone()),
+            None => Segment::text(text),
+        };
+        let mut buf = vec![segment];
+        if !text.ends_with('\n') {
+            buf.push(Segment::line());
+        }
+        self.write_segments(&buf);
+    }
+
     // -- Convenience methods ------------------------------------------------
 
     /// Print a log line with a timestamp prefix.
@@ -1024,7 +1069,7 @@ impl Console {
     /// Print an exception (error) with its causal chain as a styled traceback.
     ///
     /// This is a convenience alias for [`print_error`](Console::print_error) that
-    /// matches the Python Rich `Console.print_exception()` API name.
+    /// matches the  `Console.print_exception()` API name.
     pub fn print_exception(&mut self, error: &dyn std::error::Error) {
         self.print_error(error);
     }
@@ -1202,15 +1247,59 @@ impl Console {
             self.color_system
         };
 
+        // OSC 8 hyperlinks must be emitted as ONE wrapper around a run of
+        // consecutive segments that all share the same URL — fragmenting the
+        // run (open/close around each segment) makes many terminals fail to
+        // treat the whole text as a single clickable link. We track the
+        // currently-open link URL and only emit open/close at run boundaries.
+        let mut current_link: Option<String> = None;
+
+        let close_link = |out: &mut String, link: &mut Option<String>| {
+            if link.take().is_some() {
+                out.push_str("\x1b]8;;\x1b\\");
+            }
+        };
+
         for segment in buffer {
             if segment.is_control() {
-                // Control segments are rendered directly (ANSI escape codes)
+                // Control codes (cursor moves, screen clears, OSC sequences
+                // we don't manage) interrupt any active link wrapper.
+                close_link(&mut output, &mut current_link);
                 output.push_str(&segment.text);
-            } else if let Some(ref style) = segment.style {
-                output.push_str(&style.render(&segment.text, color_system));
+                continue;
+            }
+
+            // Determine this segment's link, if any.
+            let seg_link: Option<&str> = segment.style.as_ref().and_then(|s| s.link());
+
+            // Emit OSC 8 open/close only when the link changes.
+            match (seg_link, current_link.as_deref()) {
+                (Some(new), Some(cur)) if new == cur => {
+                    // Same link continuing — leave wrapper open.
+                }
+                (Some(new), _) => {
+                    close_link(&mut output, &mut current_link);
+                    use std::fmt::Write;
+                    let id = crate::style::next_link_id();
+                    write!(output, "\x1b]8;id={};{}\x1b\\", id, new).unwrap();
+                    current_link = Some(new.to_string());
+                }
+                (None, _) => {
+                    close_link(&mut output, &mut current_link);
+                }
+            }
+
+            if let Some(ref style) = segment.style {
+                // We've handled the link wrapper; render only colors/SGR.
+                output.push_str(&style.render_no_link(&segment.text, color_system));
             } else {
                 output.push_str(&segment.text);
             }
+        }
+
+        // Close any link still open at end of buffer.
+        if current_link.is_some() {
+            output.push_str("\x1b]8;;\x1b\\");
         }
         output
     }
@@ -2461,8 +2550,8 @@ mod tests {
         let style = Style::parse("bold link https://example.com").unwrap();
         let segments = vec![Segment::styled("click", style)];
         let output = console.render_buffer(&segments);
-        // Should contain OSC 8 open and close sequences
-        assert!(output.contains("\x1b]8;;https://example.com\x1b\\"));
+        // Should contain OSC 8 open with id= prefix and close.
+        assert!(output.contains(";https://example.com\x1b\\"));
         assert!(output.contains("\x1b]8;;\x1b\\"));
         assert!(output.contains("click"));
     }
@@ -2473,10 +2562,66 @@ mod tests {
         let style = Style::with_link("https://example.com");
         let segments = vec![Segment::styled("link text", style)];
         let output = console.render_buffer(&segments);
+        // id= prefix is monotonic — match by structure not exact id.
+        assert!(output.starts_with("\x1b]8;id="));
+        assert!(output.contains(";https://example.com\x1b\\link text\x1b]8;;\x1b\\"));
+    }
+
+    #[test]
+    fn test_render_buffer_coalesces_consecutive_same_link() {
+        // Three segments with the same link but different SGR styles should
+        // emit ONE link wrapper. Many terminals refuse to treat the run as
+        // a single clickable link if open/close brackets every segment.
+        let console = Console::builder().color_system("truecolor").build();
+        let url = "https://github.com/khalidelborai/gilt";
+        let plain = Style::with_link(url);
+        let bold = Style::parse(&format!("bold link {url}")).unwrap();
+        let segments = vec![
+            Segment::styled("Visit ", plain.clone()),
+            Segment::styled("Gilt", bold),
+            Segment::styled(" on GitHub", plain),
+        ];
+        let output = console.render_buffer(&segments);
+
+        // Exactly one OSC 8 open (with id= prefix) and one close.
+        let url_in_open_pattern = format!(";{url}\x1b\\");
         assert_eq!(
-            output,
-            "\x1b]8;;https://example.com\x1b\\link text\x1b]8;;\x1b\\"
+            output.matches(&url_in_open_pattern).count(),
+            1,
+            "expected single OSC 8 open with the URL"
         );
+        assert_eq!(output.matches("\x1b]8;;\x1b\\").count(), 1);
+        assert!(output.contains("Visit "));
+        assert!(output.contains("Gilt"));
+        assert!(output.contains(" on GitHub"));
+    }
+
+    #[test]
+    fn test_render_buffer_closes_link_when_url_changes() {
+        let console = Console::builder().color_system("truecolor").build();
+        let segments = vec![
+            Segment::styled("a", Style::with_link("https://one.example")),
+            Segment::styled("b", Style::with_link("https://two.example")),
+        ];
+        let output = console.render_buffer(&segments);
+        assert_eq!(output.matches("https://one.example").count(), 1);
+        assert_eq!(output.matches("https://two.example").count(), 1);
+        assert_eq!(output.matches("\x1b]8;;\x1b\\").count(), 2);
+    }
+
+    #[test]
+    fn test_render_buffer_closes_link_on_unlinked_segment() {
+        let console = Console::builder().color_system("truecolor").build();
+        let segments = vec![
+            Segment::styled("link", Style::with_link("https://x")),
+            Segment::text(" plain"),
+            Segment::styled("link2", Style::with_link("https://x")),
+        ];
+        let output = console.render_buffer(&segments);
+        // Two open/close pairs because the unlinked middle segment closes
+        // the first run.
+        assert_eq!(output.matches("https://x").count(), 2);
+        assert_eq!(output.matches("\x1b]8;;\x1b\\").count(), 2);
     }
 
     // -- Terminal detection -------------------------------------------------

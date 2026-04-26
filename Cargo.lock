@@ -565,7 +565,7 @@ dependencies = [
 
 [[package]]
 name = "gilt"
-version = "0.9.1"
+version = "0.10.0"
 dependencies = [
  "anstyle",
  "bytes",
@@ -598,7 +598,7 @@ dependencies = [
 
 [[package]]
 name = "gilt-derive"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "proc-macro2",
  "quote",

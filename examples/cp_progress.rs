@@ -2,7 +2,7 @@
 //!
 //! Run with: `cargo run --example cp_progress -- source.txt dest.txt`
 //!
-//! Adapted from Python rich's cp_progress.py. Uses manual chunked I/O with
+//! Adapted from cp_progress.py. Uses manual chunked I/O with
 //! gilt's Progress display to show real-time copy progress.
 
 use std::fs::{self, File};

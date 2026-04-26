@@ -1,6 +1,5 @@
 //! Spinner animation widget.
 //!
-//! Port of Python rich's `spinner.py`. A spinner selects frames from a named
 //! animation based on elapsed time, optionally combined with descriptive text.
 
 use std::fmt;
@@ -107,16 +106,23 @@ impl Spinner {
         self
     }
 
-    /// Render the spinner for a given time (in seconds).
+    /// Render the spinner for an *elapsed* time in seconds (i.e. seconds since
+    /// the spinner conceptually started — not absolute clock time).
     ///
-    /// On the first call, `start_time` is recorded. Subsequent calls compute
-    /// the frame index from elapsed time, speed, and interval.
+    /// Stateless w.r.t. the input time: the same elapsed value always produces
+    /// the same frame regardless of what was rendered before. Internal state
+    /// (`frame_no_offset`, `start_time`) is consulted only when a `set_speed`
+    /// was issued mid-render to keep frame transitions smooth across the
+    /// speed change.
     pub fn render(&mut self, time: f64) -> Text {
-        if self.start_time.is_none() {
-            self.start_time = Some(time);
-        }
-
-        let elapsed = time - self.start_time.expect("start_time is set above when None");
+        // If start_time was set previously (e.g. by a prior render that the
+        // caller wants to keep relativised), subtract it; otherwise treat
+        // `time` as already-elapsed (the common case for column callers that
+        // create a fresh Spinner each refresh).
+        let elapsed = match self.start_time {
+            Some(start) => time - start,
+            None => time,
+        };
         let frame_no = (elapsed * self.speed) / (self.interval / 1000.0) + self.frame_no_offset;
         let frame_idx = (frame_no as usize) % self.frames.len();
 
@@ -135,9 +141,9 @@ impl Spinner {
             None => frame,
             Some(text) => Text::assemble(
                 &[
-                    TextPart::Rich(frame),
+                    TextPart::Inner(frame),
                     TextPart::Raw(" ".to_string()),
-                    TextPart::Rich(text.clone()),
+                    TextPart::Inner(text.clone()),
                 ],
                 Style::null(),
             ),
@@ -420,11 +426,33 @@ mod tests {
     }
 
     #[test]
-    fn test_start_time_set_on_first_render() {
-        let mut spinner = Spinner::new("dots").unwrap();
-        assert!(spinner.start_time.is_none());
-        spinner.render(5.0);
-        assert_eq!(spinner.start_time, Some(5.0));
+    fn test_render_treats_time_as_elapsed_when_start_unset() {
+        // With no start_time set, render(elapsed) interprets the input as the
+        // elapsed seconds directly, so the same elapsed value always yields
+        // the same frame regardless of prior calls. Required so column
+        // callers can construct a fresh Spinner per refresh and pass
+        // task.elapsed() without losing animation.
+        let mut a = Spinner::new("dots").unwrap();
+        let mut b = Spinner::new("dots").unwrap();
+        let f1 = a.render(0.5).plain().to_string();
+        let f2 = b.render(0.5).plain().to_string();
+        assert_eq!(f1, f2, "same elapsed must give the same frame");
+        // Start_time is NOT captured for stateless callers.
+        assert!(a.start_time.is_none());
+
+        // Different elapsed values must give different frames (unless they
+        // happen to land on the same frame_idx modulo).
+        let frame_at_0 = Spinner::new("dots")
+            .unwrap()
+            .render(0.0)
+            .plain()
+            .to_string();
+        let frame_at_400ms = Spinner::new("dots")
+            .unwrap()
+            .render(0.4)
+            .plain()
+            .to_string();
+        assert_ne!(frame_at_0, frame_at_400ms);
     }
 
     #[test]

@@ -1,14 +1,19 @@
-//! Environment variable detection for color overrides.
+//! Environment variable detection for color and TTY overrides.
 //!
-//! Supports the following environment variables (checked in priority order):
+//! Color overrides (checked in priority order):
 //!
-//! 1. **`NO_COLOR`** – Any value disables color (<https://no-color.org/>)
+//! 1. **`NO_COLOR`** – A *non-empty* value disables color (<https://no-color.org/>)
 //! 2. **`FORCE_COLOR`** – Node.js convention: `0` = off, `1`/`2` = standard/256, `3` = truecolor
 //! 3. **`CLICOLOR_FORCE`** – Any non-`"0"` value forces color on
 //! 4. **`CLICOLOR`** – `"0"` disables color
 //!
-//! These are only consulted when the user hasn't explicitly set `no_color` or
-//! `color_system` on the [`ConsoleBuilder`](crate::console::ConsoleBuilder).
+//! TTY overrides:
+//!
+//! - **`TTY_COMPATIBLE`** – `"1"` forces TTY behaviour, `"0"` forces non-TTY
+//! - **`TTY_INTERACTIVE`** – `"1"` forces interactive, `"0"` forces non-interactive
+//!
+//! These are only consulted when the user hasn't explicitly set the
+//! corresponding flag on the [`ConsoleBuilder`](crate::console::ConsoleBuilder).
 
 use std::env;
 
@@ -28,29 +33,34 @@ pub enum ColorEnvOverride {
 /// Inspect environment variables and return a color override recommendation.
 ///
 /// Priority (highest first):
-/// 1. `NO_COLOR` (any value) → [`ColorEnvOverride::NoColor`]
+/// 1. `NO_COLOR` (non-empty value) → [`ColorEnvOverride::NoColor`]
 /// 2. `FORCE_COLOR`:
 ///    - `"0"` → [`ColorEnvOverride::NoColor`]
 ///    - `"1"` | `"2"` → [`ColorEnvOverride::ForceColor`]
 ///    - `"3"` → [`ColorEnvOverride::ForceColorTruecolor`]
-///    - any other value → [`ColorEnvOverride::ForceColor`]
+///    - any other non-empty value → [`ColorEnvOverride::ForceColor`]
+///    - `""` (empty) → no force (falls through)
 /// 3. `CLICOLOR_FORCE` (any non-`"0"` value) → [`ColorEnvOverride::ForceColor`]
 /// 4. `CLICOLOR` = `"0"` → [`ColorEnvOverride::NoColor`]
 /// 5. Otherwise → [`ColorEnvOverride::None`]
 pub fn detect_color_env() -> ColorEnvOverride {
-    // 1. NO_COLOR – presence alone is enough
-    if env::var_os("NO_COLOR").is_some() {
+    // 1. NO_COLOR – only a *non-empty* value disables color (rich v14 semantics).
+    // An empty `NO_COLOR=""` is treated as unset, per https://no-color.org/ and
+    // upstream rich commit a919527f.
+    if env::var("NO_COLOR").map_or(false, |v| !v.is_empty()) {
         return ColorEnvOverride::NoColor;
     }
 
-    // 2. FORCE_COLOR
+    // 2. FORCE_COLOR – empty string does NOT force color (rich v14 semantics,
+    // upstream commit 9175392a).  Only a non-empty value is acted upon.
     if let Ok(val) = env::var("FORCE_COLOR") {
-        return match val.as_str() {
-            "0" => ColorEnvOverride::NoColor,
-            "1" | "2" => ColorEnvOverride::ForceColor,
-            "3" => ColorEnvOverride::ForceColorTruecolor,
-            _ => ColorEnvOverride::ForceColor,
-        };
+        match val.as_str() {
+            "" => {} // empty → no override; fall through to next variable
+            "0" => return ColorEnvOverride::NoColor,
+            "1" | "2" => return ColorEnvOverride::ForceColor,
+            "3" => return ColorEnvOverride::ForceColorTruecolor,
+            _ => return ColorEnvOverride::ForceColor,
+        }
     }
 
     // 3. CLICOLOR_FORCE – any non-"0" value forces color
@@ -68,6 +78,45 @@ pub fn detect_color_env() -> ColorEnvOverride {
     }
 
     ColorEnvOverride::None
+}
+
+/// User-supplied override for TTY detection, sourced from environment variables.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TtyOverride {
+    /// Force TTY behaviour (terminal output, control sequences enabled).
+    ForceTty,
+    /// Force non-TTY behaviour (plain output).
+    ForceNotTty,
+    /// No override; use platform detection.
+    None,
+}
+
+/// Detect a TTY override from `TTY_COMPATIBLE`.
+///
+/// `TTY_COMPATIBLE=1` forces TTY mode; `TTY_COMPATIBLE=0` forces non-TTY mode.
+/// Any other value (including empty) is treated as no override. Mirrors rich
+/// v14.0.0 commit 9175392a — useful for CI environments and pipelines that
+/// want to override automatic TTY detection.
+pub fn detect_tty_compatible() -> TtyOverride {
+    match env::var("TTY_COMPATIBLE").as_deref() {
+        Ok("1") => TtyOverride::ForceTty,
+        Ok("0") => TtyOverride::ForceNotTty,
+        _ => TtyOverride::None,
+    }
+}
+
+/// Detect an interactivity override from `TTY_INTERACTIVE`.
+///
+/// `TTY_INTERACTIVE=1` forces interactive mode (prompts, live updates, etc.);
+/// `TTY_INTERACTIVE=0` forces non-interactive mode. Independent of TTY detection
+/// so a user can pipe output to a file but still see prompts. Mirrors rich
+/// v14.1.0 commit b46bd78e.
+pub fn detect_tty_interactive() -> TtyOverride {
+    match env::var("TTY_INTERACTIVE").as_deref() {
+        Ok("1") => TtyOverride::ForceTty,
+        Ok("0") => TtyOverride::ForceNotTty,
+        _ => TtyOverride::None,
+    }
 }
 
 /// Detect if the user prefers reduced motion.
@@ -136,7 +185,8 @@ mod tests {
 
     #[test]
     fn test_no_color_set_disables_color() {
-        let r = with_env(&[("NO_COLOR", Some(""))], detect_color_env);
+        // Non-empty NO_COLOR disables color.
+        let r = with_env(&[("NO_COLOR", Some("1"))], detect_color_env);
         assert_eq!(r, ColorEnvOverride::NoColor);
     }
 
@@ -204,8 +254,9 @@ mod tests {
 
     #[test]
     fn test_no_color_wins_over_force_color() {
+        // Non-empty NO_COLOR takes priority over FORCE_COLOR.
         let r = with_env(
-            &[("NO_COLOR", Some("")), ("FORCE_COLOR", Some("3"))],
+            &[("NO_COLOR", Some("1")), ("FORCE_COLOR", Some("3"))],
             detect_color_env,
         );
         assert_eq!(r, ColorEnvOverride::NoColor);
@@ -285,5 +336,132 @@ mod tests {
     fn test_reduce_motion_arbitrary_value() {
         let r = with_reduce_motion(Some("yes"), super::detect_reduce_motion);
         assert!(!r, "should be false for arbitrary values like 'yes'");
+    }
+
+    // --- rich v14 empty-string semantics ---
+
+    #[test]
+    fn no_color_unset_means_color_enabled() {
+        // When NO_COLOR is not in the environment at all, color is not disabled.
+        let r = with_env(&[], detect_color_env);
+        assert_ne!(r, ColorEnvOverride::NoColor);
+    }
+
+    #[test]
+    fn no_color_empty_string_does_not_disable() {
+        // Empty NO_COLOR="" must NOT disable color (rich v14 / no-color.org semantics).
+        let r = with_env(&[("NO_COLOR", Some(""))], detect_color_env);
+        assert_ne!(
+            r,
+            ColorEnvOverride::NoColor,
+            "NO_COLOR='' should not disable color"
+        );
+    }
+
+    #[test]
+    fn no_color_nonempty_disables() {
+        // Any non-empty value (even just a space) disables color.
+        let r = with_env(&[("NO_COLOR", Some("yes"))], detect_color_env);
+        assert_eq!(r, ColorEnvOverride::NoColor);
+    }
+
+    #[test]
+    fn force_color_unset_no_force() {
+        // Absent FORCE_COLOR should not force color on.
+        let r = with_env(&[], detect_color_env);
+        assert_eq!(r, ColorEnvOverride::None);
+    }
+
+    #[test]
+    fn force_color_empty_string_does_not_force() {
+        // Empty FORCE_COLOR="" must NOT force color (rich v14 semantics).
+        let r = with_env(&[("FORCE_COLOR", Some(""))], detect_color_env);
+        assert_eq!(
+            r,
+            ColorEnvOverride::None,
+            "FORCE_COLOR='' should not force color"
+        );
+    }
+
+    #[test]
+    fn force_color_nonempty_forces() {
+        // Non-empty FORCE_COLOR="1" forces color on.
+        let r = with_env(&[("FORCE_COLOR", Some("1"))], detect_color_env);
+        assert_eq!(r, ColorEnvOverride::ForceColor);
+    }
+
+    /// Helper for TTY-override tests. Like `with_env` but for the TTY vars.
+    fn with_tty_env<R, F: FnOnce() -> R>(vars: &[(&str, Option<&str>)], f: F) -> R {
+        let _guard = ENV_LOCK.lock().unwrap();
+        let all_keys = ["TTY_COMPATIBLE", "TTY_INTERACTIVE"];
+        let saved: Vec<(&str, Option<String>)> =
+            all_keys.iter().map(|k| (*k, env::var(k).ok())).collect();
+        for key in &all_keys {
+            env::remove_var(key);
+        }
+        for &(key, val) in vars {
+            match val {
+                Some(v) => env::set_var(key, v),
+                None => env::remove_var(key),
+            }
+        }
+        let result = f();
+        for (key, val) in saved {
+            match val {
+                Some(v) => env::set_var(key, v),
+                None => env::remove_var(key),
+            }
+        }
+        result
+    }
+
+    #[test]
+    fn tty_compatible_unset_yields_none() {
+        let r = with_tty_env(&[], detect_tty_compatible);
+        assert_eq!(r, TtyOverride::None);
+    }
+
+    #[test]
+    fn tty_compatible_one_forces_tty() {
+        let r = with_tty_env(&[("TTY_COMPATIBLE", Some("1"))], detect_tty_compatible);
+        assert_eq!(r, TtyOverride::ForceTty);
+    }
+
+    #[test]
+    fn tty_compatible_zero_forces_not_tty() {
+        let r = with_tty_env(&[("TTY_COMPATIBLE", Some("0"))], detect_tty_compatible);
+        assert_eq!(r, TtyOverride::ForceNotTty);
+    }
+
+    #[test]
+    fn tty_compatible_other_value_is_none() {
+        let r = with_tty_env(&[("TTY_COMPATIBLE", Some("yes"))], detect_tty_compatible);
+        assert_eq!(r, TtyOverride::None);
+    }
+
+    #[test]
+    fn tty_interactive_one_forces_interactive() {
+        let r = with_tty_env(&[("TTY_INTERACTIVE", Some("1"))], detect_tty_interactive);
+        assert_eq!(r, TtyOverride::ForceTty);
+    }
+
+    #[test]
+    fn tty_interactive_zero_forces_not_interactive() {
+        let r = with_tty_env(&[("TTY_INTERACTIVE", Some("0"))], detect_tty_interactive);
+        assert_eq!(r, TtyOverride::ForceNotTty);
+    }
+
+    #[test]
+    fn tty_interactive_independent_of_tty_compatible() {
+        // Pipe-to-file scenario: TTY=0, INTERACTIVE=1 → still treat as interactive
+        let (tc, ti) = with_tty_env(
+            &[
+                ("TTY_COMPATIBLE", Some("0")),
+                ("TTY_INTERACTIVE", Some("1")),
+            ],
+            || (detect_tty_compatible(), detect_tty_interactive()),
+        );
+        assert_eq!(tc, TtyOverride::ForceNotTty);
+        assert_eq!(ti, TtyOverride::ForceTty);
     }
 }

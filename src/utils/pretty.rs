@@ -4,7 +4,6 @@
 //! `Debug` values, and `serde_json::Value` objects with syntax highlighting
 //! and optional indent guides.
 //!
-//! Rust port of Python's `rich/pretty.py`, adapted to use `Debug` and
 //! `serde_json` instead of Python's runtime introspection.
 
 use crate::console::{Console, ConsoleOptions, Renderable};
@@ -274,7 +273,7 @@ impl Renderable for Pretty {
             text = Text::assemble(
                 &[
                     TextPart::Styled(format!("({}) ", type_name), annotation_style),
-                    TextPart::Rich(text),
+                    TextPart::Inner(text),
                 ],
                 Style::null(),
             );

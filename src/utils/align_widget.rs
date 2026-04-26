@@ -1,6 +1,5 @@
 //! Alignment widget -- positions renderable content within available space.
 //!
-//! Port of Python's `rich/align.py`. Named `align_widget` to avoid conflict
 //! with the `align` keyword.
 
 use std::fmt;

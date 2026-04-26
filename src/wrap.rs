@@ -4,7 +4,6 @@
 //! line break positions for word wrapping, respecting cell widths for CJK and
 //! other double-width characters.
 //!
-//! Port of Python rich's `_wrap.py`.
 
 use regex::Regex;
 use std::sync::LazyLock;
