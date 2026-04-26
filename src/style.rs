@@ -1743,8 +1743,14 @@ use std::sync::Mutex;
 static STYLE_CACHE: Mutex<Option<LruCache<String, Style>>> = Mutex::new(None);
 
 /// Gets or initializes the style cache.
+///
+/// Recovers from a poisoned mutex (after a panic in a previous holder) by
+/// extracting the inner value — the cache is purely a parse accelerator, so
+/// the data behind a poison flag is still safe to use.
 fn get_style_cache() -> std::sync::MutexGuard<'static, Option<LruCache<String, Style>>> {
-    let mut cache = STYLE_CACHE.lock().unwrap();
+    let mut cache = STYLE_CACHE
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
     if cache.is_none() {
         *cache = Some(LruCache::new(NonZeroUsize::new(256).unwrap()));
     }

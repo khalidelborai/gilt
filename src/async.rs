@@ -165,8 +165,8 @@ impl<S: Stream + Unpin> Stream for ProgressStream<S> {
     type Item = S::Item;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        // SAFETY: We're not moving out of self, just getting mutable access to fields
-        let this = unsafe { self.get_unchecked_mut() };
+        // `S: Unpin` makes `ProgressStream<S>: Unpin`, so safe `get_mut()` is enough.
+        let this = self.get_mut();
 
         // Start progress on first poll
         if !this.started {

@@ -3,7 +3,7 @@
 //! Enable with the `tracing` Cargo feature flag:
 //!
 //! ```toml
-//! gilt = { version = "0.1", features = ["tracing"] }
+//! gilt = { version = "0.9", features = ["tracing"] }
 //! ```
 //!
 //! # Example

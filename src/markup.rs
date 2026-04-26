@@ -47,16 +47,13 @@ impl fmt::Display for Tag {
 // Regexes
 // ---------------------------------------------------------------------------
 
-/// Regex for `escape()`: find potential tag sequences, capturing preceding
-/// backslashes.  Group 1 = backslashes, Group 2 = the tag (with brackets).
-static RE_ESCAPE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(\\*)(\[[a-z#/@][^\[]*?\])").unwrap());
-
-/// Regex for `parse_markup()`: captures the whole match, backslashes, and the
-/// inner tag text (without brackets).
-/// Group 1 = full match (backslashes + bracketed tag)
-/// Group 2 = backslashes before the `[`
-/// Group 3 = tag content inside brackets
+/// Regex matching markup tags: `\*` runs of backslashes followed by a
+/// bracketed tag.
+///
+/// Group 1 = backslashes before the `[`
+/// Group 2 = the bracketed tag (including `[` and `]`)
+///
+/// Used by both [`escape`] and [`parse_markup`].
 static RE_MARKUP: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(\\*)(\[[a-z#/@][^\[]*?\])").unwrap());
 
@@ -74,7 +71,7 @@ static RE_MARKUP: LazyLock<Regex> =
 /// assert_eq!(escape("foo[bar]"), r"foo\[bar]");
 /// ```
 pub fn escape(markup: &str) -> String {
-    let result = RE_ESCAPE.replace_all(markup, |caps: &regex::Captures| {
+    let result = RE_MARKUP.replace_all(markup, |caps: &regex::Captures| {
         let bs = &caps[1];
         let tag = &caps[2];
         // Double existing backslashes, then prepend one more before the tag.

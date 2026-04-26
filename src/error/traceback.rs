@@ -4,6 +4,8 @@
 //! and panic messages with syntax highlighting and source context. Adapted from
 //! Python rich's `traceback.py` for Rust-specific backtrace formats.
 
+use std::sync::LazyLock;
+
 use regex::Regex;
 
 use crate::console::{Console, ConsoleOptions, Renderable};
@@ -527,11 +529,14 @@ impl Renderable for Traceback {
 ///              at ./src/main.rs:42:9
 /// ```
 fn parse_backtrace(bt: &str) -> Vec<Frame> {
-    // Use a lazy regex that matches frame entries
-    let frame_re = Regex::new(r"(?m)^\s*(\d+):\s+(.+?)$").expect("invalid frame regex");
-    let location_re =
-        Regex::new(r"(?m)^\s+at\s+(.+?):(\d+)(?::(\d+))?\s*$").expect("invalid location regex");
+    static FRAME_RE: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"(?m)^\s*(\d+):\s+(.+?)$").expect("invalid frame regex"));
+    static LOCATION_RE: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(r"(?m)^\s+at\s+(.+?):(\d+)(?::(\d+))?\s*$").expect("invalid location regex")
+    });
 
+    let frame_re = &*FRAME_RE;
+    let location_re = &*LOCATION_RE;
     let lines: Vec<&str> = bt.lines().collect();
     let mut frames = Vec::new();
     let mut i = 0;

@@ -388,41 +388,32 @@ impl Text {
     /// end of each resulting line.  When `allow_blank` is `false`, empty lines
     /// are removed from the result.
     pub fn split(&self, separator: &str, include_separator: bool, allow_blank: bool) -> Lines {
-        let re = Regex::new(&regex::escape(separator)).unwrap();
         let plain = &self.text;
+        let sep_byte_len = separator.len();
 
         if include_separator {
             let mut offsets = Vec::new();
-            // Collect char-index positions of separator ends
-            for mat in re.find_iter(plain) {
-                let byte_end = mat.end();
-                let char_end = plain[..byte_end].chars().count();
-                offsets.push(char_end);
+            for (byte_start, _) in plain.match_indices(separator) {
+                let byte_end = byte_start + sep_byte_len;
+                offsets.push(plain[..byte_end].chars().count());
             }
             let lines = self.divide(&offsets);
-            if !allow_blank {
-                // Check if text ends with separator — if so, remove trailing empty
-                if plain.ends_with(separator) {
-                    let mut lines = lines;
-                    if let Some(last) = lines.lines.last() {
-                        if last.is_empty() {
-                            lines.pop();
-                        }
+            if !allow_blank && plain.ends_with(separator) {
+                let mut lines = lines;
+                if let Some(last) = lines.lines.last() {
+                    if last.is_empty() {
+                        lines.pop();
                     }
-                    return lines;
                 }
+                return lines;
             }
             lines
         } else {
-            // Split at separator boundaries but exclude separator text
             let mut offsets = Vec::new();
-            for mat in re.find_iter(plain) {
-                let byte_start = mat.start();
-                let byte_end = mat.end();
-                let char_start = plain[..byte_start].chars().count();
-                let char_end = plain[..byte_end].chars().count();
-                offsets.push(char_start);
-                offsets.push(char_end);
+            for (byte_start, _) in plain.match_indices(separator) {
+                let byte_end = byte_start + sep_byte_len;
+                offsets.push(plain[..byte_start].chars().count());
+                offsets.push(plain[..byte_end].chars().count());
             }
 
             let divided = self.divide(&offsets);
