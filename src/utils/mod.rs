@@ -16,6 +16,7 @@ pub mod diagnose;
 pub mod emoji;
 pub mod emoji_codes;
 pub mod emoji_replace;
+pub mod file_proxy;
 pub mod filesize;
 pub mod group;
 pub mod highlighter;
