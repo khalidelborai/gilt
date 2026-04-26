@@ -110,6 +110,17 @@ fn bench_text_operations(c: &mut Criterion) {
         b.iter(|| black_box(&unicode_text).cell_len());
     });
 
+    // T11: char_len cache — repeated len() on a 10 KB unicode-heavy text.
+    // Without the cache this is O(n) every call; with the cache, only the
+    // first call walks the string.
+    let big_unicode = "Hello\u{4E16}\u{754C} ".repeat(2000);
+    let big_text = Text::new(&big_unicode, Style::null());
+    group.bench_function("len_repeated_cached", |b| {
+        // Touch once outside the timed loop so the cache is primed.
+        let _ = big_text.len();
+        b.iter(|| black_box(&big_text).len());
+    });
+
     // wrap
     let short_text = Text::new("Hello, World!", Style::null());
     group.bench_function("wrap_short", |b| {

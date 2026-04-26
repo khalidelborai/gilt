@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.10.1] - 2026-04-26
+
+Performance patch. No public API changes.
+
+### Performance
+
+- **T11 — `Text::char_len` cache**: `Text::len()` is now O(1) on the
+  second-and-later call. Backed by an `AtomicUsize` (8 B, `Sync`-preserving)
+  with `usize::MAX` as the uninitialized sentinel. Mutators that already
+  know the new length (`set_plain`, `append_str`, `append_text`, `pad_left`,
+  `pad_right`, `right_crop`, `extend_style`) re-prime the cache directly,
+  avoiding the recompute. Cached `len()` measured at ~1 ns on a 10 KB
+  Unicode-heavy `Text`. First step of the v0.11.0 perf-track de-risking.
+
 ## [0.10.0] - 2026-04-26
 
 A rich-v15.0.0 sync release. Ports every behavioural fix from rich
