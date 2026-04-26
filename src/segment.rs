@@ -111,7 +111,7 @@ impl Segment {
     ///
     /// let seg = Segment::text("hello");
     /// assert_eq!(seg.text, "hello");
-    /// assert!(seg.style.is_none());
+    /// assert!(seg.style().is_none());
     /// ```
     pub fn text(text: &str) -> Self {
         Segment {
@@ -136,7 +136,7 @@ impl Segment {
     ///
     /// let seg = Segment::styled("warning", Style::parse("bold yellow").unwrap());
     /// assert_eq!(seg.text, "warning");
-    /// assert!(seg.style.is_some());
+    /// assert!(seg.style().is_some());
     /// ```
     pub fn styled(text: &str, style: Style) -> Self {
         Segment {
@@ -297,7 +297,7 @@ impl Segment {
     ///     Some(Style::parse("bold").unwrap()),
     ///     None,
     /// );
-    /// assert!(styled[0].style.is_some());
+    /// assert!(styled[0].style().is_some());
     /// ```
     pub fn apply_style(
         segments: &[Segment],
