@@ -1242,7 +1242,7 @@ impl Text {
 
     /// Get the resolved style at the given character offset, with theme resolution.
     ///
-    /// Like [`get_style_at_offset`], but uses `console` to resolve the text's
+    /// Like `get_style_at_offset`, but uses `console` to resolve the text's
     /// base style through the active theme stack before combining span styles.
     /// This means named theme styles (e.g. `"highlight"`) in the text's base
     /// style are resolved correctly.
@@ -1322,11 +1322,7 @@ impl Text {
         }
 
         // Gather all unique boundary offsets.
-        let mut boundaries: Vec<usize> = opens
-            .keys()
-            .chain(closes.keys())
-            .copied()
-            .collect();
+        let mut boundaries: Vec<usize> = opens.keys().chain(closes.keys()).copied().collect();
         boundaries.sort_unstable();
         boundaries.dedup();
 
@@ -1541,7 +1537,10 @@ mod tests {
         let text = Text::new("foo[bar]", Style::null());
         let m = text.markup();
         // The `[bar]` sequence looks like a tag so escape() should prefix it with `\`.
-        assert!(m.contains(r"\[bar]"), "expected escaped bracket, got: {m:?}");
+        assert!(
+            m.contains(r"\[bar]"),
+            "expected escaped bracket, got: {m:?}"
+        );
         // Re-parsing should recover the original plain text.
         let rt = Text::from_markup(&m).unwrap();
         assert_eq!(rt.plain(), "foo[bar]");
@@ -1594,8 +1593,8 @@ mod tests {
     /// `get_style_at_offset_themed`.
     #[test]
     fn get_style_at_offset_themed_resolves_named_style() {
-        use crate::console::Console;
         use crate::color::theme::Theme;
+        use crate::console::Console;
         use std::collections::HashMap;
 
         // Build a theme that maps "highlight" → bold red.

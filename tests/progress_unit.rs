@@ -15,7 +15,12 @@ use gilt::progress::{Task, TaskId};
 
 /// Build a Task with optional start/stop times set explicitly so that
 /// `elapsed()` returns a deterministic value without calling `SystemTime::now`.
-fn make_task_with_elapsed(id: usize, description: &str, total: Option<f64>, elapsed_secs: f64) -> Task {
+fn make_task_with_elapsed(
+    id: usize,
+    description: &str,
+    total: Option<f64>,
+    elapsed_secs: f64,
+) -> Task {
     let mut task = Task::new(id, description, total);
     // start_time=0, stop_time=elapsed so elapsed() == elapsed_secs deterministically.
     task.start_time = Some(0.0);
@@ -37,7 +42,10 @@ fn bar_column_renders_partial_progress() {
     let plain = text.plain();
 
     // Bar should render some characters (width defaults to 40)
-    assert!(!plain.is_empty(), "bar column should produce non-empty output");
+    assert!(
+        !plain.is_empty(),
+        "bar column should produce non-empty output"
+    );
     // At 50%, the bar fill character ━ must appear somewhere
     assert!(
         plain.contains('\u{2501}') || !plain.is_empty(),
@@ -90,7 +98,10 @@ fn compact_time_remaining_column_format() {
     task.start_time = Some(0.0);
     task.finished_time = Some(10.0);
 
-    let col = TimeRemainingColumn { compact: true, elapsed_when_finished: false };
+    let col = TimeRemainingColumn {
+        compact: true,
+        elapsed_when_finished: false,
+    };
     let rendered = col.render(&task).plain().to_string();
     assert_eq!(rendered, "0:00", "finished task should render '0:00'");
 }
@@ -106,8 +117,14 @@ fn spinner_column_animates_with_elapsed() {
     let frame_later = col.render(&later).plain().to_string();
 
     // Both frames must be non-empty
-    assert!(!frame_early.is_empty(), "spinner frame at elapsed=0 should not be empty");
-    assert!(!frame_later.is_empty(), "spinner frame at elapsed=0.5 should not be empty");
+    assert!(
+        !frame_early.is_empty(),
+        "spinner frame at elapsed=0 should not be empty"
+    );
+    assert!(
+        !frame_later.is_empty(),
+        "spinner frame at elapsed=0.5 should not be empty"
+    );
 
     // Frames at different elapsed times should differ (dots spinner cycles ~10 fps)
     assert_ne!(
@@ -198,7 +215,10 @@ fn task_finished_when_completed_equals_total() {
     p.advance(id, 10.0);
 
     let task = p.get_task(id).unwrap();
-    assert!(task.finished(), "task should be finished after completing total");
+    assert!(
+        task.finished(),
+        "task should be finished after completing total"
+    );
 }
 
 #[test]
@@ -228,7 +248,9 @@ fn task_speed_window_estimate() {
     }
 
     let task = p.get_task(id).unwrap();
-    let speed = task.speed().expect("speed should be known after 10 samples");
+    let speed = task
+        .speed()
+        .expect("speed should be known after 10 samples");
 
     // Rate should be ~1000 units/s (100 units per 0.1s)
     assert!(
@@ -257,7 +279,10 @@ fn task_progress_finished_speed_freezes_after_completion() {
     let task = p.get_task(id).unwrap();
     assert!(task.finished(), "task should be finished");
     let frozen = task.speed();
-    assert!(frozen.is_some(), "finished task should have a speed snapshot");
+    assert!(
+        frozen.is_some(),
+        "finished task should have a speed snapshot"
+    );
 
     // Advance more — speed should remain frozen
     *clock.lock().unwrap() = 2.0;
@@ -284,7 +309,10 @@ fn progress_with_none_total_renders_pulse_bar() {
 
     // Pulse mode should produce non-empty output (the pulse segments are
     // non-empty strings regardless of colour system).
-    assert!(!plain.is_empty(), "pulse bar should produce non-empty output");
+    assert!(
+        !plain.is_empty(),
+        "pulse bar should produce non-empty output"
+    );
 }
 
 #[test]
@@ -305,7 +333,10 @@ fn reset_clears_completed_and_restarts_start_time() {
 
     let task = p.get_task(id).unwrap();
     assert_eq!(task.completed, 0.0, "reset should clear completed to 0");
-    assert!(task.finished_time.is_none(), "reset should clear finished_time");
+    assert!(
+        task.finished_time.is_none(),
+        "reset should clear finished_time"
+    );
     assert_eq!(
         task.start_time,
         Some(20.0),

@@ -55,7 +55,10 @@ fn no_columns_no_panic() {
     let table = Table::new(&[]);
     // Must not panic; output is nearly empty (just a newline or empty)
     let out = capture_table(&table, 40);
-    assert!(out.trim().is_empty() || out == "\n", "expected empty/newline output for empty table, got: {out:?}");
+    assert!(
+        out.trim().is_empty() || out == "\n",
+        "expected empty/newline output for empty table, got: {out:?}"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -129,10 +132,8 @@ fn width_clamps_output() {
 
 #[test]
 fn row_styles_cycle() {
-    let mut table = Table::new(&["Val"]).with_row_styles(vec![
-        "bold".to_string(),
-        "italic".to_string(),
-    ]);
+    let mut table =
+        Table::new(&["Val"]).with_row_styles(vec!["bold".to_string(), "italic".to_string()]);
     table.add_row(&["row0"]);
     table.add_row(&["row1"]);
     table.add_row(&["row2"]);
@@ -149,11 +150,17 @@ fn row_styles_cycle() {
 
 #[test]
 fn vertical_align_top_does_not_panic() {
-    let mut table = Table::new(&[]).with_show_header(false).with_box_chars(Some(&SQUARE));
-    table.add_column("", "", ColumnOptions {
-        vertical: Some(VerticalAlign::Top),
-        ..Default::default()
-    });
+    let mut table = Table::new(&[])
+        .with_show_header(false)
+        .with_box_chars(Some(&SQUARE));
+    table.add_column(
+        "",
+        "",
+        ColumnOptions {
+            vertical: Some(VerticalAlign::Top),
+            ..Default::default()
+        },
+    );
     table.add_column("", "", ColumnOptions::default());
     // First column: single-line "foo", second: multi-line "bar\nbar\nbar"
     table.add_row(&["foo", "bar\nbar\nbar"]);
@@ -164,11 +171,17 @@ fn vertical_align_top_does_not_panic() {
 
 #[test]
 fn vertical_align_middle_does_not_panic() {
-    let mut table = Table::new(&[]).with_show_header(false).with_box_chars(Some(&SQUARE));
-    table.add_column("", "", ColumnOptions {
-        vertical: Some(VerticalAlign::Middle),
-        ..Default::default()
-    });
+    let mut table = Table::new(&[])
+        .with_show_header(false)
+        .with_box_chars(Some(&SQUARE));
+    table.add_column(
+        "",
+        "",
+        ColumnOptions {
+            vertical: Some(VerticalAlign::Middle),
+            ..Default::default()
+        },
+    );
     table.add_column("", "", ColumnOptions::default());
     table.add_row(&["foo", "bar\nbar\nbar"]);
     let _out = capture_table(&table, 40);
@@ -176,11 +189,17 @@ fn vertical_align_middle_does_not_panic() {
 
 #[test]
 fn vertical_align_bottom_does_not_panic() {
-    let mut table = Table::new(&[]).with_show_header(false).with_box_chars(Some(&SQUARE));
-    table.add_column("", "", ColumnOptions {
-        vertical: Some(VerticalAlign::Bottom),
-        ..Default::default()
-    });
+    let mut table = Table::new(&[])
+        .with_show_header(false)
+        .with_box_chars(Some(&SQUARE));
+    table.add_column(
+        "",
+        "",
+        ColumnOptions {
+            vertical: Some(VerticalAlign::Bottom),
+            ..Default::default()
+        },
+    );
     table.add_column("", "", ColumnOptions::default());
     table.add_row(&["foo", "bar\nbar\nbar"]);
     let _out = capture_table(&table, 40);
@@ -293,8 +312,14 @@ fn auto_created_columns_inherit_highlight_flag() {
     let mut table = Table::new(&[]).with_highlight(true);
     table.add_row(&["val1", "val2"]);
     // Both auto-created columns should inherit highlight=true
-    assert!(table.columns[0].highlight, "column 0 should inherit highlight=true");
-    assert!(table.columns[1].highlight, "column 1 should inherit highlight=true");
+    assert!(
+        table.columns[0].highlight,
+        "column 0 should inherit highlight=true"
+    );
+    assert!(
+        table.columns[1].highlight,
+        "column 1 should inherit highlight=true"
+    );
 }
 
 #[test]
@@ -304,7 +329,10 @@ fn explicit_columns_inherit_highlight_from_table() {
     // Columns already created by Table::new — they inherit at creation time.
     // Verify adding a new column via add_column also inherits.
     table.add_column("H3", "", Default::default());
-    assert!(table.columns[2].highlight, "added column should inherit table.highlight");
+    assert!(
+        table.columns[2].highlight,
+        "added column should inherit table.highlight"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -358,11 +386,16 @@ fn caption_appears_below_table() {
     let plain: String = out.chars().collect();
     let bottom_pos = plain
         .char_indices()
-        .filter_map(|(i, c)| if c == '└' || c == '┗' || c == '┘' { Some(i) } else { None })
+        .filter_map(|(i, c)| {
+            if c == '└' || c == '┗' || c == '┘' {
+                Some(i)
+            } else {
+                None
+            }
+        })
         .max();
     let caption_pos = plain.find("Note");
     if let (Some(b), Some(c)) = (bottom_pos, caption_pos) {
         assert!(c > b, "caption should appear after table bottom edge");
     }
 }
-

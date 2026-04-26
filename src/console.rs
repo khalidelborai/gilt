@@ -1270,10 +1270,7 @@ impl Console {
             }
 
             // Determine this segment's link, if any.
-            let seg_link: Option<&str> = segment
-                .style
-                .as_ref()
-                .and_then(|s| s.link());
+            let seg_link: Option<&str> = segment.style.as_ref().and_then(|s| s.link());
 
             // Emit OSC 8 open/close only when the link changes.
             match (seg_link, current_link.as_deref()) {

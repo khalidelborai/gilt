@@ -112,10 +112,7 @@ fn divide_at_exact_segment_end() {
     assert_eq!(parts.len(), 3);
     assert_eq!(parts[0], vec![Segment::text("f")]);
     assert_eq!(parts[1], vec![Segment::text("oo")]);
-    assert_eq!(
-        parts[2],
-        vec![Segment::text("bar"), Segment::text("baz")]
-    );
+    assert_eq!(parts[2], vec![Segment::text("bar"), Segment::text("baz")]);
 }
 
 /// Cut position equals the *start* of the next segment (i.e. exactly at a
@@ -168,7 +165,13 @@ fn split_lines_terminator_keeps_newline() {
     ];
     let lines2 = Segment::split_lines_terminator(&segments2);
     assert_eq!(lines2.len(), 2);
-    assert!(lines2[0].1, "first line (bold) should be marked as terminated");
-    assert!(!lines2[1].1, "second line should NOT be marked as terminated");
+    assert!(
+        lines2[0].1,
+        "first line (bold) should be marked as terminated"
+    );
+    assert!(
+        !lines2[1].1,
+        "second line should NOT be marked as terminated"
+    );
     assert_eq!(lines2[1].0, vec![Segment::text("Line2")]);
 }

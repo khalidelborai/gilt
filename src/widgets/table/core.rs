@@ -542,10 +542,7 @@ impl Table {
     /// table.add_row_renderable(vec![cell_text]);
     /// assert_eq!(table.row_count(), 1);
     /// ```
-    pub fn add_row_renderable(
-        &mut self,
-        cells: Vec<Arc<dyn Renderable + Send + Sync>>,
-    ) {
+    pub fn add_row_renderable(&mut self, cells: Vec<Arc<dyn Renderable + Send + Sync>>) {
         self.add_row_renderable_styled(cells, None, false);
     }
 
@@ -556,10 +553,7 @@ impl Table {
         style: Option<&str>,
         end_section: bool,
     ) {
-        let contents: Vec<CellContent> = cells
-            .into_iter()
-            .map(CellContent::Renderable)
-            .collect();
+        let contents: Vec<CellContent> = cells.into_iter().map(CellContent::Renderable).collect();
         self.add_row_contents(&contents, style, end_section);
     }
 

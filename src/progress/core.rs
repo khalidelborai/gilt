@@ -584,7 +584,7 @@ impl Progress {
     /// Wrap an arbitrary `Read + Seek` impl in a progress-tracking reader,
     /// auto-creating a task with the seekable stream length as total.
     ///
-    /// Uses [`SeekFrom::End(0)`] to determine the stream length, then rewinds
+    /// Uses `SeekFrom::End(0)` to determine the stream length, then rewinds
     /// to the current beginning before wrapping.
     ///
     /// # Errors

@@ -455,7 +455,10 @@ mod tests {
     fn tty_interactive_independent_of_tty_compatible() {
         // Pipe-to-file scenario: TTY=0, INTERACTIVE=1 → still treat as interactive
         let (tc, ti) = with_tty_env(
-            &[("TTY_COMPATIBLE", Some("0")), ("TTY_INTERACTIVE", Some("1"))],
+            &[
+                ("TTY_COMPATIBLE", Some("0")),
+                ("TTY_INTERACTIVE", Some("1")),
+            ],
             || (detect_tty_compatible(), detect_tty_interactive()),
         );
         assert_eq!(tc, TtyOverride::ForceNotTty);

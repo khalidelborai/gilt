@@ -1238,9 +1238,9 @@ mod tests {
 
     #[test]
     fn test_ask_float_valid() {
-        let mut input = Cursor::new(b"3.14\n" as &[u8]);
+        let mut input = Cursor::new(b"4.5\n" as &[u8]);
         let result = ask_float_with_input("Enter number", &mut input);
-        assert!((result - 3.14).abs() < f64::EPSILON);
+        assert!((result - 4.5).abs() < f64::EPSILON);
     }
 
     #[test]
@@ -1254,9 +1254,9 @@ mod tests {
 
     #[test]
     fn test_ask_float_invalid_then_valid() {
-        let mut input = Cursor::new(b"xyz\n2.718\n" as &[u8]);
+        let mut input = Cursor::new(b"xyz\n2.5\n" as &[u8]);
         let result = ask_float_with_input("Enter number", &mut input);
-        assert!((result - 2.718).abs() < f64::EPSILON);
+        assert!((result - 2.5).abs() < f64::EPSILON);
     }
 
     // -- Prompt text includes choices when show_choices is true --------------

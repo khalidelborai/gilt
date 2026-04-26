@@ -514,8 +514,7 @@ impl Renderable for Markdown {
                         let row = ctx.current_row.clone();
                         if ctx.in_head {
                             // Header cells stored as plain text for Table::new.
-                            ctx.header_cells =
-                                row.iter().map(|t| t.plain().to_string()).collect();
+                            ctx.header_cells = row.iter().map(|t| t.plain().to_string()).collect();
                         } else {
                             ctx.rows.push(row);
                         }
@@ -1294,10 +1293,7 @@ mod tests {
         assert!(text.contains("foo"), "Expected 'foo' in output");
 
         let code_seg = segments.iter().find(|s| s.text.contains("foo"));
-        assert!(
-            code_seg.is_some(),
-            "Expected a segment containing 'foo'"
-        );
+        assert!(code_seg.is_some(), "Expected a segment containing 'foo'");
         assert!(
             code_seg.unwrap().style.is_some(),
             "Inline code in table cell must carry a style"
@@ -1334,12 +1330,17 @@ mod tests {
         let pre_pos = output.find("pre");
         let mid_pos = output.find("mid");
         let post_pos = output.find("post");
-        assert!(pre_pos.is_some() && mid_pos.is_some() && post_pos.is_some(),
-            "Expected 'pre', 'mid', and 'post' in output, got: {:?}", output);
+        assert!(
+            pre_pos.is_some() && mid_pos.is_some() && post_pos.is_some(),
+            "Expected 'pre', 'mid', and 'post' in output, got: {:?}",
+            output
+        );
         assert!(
             pre_pos.unwrap() < mid_pos.unwrap() && mid_pos.unwrap() < post_pos.unwrap(),
             "Expected order pre < mid < post, got positions: pre={:?} mid={:?} post={:?}",
-            pre_pos, mid_pos, post_pos
+            pre_pos,
+            mid_pos,
+            post_pos
         );
     }
 }

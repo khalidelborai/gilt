@@ -356,8 +356,8 @@ impl Traceback {
             let bt_str = bt.to_string();
 
             // -- Build the Traceback ---
-            let tb = Traceback::from_panic(&full_message, &bt_str)
-                .with_suppress(suppress_paths.clone());
+            let tb =
+                Traceback::from_panic(&full_message, &bt_str).with_suppress(suppress_paths.clone());
 
             // -- Render to a capture buffer then write to stderr ---
             let mut console = Console::builder().no_color(false).build();
@@ -387,7 +387,11 @@ impl Traceback {
         // If we had frames but all were suppressed, emit a placeholder.
         if !self.frames.is_empty() && visible.is_empty() {
             let n = self.frames.len();
-            let msg = format!("[suppressed {} frame{}]\n", n, if n == 1 { "" } else { "s" });
+            let msg = format!(
+                "[suppressed {} frame{}]\n",
+                n,
+                if n == 1 { "" } else { "s" }
+            );
             parts.push(TextPart::Styled(
                 msg,
                 Style::parse("dim italic").unwrap_or_else(|_| Style::null()),
@@ -478,12 +482,22 @@ impl std::fmt::Display for Traceback {
         } else {
             self.frames
                 .iter()
-                .filter(|fr| !self.suppress_paths.iter().any(|p| fr.filename.contains(p.as_str())))
+                .filter(|fr| {
+                    !self
+                        .suppress_paths
+                        .iter()
+                        .any(|p| fr.filename.contains(p.as_str()))
+                })
                 .collect()
         };
         if !self.frames.is_empty() && suppressed.is_empty() {
             let n = self.frames.len();
-            writeln!(f, "[suppressed {} frame{}]", n, if n == 1 { "" } else { "s" })?;
+            writeln!(
+                f,
+                "[suppressed {} frame{}]",
+                n,
+                if n == 1 { "" } else { "s" }
+            )?;
         } else {
             for frame in &suppressed {
                 writeln!(f, "{}", frame)?;
@@ -514,7 +528,12 @@ impl Renderable for Traceback {
         } else {
             self.frames
                 .iter()
-                .filter(|f| !self.suppress_paths.iter().any(|p| f.filename.contains(p.as_str())))
+                .filter(|f| {
+                    !self
+                        .suppress_paths
+                        .iter()
+                        .any(|p| f.filename.contains(p.as_str()))
+                })
                 .collect()
         };
 
@@ -1370,11 +1389,8 @@ mod tests {
 
     #[test]
     fn suppress_all_frames_shows_placeholder() {
-        let tb = tb_with_frames(&[
-            "/.cargo/registry/src/a.rs",
-            "/.cargo/registry/src/b.rs",
-        ])
-        .with_suppress(vec!["/.cargo/registry/src/".to_string()]);
+        let tb = tb_with_frames(&["/.cargo/registry/src/a.rs", "/.cargo/registry/src/b.rs"])
+            .with_suppress(vec!["/.cargo/registry/src/".to_string()]);
 
         // Render via Display (which routes through gilt_console + Panel).
         let out = format!("{}", tb);

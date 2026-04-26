@@ -549,10 +549,10 @@
 //! | `syntax` | Yes | `syntect` | Syntax highlighting via [`Syntax`](syntax::Syntax) |
 //! | `interactive` | Yes | `rpassword` | Password prompts and selection menus |
 //! | `logging` | Yes | `log` | Logging handler |
-//! | `tracing` | No | `tracing`, `tracing-subscriber` | [`GiltLayer`](tracing_layer::GiltLayer) subscriber |
+//! | `tracing` | No | `tracing`, `tracing-subscriber` | `GiltLayer` subscriber |
 //! | `derive` | No | `gilt-derive` | 7 proc-macro derives |
-//! | `miette` | No | `miette` | [`GiltMietteHandler`](miette_handler::GiltMietteHandler) |
-//! | `eyre` | No | `eyre` | [`GiltEyreHandler`](eyre_handler::GiltEyreHandler) |
+//! | `miette` | No | `miette` | `GiltMietteHandler` |
+//! | `eyre` | No | `eyre` | `GiltEyreHandler` |
 //! | `anstyle` | No | `anstyle` | Bidirectional `From` conversions |
 //! | `csv` | No | `csv` | CSV file reading (built-in parser always available) |
 //! | `readline` | No | `rustyline` | Readline-based prompt completions |
@@ -584,7 +584,7 @@
 //!
 //! ## tracing -- Structured Logging
 //!
-//! Use [`GiltLayer`](tracing_layer::GiltLayer) as a tracing subscriber layer for
+//! Use `GiltLayer` as a tracing subscriber layer for
 //! colored, formatted log output. *(Requires the `tracing` feature.)*
 //!
 //! ```rust,ignore

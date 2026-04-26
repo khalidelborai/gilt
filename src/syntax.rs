@@ -111,9 +111,9 @@ pub struct Syntax {
     pub tab_size: usize,
     /// `(top, right, bottom, left)` padding (top/bottom in blank lines, left/right
     /// in spaces inside the code area). Mirrors the CSS shorthand convention used
-    /// by [`Padding`] and matches rich v14.1.0+ `Syntax.padding` (4-tuple).
+    /// by `Padding` and matches rich v14.1.0+ `Syntax.padding` (4-tuple).
     ///
-    /// Use [`Self::with_padding`] / [`unpack_padding`] to construct from any
+    /// Use `Self::with_padding` / [`unpack_padding`] to construct from any
     /// shorthand variant: `n` → `(n, n, n, n)`, `(v, h)` → `(v, h, v, h)`,
     /// `(t, h, b)` → `(t, h, b, h)`, `(t, r, b, l)` → as-is.
     pub padding: (usize, usize, usize, usize),
@@ -1041,10 +1041,7 @@ mod tests {
             (1, 2, 3, 2)
         );
         // (t, r, b, l) → as-is
-        assert_eq!(
-            unpack_padding(PaddingSpec::Full(1, 2, 3, 4)),
-            (1, 2, 3, 4)
-        );
+        assert_eq!(unpack_padding(PaddingSpec::Full(1, 2, 3, 4)), (1, 2, 3, 4));
     }
 
     // -- Line range out of bounds -------------------------------------------

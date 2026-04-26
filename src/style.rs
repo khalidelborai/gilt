@@ -439,7 +439,7 @@ impl Style {
     /// Render `text` with this style's SGR codes (color, bold, etc.) but
     /// **without** wrapping in an OSC 8 hyperlink even if `self.link` is set.
     ///
-    /// Used by [`Console::render_buffer`] when it has decided to coalesce a
+    /// Used by `Console::render_buffer` when it has decided to coalesce a
     /// run of consecutive same-link segments under a single OSC 8 wrapper.
     ///
     /// Returns plain `text` when `color_system` is `None` or `text` is empty.
@@ -536,7 +536,12 @@ impl Style {
         if let Some(url) = &self.link {
             let id = next_link_id();
             let mut linked = String::new();
-            write!(linked, "\x1b]8;id={};{}\x1b\\{}\x1b]8;;\x1b\\", id, url, result).unwrap();
+            write!(
+                linked,
+                "\x1b]8;id={};{}\x1b\\{}\x1b]8;;\x1b\\",
+                id, url, result
+            )
+            .unwrap();
             linked
         } else {
             result

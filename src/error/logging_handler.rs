@@ -282,10 +282,7 @@ impl RichHandler {
         // common Display form for error chains via `{:#}`), render it through
         // a Panel-wrapped Traceback so the call/error chain is styled.
         let msg_str = format!("{}", record.args());
-        if self.gilt_tracebacks
-            && record.level() <= log::Level::Error
-            && msg_str.contains('\n')
-        {
+        if self.gilt_tracebacks && record.level() <= log::Level::Error && msg_str.contains('\n') {
             // No real backtrace available for the log record; pass the
             // multi-line message in as the panic message so the Panel-wrapped
             // Traceback renders the full chain.
@@ -317,10 +314,7 @@ impl RichHandler {
     fn render_time_with_omit(&self) -> Text {
         let now = Self::current_time_str();
         if self.omit_repeated_times {
-            let mut last = self
-                .last_time_str
-                .lock()
-                .unwrap_or_else(|p| p.into_inner());
+            let mut last = self.last_time_str.lock().unwrap_or_else(|p| p.into_inner());
             if last.as_ref() == Some(&now) {
                 let blanks = " ".repeat(now.chars().count());
                 return Text::new(&blanks, Style::null());
@@ -563,7 +557,11 @@ mod tests {
         // Either a span carries the link, or the styled output renders OSC 8.
         let spans = text.spans();
         let has_link = spans.iter().any(|s| s.style.link().is_some());
-        assert!(has_link, "expected a span with a file:// link, got {:?}", spans);
+        assert!(
+            has_link,
+            "expected a span with a file:// link, got {:?}",
+            spans
+        );
     }
 
     #[test]

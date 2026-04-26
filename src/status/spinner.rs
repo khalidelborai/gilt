@@ -442,7 +442,11 @@ mod tests {
 
         // Different elapsed values must give different frames (unless they
         // happen to land on the same frame_idx modulo).
-        let frame_at_0 = Spinner::new("dots").unwrap().render(0.0).plain().to_string();
+        let frame_at_0 = Spinner::new("dots")
+            .unwrap()
+            .render(0.0)
+            .plain()
+            .to_string();
         let frame_at_400ms = Spinner::new("dots")
             .unwrap()
             .render(0.4)
