@@ -485,4 +485,46 @@ mod tests {
     fn binary_exbibyte() {
         assert_eq!(binary(1_152_921_504_606_846_976, 1, " "), "1.0 EiB");
     }
+
+    // ── task-specified named scenarios ─────────────────────────────────────
+
+    #[test]
+    fn decimal_formats_bytes_below_kilo() {
+        assert_eq!(decimal(999, 1, " "), "999 bytes");
+    }
+
+    #[test]
+    fn decimal_formats_kilobytes() {
+        assert_eq!(decimal(1500, 1, " "), "1.5 kB");
+    }
+
+    #[test]
+    fn decimal_formats_megabytes() {
+        assert_eq!(decimal(1_500_000, 1, " "), "1.5 MB");
+    }
+
+    #[test]
+    fn decimal_formats_gigabytes() {
+        assert_eq!(decimal(1_500_000_000, 1, " "), "1.5 GB");
+    }
+
+    #[test]
+    fn binary_formats_kibibytes() {
+        assert_eq!(binary(1024, 1, " "), "1.0 KiB");
+    }
+
+    #[test]
+    fn binary_formats_mebibytes() {
+        assert_eq!(binary(1024 * 1024, 1, " "), "1.0 MiB");
+    }
+
+    #[test]
+    fn decimal_zero() {
+        assert_eq!(decimal(0, 1, " "), "0 bytes");
+    }
+
+    #[test]
+    fn binary_under_one_kib() {
+        assert_eq!(binary(500, 1, " "), "500 bytes");
+    }
 }

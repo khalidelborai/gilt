@@ -1,7 +1,7 @@
 //! Table module -- rich table rendering with columns, rows, and box borders.
 //!
 
-use crate::console::{Console, ConsoleOptions, ConsoleOptionsUpdates};
+use crate::console::{Console, ConsoleOptions, ConsoleOptionsUpdates, Renderable};
 use crate::measure::Measurement;
 use crate::segment::Segment;
 use crate::style::Style;
@@ -10,6 +10,7 @@ use crate::utils::align_widget::VerticalAlign;
 use crate::utils::box_chars::{BoxChars, RowLevel, HEAVY_HEAD};
 use crate::utils::ratio::{ratio_distribute, ratio_reduce};
 use crate::widgets::table::{CellContent, Column, ColumnOptions, Row};
+use std::sync::Arc;
 
 /// A single cell in the table (internal).
 pub(crate) struct CellInfo {
@@ -517,6 +518,48 @@ impl Table {
     pub fn add_row_text_styled(&mut self, cells: &[Text], style: Option<&str>, end_section: bool) {
         let contents: Vec<CellContent> =
             cells.iter().map(|t| CellContent::from(t.clone())).collect();
+        self.add_row_contents(&contents, style, end_section);
+    }
+
+    /// Add a row where each cell holds an arbitrary [`Renderable`] widget.
+    ///
+    /// This is the richest cell variant: any widget that implements
+    /// [`Renderable`] (e.g. [`Panel`](crate::panel::Panel),
+    /// [`Tree`](crate::tree::Tree), a nested [`Table`]) can be placed in a
+    /// table cell.  Wrap the widget in an [`Arc`] so it is cheap to clone
+    /// (the table stores cells in each column's `cells` vec).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::table::Table;
+    /// use gilt::text::Text;
+    /// use gilt::style::Style;
+    /// use std::sync::Arc;
+    ///
+    /// let mut table = Table::new(&["Widget"]);
+    /// let cell_text = Arc::new(Text::new("hello", Style::null()));
+    /// table.add_row_renderable(vec![cell_text]);
+    /// assert_eq!(table.row_count(), 1);
+    /// ```
+    pub fn add_row_renderable(
+        &mut self,
+        cells: Vec<Arc<dyn Renderable + Send + Sync>>,
+    ) {
+        self.add_row_renderable_styled(cells, None, false);
+    }
+
+    /// Add a row of [`Renderable`] cells with an optional row style and section break.
+    pub fn add_row_renderable_styled(
+        &mut self,
+        cells: Vec<Arc<dyn Renderable + Send + Sync>>,
+        style: Option<&str>,
+        end_section: bool,
+    ) {
+        let contents: Vec<CellContent> = cells
+            .into_iter()
+            .map(CellContent::Renderable)
+            .collect();
         self.add_row_contents(&contents, style, end_section);
     }
 
@@ -1408,5 +1451,93 @@ mod padding_tests {
                 "measure/render disagree at column {col_idx}"
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod renderable_cell_tests {
+    use super::*;
+    use crate::panel::Panel;
+    use crate::text::Text;
+    use std::sync::Arc;
+
+    /// Render the table to a plain string via the `Display` impl.
+    fn render(table: &Table) -> String {
+        format!("{table}")
+    }
+
+    #[test]
+    fn add_row_renderable_renders_simple_text() {
+        // An Arc<Text> implements Renderable.  The cell content should appear
+        // in the rendered table output.
+        let mut table = Table::new(&["Widget"]);
+        table.box_chars = None;
+        table.show_header = false;
+        table.padding = (0, 0, 0, 0);
+
+        let cell_text: Arc<dyn Renderable + Send + Sync> =
+            Arc::new(Text::new("hello world", Style::null()));
+        table.add_row_renderable(vec![cell_text]);
+
+        assert_eq!(table.row_count(), 1);
+        let output = render(&table);
+        assert!(
+            output.contains("hello world"),
+            "expected 'hello world' in output, got: {output:?}"
+        );
+    }
+
+    #[test]
+    fn add_row_renderable_with_panel_inside_cell() {
+        // A Panel rendered inside a cell should contribute its border
+        // characters to the rendered output.
+        let mut table = Table::new(&["Widget"]);
+        table.box_chars = None;
+        table.show_header = false;
+        table.padding = (0, 0, 0, 0);
+        // Give the column enough width to render a small panel
+        table.columns[0].width = Some(20);
+
+        let panel_content = Text::new("inner", Style::null());
+        let panel = Panel::new(panel_content);
+        let cell: Arc<dyn Renderable + Send + Sync> = Arc::new(panel);
+        table.add_row_renderable(vec![cell]);
+
+        assert_eq!(table.row_count(), 1);
+        let output = render(&table);
+        // Panel border characters should appear somewhere in the output
+        assert!(
+            output.contains('─') || output.contains('│') || output.contains('╭'),
+            "expected panel border chars in output, got: {output:?}"
+        );
+    }
+
+    #[test]
+    fn add_row_renderable_falls_back_to_text_path_for_text_input() {
+        // Using add_row_renderable(Arc<Text>) should produce the same final
+        // rendered output as add_row_text(&[Text]).
+        let text_value = "compare me";
+
+        let mut table_via_text = Table::new(&["Col"]);
+        table_via_text.box_chars = None;
+        table_via_text.show_header = false;
+        table_via_text.padding = (0, 0, 0, 0);
+        table_via_text.add_row_text(&[Text::new(text_value, Style::null())]);
+
+        let mut table_via_renderable = Table::new(&["Col"]);
+        table_via_renderable.box_chars = None;
+        table_via_renderable.show_header = false;
+        table_via_renderable.padding = (0, 0, 0, 0);
+        let cell: Arc<dyn Renderable + Send + Sync> =
+            Arc::new(Text::new(text_value, Style::null()));
+        table_via_renderable.add_row_renderable(vec![cell]);
+
+        let out_text = render(&table_via_text);
+        let out_renderable = render(&table_via_renderable);
+
+        assert_eq!(
+            out_text, out_renderable,
+            "add_row_text and add_row_renderable(Arc<Text>) should produce identical output"
+        );
     }
 }
