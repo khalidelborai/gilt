@@ -91,11 +91,13 @@ impl FileProxy {
     }
 
     /// Forward any buffered partial line to the sink and clear the buffer.
+    ///
+    /// Uses `mem::take` to move the content out without an intermediate
+    /// clone — leaves an empty `String` behind in one step.
     fn flush_buffer(&self) -> io::Result<()> {
-        let content = self.buffer.borrow().clone();
+        let content = std::mem::take(&mut *self.buffer.borrow_mut());
         if !content.is_empty() {
             self.send_line(&content);
-            self.buffer.borrow_mut().clear();
         }
         Ok(())
     }

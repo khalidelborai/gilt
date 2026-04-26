@@ -1264,7 +1264,11 @@ impl Console {
     /// assert_eq!(output, "Hello");
     /// ```
     pub fn render_buffer(&self, buffer: &[Segment]) -> String {
-        let mut output = String::new();
+        // Pre-size: text bytes + ~16 bytes per segment for SGR overhead
+        // (`\x1b[1;38;5;NNNm...\x1b[0m` is ~12-20 bytes per styled segment).
+        let estimated_bytes: usize =
+            buffer.iter().map(|s| s.text.len()).sum::<usize>() + buffer.len() * 16;
+        let mut output = String::with_capacity(estimated_bytes);
         let color_system = if self.no_color {
             None
         } else {

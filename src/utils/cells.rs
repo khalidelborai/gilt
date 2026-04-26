@@ -19,6 +19,12 @@ use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 /// assert_eq!(cell_len("わさび"), 6);  // 3 CJK chars × 2
 /// ```
 pub fn cell_len(text: &str) -> usize {
+    // Fast path for pure ASCII (the common case in terminal output) — every
+    // ASCII byte is a single cell, so byte length equals cell length and we
+    // skip the Unicode width-table lookup entirely.
+    if text.is_ascii() {
+        return text.len();
+    }
     text.width()
 }
 
@@ -39,6 +45,10 @@ pub fn cell_len(text: &str) -> usize {
 /// assert_eq!(get_character_cell_size('💩'), 2);
 /// ```
 pub fn get_character_cell_size(c: char) -> usize {
+    // Fast path: printable ASCII = 1 cell; control chars (< 0x20) = 0.
+    if (c as u32) < 0x80 {
+        return if (c as u32) >= 0x20 { 1 } else { 0 };
+    }
     c.width().unwrap_or(0)
 }
 

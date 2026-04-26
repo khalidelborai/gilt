@@ -84,13 +84,18 @@ impl Scope {
             .collect();
 
         if self.sort_keys {
-            pairs.sort_by(|a, b| {
-                let a_regular = !a.0.starts_with("__");
-                let b_regular = !b.0.starts_with("__");
+            // Pre-compute lowercased keys (one alloc per pair) instead of
+            // re-lowercasing on every comparison (O(N log N) allocs).
+            let lower: Vec<String> = pairs.iter().map(|(k, _)| k.to_lowercase()).collect();
+            let mut indices: Vec<usize> = (0..pairs.len()).collect();
+            indices.sort_by(|&i, &j| {
+                let a_regular = !pairs[i].0.starts_with("__");
+                let b_regular = !pairs[j].0.starts_with("__");
                 a_regular
                     .cmp(&b_regular)
-                    .then_with(|| a.0.to_lowercase().cmp(&b.0.to_lowercase()))
+                    .then_with(|| lower[i].cmp(&lower[j]))
             });
+            pairs = indices.into_iter().map(|i| pairs[i]).collect();
         }
 
         pairs

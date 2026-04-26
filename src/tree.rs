@@ -288,10 +288,9 @@ impl Renderable for Tree {
             if !skip_node {
                 let mut current_prefix = prefix.clone();
                 for (i, line) in rendered_lines.iter().enumerate() {
-                    // Emit prefix guide segments.
-                    for seg in &current_prefix {
-                        segments.push(seg.clone());
-                    }
+                    // Emit prefix guide segments — extend_from_slice is one
+                    // memcpy + N clones rather than N iterations of push.
+                    segments.extend_from_slice(&current_prefix);
                     // Emit line content segments.
                     segments.extend(line.iter().cloned());
                     // Emit newline.
