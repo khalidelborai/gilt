@@ -35,22 +35,38 @@ fn combine_regex(patterns: &[&str]) -> String {
 /// This is equivalent to `Text::highlight_regex_with_groups` but uses the
 /// default styles map for name resolution instead of `Style::parse()`.
 fn highlight_with_groups(text: &mut Text, pattern: &Regex, style_prefix: &str) -> usize {
-    let plain = text.plain().to_string();
-    let mut count = 0;
-    for captures in pattern.captures_iter(&plain) {
-        for name in pattern.capture_names().flatten() {
-            if let Some(mat) = captures.name(name) {
-                let style_name = format!("{}{}", style_prefix, name);
-                if let Some(style) = DEFAULT_STYLES.get(&style_name) {
-                    let byte_start = mat.start();
-                    let byte_end = mat.end();
-                    let char_start = plain[..byte_start].chars().count();
-                    let char_end = plain[..byte_end].chars().count();
-                    text.stylize(style.clone(), char_start, Some(char_end));
-                    count += 1;
+    // T12: avoid the full text clone (was `text.plain().to_string()`) and
+    // the per-match O(prefix) char-counting. Collect (style, byte_start,
+    // byte_end) tuples while borrowing immutably, then apply via the
+    // single-pass byte→char index after the iterator drops.
+    let mut pending: Vec<(Style, usize, usize)> = Vec::new();
+    {
+        let plain = text.plain();
+        for captures in pattern.captures_iter(plain) {
+            for name in pattern.capture_names().flatten() {
+                if let Some(mat) = captures.name(name) {
+                    let style_name = format!("{}{}", style_prefix, name);
+                    if let Some(style) = DEFAULT_STYLES.get(&style_name) {
+                        pending.push((style.clone(), mat.start(), mat.end()));
+                    }
                 }
             }
         }
+    }
+    if pending.is_empty() {
+        return 0;
+    }
+    let plain = text.plain();
+    let mut b2c = vec![0usize; plain.len() + 1];
+    let mut char_idx = 0usize;
+    for (byte_idx, _) in plain.char_indices() {
+        b2c[byte_idx] = char_idx;
+        char_idx += 1;
+    }
+    b2c[plain.len()] = char_idx;
+    let count = pending.len();
+    for (style, bs, be) in pending {
+        text.stylize(style, b2c[bs], Some(b2c[be]));
     }
     count
 }

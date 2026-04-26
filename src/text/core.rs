@@ -773,15 +773,36 @@ impl Text {
     /// # }
     /// ```
     pub fn highlight_regex(&mut self, pattern: &Regex, style: Style) -> usize {
-        let plain = self.text.clone();
-        let mut count = 0;
-        for mat in pattern.find_iter(&plain) {
-            let byte_start = mat.start();
-            let byte_end = mat.end();
-            let char_start = plain[..byte_start].chars().count();
-            let char_end = plain[..byte_end].chars().count();
+        // build_byte_to_char_index inlined as a private helper —
+        // regex match positions are always at codepoint boundaries so
+        // entries at mid-codepoint byte indices are unused.
+        fn build_byte_to_char_index(text: &str) -> Vec<usize> {
+            let mut map = vec![0usize; text.len() + 1];
+            let mut char_idx = 0usize;
+            for (byte_idx, _) in text.char_indices() {
+                map[byte_idx] = char_idx;
+                char_idx += 1;
+            }
+            map[text.len()] = char_idx;
+            map
+        }
+        // T12: collect (byte_start, byte_end) into a Vec from an immutable
+        // borrow of self.text, then apply stylize after the iterator drops.
+        // Was previously cloning the entire text and re-walking the prefix
+        // chars on every match (O(M·N) char-counting).
+        let matches: Vec<(usize, usize)> = pattern
+            .find_iter(&self.text)
+            .map(|m| (m.start(), m.end()))
+            .collect();
+        if matches.is_empty() {
+            return 0;
+        }
+        let b2c = build_byte_to_char_index(&self.text);
+        let count = matches.len();
+        for (bs, be) in matches {
+            let char_start = b2c[bs];
+            let char_end = b2c[be];
             self.stylize(style.clone(), char_start, Some(char_end));
-            count += 1;
         }
         count
     }
@@ -789,22 +810,36 @@ impl Text {
     /// Highlight named capture groups from `pattern`, using `style_prefix` concatenated
     /// with each group name as the style string. Returns the total number of styled groups.
     pub fn highlight_regex_with_groups(&mut self, pattern: &Regex, style_prefix: &str) -> usize {
-        let plain = self.text.clone();
-        let mut count = 0;
-        for captures in pattern.captures_iter(&plain) {
+        fn build_byte_to_char_index(text: &str) -> Vec<usize> {
+            let mut map = vec![0usize; text.len() + 1];
+            let mut char_idx = 0usize;
+            for (byte_idx, _) in text.char_indices() {
+                map[byte_idx] = char_idx;
+                char_idx += 1;
+            }
+            map[text.len()] = char_idx;
+            map
+        }
+        // T12: same pattern as highlight_regex — collect (style, byte_start,
+        // byte_end) up front, then apply after dropping the iterator borrow.
+        let mut pending: Vec<(Style, usize, usize)> = Vec::new();
+        for captures in pattern.captures_iter(&self.text) {
             for name in pattern.capture_names().flatten() {
                 if let Some(mat) = captures.name(name) {
                     let style_str = format!("{}{}", style_prefix, name);
                     if let Ok(style) = Style::parse(&style_str) {
-                        let byte_start = mat.start();
-                        let byte_end = mat.end();
-                        let char_start = plain[..byte_start].chars().count();
-                        let char_end = plain[..byte_end].chars().count();
-                        self.stylize(style, char_start, Some(char_end));
-                        count += 1;
+                        pending.push((style, mat.start(), mat.end()));
                     }
                 }
             }
+        }
+        if pending.is_empty() {
+            return 0;
+        }
+        let b2c = build_byte_to_char_index(&self.text);
+        let count = pending.len();
+        for (style, bs, be) in pending {
+            self.stylize(style, b2c[bs], Some(b2c[be]));
         }
         count
     }

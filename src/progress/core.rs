@@ -392,7 +392,7 @@ impl Progress {
             }
         }
         if changed {
-            self.refresh();
+            self.mark_dirty();
         }
     }
 
@@ -414,7 +414,7 @@ impl Progress {
             }
         }
         if changed {
-            self.refresh();
+            self.mark_dirty();
         }
     }
 
@@ -427,7 +427,7 @@ impl Progress {
             changed = true;
         }
         if changed {
-            self.refresh();
+            self.mark_dirty();
         }
     }
 
@@ -643,13 +643,34 @@ impl Progress {
         self.live.stop();
     }
 
-    /// Refresh the live display with current task state.
+    /// Refresh the live display with current task state and force an
+    /// immediate paint.
+    ///
+    /// State-mutating helpers (`update`, `advance`, `start_task`,
+    /// `stop_task`) call an internal `mark_dirty` instead of this —
+    /// they rebuild the stored renderable without forcing a paint, so the
+    /// auto-refresh thread paints at the configured rate (default 10 Hz).
+    /// Tight `advance()` loops therefore generate at most one paint per
+    /// refresh-tick interval rather than one per call.
     pub fn refresh(&mut self) {
         if self.disable {
             return;
         }
         let table_text = self.render_tasks_text();
         self.live.update_renderable(table_text, true);
+    }
+
+    /// Re-render the task table and store it on the live display, but do
+    /// **not** trigger an immediate paint. The auto-refresh thread will
+    /// pick up the updated renderable on its next tick.
+    fn mark_dirty(&mut self) {
+        if self.disable {
+            return;
+        }
+        let table_text = self.render_tasks_text();
+        // refresh = false: just update s.renderable so the next tick paints
+        // the fresh content; do not synchronously call write_segments.
+        self.live.update_renderable(table_text, false);
     }
 
     // -- Rendering ----------------------------------------------------------
