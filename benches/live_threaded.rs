@@ -53,10 +53,7 @@ fn run_writers(live: Arc<Live>, n_writers: usize, iterations: usize) -> Duration
         handles.push(thread::spawn(move || {
             barrier.wait();
             for i in 0..iterations {
-                let text = Text::new(
-                    &format!("writer {} iter {}", tid, i),
-                    Style::null(),
-                );
+                let text = Text::new(&format!("writer {} iter {}", tid, i), Style::null());
                 // refresh=false so writers do not also drive the render
                 // path — the bench measures pure update contention.
                 live.update_renderable(black_box(text), false);
@@ -120,9 +117,7 @@ fn bench_update_with_renderer(c: &mut Criterion) {
                         let render_live = Arc::clone(&live);
                         let render_stop = Arc::clone(&stop);
                         let renderer = thread::spawn(move || {
-                            while !render_stop
-                                .load(std::sync::atomic::Ordering::Relaxed)
-                            {
+                            while !render_stop.load(std::sync::atomic::Ordering::Relaxed) {
                                 render_live.refresh();
                             }
                         });
