@@ -602,12 +602,38 @@ impl Console {
     }
 
     /// Whether the console is connected to a terminal.
+    ///
+    /// Resolution order:
+    /// 1. Explicit `force_terminal` set on the builder
+    /// 2. `TTY_COMPATIBLE=1`/`0` environment override
+    /// 3. `TERM` is set in the environment
     pub fn is_terminal(&self) -> bool {
         if let Some(forced) = self.force_terminal {
             return forced;
         }
-        // Check environment variables as a heuristic
+        match crate::color::color_env::detect_tty_compatible() {
+            crate::color::color_env::TtyOverride::ForceTty => return true,
+            crate::color::color_env::TtyOverride::ForceNotTty => return false,
+            crate::color::color_env::TtyOverride::None => {}
+        }
         std::env::var("TERM").is_ok()
+    }
+
+    /// Whether the console should treat the user as interactive (prompts,
+    /// progress bars with refresh, live updates, etc.).
+    ///
+    /// Resolution order:
+    /// 1. `TTY_INTERACTIVE=1`/`0` environment override
+    /// 2. Falls back to [`is_terminal`](Self::is_terminal)
+    ///
+    /// This is intentionally independent of TTY status so a user can pipe
+    /// output to a file but still be prompted on stdin.
+    pub fn is_interactive(&self) -> bool {
+        match crate::color::color_env::detect_tty_interactive() {
+            crate::color::color_env::TtyOverride::ForceTty => true,
+            crate::color::color_env::TtyOverride::ForceNotTty => false,
+            crate::color::color_env::TtyOverride::None => self.is_terminal(),
+        }
     }
 
     /// Whether this is a "dumb" terminal with no styling support.

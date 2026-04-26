@@ -1,14 +1,19 @@
-//! Environment variable detection for color overrides.
+//! Environment variable detection for color and TTY overrides.
 //!
-//! Supports the following environment variables (checked in priority order):
+//! Color overrides (checked in priority order):
 //!
 //! 1. **`NO_COLOR`** – A *non-empty* value disables color (<https://no-color.org/>)
 //! 2. **`FORCE_COLOR`** – Node.js convention: `0` = off, `1`/`2` = standard/256, `3` = truecolor
 //! 3. **`CLICOLOR_FORCE`** – Any non-`"0"` value forces color on
 //! 4. **`CLICOLOR`** – `"0"` disables color
 //!
-//! These are only consulted when the user hasn't explicitly set `no_color` or
-//! `color_system` on the [`ConsoleBuilder`](crate::console::ConsoleBuilder).
+//! TTY overrides:
+//!
+//! - **`TTY_COMPATIBLE`** – `"1"` forces TTY behaviour, `"0"` forces non-TTY
+//! - **`TTY_INTERACTIVE`** – `"1"` forces interactive, `"0"` forces non-interactive
+//!
+//! These are only consulted when the user hasn't explicitly set the
+//! corresponding flag on the [`ConsoleBuilder`](crate::console::ConsoleBuilder).
 
 use std::env;
 
@@ -73,6 +78,45 @@ pub fn detect_color_env() -> ColorEnvOverride {
     }
 
     ColorEnvOverride::None
+}
+
+/// User-supplied override for TTY detection, sourced from environment variables.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TtyOverride {
+    /// Force TTY behaviour (terminal output, control sequences enabled).
+    ForceTty,
+    /// Force non-TTY behaviour (plain output).
+    ForceNotTty,
+    /// No override; use platform detection.
+    None,
+}
+
+/// Detect a TTY override from `TTY_COMPATIBLE`.
+///
+/// `TTY_COMPATIBLE=1` forces TTY mode; `TTY_COMPATIBLE=0` forces non-TTY mode.
+/// Any other value (including empty) is treated as no override. Mirrors rich
+/// v14.0.0 commit 9175392a — useful for CI environments and pipelines that
+/// want to override automatic TTY detection.
+pub fn detect_tty_compatible() -> TtyOverride {
+    match env::var("TTY_COMPATIBLE").as_deref() {
+        Ok("1") => TtyOverride::ForceTty,
+        Ok("0") => TtyOverride::ForceNotTty,
+        _ => TtyOverride::None,
+    }
+}
+
+/// Detect an interactivity override from `TTY_INTERACTIVE`.
+///
+/// `TTY_INTERACTIVE=1` forces interactive mode (prompts, live updates, etc.);
+/// `TTY_INTERACTIVE=0` forces non-interactive mode. Independent of TTY detection
+/// so a user can pipe output to a file but still see prompts. Mirrors rich
+/// v14.1.0 commit b46bd78e.
+pub fn detect_tty_interactive() -> TtyOverride {
+    match env::var("TTY_INTERACTIVE").as_deref() {
+        Ok("1") => TtyOverride::ForceTty,
+        Ok("0") => TtyOverride::ForceNotTty,
+        _ => TtyOverride::None,
+    }
 }
 
 /// Detect if the user prefers reduced motion.
@@ -344,5 +388,77 @@ mod tests {
         // Non-empty FORCE_COLOR="1" forces color on.
         let r = with_env(&[("FORCE_COLOR", Some("1"))], detect_color_env);
         assert_eq!(r, ColorEnvOverride::ForceColor);
+    }
+
+    /// Helper for TTY-override tests. Like `with_env` but for the TTY vars.
+    fn with_tty_env<R, F: FnOnce() -> R>(vars: &[(&str, Option<&str>)], f: F) -> R {
+        let _guard = ENV_LOCK.lock().unwrap();
+        let all_keys = ["TTY_COMPATIBLE", "TTY_INTERACTIVE"];
+        let saved: Vec<(&str, Option<String>)> =
+            all_keys.iter().map(|k| (*k, env::var(k).ok())).collect();
+        for key in &all_keys {
+            env::remove_var(key);
+        }
+        for &(key, val) in vars {
+            match val {
+                Some(v) => env::set_var(key, v),
+                None => env::remove_var(key),
+            }
+        }
+        let result = f();
+        for (key, val) in saved {
+            match val {
+                Some(v) => env::set_var(key, v),
+                None => env::remove_var(key),
+            }
+        }
+        result
+    }
+
+    #[test]
+    fn tty_compatible_unset_yields_none() {
+        let r = with_tty_env(&[], detect_tty_compatible);
+        assert_eq!(r, TtyOverride::None);
+    }
+
+    #[test]
+    fn tty_compatible_one_forces_tty() {
+        let r = with_tty_env(&[("TTY_COMPATIBLE", Some("1"))], detect_tty_compatible);
+        assert_eq!(r, TtyOverride::ForceTty);
+    }
+
+    #[test]
+    fn tty_compatible_zero_forces_not_tty() {
+        let r = with_tty_env(&[("TTY_COMPATIBLE", Some("0"))], detect_tty_compatible);
+        assert_eq!(r, TtyOverride::ForceNotTty);
+    }
+
+    #[test]
+    fn tty_compatible_other_value_is_none() {
+        let r = with_tty_env(&[("TTY_COMPATIBLE", Some("yes"))], detect_tty_compatible);
+        assert_eq!(r, TtyOverride::None);
+    }
+
+    #[test]
+    fn tty_interactive_one_forces_interactive() {
+        let r = with_tty_env(&[("TTY_INTERACTIVE", Some("1"))], detect_tty_interactive);
+        assert_eq!(r, TtyOverride::ForceTty);
+    }
+
+    #[test]
+    fn tty_interactive_zero_forces_not_interactive() {
+        let r = with_tty_env(&[("TTY_INTERACTIVE", Some("0"))], detect_tty_interactive);
+        assert_eq!(r, TtyOverride::ForceNotTty);
+    }
+
+    #[test]
+    fn tty_interactive_independent_of_tty_compatible() {
+        // Pipe-to-file scenario: TTY=0, INTERACTIVE=1 → still treat as interactive
+        let (tc, ti) = with_tty_env(
+            &[("TTY_COMPATIBLE", Some("0")), ("TTY_INTERACTIVE", Some("1"))],
+            || (detect_tty_compatible(), detect_tty_interactive()),
+        );
+        assert_eq!(tc, TtyOverride::ForceNotTty);
+        assert_eq!(ti, TtyOverride::ForceTty);
     }
 }
