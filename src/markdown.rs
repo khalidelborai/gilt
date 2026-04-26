@@ -830,7 +830,7 @@ mod tests {
         let bold_seg = segments.iter().find(|s| s.text == "bold");
         assert!(bold_seg.is_some(), "Should have a segment with text 'bold'");
         if let Some(seg) = bold_seg {
-            assert!(seg.style.is_some(), "Bold segment should have a style");
+            assert!(seg.style().is_some(), "Bold segment should have a style");
         }
     }
 
@@ -850,7 +850,7 @@ mod tests {
             "Should have a segment with text 'italic'"
         );
         if let Some(seg) = italic_seg {
-            assert!(seg.style.is_some(), "Italic segment should have a style");
+            assert!(seg.style().is_some(), "Italic segment should have a style");
         }
     }
 
@@ -869,7 +869,7 @@ mod tests {
         assert!(combined_seg.is_some());
         if let Some(seg) = combined_seg {
             assert!(
-                seg.style.is_some(),
+                seg.style().is_some(),
                 "Bold+italic segment should have a style"
             );
         }
@@ -891,7 +891,7 @@ mod tests {
             "Should have a segment with inline code text"
         );
         if let Some(seg) = code_seg {
-            assert!(seg.style.is_some(), "Inline code should have a style");
+            assert!(seg.style().is_some(), "Inline code should have a style");
         }
     }
 

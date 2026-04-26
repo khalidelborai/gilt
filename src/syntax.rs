@@ -479,7 +479,7 @@ impl Syntax {
                         if seg.text == "\n" {
                             continue;
                         }
-                        let style = seg.style.clone().unwrap_or_else(Style::null);
+                        let style = seg.style_owned();
                         segments.push(Segment::styled(&seg.text, background_style.clone() + style));
                     }
                     // Pad to code_width
@@ -497,7 +497,7 @@ impl Syntax {
                     if seg.text == "\n" {
                         continue;
                     }
-                    let style = seg.style.clone().unwrap_or_else(Style::null);
+                    let style = seg.style_owned();
                     segments.push(Segment::styled(&seg.text, background_style.clone() + style));
                 }
                 // Pad to code_width
@@ -1198,7 +1198,7 @@ mod tests {
             let end = pos + seg.text.len();
             // Check if this segment overlaps with our styled range (0..5)
             if pos < 5 && end > 0 && !seg.text.trim().is_empty() {
-                if let Some(ref style) = seg.style {
+                if let Some(style) = seg.style() {
                     if style.color().is_some() {
                         found_styled = true;
                     }

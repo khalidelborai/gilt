@@ -532,7 +532,7 @@ mod tests {
             .collect();
         assert!(!padding_segments.is_empty());
         for seg in padding_segments {
-            assert!(seg.style.is_some());
+            assert!(seg.style().is_some());
         }
     }
 }

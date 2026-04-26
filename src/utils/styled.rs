@@ -113,7 +113,7 @@ mod tests {
             if !seg.is_control() && !seg.text.is_empty() && seg.text.trim() == seg.text {
                 // The text content segment(s) should carry bold
                 assert!(
-                    seg.style.as_ref().is_some_and(|s| s.bold() == Some(true)),
+                    seg.style().is_some_and(|s| s.bold() == Some(true)),
                     "segment {:?} should be bold",
                     seg.text,
                 );
@@ -135,7 +135,7 @@ mod tests {
         // All non-empty text segments should have both bold and italic
         for seg in &segments {
             if !seg.is_control() && !seg.text.is_empty() && seg.text != "\n" {
-                let s = seg.style.as_ref().expect("segment should have a style");
+                let s = seg.style().expect("segment should have a style");
                 assert_eq!(
                     s.bold(),
                     Some(true),
@@ -171,7 +171,7 @@ mod tests {
             .collect();
         assert!(!ab_segments.is_empty());
         for seg in ab_segments {
-            let s = seg.style.as_ref().unwrap();
+            let s = seg.style().unwrap();
             assert_eq!(s.bold(), Some(true));
             assert_eq!(s.italic(), Some(true));
         }
@@ -188,7 +188,7 @@ mod tests {
         let segments = styled.gilt_console(&console, &opts);
         for seg in &segments {
             if !seg.is_control() && !seg.text.is_empty() && seg.text != "\n" {
-                let s = seg.style.as_ref().unwrap();
+                let s = seg.style().unwrap();
                 assert_eq!(s.bold(), Some(true));
                 // Red should still be present since bold doesn't override color
                 assert!(s.color().is_some());

@@ -148,7 +148,7 @@ impl Scope {
         for seg in &table_segments {
             // Skip the trailing terminator-only segments; the Text appender
             // handles internal newlines correctly.
-            content.append_str(&seg.text, seg.style.clone());
+            content.append_str(&seg.text, seg.style().cloned());
         }
         // Trim the final newline for cleaner Panel rendering.
         if content.plain().ends_with('\n') {

@@ -354,8 +354,8 @@ proptest! {
         let (left, right) = segment.split_cells(cut);
 
         // Both halves should have the same style
-        assert_eq!(left.style, Some(style.clone()));
-        assert_eq!(right.style, Some(style));
+        assert_eq!(left.style(), Some(&style));
+        assert_eq!(right.style(), Some(&style));
     }
 }
 

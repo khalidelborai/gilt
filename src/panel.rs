@@ -1080,7 +1080,7 @@ mod tests {
         assert!(!border_segs.is_empty());
         for seg in border_segs {
             assert!(
-                seg.style.is_some(),
+                seg.style().is_some(),
                 "Border segment '{}' should have a style",
                 seg.text
             );

@@ -5,6 +5,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.11.0-alpha.2] - 2026-04-26
+
+PR1b of the v0.11.0 break bundle. **API change** to `Segment` so PR3 can
+swap storage to `StyleId` without further churn at call sites.
+
+### Changed (breaking)
+
+- **`Segment.style: Option<Style>` field is now `pub(crate)`.** Access
+  via the new methods below.
+  - `Segment::style(&self) -> Option<&Style>` — borrowed accessor.
+  - `Segment::style_mut(&mut self) -> &mut Option<Style>` — for the rare
+    in-tree call sites that mutate after construction.
+  - `Segment::set_style(&mut self, style: Option<Style>)` — replaces
+    `seg.style = Some(...)`.
+  - `Segment::style_owned(&self) -> Style` — returns owned `Style`,
+    substituting `Style::null()` for the `None` case so callers that
+    previously did `seg.style.clone().unwrap_or_else(Style::null)`
+    collapse to one call.
+
+### Migration
+
+Most call sites collapse mechanically:
+
+```rust
+// Before:
+seg.style.is_some()           seg.style.clone()
+seg.style.as_ref()            if let Some(ref style) = seg.style { … }
+
+// After:
+seg.style().is_some()         seg.style().cloned()
+seg.style()                   if let Some(style) = seg.style() { … }
+```
+
+For struct-literal construction (`Segment { style: Some(s), … }`), use
+`Segment::new(text, Some(s), control)` or `Segment::styled(text, s)`.
+
+### Deliberate semantics: `style_owned()` collapses None and Some(null)
+
+The L2 interner (PR3) will only have `StyleId::NULL` for both. Tests
+that need to distinguish should use `style()` directly, which returns
+`Option<&Style>` faithfully.
+
+### Notes
+
+- Internal storage stays `Option<Style>` in alpha.2 — no perf change.
+  PR3 will swap storage to `StyleId`, at which point the method
+  signatures stay the same and call sites don't move again.
+- 23 internal sites + 4 external (2 examples, 1 proptest) migrated.
+
 ## [0.11.0-alpha.1] - 2026-04-26
 
 First slice of the v0.11.0 break bundle. **Pre-release:** API surface is

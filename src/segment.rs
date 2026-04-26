@@ -71,8 +71,12 @@ pub enum ControlCode {
 pub struct Segment {
     /// The text content of this segment.
     pub text: CompactString,
-    /// The visual style applied to the text, or `None` for unstyled content.
-    pub style: Option<Style>,
+    /// Visual style. **Crate-private** as of v0.11.0 — accessed via
+    /// [`Segment::style`], [`Segment::set_style`], etc. Storage type stays
+    /// `Option<Style>` in alpha.2; will become `StyleId` in PR3 when the
+    /// L2 interner activates. Hiding the field now decouples the storage
+    /// swap from the API change.
+    pub(crate) style: Option<Style>,
     /// Terminal control codes carried by this segment, or `None` for text-only segments.
     pub control: Option<Vec<ControlCode>>,
 }
@@ -107,7 +111,7 @@ impl Segment {
     ///
     /// let seg = Segment::text("hello");
     /// assert_eq!(seg.text, "hello");
-    /// assert!(seg.style.is_none());
+    /// assert!(seg.style().is_none());
     /// ```
     pub fn text(text: &str) -> Self {
         Segment {
@@ -132,7 +136,7 @@ impl Segment {
     ///
     /// let seg = Segment::styled("warning", Style::parse("bold yellow").unwrap());
     /// assert_eq!(seg.text, "warning");
-    /// assert!(seg.style.is_some());
+    /// assert!(seg.style().is_some());
     /// ```
     pub fn styled(text: &str, style: Style) -> Self {
         Segment {
@@ -165,6 +169,46 @@ impl Segment {
     /// Returns true if this is a control segment.
     pub fn is_control(&self) -> bool {
         self.control.is_some()
+    }
+
+    // -- Style accessors (added in v0.11.0-alpha.2) --------------------------
+
+    /// Borrow the segment's style, if any. Replaces direct field access in
+    /// v0.11.0; the underlying storage moves to `StyleId` in PR3 without
+    /// changing this signature.
+    #[inline]
+    pub fn style(&self) -> Option<&Style> {
+        self.style.as_ref()
+    }
+
+    /// Mutable borrow of the optional style. Used by the few in-tree call
+    /// sites that mutate a Segment's style after construction. Once PR3
+    /// activates the interner this becomes a no-op or is removed.
+    #[inline]
+    pub fn style_mut(&mut self) -> &mut Option<Style> {
+        &mut self.style
+    }
+
+    /// Replace the segment's style. Setter form for callers that previously
+    /// did `seg.style = Some(...)`.
+    #[inline]
+    pub fn set_style(&mut self, style: Option<Style>) {
+        self.style = style;
+    }
+
+    /// Owned-style legacy convenience.
+    ///
+    /// Returns the style as an owned [`Style`], substituting [`Style::null`]
+    /// for the `None` case so callers that previously did
+    /// `seg.style.clone().unwrap_or_else(Style::null)` collapse to a single
+    /// call.
+    ///
+    /// **Why this collapses None and Some(null) deliberately:** the L2
+    /// interner (PR3) will only have `StyleId::NULL` for both. Tests that
+    /// need to distinguish them should use [`Segment::style`] which returns
+    /// the borrowed `Option<&Style>` directly.
+    pub fn style_owned(&self) -> Style {
+        self.style.clone().unwrap_or_else(Style::null)
     }
 
     /// Returns true if the text is empty (for bool-like checks).
@@ -253,7 +297,7 @@ impl Segment {
     ///     Some(Style::parse("bold").unwrap()),
     ///     None,
     /// );
-    /// assert!(styled[0].style.is_some());
+    /// assert!(styled[0].style().is_some());
     /// ```
     pub fn apply_style(
         segments: &[Segment],

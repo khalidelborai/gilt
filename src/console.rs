@@ -1321,7 +1321,7 @@ impl Console {
             }
 
             // Determine this segment's link, if any.
-            let seg_link: Option<&str> = segment.style.as_ref().and_then(|s| s.link());
+            let seg_link: Option<&str> = segment.style().and_then(|s| s.link());
 
             // Emit OSC 8 open/close only when the link changes.
             match (seg_link, current_link.as_deref()) {
@@ -1340,7 +1340,7 @@ impl Console {
                 }
             }
 
-            if let Some(ref style) = segment.style {
+            if let Some(style) = segment.style() {
                 // We've handled the link wrapper; render only colors/SGR.
                 output.push_str(&style.render_no_link(&segment.text, color_system));
             } else {
@@ -1714,7 +1714,7 @@ impl Console {
             }
             let escaped = html_escape(&segment.text);
 
-            if let Some(ref style) = segment.style {
+            if let Some(style) = segment.style() {
                 if style.is_null() {
                     code.push_str(&escaped);
                     continue;
@@ -2008,7 +2008,7 @@ fn build_svg_text(
         let parts: Vec<&str> = seg.text.split('\n').collect();
         for (i, part) in parts.iter().enumerate() {
             if !part.is_empty() {
-                current_line.push((part.to_string(), seg.style.clone()));
+                current_line.push((part.to_string(), seg.style().cloned()));
             }
             if i + 1 < parts.len() {
                 line_segments.push(std::mem::take(&mut current_line));

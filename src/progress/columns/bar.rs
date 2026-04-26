@@ -68,7 +68,7 @@ impl ProgressColumn for BarColumn {
 
         let mut text = Text::empty();
         for seg in &segments {
-            text.append_str(&seg.text, seg.style.clone());
+            text.append_str(&seg.text, seg.style().cloned());
         }
         text.end = String::new();
         text

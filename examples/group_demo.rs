@@ -248,7 +248,7 @@ fn render_to_text(console: &Console, renderable: &dyn Renderable) -> Text {
     let segments = console.render(renderable, None);
     let mut text = Text::empty();
     for seg in &segments {
-        text.append_str(&seg.text, seg.style.clone());
+        text.append_str(&seg.text, seg.style().cloned());
     }
     text
 }
