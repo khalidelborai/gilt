@@ -658,29 +658,64 @@ impl Table {
         if max_width < 1 {
             return Measurement::new(0, 0);
         }
-
         let padding_width = self.get_padding_width(column.index);
-
         if let Some(fixed_width) = column.width {
             return Measurement::new(fixed_width + padding_width, fixed_width + padding_width)
                 .with_maximum(max_width);
         }
-
-        // Measure all cells in the column (header + data + footer)
-        let mut min_widths: Vec<usize> = Vec::new();
-        let mut max_widths: Vec<usize> = Vec::new();
-
+        // Slow path — builds the cells. Internal callers in `gilt_console`
+        // should use [`Self::measure_column_with_cells`] to avoid the rebuild.
         let cells = self.get_cells(console, column.index, column);
-        for cell in &cells {
-            let measurement = cell.renderable.measure();
-            // Add padding width to the measurement
-            min_widths.push(measurement.minimum + padding_width);
-            max_widths.push(measurement.maximum + padding_width);
+        self.measure_with_cells(options, column, padding_width, &cells)
+    }
+
+    /// Measure a column using pre-built `CellInfo`s. Avoids the second
+    /// `get_cells` pass that the public [`measure_column`] would do.
+    fn measure_column_with_cells(
+        &self,
+        options: &ConsoleOptions,
+        column: &Column,
+        cells: &[CellInfo],
+    ) -> Measurement {
+        let max_width = options.max_width;
+        if max_width < 1 {
+            return Measurement::new(0, 0);
         }
+        let padding_width = self.get_padding_width(column.index);
+        if let Some(fixed_width) = column.width {
+            return Measurement::new(fixed_width + padding_width, fixed_width + padding_width)
+                .with_maximum(max_width);
+        }
+        self.measure_with_cells(options, column, padding_width, cells)
+    }
 
-        let min_w = min_widths.iter().copied().max().unwrap_or(1);
-        let max_w = max_widths.iter().copied().max().unwrap_or(max_width);
-
+    /// Shared measurement body for both [`measure_column`] and
+    /// [`measure_column_with_cells`].
+    fn measure_with_cells(
+        &self,
+        options: &ConsoleOptions,
+        column: &Column,
+        padding_width: usize,
+        cells: &[CellInfo],
+    ) -> Measurement {
+        let max_width = options.max_width;
+        let mut min_w = 0usize;
+        let mut max_w = 0usize;
+        for cell in cells {
+            let m = cell.renderable.measure();
+            if m.minimum + padding_width > min_w {
+                min_w = m.minimum + padding_width;
+            }
+            if m.maximum + padding_width > max_w {
+                max_w = m.maximum + padding_width;
+            }
+        }
+        if min_w == 0 {
+            min_w = 1;
+        }
+        if max_w == 0 {
+            max_w = max_width;
+        }
         let measurement = Measurement::new(min_w, max_w).with_maximum(max_width);
         measurement.clamp(
             column.min_width.map(|mw| mw + padding_width),
@@ -689,7 +724,12 @@ impl Table {
     }
 
     /// Get all cells for a column, including header/footer, with styles applied.
-    fn get_cells(&self, console: &Console, column_index: usize, column: &Column) -> Vec<CellInfo> {
+    pub(crate) fn get_cells(
+        &self,
+        console: &Console,
+        column_index: usize,
+        column: &Column,
+    ) -> Vec<CellInfo> {
         let mut cells = Vec::new();
 
         if self.show_header {
@@ -794,12 +834,32 @@ impl Table {
         console: &Console,
         options: &ConsoleOptions,
     ) -> Vec<usize> {
+        // Public entry — builds cells internally for callers that don't have
+        // them pre-computed. `render_table` uses
+        // [`calculate_column_widths_with_cells`] instead.
+        let column_cells: Vec<Vec<CellInfo>> = self
+            .columns
+            .iter()
+            .enumerate()
+            .map(|(i, col)| self.get_cells(console, i, col))
+            .collect();
+        self.calculate_column_widths_with_cells(options, &column_cells)
+    }
+
+    /// Internal: same as [`calculate_column_widths`] but uses pre-built
+    /// per-column cells, avoiding a second round of `get_cells` calls.
+    pub(crate) fn calculate_column_widths_with_cells(
+        &self,
+        options: &ConsoleOptions,
+        column_cells: &[Vec<CellInfo>],
+    ) -> Vec<usize> {
         let max_width = options.max_width;
         let columns = &self.columns;
 
         let width_ranges: Vec<Measurement> = columns
             .iter()
-            .map(|col| self.measure_column(console, options, col))
+            .enumerate()
+            .map(|(i, col)| self.measure_column_with_cells(options, col, &column_cells[i]))
             .collect();
 
         let mut widths: Vec<usize> = width_ranges
@@ -874,11 +934,14 @@ impl Table {
                 let _ = widths.iter().sum::<usize>(); // table_width recalculated below
             }
 
-            // Re-measure columns at new widths
+            // Re-measure columns at new widths using the same cached cells.
             let new_ranges: Vec<Measurement> = widths
                 .iter()
                 .zip(columns.iter())
-                .map(|(&w, col)| self.measure_column(console, &options.update_width(w), col))
+                .enumerate()
+                .map(|(i, (&w, col))| {
+                    self.measure_column_with_cells(&options.update_width(w), col, &column_cells[i])
+                })
                 .collect();
             widths = new_ranges
                 .iter()
@@ -962,12 +1025,36 @@ impl Table {
         widths
     }
 
-    /// The main rendering method. Produces segments for the table body (borders + cells).
+    /// The main rendering method. Produces segments for the table body
+    /// (borders + cells). Internal callers should prefer
+    /// [`render_table_with_cells`] to share a single `get_cells` pass with
+    /// [`calculate_column_widths_with_cells`].
+    #[allow(dead_code)]
     pub(crate) fn render_table(
         &self,
         console: &Console,
         options: &ConsoleOptions,
         widths: &[usize],
+    ) -> Vec<Segment> {
+        let column_cells: Vec<Vec<CellInfo>> = self
+            .columns
+            .iter()
+            .enumerate()
+            .map(|(i, col)| self.get_cells(console, i, col))
+            .collect();
+        self.render_table_with_cells(console, options, widths, column_cells)
+    }
+
+    /// Internal: same as [`render_table`] but takes pre-built per-column
+    /// cells. Used by `gilt_console` so the cell construction (which
+    /// calls `console.render_str` for every header / data / footer string)
+    /// happens exactly once per render — measure and render share it.
+    pub(crate) fn render_table_with_cells(
+        &self,
+        console: &Console,
+        options: &ConsoleOptions,
+        widths: &[usize],
+        column_cells: Vec<Vec<CellInfo>>,
     ) -> Vec<Segment> {
         let mut segments: Vec<Segment> = Vec::new();
 
@@ -978,14 +1065,6 @@ impl Table {
             + console
                 .get_style(&self.border_style)
                 .unwrap_or_else(|_| Style::null());
-
-        // Build column cells (each column -> list of cells)
-        let column_cells: Vec<Vec<CellInfo>> = self
-            .columns
-            .iter()
-            .enumerate()
-            .map(|(i, col)| self.get_cells(console, i, col))
-            .collect();
 
         // Transpose to row_cells: each row -> list of cells (one per column)
         let num_rows = column_cells.iter().map(|c| c.len()).max().unwrap_or(0);
