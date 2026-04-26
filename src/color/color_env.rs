@@ -2,7 +2,7 @@
 //!
 //! Supports the following environment variables (checked in priority order):
 //!
-//! 1. **`NO_COLOR`** – Any value disables color (<https://no-color.org/>)
+//! 1. **`NO_COLOR`** – A *non-empty* value disables color (<https://no-color.org/>)
 //! 2. **`FORCE_COLOR`** – Node.js convention: `0` = off, `1`/`2` = standard/256, `3` = truecolor
 //! 3. **`CLICOLOR_FORCE`** – Any non-`"0"` value forces color on
 //! 4. **`CLICOLOR`** – `"0"` disables color
@@ -28,29 +28,34 @@ pub enum ColorEnvOverride {
 /// Inspect environment variables and return a color override recommendation.
 ///
 /// Priority (highest first):
-/// 1. `NO_COLOR` (any value) → [`ColorEnvOverride::NoColor`]
+/// 1. `NO_COLOR` (non-empty value) → [`ColorEnvOverride::NoColor`]
 /// 2. `FORCE_COLOR`:
 ///    - `"0"` → [`ColorEnvOverride::NoColor`]
 ///    - `"1"` | `"2"` → [`ColorEnvOverride::ForceColor`]
 ///    - `"3"` → [`ColorEnvOverride::ForceColorTruecolor`]
-///    - any other value → [`ColorEnvOverride::ForceColor`]
+///    - any other non-empty value → [`ColorEnvOverride::ForceColor`]
+///    - `""` (empty) → no force (falls through)
 /// 3. `CLICOLOR_FORCE` (any non-`"0"` value) → [`ColorEnvOverride::ForceColor`]
 /// 4. `CLICOLOR` = `"0"` → [`ColorEnvOverride::NoColor`]
 /// 5. Otherwise → [`ColorEnvOverride::None`]
 pub fn detect_color_env() -> ColorEnvOverride {
-    // 1. NO_COLOR – presence alone is enough
-    if env::var_os("NO_COLOR").is_some() {
+    // 1. NO_COLOR – only a *non-empty* value disables color (rich v14 semantics).
+    // An empty `NO_COLOR=""` is treated as unset, per https://no-color.org/ and
+    // upstream rich commit a919527f.
+    if env::var("NO_COLOR").map_or(false, |v| !v.is_empty()) {
         return ColorEnvOverride::NoColor;
     }
 
-    // 2. FORCE_COLOR
+    // 2. FORCE_COLOR – empty string does NOT force color (rich v14 semantics,
+    // upstream commit 9175392a).  Only a non-empty value is acted upon.
     if let Ok(val) = env::var("FORCE_COLOR") {
-        return match val.as_str() {
-            "0" => ColorEnvOverride::NoColor,
-            "1" | "2" => ColorEnvOverride::ForceColor,
-            "3" => ColorEnvOverride::ForceColorTruecolor,
-            _ => ColorEnvOverride::ForceColor,
-        };
+        match val.as_str() {
+            "" => {} // empty → no override; fall through to next variable
+            "0" => return ColorEnvOverride::NoColor,
+            "1" | "2" => return ColorEnvOverride::ForceColor,
+            "3" => return ColorEnvOverride::ForceColorTruecolor,
+            _ => return ColorEnvOverride::ForceColor,
+        }
     }
 
     // 3. CLICOLOR_FORCE – any non-"0" value forces color
@@ -136,7 +141,8 @@ mod tests {
 
     #[test]
     fn test_no_color_set_disables_color() {
-        let r = with_env(&[("NO_COLOR", Some(""))], detect_color_env);
+        // Non-empty NO_COLOR disables color.
+        let r = with_env(&[("NO_COLOR", Some("1"))], detect_color_env);
         assert_eq!(r, ColorEnvOverride::NoColor);
     }
 
@@ -204,8 +210,9 @@ mod tests {
 
     #[test]
     fn test_no_color_wins_over_force_color() {
+        // Non-empty NO_COLOR takes priority over FORCE_COLOR.
         let r = with_env(
-            &[("NO_COLOR", Some("")), ("FORCE_COLOR", Some("3"))],
+            &[("NO_COLOR", Some("1")), ("FORCE_COLOR", Some("3"))],
             detect_color_env,
         );
         assert_eq!(r, ColorEnvOverride::NoColor);
@@ -285,5 +292,57 @@ mod tests {
     fn test_reduce_motion_arbitrary_value() {
         let r = with_reduce_motion(Some("yes"), super::detect_reduce_motion);
         assert!(!r, "should be false for arbitrary values like 'yes'");
+    }
+
+    // --- rich v14 empty-string semantics ---
+
+    #[test]
+    fn no_color_unset_means_color_enabled() {
+        // When NO_COLOR is not in the environment at all, color is not disabled.
+        let r = with_env(&[], detect_color_env);
+        assert_ne!(r, ColorEnvOverride::NoColor);
+    }
+
+    #[test]
+    fn no_color_empty_string_does_not_disable() {
+        // Empty NO_COLOR="" must NOT disable color (rich v14 / no-color.org semantics).
+        let r = with_env(&[("NO_COLOR", Some(""))], detect_color_env);
+        assert_ne!(
+            r,
+            ColorEnvOverride::NoColor,
+            "NO_COLOR='' should not disable color"
+        );
+    }
+
+    #[test]
+    fn no_color_nonempty_disables() {
+        // Any non-empty value (even just a space) disables color.
+        let r = with_env(&[("NO_COLOR", Some("yes"))], detect_color_env);
+        assert_eq!(r, ColorEnvOverride::NoColor);
+    }
+
+    #[test]
+    fn force_color_unset_no_force() {
+        // Absent FORCE_COLOR should not force color on.
+        let r = with_env(&[], detect_color_env);
+        assert_eq!(r, ColorEnvOverride::None);
+    }
+
+    #[test]
+    fn force_color_empty_string_does_not_force() {
+        // Empty FORCE_COLOR="" must NOT force color (rich v14 semantics).
+        let r = with_env(&[("FORCE_COLOR", Some(""))], detect_color_env);
+        assert_eq!(
+            r,
+            ColorEnvOverride::None,
+            "FORCE_COLOR='' should not force color"
+        );
+    }
+
+    #[test]
+    fn force_color_nonempty_forces() {
+        // Non-empty FORCE_COLOR="1" forces color on.
+        let r = with_env(&[("FORCE_COLOR", Some("1"))], detect_color_env);
+        assert_eq!(r, ColorEnvOverride::ForceColor);
     }
 }

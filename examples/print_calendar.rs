@@ -1,6 +1,6 @@
 //! Builds a full-year calendar layout using Tables and Columns.
 //!
-//! Port of Python rich's `print_calendar.py`. Renders 12 month tables
+//! Port of `print_calendar.py`. Renders 12 month tables
 //! arranged in columns, with weekend days in blue and today highlighted.
 //!
 //! Usage:

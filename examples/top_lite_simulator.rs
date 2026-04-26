@@ -1,6 +1,6 @@
 //! Lite simulation of the `top` Linux command with a live-updating process table.
 //!
-//! Port of Python rich's `top_lite_simulator.py`. Generates random process data
+//! Top-style process viewer simulator. Generates random process data
 //! and displays it in a styled table that refreshes every 500ms using gilt's
 //! Live display.
 //!

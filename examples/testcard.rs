@@ -1,8 +1,7 @@
-//! Test card example -- showcases gilt's features in a single grid table.
+//! Test card -- showcases gilt's features in a single grid table.
 //!
-//! Inspired by Python rich's `__main__.py` test card, this example builds one
-//! large grid table where each row demonstrates a feature category, then renders
-//! it with cold/warm timing.
+//! Builds one large grid table where each row demonstrates a feature
+//! category, then renders it with cold/warm timing.
 //!
 //! Run with: `cargo run --example testcard --all-features`
 

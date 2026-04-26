@@ -204,9 +204,15 @@ impl AnsiDecoder {
     }
 
     /// Decodes multi-line ANSI text, returning one `Text` per line.
+    ///
+    /// Unlike `str::lines()`, this uses `split_inclusive('\n')` so that each
+    /// yielded `Text` retains the trailing `\n` that was present in the input.
+    /// This matches the behavior introduced in rich v15.0.0 (commit 69cee6e1)
+    /// where `AnsiDecoder.decode` switched from `str.splitlines()` to
+    /// `re.split(r"(?<=\n)", text)`.
     pub fn decode(&mut self, terminal_text: &str) -> Vec<Text> {
         terminal_text
-            .lines()
+            .split_inclusive('\n')
             .map(|line| self.decode_line(line))
             .collect()
     }
@@ -600,9 +606,10 @@ mod tests {
     fn test_decode_multiline() {
         let mut decoder = AnsiDecoder::new();
         let texts = decoder.decode("Line 1\nLine 2\nLine 3");
+        // split_inclusive('\n'): "Line 1\n", "Line 2\n", "Line 3" (no trailing \n on last)
         assert_eq!(texts.len(), 3);
-        assert_eq!(texts[0].plain(), "Line 1");
-        assert_eq!(texts[1].plain(), "Line 2");
+        assert_eq!(texts[0].plain(), "Line 1\n");
+        assert_eq!(texts[1].plain(), "Line 2\n");
         assert_eq!(texts[2].plain(), "Line 3");
     }
 
@@ -641,8 +648,8 @@ mod tests {
         let texts = decoder.decode("\x1b[1mBold\nStillBold\x1b[0m");
         assert_eq!(texts.len(), 2);
 
-        // First line: bold applied
-        assert_eq!(texts[0].plain(), "Bold");
+        // First line: bold applied; trailing \n is preserved (rich v15 behavior)
+        assert_eq!(texts[0].plain(), "Bold\n");
         assert_eq!(texts[0].spans().len(), 1);
         assert_eq!(texts[0].spans()[0].style.bold(), Some(true));
 
@@ -749,5 +756,55 @@ mod tests {
         let mut decoder = AnsiDecoder::new();
         let text = decoder.decode_line("First\rSecond\rThird");
         assert_eq!(text.plain(), "Third");
+    }
+
+    // -- rich v15 trailing-newline preservation tests -----------------------
+
+    #[test]
+    fn decode_preserves_trailing_newline() {
+        let mut decoder = AnsiDecoder::new();
+        let texts = decoder.decode("Hello\n");
+        assert_eq!(texts.len(), 1);
+        assert_eq!(texts[0].plain(), "Hello\n");
+    }
+
+    #[test]
+    fn decode_preserves_internal_newlines() {
+        let mut decoder = AnsiDecoder::new();
+        let texts = decoder.decode("a\nb\nc");
+        assert_eq!(texts.len(), 3);
+        assert_eq!(texts[0].plain(), "a\n");
+        assert_eq!(texts[1].plain(), "b\n");
+        assert_eq!(texts[2].plain(), "c");
+    }
+
+    #[test]
+    fn decode_with_trailing_newline_then_more() {
+        let mut decoder = AnsiDecoder::new();
+        let texts = decoder.decode("a\nb\n");
+        assert_eq!(texts.len(), 2);
+        assert_eq!(texts[0].plain(), "a\n");
+        assert_eq!(texts[1].plain(), "b\n");
+    }
+
+    #[test]
+    fn decode_styled_span_survives_with_trailing_newline() {
+        // Regression: styled spans must still be attached correctly when
+        // the input ends with \n.
+        let mut decoder = AnsiDecoder::new();
+        let texts = decoder.decode("\x1b[31mred\x1b[0m\n");
+        assert_eq!(texts.len(), 1);
+        assert_eq!(texts[0].plain(), "red\n");
+        // Span covers "red" (chars 0..3), not the trailing newline
+        assert_eq!(texts[0].spans().len(), 1);
+        let color = texts[0].spans()[0].style.color().unwrap();
+        assert_eq!(color.number, Some(1)); // ANSI red = color(1)
+    }
+
+    #[test]
+    fn from_ansi_preserves_trailing_newline() {
+        // rich v15 parity: Text::from_ansi("Hello\n").plain() == "Hello\n"
+        let text = Text::from_ansi("Hello\n");
+        assert_eq!(text.plain(), "Hello\n");
     }
 }

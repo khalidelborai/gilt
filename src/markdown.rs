@@ -92,9 +92,12 @@ struct ListContext {
 #[derive(Debug, Clone)]
 struct TableContext {
     alignments: Vec<Alignment>,
+    /// Plain-text column headers (used for `Table::new` which takes `&[&str]`).
     header_cells: Vec<String>,
-    current_row: Vec<String>,
-    rows: Vec<Vec<String>>,
+    /// Current row's cells as styled `Text` objects (preserves inline styles).
+    current_row: Vec<Text>,
+    /// Completed data rows as styled `Text` objects.
+    rows: Vec<Vec<Text>>,
     in_head: bool,
 }
 
@@ -141,7 +144,8 @@ impl Renderable for Markdown {
         // Table context
         let mut table_ctx: Option<TableContext> = None;
         let mut in_table_cell = false;
-        let mut cell_text = String::new();
+        // Accumulates styled inline content for the current table cell.
+        let mut cell_text = Text::new("", Style::null());
 
         // Track if we need a newline before the next block element
         let mut needs_newline = false;
@@ -215,8 +219,9 @@ impl Renderable for Markdown {
                 }
                 Event::End(TagEnd::Paragraph) => {
                     if in_table_cell {
-                        // Inside a table cell, append text to cell_text
-                        cell_text.push_str(text_buffer.plain());
+                        // Inside a table cell, preserve spans from text_buffer
+                        // (using append_text, not plain(), to retain styling).
+                        cell_text.append_text(&text_buffer);
                         text_buffer = Text::new("", Style::null());
                         continue;
                     }
@@ -302,7 +307,16 @@ impl Renderable for Markdown {
                         .unwrap_or_else(|_| Style::parse("bold cyan on black").unwrap());
                     let current = style_stack.current().clone();
                     let combined = current + code_style;
-                    text_buffer.append_str(&text, Some(combined));
+                    if in_table_cell {
+                        // Redirect styled inline code directly into cell_text so
+                        // it lands at the correct position (not deferred through
+                        // text_buffer, which would reorder it relative to
+                        // surrounding Event::Text spans).  Mirrors the Rich
+                        // v15.0.0 fix (commit 7ef2d05c).
+                        cell_text.append_str(&text, Some(combined));
+                    } else {
+                        text_buffer.append_str(&text, Some(combined));
+                    }
                 }
 
                 // -- Links --------------------------------------------------
@@ -477,8 +491,13 @@ impl Renderable for Markdown {
                     if let Some(ref mut ctx) = table_ctx {
                         // pulldown-cmark may not emit TableRow for the header,
                         // so save any accumulated cells as header_cells here.
+                        // Extract plain text — Table::new takes &[&str].
                         if !ctx.current_row.is_empty() {
-                            ctx.header_cells = ctx.current_row.clone();
+                            ctx.header_cells = ctx
+                                .current_row
+                                .iter()
+                                .map(|t| t.plain().to_string())
+                                .collect();
                             ctx.current_row.clear();
                         }
                         ctx.in_head = false;
@@ -494,29 +513,31 @@ impl Renderable for Markdown {
                     if let Some(ref mut ctx) = table_ctx {
                         let row = ctx.current_row.clone();
                         if ctx.in_head {
-                            ctx.header_cells = row;
+                            // Header cells stored as plain text for Table::new.
+                            ctx.header_cells =
+                                row.iter().map(|t| t.plain().to_string()).collect();
                         } else {
                             ctx.rows.push(row);
                         }
+                        ctx.current_row.clear();
                     }
                 }
 
                 Event::Start(Tag::TableCell) => {
                     in_table_cell = true;
-                    cell_text.clear();
+                    cell_text = Text::new("", Style::null());
                     text_buffer = Text::new("", Style::null());
                 }
                 Event::End(TagEnd::TableCell) => {
-                    // Flush any remaining text_buffer into cell_text
-                    let remaining = text_buffer.plain().to_string();
-                    if !remaining.is_empty() {
-                        cell_text.push_str(&remaining);
+                    // Flush any remaining text_buffer into cell_text, preserving spans.
+                    if !text_buffer.is_empty() {
+                        cell_text.append_text(&text_buffer);
                     }
                     if let Some(ref mut ctx) = table_ctx {
                         ctx.current_row.push(cell_text.clone());
                     }
                     in_table_cell = false;
-                    cell_text.clear();
+                    cell_text = Text::new("", Style::null());
                     text_buffer = Text::new("", Style::null());
                 }
 
@@ -543,9 +564,15 @@ impl Renderable for Markdown {
                         continue;
                     }
 
-                    // If inside a table cell, accumulate text
+                    // If inside a table cell, accumulate styled text directly
+                    // so surrounding style (bold, italic) in cells is preserved.
                     if in_table_cell {
-                        cell_text.push_str(&text);
+                        let current_style = style_stack.current().clone();
+                        if current_style.is_null() {
+                            cell_text.append_str(&text, None);
+                        } else {
+                            cell_text.append_str(&text, Some(current_style));
+                        }
                         continue;
                     }
 
@@ -565,7 +592,7 @@ impl Renderable for Markdown {
                             code_text.push('\n');
                         }
                     } else if in_table_cell {
-                        cell_text.push(' ');
+                        cell_text.append_str(" ", None);
                     } else {
                         text_buffer.append_str(" ", None);
                     }
@@ -576,7 +603,7 @@ impl Renderable for Markdown {
                             code_text.push('\n');
                         }
                     } else if in_table_cell {
-                        cell_text.push(' ');
+                        cell_text.append_str(" ", None);
                     } else {
                         text_buffer.append_str("\n", None);
                     }
@@ -630,10 +657,9 @@ fn render_table(console: &Console, options: &ConsoleOptions, ctx: &TableContext)
     let header_style_name = "markdown.table.header";
     table.header_style = header_style_name.to_string();
 
-    // Add data rows
+    // Add data rows — use add_row_text to preserve inline styles (e.g. `code`).
     for row in &ctx.rows {
-        let cells: Vec<&str> = row.iter().map(|s| s.as_str()).collect();
-        table.add_row(&cells);
+        table.add_row_text(row);
     }
 
     table.gilt_console(console, options)
@@ -1239,5 +1265,81 @@ mod tests {
         let md = Markdown::new("# Hello\n\nWorld");
         let s = format!("{}", md);
         assert!(!s.is_empty());
+    }
+
+    // -- Inline code in table cells (Rich v15.0.0 regression guard) ----------
+
+    #[test]
+    fn inline_code_in_table_cell_is_rendered() {
+        // Regression guard: inline code inside a table cell must not be dropped.
+        let console = make_console(80);
+        let md = Markdown::new("| Col | Code |\n|---|---|\n| a | `foo` |");
+        let output = render_markdown(&console, &md);
+        assert!(
+            output.contains("foo"),
+            "Expected 'foo' to appear in table output, got: {:?}",
+            output
+        );
+    }
+
+    #[test]
+    fn inline_code_in_table_cell_keeps_style() {
+        // The inline-code segment inside a table cell must carry the
+        // markdown.code style (rendered as a styled segment, not plain text).
+        let console = make_console(80);
+        let md = Markdown::new("| Col | Code |\n|---|---|\n| a | `foo` |");
+        let segments = render_segments(&console, &md);
+
+        let text: String = segments.iter().map(|s| s.text.as_str()).collect();
+        assert!(text.contains("foo"), "Expected 'foo' in output");
+
+        let code_seg = segments.iter().find(|s| s.text.contains("foo"));
+        assert!(
+            code_seg.is_some(),
+            "Expected a segment containing 'foo'"
+        );
+        assert!(
+            code_seg.unwrap().style.is_some(),
+            "Inline code in table cell must carry a style"
+        );
+    }
+
+    #[test]
+    fn inline_code_outside_table_still_works() {
+        // Regression guard: inline code outside tables must remain unaffected.
+        let console = make_console(80);
+        let md = Markdown::new("Use `println!` to print.");
+        let segments = render_segments(&console, &md);
+        let text: String = segments.iter().map(|s| s.text.as_str()).collect();
+        assert!(text.contains("println!"));
+
+        let code_seg = segments.iter().find(|s| s.text == "println!");
+        assert!(
+            code_seg.is_some(),
+            "Should have a segment with text 'println!'"
+        );
+        assert!(
+            code_seg.unwrap().style.is_some(),
+            "Inline code outside table should still have a style"
+        );
+    }
+
+    #[test]
+    fn inline_code_between_text_in_table_cell_preserves_order() {
+        // Ordering guard: inline code sandwiched between plain text in a cell
+        // must appear at its correct position, not appended after surrounding text.
+        let console = make_console(80);
+        let md = Markdown::new("| x |\n|---|\n| pre `mid` post |");
+        let output = render_markdown(&console, &md);
+        let pre_pos = output.find("pre");
+        let mid_pos = output.find("mid");
+        let post_pos = output.find("post");
+        assert!(pre_pos.is_some() && mid_pos.is_some() && post_pos.is_some(),
+            "Expected 'pre', 'mid', and 'post' in output, got: {:?}", output);
+        assert!(
+            pre_pos.unwrap() < mid_pos.unwrap() && mid_pos.unwrap() < post_pos.unwrap(),
+            "Expected order pre < mid < post, got positions: pre={:?} mid={:?} post={:?}",
+            pre_pos, mid_pos, post_pos
+        );
     }
 }

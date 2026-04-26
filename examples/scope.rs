@@ -2,7 +2,7 @@
 //!
 //! Run with: `cargo run --example scope`
 //!
-//! Port of Python rich's scope functionality. Demonstrates the Scope widget
+//! Port of scope functionality. Demonstrates the Scope widget
 //! which displays variables and their values in a bordered panel, useful
 //! for debugging and inspection.
 

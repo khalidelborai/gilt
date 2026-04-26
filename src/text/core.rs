@@ -170,9 +170,22 @@ impl Text {
 
     /// Create a `Text` from a string containing ANSI escape codes.
     ///
-    /// Delegates to [`AnsiDecoder::decode_line`].
+    /// Preserves trailing newlines in the input, matching the behavior of
+    /// rich v15.0.0 (`Text.from_ansi("Hello\n").plain == "Hello\n"`).
     pub fn from_ansi(text: &str) -> Text {
-        AnsiDecoder::new().decode_line(text)
+        Self::from_ansi_decoded(&mut AnsiDecoder::new(), text)
+    }
+
+    /// Private helper: decode `text` via `decoder`, joining all lines into
+    /// a single `Text`.  Added near `from_ansi` to avoid touching unrelated
+    /// functions; `decode_line` is left unchanged for backward compatibility.
+    fn from_ansi_decoded(decoder: &mut AnsiDecoder, text: &str) -> Text {
+        let lines = decoder.decode(text);
+        let mut result = Text::new("", Style::null());
+        for line in lines {
+            result.append_text(&line);
+        }
+        result
     }
 
     // -- Properties ---------------------------------------------------------

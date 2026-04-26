@@ -577,25 +577,32 @@ impl Table {
         }
     }
 
-    /// Get the padding width (left + right) for a column, considering collapse_padding and pad_edge.
+    /// Get the padding width (left + right) for a column, considering
+    /// `collapse_padding` and `pad_edge`.
+    ///
+    /// `collapse_padding` removes the **left** padding of every column
+    /// after the first — so consecutive cells visually share a single
+    /// padding gap rather than doubling it. `pad_edge` controls whether
+    /// the very-first-column left and last-column right pad against the
+    /// table border.
+    ///
+    /// Both `measure_column` and the cell-padding pass in `get_cells`
+    /// must agree on this width or rendered text will be truncated.
     pub fn get_padding_width(&self, column_index: usize) -> usize {
         let (_, pad_right, _, pad_left) = self.padding;
 
         let mut pl = pad_left;
         let mut pr = pad_right;
 
-        if self.collapse_padding {
-            // In Python: pad_left = 0; pad_right = abs(pad_left - pad_right)
-            // Since pad_left is already 0 at that point, this is just pad_right
+        if self.collapse_padding && column_index > 0 {
             pl = 0;
-            pr = pr.abs_diff(0); // effectively pad_right stays the same
         }
 
         if !self.pad_edge {
             if column_index == 0 {
                 pl = 0;
             }
-            if column_index == self.columns.len().saturating_sub(1) {
+            if column_index + 1 == self.columns.len() {
                 pr = 0;
             }
         }
@@ -707,8 +714,10 @@ impl Table {
                 let mut left = pad_left;
 
                 if self.collapse_padding && !first_column {
-                    left = left.saturating_sub(right);
-                    // bottom/top collapse not applied to text padding
+                    // Mirror get_padding_width: zero the left padding for every
+                    // non-first column so the per-cell pad matches the width
+                    // reservation used by measure_column.
+                    left = 0;
                 }
 
                 if !self.pad_edge {
@@ -718,8 +727,8 @@ impl Table {
                     if last_column {
                         right = 0;
                     }
-                    // Suppress unused variable warnings: top/bottom padding
-                    // is handled during row rendering, not on Text objects
+                    // Top/bottom padding is handled during row rendering, not
+                    // on the cell text itself.
                     let _ = (first_row, last_row);
                 }
 
@@ -1297,5 +1306,107 @@ impl Table {
 
         let measurement = Measurement::new(minimum_width, maximum_width);
         measurement.clamp(self.min_width, None)
+    }
+}
+
+#[cfg(test)]
+mod padding_tests {
+    use super::*;
+
+    #[test]
+    fn padding_width_collapsed_zeros_left_only_for_non_first_columns() {
+        let mut t = Table::new(&["c0", "c1", "c2"]);
+        t.padding = (0, 2, 0, 1); // (top, right, bottom, left)
+        t.collapse_padding = true;
+        t.pad_edge = true;
+
+        // First column keeps its left padding
+        assert_eq!(t.get_padding_width(0), 1 + 2);
+        // Non-first columns drop the left padding (collapses to a single gap)
+        assert_eq!(t.get_padding_width(1), 0 + 2);
+        assert_eq!(t.get_padding_width(2), 0 + 2);
+    }
+
+    #[test]
+    fn padding_width_no_pad_edge_zeros_outer_padding() {
+        let mut t = Table::new(&["c0", "c1", "c2"]);
+        t.padding = (0, 2, 0, 3);
+        t.collapse_padding = false;
+        t.pad_edge = false;
+
+        // First column: left padding zeroed (against table edge)
+        assert_eq!(t.get_padding_width(0), 0 + 2);
+        // Middle column: full padding
+        assert_eq!(t.get_padding_width(1), 3 + 2);
+        // Last column: right padding zeroed
+        assert_eq!(t.get_padding_width(2), 3 + 0);
+    }
+
+    #[test]
+    fn padding_width_grid_default_is_zero_everywhere() {
+        // Table::grid() sets padding=(0,0,0,0); collapse/pad_edge interactions
+        // are no-ops because there is no padding to remove.
+        let t = Table::grid(&["a", "b", "c"]);
+        assert_eq!(t.get_padding_width(0), 0);
+        assert_eq!(t.get_padding_width(1), 0);
+        assert_eq!(t.get_padding_width(2), 0);
+    }
+
+    #[test]
+    fn padding_width_grid_with_explicit_padding_collapses_correctly() {
+        // After setting padding on a grid (collapse_padding=true, pad_edge=false):
+        //   first column: pad_edge zeros pad_left   -> 0+pr
+        //   middle:       collapse zeros pad_left   -> 0+pr
+        //   last column:  pad_edge zeros pad_right  -> 0+0
+        let mut t = Table::grid(&["a", "b", "c"]);
+        t.padding = (0, 1, 0, 1);
+        assert_eq!(t.get_padding_width(0), 0 + 1);
+        assert_eq!(t.get_padding_width(1), 0 + 1);
+        assert_eq!(t.get_padding_width(2), 0 + 0);
+    }
+
+    #[test]
+    fn padding_width_single_column_pad_edge_off_zeros_both_sides() {
+        let mut t = Table::new(&["only"]);
+        t.padding = (0, 4, 0, 5);
+        t.pad_edge = false;
+        assert_eq!(t.get_padding_width(0), 0);
+    }
+
+    #[test]
+    fn padding_width_measure_and_render_paths_agree() {
+        // Regression for the divergence we just fixed: get_padding_width
+        // (measure path) and the per-cell padding loop in get_cells (render
+        // path) must compute identical totals or text gets truncated.
+        let mut t = Table::new(&["a", "b", "c", "d"]);
+        t.padding = (0, 2, 0, 3);
+        t.collapse_padding = true;
+        t.pad_edge = false;
+
+        let (_, pad_right, _, pad_left) = t.padding;
+        let n = t.columns.len();
+        for col_idx in 0..n {
+            // Replicate the get_cells render-time logic for non-shape padding
+            let first = col_idx == 0;
+            let last = col_idx + 1 == n;
+            let mut left = pad_left;
+            let mut right = pad_right;
+            if t.collapse_padding && !first {
+                left = 0;
+            }
+            if !t.pad_edge {
+                if first {
+                    left = 0;
+                }
+                if last {
+                    right = 0;
+                }
+            }
+            assert_eq!(
+                t.get_padding_width(col_idx),
+                left + right,
+                "measure/render disagree at column {col_idx}"
+            );
+        }
     }
 }
