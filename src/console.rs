@@ -1228,15 +1228,61 @@ impl Console {
             self.color_system
         };
 
+        // OSC 8 hyperlinks must be emitted as ONE wrapper around a run of
+        // consecutive segments that all share the same URL — fragmenting the
+        // run (open/close around each segment) makes many terminals fail to
+        // treat the whole text as a single clickable link. We track the
+        // currently-open link URL and only emit open/close at run boundaries.
+        let mut current_link: Option<String> = None;
+
+        let close_link = |out: &mut String, link: &mut Option<String>| {
+            if link.take().is_some() {
+                out.push_str("\x1b]8;;\x1b\\");
+            }
+        };
+
         for segment in buffer {
             if segment.is_control() {
-                // Control segments are rendered directly (ANSI escape codes)
+                // Control codes (cursor moves, screen clears, OSC sequences
+                // we don't manage) interrupt any active link wrapper.
+                close_link(&mut output, &mut current_link);
                 output.push_str(&segment.text);
-            } else if let Some(ref style) = segment.style {
-                output.push_str(&style.render(&segment.text, color_system));
+                continue;
+            }
+
+            // Determine this segment's link, if any.
+            let seg_link: Option<&str> = segment
+                .style
+                .as_ref()
+                .and_then(|s| s.link());
+
+            // Emit OSC 8 open/close only when the link changes.
+            match (seg_link, current_link.as_deref()) {
+                (Some(new), Some(cur)) if new == cur => {
+                    // Same link continuing — leave wrapper open.
+                }
+                (Some(new), _) => {
+                    close_link(&mut output, &mut current_link);
+                    use std::fmt::Write;
+                    write!(output, "\x1b]8;;{}\x1b\\", new).unwrap();
+                    current_link = Some(new.to_string());
+                }
+                (None, _) => {
+                    close_link(&mut output, &mut current_link);
+                }
+            }
+
+            if let Some(ref style) = segment.style {
+                // We've handled the link wrapper; render only colors/SGR.
+                output.push_str(&style.render_no_link(&segment.text, color_system));
             } else {
                 output.push_str(&segment.text);
             }
+        }
+
+        // Close any link still open at end of buffer.
+        if current_link.is_some() {
+            output.push_str("\x1b]8;;\x1b\\");
         }
         output
     }
@@ -2503,6 +2549,60 @@ mod tests {
             output,
             "\x1b]8;;https://example.com\x1b\\link text\x1b]8;;\x1b\\"
         );
+    }
+
+    #[test]
+    fn test_render_buffer_coalesces_consecutive_same_link() {
+        // Three segments with the same link but different SGR styles should
+        // emit ONE link wrapper. Many terminals refuse to treat the run as
+        // a single clickable link if open/close brackets every segment.
+        let console = Console::builder().color_system("truecolor").build();
+        let url = "https://github.com/khalidelborai/gilt";
+        let plain = Style::with_link(url);
+        let bold = Style::parse(&format!("bold link {url}")).unwrap();
+        let segments = vec![
+            Segment::styled("Visit ", plain.clone()),
+            Segment::styled("Gilt", bold),
+            Segment::styled(" on GitHub", plain),
+        ];
+        let output = console.render_buffer(&segments);
+
+        // Exactly one OSC 8 open and one close.
+        let opens = output.matches(&format!("\x1b]8;;{url}\x1b\\")).count();
+        let closes = output.matches("\x1b]8;;\x1b\\").count();
+        assert_eq!(opens, 1, "expected single OSC 8 open, got {opens}");
+        assert_eq!(closes, 1, "expected single OSC 8 close, got {closes}");
+        assert!(output.contains("Visit "));
+        assert!(output.contains("Gilt"));
+        assert!(output.contains(" on GitHub"));
+    }
+
+    #[test]
+    fn test_render_buffer_closes_link_when_url_changes() {
+        let console = Console::builder().color_system("truecolor").build();
+        let segments = vec![
+            Segment::styled("a", Style::with_link("https://one.example")),
+            Segment::styled("b", Style::with_link("https://two.example")),
+        ];
+        let output = console.render_buffer(&segments);
+        assert_eq!(output.matches("https://one.example").count(), 1);
+        assert_eq!(output.matches("https://two.example").count(), 1);
+        assert_eq!(output.matches("\x1b]8;;\x1b\\").count(), 2);
+    }
+
+    #[test]
+    fn test_render_buffer_closes_link_on_unlinked_segment() {
+        let console = Console::builder().color_system("truecolor").build();
+        let segments = vec![
+            Segment::styled("link", Style::with_link("https://x")),
+            Segment::text(" plain"),
+            Segment::styled("link2", Style::with_link("https://x")),
+        ];
+        let output = console.render_buffer(&segments);
+        // Two open/close pairs because the unlinked middle segment closes
+        // the first run.
+        assert_eq!(output.matches("https://x").count(), 2);
+        assert_eq!(output.matches("\x1b]8;;\x1b\\").count(), 2);
     }
 
     // -- Terminal detection -------------------------------------------------

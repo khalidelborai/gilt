@@ -436,6 +436,25 @@ impl Style {
     }
 
     /// Renders text with this style as ANSI escape sequences.
+    /// Render `text` with this style's SGR codes (color, bold, etc.) but
+    /// **without** wrapping in an OSC 8 hyperlink even if `self.link` is set.
+    ///
+    /// Used by [`Console::render_buffer`] when it has decided to coalesce a
+    /// run of consecutive same-link segments under a single OSC 8 wrapper.
+    ///
+    /// Returns plain `text` when `color_system` is `None` or `text` is empty.
+    pub fn render_no_link(&self, text: &str, color_system: Option<ColorSystem>) -> String {
+        let saved = self.link.clone();
+        // Temporarily strip the link so the existing render path runs without
+        // emitting OSC 8. We restore via the unsafe-free Cell-trick: clone +
+        // null-assign on a local copy.
+        let mut tmp = self.clone();
+        tmp.link = None;
+        let out = tmp.render(text, color_system);
+        let _ = saved; // suppress unused warning
+        out
+    }
+
     pub fn render(&self, text: &str, color_system: Option<ColorSystem>) -> String {
         if text.is_empty() || color_system.is_none() {
             return text.to_string();

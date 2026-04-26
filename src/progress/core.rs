@@ -342,6 +342,9 @@ impl Progress {
     ///
     /// Any parameter set to `None` is left unchanged. Use `advance` to
     /// set a relative increment instead of an absolute `completed` value.
+    ///
+    /// Refreshes the live display after the state mutation so the new
+    /// values appear without waiting for the next auto-refresh tick.
     pub fn update(
         &mut self,
         task_id: TaskId,
@@ -352,21 +355,27 @@ impl Progress {
         visible: Option<bool>,
     ) {
         let now = (self.get_time)();
+        let mut changed = false;
         if let Some(task) = self.tasks.iter_mut().find(|t| t.id == task_id) {
             if let Some(desc) = description {
                 task.description = desc.to_string();
+                changed = true;
             }
             if let Some(t) = total {
                 task.total = Some(t);
+                changed = true;
             }
             if let Some(c) = completed {
                 task.completed = c;
+                changed = true;
             }
             if let Some(a) = advance {
                 task.completed += a;
+                changed = true;
             }
             if let Some(v) = visible {
                 task.visible = v;
+                changed = true;
             }
 
             // Record a sample for speed estimation.
@@ -382,9 +391,14 @@ impl Progress {
                 }
             }
         }
+        if changed {
+            self.refresh();
+        }
     }
 
     /// Advance a task's completed count by the given amount.
+    ///
+    /// Triggers a live-display refresh through [`update`](Self::update).
     pub fn advance(&mut self, task_id: TaskId, advance: f64) {
         self.update(task_id, None, None, Some(advance), None, None);
     }
@@ -392,18 +406,28 @@ impl Progress {
     /// Mark a task as started (set start_time to now).
     pub fn start_task(&mut self, task_id: TaskId) {
         let now = (self.get_time)();
+        let mut changed = false;
         if let Some(task) = self.tasks.iter_mut().find(|t| t.id == task_id) {
             if task.start_time.is_none() {
                 task.start_time = Some(now);
+                changed = true;
             }
+        }
+        if changed {
+            self.refresh();
         }
     }
 
     /// Mark a task as stopped (set stop_time to now).
     pub fn stop_task(&mut self, task_id: TaskId) {
         let now = (self.get_time)();
+        let mut changed = false;
         if let Some(task) = self.tasks.iter_mut().find(|t| t.id == task_id) {
             task.stop_time = Some(now);
+            changed = true;
+        }
+        if changed {
+            self.refresh();
         }
     }
 
