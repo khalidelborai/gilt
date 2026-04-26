@@ -10,6 +10,8 @@ use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
 use std::time::Duration;
 
+use arc_swap::ArcSwap;
+
 use crate::console::{Console, Renderable};
 use crate::control::Control;
 use crate::segment::Segment;
@@ -22,11 +24,16 @@ use self::screen::Screen;
 // SharedState -- data accessed by both the main thread and the refresh thread
 // ---------------------------------------------------------------------------
 
-/// Internal mutable state shared between the `Live` owner and the refresh thread.
+/// Internal state requiring exclusive access during render. The renderer
+/// mutates `console` (cursor positioning, segment writes) and `live_render`
+/// (shape tracking) — these can't be lock-free without a deeper rewrite.
+///
+/// The hot field — `renderable` — has been pulled out into
+/// `Live::renderable: Arc<ArcSwap<Text>>` so writers no longer contend
+/// with the renderer for the SharedState mutex.
 struct SharedState {
     console: Console,
     live_render: LiveRender,
-    renderable: Text,
     get_renderable: Option<Box<dyn Fn() -> Text + Send>>,
     screen: bool,
 }
@@ -69,6 +76,9 @@ fn emit_control_segments(console: &mut Console, segments: &[Segment]) {
 /// ```
 pub struct Live {
     state: Arc<Mutex<SharedState>>,
+    /// Lock-free hot path. `update_renderable` swaps; `do_refresh` loads.
+    /// Writers no longer queue on the SharedState mutex.
+    renderable: Arc<ArcSwap<Text>>,
     auto_refresh: bool,
     /// Number of refreshes per second.
     pub refresh_per_second: f64,
@@ -96,13 +106,13 @@ impl Live {
         let state = Arc::new(Mutex::new(SharedState {
             console,
             live_render,
-            renderable,
             get_renderable: None,
             screen: false,
         }));
 
         Live {
             state,
+            renderable: Arc::new(ArcSwap::from_pointee(renderable)),
             auto_refresh: true,
             refresh_per_second: 4.0,
             transient: false,
@@ -249,6 +259,7 @@ impl Live {
         if self.auto_refresh {
             let flag = Arc::clone(&self.stop_flag);
             let state = Arc::clone(&self.state);
+            let renderable = Arc::clone(&self.renderable);
             let vertical_overflow = self.vertical_overflow;
             let interval = Duration::from_secs_f64(1.0 / self.refresh_per_second);
 
@@ -260,7 +271,7 @@ impl Live {
                     break;
                 }
                 drop(result);
-                Self::do_refresh(&state, vertical_overflow);
+                Self::do_refresh(&state, &renderable, vertical_overflow);
             });
             self.refresh_thread = Some(handle);
         }
@@ -322,17 +333,22 @@ impl Live {
     /// This acquires the shared state lock internally, so it is safe to call
     /// from any thread (the refresh thread calls this automatically).
     pub fn refresh(&self) {
-        Self::do_refresh(&self.state, self.vertical_overflow);
+        Self::do_refresh(&self.state, &self.renderable, self.vertical_overflow);
     }
 
     /// Internal refresh implementation operating on shared state.
-    fn do_refresh(state: &Arc<Mutex<SharedState>>, vertical_overflow: VerticalOverflowMethod) {
+    fn do_refresh(
+        state: &Arc<Mutex<SharedState>>,
+        renderable: &Arc<ArcSwap<Text>>,
+        vertical_overflow: VerticalOverflowMethod,
+    ) {
         let mut s = state.lock().unwrap();
 
-        // Resolve the renderable: use callback if available, else stored.
-        let renderable = match &s.get_renderable {
+        // Resolve the renderable: use callback if available, else load
+        // from the lock-free ArcSwap (no contention with writers).
+        let renderable: Text = match &s.get_renderable {
             Some(f) => f(),
-            None => s.renderable.clone(),
+            None => (**renderable.load()).clone(),
         };
 
         // Update the live render with the resolved content.
@@ -369,14 +385,15 @@ impl Live {
     /// If `refresh` is `true`, the display is repainted immediately.
     ///
     /// Takes `&self` so a `Live` can be shared across threads (typically
-    /// behind `Arc`). The body only touches the internal
-    /// `Arc<Mutex<SharedState>>`; no exclusive access is required.
+    /// behind `Arc`). The store path is **lock-free** (`ArcSwap::store`),
+    /// so writers no longer contend with the renderer or with each other.
+    /// The mutex is only acquired when `refresh = true` triggers an
+    /// immediate repaint.
     pub fn update_renderable(&self, renderable: Text, refresh: bool) {
-        {
-            let mut s = self.state.lock().unwrap();
-            s.live_render.set_renderable(renderable.clone());
-            s.renderable = renderable;
-        }
+        // Lock-free hot path: atomic pointer swap. No mutex contention
+        // with concurrent writers or the refresh thread. The renderer
+        // picks up the new value on its next load.
+        self.renderable.store(Arc::new(renderable));
         if refresh {
             self.refresh();
         }
@@ -389,8 +406,8 @@ impl Live {
 
     /// Get a clone of the current renderable.
     pub fn renderable(&self) -> Text {
-        let s = self.state.lock().unwrap();
-        s.renderable.clone()
+        // Lock-free read via ArcSwap — no mutex acquisition.
+        (**self.renderable.load()).clone()
     }
 }
 
@@ -646,11 +663,18 @@ mod tests {
 
     #[test]
     fn test_update_also_updates_live_render() {
+        // After v0.10.3 lock-free Live: update_renderable is lock-free and
+        // doesn't touch live_render. The internal LiveRender is synced on
+        // the next refresh — that's the contract this test now validates.
         let live = Live::new(Text::new("old", Style::null()))
             .with_console(test_console())
             .with_auto_refresh(false);
 
         live.update_renderable(Text::new("new", Style::null()), false);
+        // ArcSwap is updated immediately:
+        assert_eq!(live.renderable().plain(), "new");
+        // LiveRender catches up on the next refresh:
+        live.refresh();
         assert_eq!(live.live_render().renderable.plain(), "new");
     }
 
