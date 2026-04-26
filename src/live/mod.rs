@@ -367,7 +367,11 @@ impl Live {
     /// Update the renderable content.
     ///
     /// If `refresh` is `true`, the display is repainted immediately.
-    pub fn update_renderable(&mut self, renderable: Text, refresh: bool) {
+    ///
+    /// Takes `&self` so a `Live` can be shared across threads (typically
+    /// behind `Arc`). The body only touches the internal
+    /// `Arc<Mutex<SharedState>>`; no exclusive access is required.
+    pub fn update_renderable(&self, renderable: Text, refresh: bool) {
         {
             let mut s = self.state.lock().unwrap();
             s.live_render.set_renderable(renderable.clone());
@@ -379,7 +383,7 @@ impl Live {
     }
 
     /// Alias for [`update_renderable`](Live::update_renderable).
-    pub fn update(&mut self, renderable: Text, refresh: bool) {
+    pub fn update(&self, renderable: Text, refresh: bool) {
         self.update_renderable(renderable, refresh);
     }
 
@@ -603,7 +607,7 @@ mod tests {
 
     #[test]
     fn test_update_renderable_changes_content() {
-        let mut live = Live::new(Text::new("initial", Style::null()))
+        let live = Live::new(Text::new("initial", Style::null()))
             .with_console(test_console())
             .with_auto_refresh(false);
 
@@ -614,7 +618,7 @@ mod tests {
 
     #[test]
     fn test_update_alias() {
-        let mut live = Live::new(Text::new("initial", Style::null()))
+        let live = Live::new(Text::new("initial", Style::null()))
             .with_console(test_console())
             .with_auto_refresh(false);
 
@@ -642,7 +646,7 @@ mod tests {
 
     #[test]
     fn test_update_also_updates_live_render() {
-        let mut live = Live::new(Text::new("old", Style::null()))
+        let live = Live::new(Text::new("old", Style::null()))
             .with_console(test_console())
             .with_auto_refresh(false);
 
@@ -853,7 +857,7 @@ mod tests {
 
     #[test]
     fn test_update_before_start() {
-        let mut live = Live::new(Text::empty())
+        let live = Live::new(Text::empty())
             .with_console(test_console())
             .with_auto_refresh(false);
 
