@@ -1221,13 +1221,30 @@ impl Console {
         self.buffer_index > 0
     }
 
-    /// Flush the buffer, converting accumulated segments to an output string.
+    /// Flush the buffer, converting accumulated segments to an output string
+    /// and writing it to stdout (or the active capture/record sink).
+    ///
+    /// Called by [`exit_buffer`](Self::exit_buffer) when the outermost buffer
+    /// context closes. Without the stdout write, anything accumulated under
+    /// `enter_buffer` would be silently discarded.
     fn flush_buffer(&mut self) {
         if self.buffer.is_empty() {
             return;
         }
-        let _output = self.render_buffer(&self.buffer.clone());
-        self.buffer.clear();
+        let segments = std::mem::take(&mut self.buffer);
+        // If a capture is active, divert to the capture buffer; otherwise
+        // render to ANSI and write to stdout (subject to `quiet`).
+        if let Some(ref mut capture) = self.capture_buffer {
+            capture.extend(segments);
+            return;
+        }
+        if self.quiet {
+            return;
+        }
+        let output = self.render_buffer(&segments);
+        use std::io::Write;
+        let _ = std::io::stdout().write_all(output.as_bytes());
+        let _ = std::io::stdout().flush();
     }
 
     /// Convert a slice of segments into an ANSI-rendered string.
@@ -2881,6 +2898,24 @@ mod tests {
 
         console.exit_buffer();
         assert!(!console.check_buffer());
+    }
+
+    #[test]
+    fn buffer_flush_does_not_discard_output() {
+        // Regression for B1: previously, exit_buffer rendered the buffer to
+        // a String and then dropped it without writing anywhere. Buffered
+        // content must reach an active capture sink (or stdout when no
+        // capture is active).
+        let mut console = Console::builder().width(80).force_terminal(false).build();
+        console.begin_capture();
+        console.enter_buffer();
+        console.print_text("HELLO_FROM_BUFFER");
+        console.exit_buffer();
+        let captured = console.end_capture();
+        assert!(
+            captured.contains("HELLO_FROM_BUFFER"),
+            "buffered content should reach the capture sink, got {captured:?}"
+        );
     }
 
     // -- Renderable trait for Text ------------------------------------------

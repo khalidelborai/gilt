@@ -135,20 +135,22 @@ impl Scope {
             .get_style("scope.border")
             .unwrap_or_else(|_| Style::null());
 
-        // Render the grid table to get its content as text
+        // Render the grid table and rebuild a styled Text from the resulting
+        // segments — preserves per-segment styles (was previously lost via
+        // `seg.text.push_str` into a plain String).
         let table_segments = grid.gilt_console(console, options);
-
-        // Convert segments to a single Text for the panel content
-        let mut content_text = String::new();
+        let mut content = Text::new("", Style::null());
         for seg in &table_segments {
-            content_text.push_str(&seg.text);
+            // Skip the trailing terminator-only segments; the Text appender
+            // handles internal newlines correctly.
+            content.append_str(&seg.text, seg.style.clone());
         }
-        // Remove trailing newline if present for cleaner panel rendering
-        if content_text.ends_with('\n') {
-            content_text.pop();
+        // Trim the final newline for cleaner Panel rendering.
+        if content.plain().ends_with('\n') {
+            let new_len = content.plain().len() - 1;
+            let new_text = content.plain()[..new_len].to_string();
+            content.set_plain(&new_text);
         }
-
-        let content = Text::new(&content_text, Style::null());
 
         // Build the panel
         let mut panel = Panel::fit(content)
@@ -619,5 +621,30 @@ mod tests {
         assert_eq!(cloned.items, scope.items);
         assert_eq!(cloned.title, scope.title);
         assert_eq!(cloned.sort_keys, scope.sort_keys);
+    }
+
+    #[test]
+    fn render_preserves_styling_from_inner_table() {
+        // Regression for B2: render_panel was flattening the inner table's
+        // styled segments into a plain String, dropping all SGR markup. Verify
+        // ANSI escapes from styled cells reach the captured output.
+        use crate::console::Console;
+        let scope = Scope::from_pairs(&[("user", "alice"), ("role", "admin")]).title("Login");
+        let mut console = Console::builder()
+            .width(60)
+            .force_terminal(true)
+            .color_system("truecolor")
+            .build();
+        console.begin_capture();
+        console.print(&scope);
+        let out = console.end_capture();
+        // Some SGR sequence must be present — the cell-key style ("scope.key")
+        // and panel border style produce ANSI escapes.
+        assert!(
+            out.contains('\x1b'),
+            "expected ANSI escapes in scope render, got: {out:?}"
+        );
+        assert!(out.contains("user"));
+        assert!(out.contains("alice"));
     }
 }

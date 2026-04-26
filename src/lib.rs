@@ -753,7 +753,7 @@ pub mod diff;
 pub mod export_format;
 pub mod figlet;
 pub mod gradient;
-pub mod group;
+pub use utils::group;
 pub mod layout;
 #[cfg(feature = "markdown")]
 pub mod markdown;
