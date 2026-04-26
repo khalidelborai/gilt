@@ -414,7 +414,7 @@ mod tests {
         assert_eq!(s.text, "hello");
         assert_eq!(s.style.bold(), Some(true));
         let color = s.style.color().expect("should have foreground color");
-        assert_eq!(color.name, "red");
+        assert_eq!(color.name(), "red");
     }
 
     #[test]
@@ -422,9 +422,9 @@ mod tests {
         let s = "hello".red().on_blue();
         assert_eq!(s.text, "hello");
         let fg = s.style.color().expect("should have fg");
-        assert_eq!(fg.name, "red");
+        assert_eq!(fg.name(), "red");
         let bg = s.style.bgcolor().expect("should have bg");
-        assert_eq!(bg.name, "blue");
+        assert_eq!(bg.name(), "blue");
     }
 
     #[test]
@@ -445,7 +445,7 @@ mod tests {
         assert_eq!(s.text, "world");
         assert_eq!(s.style.italic(), Some(true));
         let color = s.style.color().expect("should have foreground color");
-        assert_eq!(color.name, "cyan");
+        assert_eq!(color.name(), "cyan");
     }
 
     #[test]
@@ -490,9 +490,11 @@ mod tests {
                 .color()
                 .unwrap_or_else(|| panic!("color method '{}' should set fg color", name));
             assert_eq!(
-                color.name, name,
+                color.name(),
+                name,
                 "expected color name '{}', got '{}'",
-                name, color.name
+                name,
+                color.name()
             );
         }
     }
@@ -516,9 +518,11 @@ mod tests {
                 .bgcolor()
                 .unwrap_or_else(|| panic!("on_{} should set bg color", name));
             assert_eq!(
-                bg.name, name,
+                bg.name(),
+                name,
                 "expected bg color '{}', got '{}'",
-                name, bg.name
+                name,
+                bg.name()
             );
         }
     }
@@ -548,8 +552,8 @@ mod tests {
         assert_eq!(s.style.bold(), Some(true));
         assert_eq!(s.style.italic(), Some(true));
         assert_eq!(s.style.underline(), Some(true));
-        assert_eq!(s.style.color().unwrap().name, "bright_yellow");
-        assert_eq!(s.style.bgcolor().unwrap().name, "blue");
+        assert_eq!(s.style.color().unwrap().name(), "bright_yellow");
+        assert_eq!(s.style.bgcolor().unwrap().name(), "blue");
     }
 
     #[test]
@@ -563,7 +567,7 @@ mod tests {
     fn test_link() {
         let s = "click me".blue().underline().link("https://example.com");
         assert_eq!(s.style.link(), Some("https://example.com"));
-        assert_eq!(s.style.color().unwrap().name, "blue");
+        assert_eq!(s.style.color().unwrap().name(), "blue");
     }
 
     #[test]
@@ -572,7 +576,7 @@ mod tests {
         let s = "custom".styled(style);
         assert_eq!(s.style.bold(), Some(true));
         assert_eq!(s.style.italic(), Some(true));
-        assert_eq!(s.style.color().unwrap().name, "red");
-        assert_eq!(s.style.bgcolor().unwrap().name, "white");
+        assert_eq!(s.style.color().unwrap().name(), "red");
+        assert_eq!(s.style.bgcolor().unwrap().name(), "white");
     }
 }
