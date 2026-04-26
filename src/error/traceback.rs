@@ -108,6 +108,13 @@ pub struct Traceback {
     pub word_wrap: bool,
     /// Maximum number of frames to display.
     pub max_frames: usize,
+    /// Path prefixes (substrings) to suppress from display.
+    ///
+    /// Any frame whose `filename` contains one of these strings is hidden.
+    /// Mirrors Rich's `Traceback(suppress=[...])`.  Examples:
+    /// - `"/.cargo/registry/src/"` hides all third-party registry frames
+    /// - `"tokio-"` hides Tokio internals
+    pub suppress_paths: Vec<String>,
 }
 
 impl Traceback {
@@ -123,6 +130,7 @@ impl Traceback {
             theme: "base16-ocean.dark".to_string(),
             word_wrap: true,
             max_frames: 100,
+            suppress_paths: Vec::new(),
         }
     }
 
@@ -247,6 +255,122 @@ impl Traceback {
         self
     }
 
+    /// Set path-prefix substrings that should suppress matching frames.
+    ///
+    /// Any frame whose `filename` contains at least one of the supplied
+    /// strings is hidden from the rendered output.  This mirrors Rich's
+    /// `Traceback(suppress=[click, requests])`.
+    ///
+    /// If suppression hides *every* frame a one-line placeholder is rendered
+    /// so the user knows frames were omitted.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::error::traceback::Traceback;
+    ///
+    /// let tb = Traceback::new()
+    ///     .with_suppress(vec![
+    ///         "/.cargo/registry/src/".to_string(),
+    ///         "tokio-".to_string(),
+    ///     ]);
+    /// assert_eq!(tb.suppress_paths.len(), 2);
+    /// ```
+    #[must_use]
+    pub fn with_suppress(mut self, paths: Vec<String>) -> Self {
+        self.suppress_paths = paths;
+        self
+    }
+
+    // -- Helper: apply suppress filter + truncation -------------------------
+
+    /// Return the frames that survive the suppress-path filter.
+    ///
+    /// The filter is applied first; `max_frames` truncation is left to the
+    /// individual renderers so they can decide how to split the window.
+    #[cfg(test)]
+    fn visible_frames(&self) -> Vec<&Frame> {
+        if self.suppress_paths.is_empty() {
+            return self.frames.iter().collect();
+        }
+        self.frames
+            .iter()
+            .filter(|f| {
+                !self
+                    .suppress_paths
+                    .iter()
+                    .any(|p| f.filename.contains(p.as_str()))
+            })
+            .collect()
+    }
+
+    // -- Public: panic hook installation ------------------------------------
+
+    /// Install a `std::panic::set_hook` that prints a formatted `Traceback`
+    /// to **stderr** whenever the process panics.
+    ///
+    /// Uses `std::backtrace::Backtrace::force_capture()` so the backtrace is
+    /// always available regardless of the `RUST_BACKTRACE` environment variable.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use gilt::error::traceback::Traceback;
+    ///
+    /// Traceback::install_panic_hook();
+    /// ```
+    pub fn install_panic_hook() {
+        Self::install_panic_hook_with(Vec::new());
+    }
+
+    /// Like [`install_panic_hook`](Self::install_panic_hook) but also applies
+    /// path-prefix suppression to the captured backtrace.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use gilt::error::traceback::Traceback;
+    ///
+    /// Traceback::install_panic_hook_with(vec!["/.cargo/registry/src/".to_string()]);
+    /// ```
+    pub fn install_panic_hook_with(suppress_paths: Vec<String>) {
+        std::panic::set_hook(Box::new(move |info| {
+            // -- Extract panic message ---
+            let message = if let Some(s) = info.payload().downcast_ref::<&str>() {
+                s.to_string()
+            } else if let Some(s) = info.payload().downcast_ref::<String>() {
+                s.clone()
+            } else {
+                "Box<dyn Any>".to_string()
+            };
+
+            // -- Append location if available ---
+            let full_message = if let Some(loc) = info.location() {
+                format!("{} ({}:{})", message, loc.file(), loc.line())
+            } else {
+                message
+            };
+
+            // -- Capture the backtrace ---
+            let bt = std::backtrace::Backtrace::force_capture();
+            let bt_str = bt.to_string();
+
+            // -- Build the Traceback ---
+            let tb = Traceback::from_panic(&full_message, &bt_str)
+                .with_suppress(suppress_paths.clone());
+
+            // -- Render to a capture buffer then write to stderr ---
+            let mut console = Console::builder().no_color(false).build();
+            console.begin_capture();
+            console.print(&tb);
+            let rendered = console.end_capture();
+
+            use std::io::Write as _;
+            let _ = std::io::stderr().write_all(rendered.as_bytes());
+            let _ = std::io::stderr().flush();
+        }));
+    }
+
     // -- Internal rendering -------------------------------------------------
 
     /// Build the inner content `Text` that goes inside the Panel.
@@ -257,8 +381,22 @@ impl Traceback {
     fn render_content(&self) -> Text {
         let mut parts: Vec<TextPart> = Vec::new();
 
+        // Apply suppress filter first, then truncate.
+        let visible: Vec<&Frame> = self.visible_frames();
+
+        // If we had frames but all were suppressed, emit a placeholder.
+        if !self.frames.is_empty() && visible.is_empty() {
+            let n = self.frames.len();
+            let msg = format!("[suppressed {} frame{}]\n", n, if n == 1 { "" } else { "s" });
+            parts.push(TextPart::Styled(
+                msg,
+                Style::parse("dim italic").unwrap_or_else(|_| Style::null()),
+            ));
+            return Text::assemble(&parts, Style::null());
+        }
+
         // Determine how many frames to show
-        let frame_count = self.frames.len();
+        let frame_count = visible.len();
         let show_count = frame_count.min(self.max_frames);
         let truncated = frame_count > self.max_frames;
 
@@ -286,7 +424,7 @@ impl Traceback {
                 ));
             }
 
-            let frame = &self.frames[frame_idx];
+            let frame = visible[frame_idx];
 
             // File location line
             let location = match frame.lineno {
@@ -334,8 +472,22 @@ impl std::fmt::Display for Traceback {
         if !self.title.is_empty() {
             writeln!(f, "{}", self.title)?;
         }
-        for frame in &self.frames {
-            writeln!(f, "{}", frame)?;
+        // Honour suppress_paths so plain Display matches Renderable behaviour.
+        let suppressed: Vec<&Frame> = if self.suppress_paths.is_empty() {
+            self.frames.iter().collect()
+        } else {
+            self.frames
+                .iter()
+                .filter(|fr| !self.suppress_paths.iter().any(|p| fr.filename.contains(p.as_str())))
+                .collect()
+        };
+        if !self.frames.is_empty() && suppressed.is_empty() {
+            let n = self.frames.len();
+            writeln!(f, "[suppressed {} frame{}]", n, if n == 1 { "" } else { "s" })?;
+        } else {
+            for frame in &suppressed {
+                writeln!(f, "{}", frame)?;
+            }
         }
         if !self.message.is_empty() {
             write!(f, "{}", self.message)?;
@@ -356,18 +508,44 @@ impl Renderable for Traceback {
         // Build the inner content
         let mut content_parts: Vec<TextPart> = Vec::new();
 
-        // Determine how many frames to show
-        let frame_count = self.frames.len();
+        // Apply suppress filter (5C: with_suppress) before counting & truncating.
+        let visible_frames: Vec<&Frame> = if self.suppress_paths.is_empty() {
+            self.frames.iter().collect()
+        } else {
+            self.frames
+                .iter()
+                .filter(|f| !self.suppress_paths.iter().any(|p| f.filename.contains(p.as_str())))
+                .collect()
+        };
+
+        // Special-case: had frames but suppress hid them all → emit a placeholder.
+        if !self.frames.is_empty() && visible_frames.is_empty() {
+            let n = self.frames.len();
+            let msg = format!(
+                "[suppressed {} frame{}]\n",
+                n,
+                if n == 1 { "" } else { "s" }
+            );
+            content_parts.push(TextPart::Styled(
+                msg,
+                Style::parse("dim italic").unwrap_or_else(|_| Style::null()),
+            ));
+            let content = Text::assemble(&content_parts, Style::null());
+            let panel = Panel::new(content).with_title(self.title.clone());
+            return panel.gilt_console(console, options);
+        }
+
+        let frame_count = visible_frames.len();
         let show_count = frame_count.min(self.max_frames);
         let truncated = frame_count > self.max_frames;
 
         let frames_to_show: Vec<&Frame> = if truncated {
             let half = self.max_frames / 2;
-            let mut combined: Vec<&Frame> = self.frames.iter().take(half).collect();
-            combined.extend(self.frames.iter().skip(frame_count - half));
+            let mut combined: Vec<&Frame> = visible_frames.iter().take(half).copied().collect();
+            combined.extend(visible_frames.iter().skip(frame_count - half).copied());
             combined
         } else {
-            self.frames.iter().collect()
+            visible_frames.clone()
         };
 
         let actual_show = frames_to_show.len();
@@ -1158,5 +1336,68 @@ mod tests {
         assert!(display.contains("main"));
         assert!(display.contains("src/math.rs"));
         assert!(display.contains("15"));
+    }
+
+    // -- Wave 5C: suppress_paths -------------------------------------------
+
+    fn tb_with_frames(filenames: &[&str]) -> Traceback {
+        let mut tb = Traceback::new().with_title("E").with_message("m");
+        for f in filenames {
+            tb.frames.push(Frame::new(f, Some(1), "fn"));
+        }
+        tb
+    }
+
+    #[test]
+    fn suppress_paths_filters_matching_frames() {
+        let tb = tb_with_frames(&[
+            "/home/u/proj/src/main.rs",
+            "/.cargo/registry/src/index/tokio-1.0/lib.rs",
+            "/home/u/proj/src/lib.rs",
+        ])
+        .with_suppress(vec!["/.cargo/registry/src/".to_string()]);
+
+        let visible = tb.visible_frames();
+        assert_eq!(visible.len(), 2);
+        for f in visible {
+            assert!(
+                !f.filename.contains("/.cargo/registry/src/"),
+                "should have filtered: {}",
+                f.filename
+            );
+        }
+    }
+
+    #[test]
+    fn suppress_all_frames_shows_placeholder() {
+        let tb = tb_with_frames(&[
+            "/.cargo/registry/src/a.rs",
+            "/.cargo/registry/src/b.rs",
+        ])
+        .with_suppress(vec!["/.cargo/registry/src/".to_string()]);
+
+        // Render via Display (which routes through gilt_console + Panel).
+        let out = format!("{}", tb);
+        assert!(
+            out.contains("suppressed 2 frame"),
+            "expected placeholder, got:\n{}",
+            out
+        );
+    }
+
+    #[test]
+    fn suppress_empty_passes_all_frames() {
+        let tb = tb_with_frames(&["/a.rs", "/b.rs", "/c.rs"]);
+        assert!(tb.suppress_paths.is_empty());
+        assert_eq!(tb.visible_frames().len(), 3);
+    }
+
+    #[test]
+    fn suppress_path_matches_anywhere_in_filename() {
+        let tb = tb_with_frames(&["/path/to/tokio-runtime/lib.rs", "/path/to/myapp/main.rs"])
+            .with_suppress(vec!["tokio-".to_string()]);
+        let visible = tb.visible_frames();
+        assert_eq!(visible.len(), 1);
+        assert!(visible[0].filename.contains("myapp"));
     }
 }

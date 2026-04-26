@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 
 use crate::console::Console;
+use crate::error::traceback::Traceback;
 use crate::markup;
 use crate::style::Style;
 use crate::text::Text;
@@ -39,10 +40,20 @@ pub struct RichHandler {
     show_level: bool,
     show_path: bool,
     markup: bool,
-    #[allow(dead_code)] // Placeholder for future traceback integration
+    /// When `true`, suppress the timestamp on consecutive records that share
+    /// the same wall-clock second, replacing it with spaces of equal width so
+    /// columns remain aligned.
+    omit_repeated_times: bool,
+    /// When `true`, render the `file:line` location as a clickable OSC 8
+    /// hyperlink using the `file://` URL scheme.
+    enable_link_path: bool,
+    /// When `true`, records whose message looks like an error chain are
+    /// rendered via [`Traceback::from_error`] for full styled output.
     gilt_tracebacks: bool,
     keywords: Vec<String>,
     level_styles: HashMap<log::Level, Style>,
+    /// Cache of the last-emitted `HH:MM:SS` string for `omit_repeated_times`.
+    last_time_str: Mutex<Option<String>>,
 }
 
 impl RichHandler {
@@ -56,9 +67,12 @@ impl RichHandler {
             show_level: true,
             show_path: true,
             markup: false,
+            omit_repeated_times: true,
+            enable_link_path: false,
             gilt_tracebacks: false,
             keywords: DEFAULT_KEYWORDS.iter().map(|s| s.to_string()).collect(),
             level_styles: Self::default_level_styles(),
+            last_time_str: Mutex::new(None),
         }
     }
 
@@ -104,6 +118,36 @@ impl RichHandler {
         self
     }
 
+    /// Suppress repeated timestamps on consecutive records sharing the same
+    /// wall-clock second (default `true`).
+    ///
+    /// When suppressed, the time column is replaced with spaces of the same
+    /// width so the path / level columns stay aligned.
+    #[must_use]
+    pub fn with_omit_repeated_times(mut self, omit: bool) -> Self {
+        self.omit_repeated_times = omit;
+        self
+    }
+
+    /// Render the `module::path:line` location as a clickable OSC 8 hyperlink
+    /// using the `file://` URL scheme (default `false`).
+    ///
+    /// Useful in IDE-integrated terminals (VS Code, JetBrains, iTerm2) — the
+    /// link opens the source file at the right line.
+    #[must_use]
+    pub fn with_enable_link_path(mut self, enable: bool) -> Self {
+        self.enable_link_path = enable;
+        self
+    }
+
+    /// Render error-bearing log records via [`Traceback`] for full styled
+    /// output (default `false`).
+    #[must_use]
+    pub fn with_gilt_tracebacks(mut self, enable: bool) -> Self {
+        self.gilt_tracebacks = enable;
+        self
+    }
+
     /// Return the default level style map.
     fn default_level_styles() -> HashMap<log::Level, Style> {
         let mut m = HashMap::new();
@@ -128,25 +172,6 @@ impl RichHandler {
             Style::parse("dim").unwrap_or_else(|_| Style::null()),
         );
         m
-    }
-
-    /// Build the time column text (HH:MM:SS) in dim style.
-    fn render_time() -> Text {
-        // Use a simple wall-clock time via std::time::SystemTime.
-        // For testing predictability we accept whatever the system provides.
-        let now = {
-            use std::time::{SystemTime, UNIX_EPOCH};
-            let dur = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default();
-            let total_secs = dur.as_secs();
-            let hours = (total_secs / 3600) % 24;
-            let minutes = (total_secs / 60) % 60;
-            let seconds = total_secs % 60;
-            format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
-        };
-        let dim_style = Style::parse("dim").unwrap_or_else(|_| Style::null());
-        Text::styled(&now, dim_style)
     }
 
     /// Build the level column text, left-padded to 8 chars.
@@ -187,7 +212,9 @@ impl RichHandler {
         text
     }
 
-    /// Build the path column (`module::path:line`).
+    /// Build the plain path column (`module::path:line`) without link wrapping.
+    /// Kept for tests that want the unwrapped form.
+    #[cfg(test)]
     fn render_path(record: &log::Record) -> Text {
         let dim_style = Style::parse("dim").unwrap_or_else(|_| Style::null());
         let module = record.module_path().unwrap_or("");
@@ -200,12 +227,47 @@ impl RichHandler {
         Text::styled(&path_str, dim_style)
     }
 
+    /// Build the path column (`module::path:line`) optionally as an OSC 8
+    /// hyperlink to a `file://` URL when `enable_link_path` is set.
+    ///
+    /// The link uses the record's `file()` (absolute or workspace-relative
+    /// source path) for the URL when available; the visible text remains the
+    /// `module::path:line` form for readability.
+    fn render_path_with_link(&self, record: &log::Record) -> Text {
+        let dim_style = Style::parse("dim").unwrap_or_else(|_| Style::null());
+        let module = record.module_path().unwrap_or("");
+        let line = record.line().unwrap_or(0);
+        let path_str = if !module.is_empty() {
+            format!("{}:{}", module, line)
+        } else {
+            format!(":{}", line)
+        };
+
+        if self.enable_link_path {
+            if let Some(file) = record.file() {
+                // Build a file:// URL — use absolute path if available, else
+                // pass through the relative path as-is (terminals/editors that
+                // understand the protocol will resolve it).
+                let abs = std::path::Path::new(file)
+                    .canonicalize()
+                    .ok()
+                    .and_then(|p| p.to_str().map(|s| s.to_string()))
+                    .unwrap_or_else(|| file.to_string());
+                let url = format!("file://{}", abs);
+                let link_style = Style::parse(&format!("dim link {}", url))
+                    .unwrap_or_else(|_| dim_style.clone());
+                return Text::styled(&path_str, link_style);
+            }
+        }
+        Text::styled(&path_str, dim_style)
+    }
+
     /// Compose all columns into a single line and print it.
     fn emit(&self, record: &log::Record) {
         let mut parts = Text::new("", Style::null());
 
         if self.show_time {
-            let time_text = Self::render_time();
+            let time_text = self.render_time_with_omit();
             parts.append_text(&time_text);
             parts.append_str(" ", None);
         }
@@ -216,11 +278,30 @@ impl RichHandler {
             parts.append_str(" ", None);
         }
 
+        // Traceback path: when enabled and the message is multi-line (the
+        // common Display form for error chains via `{:#}`), render it through
+        // a Panel-wrapped Traceback so the call/error chain is styled.
+        let msg_str = format!("{}", record.args());
+        if self.gilt_tracebacks
+            && record.level() <= log::Level::Error
+            && msg_str.contains('\n')
+        {
+            // No real backtrace available for the log record; pass the
+            // multi-line message in as the panic message so the Panel-wrapped
+            // Traceback renders the full chain.
+            let tb = Traceback::from_panic(&msg_str, "");
+            if let Ok(mut console) = self.console.lock() {
+                console.print(&parts);
+                console.print(&tb);
+            }
+            return;
+        }
+
         let message_text = self.render_message(record);
         parts.append_text(&message_text);
 
         if self.show_path {
-            let path_text = Self::render_path(record);
+            let path_text = self.render_path_with_link(record);
             parts.append_str(" ", None);
             parts.append_text(&path_text);
         }
@@ -228,6 +309,39 @@ impl RichHandler {
         if let Ok(mut console) = self.console.lock() {
             console.print(&parts);
         }
+    }
+
+    /// Compute the time string for this record, returning an equal-width
+    /// blank string when `omit_repeated_times` is set and the second matches
+    /// the previously-emitted time.
+    fn render_time_with_omit(&self) -> Text {
+        let now = Self::current_time_str();
+        if self.omit_repeated_times {
+            let mut last = self
+                .last_time_str
+                .lock()
+                .unwrap_or_else(|p| p.into_inner());
+            if last.as_ref() == Some(&now) {
+                let blanks = " ".repeat(now.chars().count());
+                return Text::new(&blanks, Style::null());
+            }
+            *last = Some(now.clone());
+        }
+        let dim_style = Style::parse("dim").unwrap_or_else(|_| Style::null());
+        Text::styled(&now, dim_style)
+    }
+
+    /// Return the current wall-clock time as `HH:MM:SS`.
+    fn current_time_str() -> String {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let dur = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default();
+        let total_secs = dur.as_secs();
+        let hours = (total_secs / 3600) % 24;
+        let minutes = (total_secs / 60) % 60;
+        let seconds = total_secs % 60;
+        format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
     }
 }
 
@@ -391,7 +505,8 @@ mod tests {
 
     #[test]
     fn test_render_time_format() {
-        let time_text = RichHandler::render_time();
+        let handler = RichHandler::new();
+        let time_text = handler.render_time_with_omit();
         let plain = time_text.plain().to_string();
         // HH:MM:SS pattern: 8 characters with colons at positions 2 and 5
         assert_eq!(plain.len(), 8);
@@ -401,9 +516,75 @@ mod tests {
 
     #[test]
     fn test_render_time_has_dim_style() {
-        let time_text = RichHandler::render_time();
-        // The text should have at least one span (the dim style)
+        let handler = RichHandler::new();
+        let time_text = handler.render_time_with_omit();
         assert!(!time_text.spans().is_empty());
+    }
+
+    // -- Wave 5B: omit_repeated_times / enable_link_path / gilt_tracebacks ----
+
+    #[test]
+    fn omit_repeated_times_blanks_duplicate_timestamps() {
+        let handler = RichHandler::new().with_omit_repeated_times(true);
+        // First call captures and styles the timestamp.
+        let first = handler.render_time_with_omit();
+        // Second call within the same second returns same-width blanks.
+        let second = handler.render_time_with_omit();
+        assert_eq!(second.plain().len(), first.plain().len());
+        assert!(
+            second.plain().chars().all(|c| c == ' '),
+            "expected all spaces, got {:?}",
+            second.plain()
+        );
+    }
+
+    #[test]
+    fn omit_repeated_times_disabled_keeps_timestamp() {
+        let handler = RichHandler::new().with_omit_repeated_times(false);
+        let first = handler.render_time_with_omit();
+        let second = handler.render_time_with_omit();
+        assert_eq!(first.plain(), second.plain());
+        assert!(!first.plain().chars().all(|c| c == ' '));
+    }
+
+    #[test]
+    fn enable_link_path_wraps_module_in_osc8_link() {
+        // Construct a synthetic record with a known file/module/line.
+        let handler = RichHandler::new().with_enable_link_path(true);
+        let record = log::RecordBuilder::new()
+            .args(format_args!("hello"))
+            .level(log::Level::Info)
+            .target("test_target")
+            .module_path(Some("test_target"))
+            .file(Some("/tmp/some_test_source.rs"))
+            .line(Some(42))
+            .build();
+        let text = handler.render_path_with_link(&record);
+        // Either a span carries the link, or the styled output renders OSC 8.
+        let spans = text.spans();
+        let has_link = spans.iter().any(|s| s.style.link().is_some());
+        assert!(has_link, "expected a span with a file:// link, got {:?}", spans);
+    }
+
+    #[test]
+    fn enable_link_path_disabled_has_no_link() {
+        let handler = RichHandler::new().with_enable_link_path(false);
+        let record = log::RecordBuilder::new()
+            .args(format_args!("hello"))
+            .level(log::Level::Info)
+            .module_path(Some("m"))
+            .line(Some(1))
+            .file(Some("/tmp/x.rs"))
+            .build();
+        let text = handler.render_path_with_link(&record);
+        let has_link = text.spans().iter().any(|s| s.style.link().is_some());
+        assert!(!has_link);
+    }
+
+    #[test]
+    fn gilt_tracebacks_builder_sets_field() {
+        let handler = RichHandler::new().with_gilt_tracebacks(true);
+        assert!(handler.gilt_tracebacks);
     }
 
     // -- Log formatting: level -----------------------------------------------
