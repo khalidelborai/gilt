@@ -142,7 +142,7 @@ mod tests {
     #[test]
     fn test_clone() {
         let color1 = ColorTriplet::new(255, 128, 64);
-        let color2 = color1.clone();
+        let color2 = color1;
         assert_eq!(color1, color2);
     }
 

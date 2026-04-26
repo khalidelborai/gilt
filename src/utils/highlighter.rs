@@ -592,7 +592,7 @@ mod tests {
 
     #[test]
     fn test_repr_highlighter_default() {
-        let hl = ReprHighlighter::default();
+        let hl = ReprHighlighter;
         let text = hl.apply("42");
         assert_eq!(text.plain(), "42");
     }
@@ -730,7 +730,7 @@ mod tests {
 
     #[test]
     fn test_json_highlighter_default() {
-        let hl = JSONHighlighter::default();
+        let hl = JSONHighlighter;
         let text = hl.apply("[]");
         assert_eq!(text.plain(), "[]");
     }
@@ -835,7 +835,7 @@ mod tests {
 
     #[test]
     fn test_iso8601_highlighter_default() {
-        let hl = ISO8601Highlighter::default();
+        let hl = ISO8601Highlighter;
         let text = hl.apply("12:30");
         assert_eq!(text.plain(), "12:30");
     }

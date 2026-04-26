@@ -242,7 +242,7 @@ mod tests {
         // Control char in middle - may have width
         let a_x01_b_len = cell_len("a\x01b");
         assert!(
-            a_x01_b_len >= 2 && a_x01_b_len <= 3,
+            (2..=3).contains(&a_x01_b_len),
             "Expected a\\x01b width 2-3, got {}",
             a_x01_b_len
         );
@@ -415,7 +415,7 @@ mod tests {
         // Note: unicode-width may count \x00 as width 0 or 1 depending on version
         let nul_a_len = cell_len("\x00a");
         assert!(
-            nul_a_len >= 1 && nul_a_len <= 2,
+            (1..=2).contains(&nul_a_len),
             "Expected \\x00a width 1-2, got {}",
             nul_a_len
         );

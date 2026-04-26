@@ -453,7 +453,7 @@ impl ConsoleBuilder {
             record_buffer: Vec::new(),
             is_alt_screen: false,
             capture_buffer: None,
-            live_id: None,
+            live_stack: Vec::new(),
         }
     }
 }
@@ -497,7 +497,14 @@ pub struct Console {
     // State
     is_alt_screen: bool,
     capture_buffer: Option<Vec<Segment>>,
-    live_id: Option<usize>,
+    /// Stack of nested live-display IDs.
+    ///
+    /// The top-of-stack ID is the currently-active Live; any preceding entries
+    /// represent outer Live displays that have been suspended while a nested
+    /// Live was started. Mirrors rich v14.1.0's `Console._live_stack` —
+    /// allows Progress + Live + Status etc. to nest without each one
+    /// clobbering the others' state.
+    live_stack: Vec<usize>,
 }
 
 impl Console {
@@ -1477,16 +1484,99 @@ impl Console {
         self.set_alt_screen(false);
     }
 
-    // -- Live display ID ----------------------------------------------------
-
-    /// Store an optional live display ID for integration.
-    pub fn set_live(&mut self, live_id: Option<usize>) {
-        self.live_id = live_id;
+    /// Render a [`Renderable`] at an arbitrary `(x, y)` position in the active
+    /// alternate screen.
+    ///
+    /// Moves the cursor to the absolute position (0-indexed), prints the
+    /// renderable, then leaves the cursor at the position the renderable's
+    /// last segment ended at. Designed for partial-update UIs (Layouts,
+    /// dashboards) running inside `enter_screen`.
+    ///
+    /// Has no effect — and silently does nothing — when the console is not
+    /// currently in alt-screen mode, since absolute positioning would
+    /// scribble on the user's main scrollback otherwise.
+    pub fn update_screen(&mut self, x: usize, y: usize, renderable: &dyn Renderable) {
+        if !self.is_alt_screen {
+            return;
+        }
+        let ctrl = crate::utils::control::Control::move_to(x as i32, y as i32);
+        self.write_segments(&[ctrl.segment]);
+        self.print(renderable);
     }
 
-    /// Clear the live display ID, setting it to `None`.
+    /// Render a slice of [`Segment`] lines at successive rows starting from
+    /// `(x, y)` in the active alternate screen.
+    ///
+    /// Each `Vec<Segment>` in `lines` is treated as one line — printed at
+    /// `(x, y + i)` for the i-th entry. Useful when you've already produced
+    /// per-line segments via `Console::render` and want to splat them into a
+    /// known position without going through a full Renderable wrapper.
+    ///
+    /// Like [`update_screen`](Self::update_screen), no-ops when not in
+    /// alt-screen mode.
+    pub fn update_screen_lines(&mut self, x: usize, y: usize, lines: &[Vec<Segment>]) {
+        if !self.is_alt_screen {
+            return;
+        }
+        for (i, line) in lines.iter().enumerate() {
+            let ctrl = crate::utils::control::Control::move_to(x as i32, (y + i) as i32);
+            self.write_segments(&[ctrl.segment]);
+            self.write_segments(line);
+        }
+    }
+
+    // -- Live display ID ----------------------------------------------------
+
+    /// Push a Live-display ID onto the stack, making it the active Live.
+    ///
+    /// Returns `true` if the ID was pushed (always true; the API returns a
+    /// `bool` for parity with rich's `set_live` which returned `False` when
+    /// nesting was disabled — gilt always allows nesting).
+    pub fn push_live(&mut self, live_id: usize) -> bool {
+        self.live_stack.push(live_id);
+        true
+    }
+
+    /// Pop the top Live-display ID off the stack. Returns the popped ID, or
+    /// `None` if the stack was empty.
+    pub fn pop_live(&mut self) -> Option<usize> {
+        self.live_stack.pop()
+    }
+
+    /// Return the currently-active Live-display ID (the top of the stack), or
+    /// `None` when no Live is active.
+    pub fn current_live(&self) -> Option<usize> {
+        self.live_stack.last().copied()
+    }
+
+    /// Number of currently-nested Live displays. `0` means no Live is active.
+    pub fn live_depth(&self) -> usize {
+        self.live_stack.len()
+    }
+
+    // -- Backwards-compatible single-slot API -------------------------------
+
+    /// Set the active Live-display ID. `Some(id)` pushes (or replaces top);
+    /// `None` clears the entire stack.
+    ///
+    /// Provided for source compatibility with the pre-nesting API. New code
+    /// should prefer [`push_live`](Self::push_live) / [`pop_live`](Self::pop_live).
+    pub fn set_live(&mut self, live_id: Option<usize>) {
+        match live_id {
+            Some(id) => {
+                if let Some(top) = self.live_stack.last_mut() {
+                    *top = id;
+                } else {
+                    self.live_stack.push(id);
+                }
+            }
+            None => self.live_stack.clear(),
+        }
+    }
+
+    /// Clear all Live IDs. Equivalent to `set_live(None)`.
     pub fn clear_live(&mut self) {
-        self.live_id = None;
+        self.live_stack.clear();
     }
 
     // -- Export (record mode) -----------------------------------------------
@@ -2031,8 +2121,6 @@ fn svg_escape(s: &str) -> Cow<'_, str> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::segment::ControlCode;
-    use crate::segment::ControlType;
 
     // -- ConsoleDimensions --------------------------------------------------
 
@@ -2720,6 +2808,61 @@ mod tests {
         assert!(!console.is_alt_screen);
     }
 
+    #[test]
+    fn test_update_screen_no_op_when_not_in_alt_screen() {
+        let mut console = Console::builder().record(true).build();
+        assert!(!console.is_alt_screen);
+        console.update_screen(5, 5, &Text::new("hello", Style::null()));
+        let text = console.export_text(false, true);
+        // Not in alt-screen → no output (safety: never scribble on main scrollback)
+        assert!(!text.contains("hello"), "expected no output, got {text:?}");
+    }
+
+    #[test]
+    fn test_update_screen_writes_at_position_in_alt_screen() {
+        let mut console = Console::builder().record(true).build();
+        console.set_alt_screen(true);
+        console.update_screen(10, 3, &Text::new("hello", Style::null()));
+        let text = console.export_text(false, true);
+        // Cursor-positioning escape (CSI ?;? H) precedes the content.
+        assert!(text.contains("hello"));
+        assert!(
+            text.contains("\x1b["),
+            "expected ANSI cursor-position prefix"
+        );
+    }
+
+    #[test]
+    fn test_update_screen_lines_writes_each_line_at_successive_rows() {
+        let mut console = Console::builder().record(true).build();
+        console.set_alt_screen(true);
+        let lines = vec![
+            vec![Segment::text("row0")],
+            vec![Segment::text("row1")],
+            vec![Segment::text("row2")],
+        ];
+        console.update_screen_lines(2, 5, &lines);
+        let text = console.export_text(false, true);
+        assert!(text.contains("row0"));
+        assert!(text.contains("row1"));
+        assert!(text.contains("row2"));
+        // Three position changes one per line.
+        let csi_count = text.matches("\x1b[").count();
+        assert!(
+            csi_count >= 3,
+            "expected >=3 CSI sequences, got {csi_count}"
+        );
+    }
+
+    #[test]
+    fn test_update_screen_lines_no_op_when_not_in_alt_screen() {
+        let mut console = Console::builder().record(true).build();
+        let lines = vec![vec![Segment::text("nope")]];
+        console.update_screen_lines(0, 0, &lines);
+        let text = console.export_text(false, true);
+        assert!(!text.contains("nope"));
+    }
+
     // -- Buffer nesting -----------------------------------------------------
 
     #[test]
@@ -3312,23 +3455,51 @@ mod tests {
     #[test]
     fn test_set_clear_live() {
         let mut console = Console::new();
-        assert_eq!(console.live_id, None);
+        assert_eq!(console.current_live(), None);
 
         console.set_live(Some(42));
-        assert_eq!(console.live_id, Some(42));
+        assert_eq!(console.current_live(), Some(42));
 
         console.clear_live();
-        assert_eq!(console.live_id, None);
+        assert_eq!(console.current_live(), None);
     }
 
     #[test]
     fn test_set_live_none() {
         let mut console = Console::new();
         console.set_live(Some(7));
-        assert_eq!(console.live_id, Some(7));
+        assert_eq!(console.current_live(), Some(7));
 
         console.set_live(None);
-        assert_eq!(console.live_id, None);
+        assert_eq!(console.current_live(), None);
+    }
+
+    #[test]
+    fn test_push_pop_live_nests() {
+        let mut console = Console::new();
+        assert_eq!(console.live_depth(), 0);
+        assert!(console.push_live(1));
+        assert_eq!(console.current_live(), Some(1));
+        assert!(console.push_live(2));
+        assert_eq!(console.current_live(), Some(2));
+        assert_eq!(console.live_depth(), 2);
+        assert_eq!(console.pop_live(), Some(2));
+        // Outer Live is now active again.
+        assert_eq!(console.current_live(), Some(1));
+        assert_eq!(console.pop_live(), Some(1));
+        assert_eq!(console.current_live(), None);
+        assert_eq!(console.pop_live(), None);
+    }
+
+    #[test]
+    fn test_set_live_some_replaces_top() {
+        // Compatibility behaviour: set_live(Some(id)) replaces the top of the
+        // stack rather than pushing — preserves single-Live callers' state.
+        let mut console = Console::new();
+        console.set_live(Some(1));
+        console.set_live(Some(2));
+        assert_eq!(console.live_depth(), 1);
+        assert_eq!(console.current_live(), Some(2));
     }
 
     #[test]

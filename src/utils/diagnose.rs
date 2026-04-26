@@ -664,7 +664,7 @@ mod tests {
         let formatted = format_report(&report);
         assert!(formatted.contains("gilt Terminal Diagnostic Report"));
         assert!(formatted.contains(&report.platform.os));
-        assert!(formatted.contains(&report.platform.gilt_version));
+        assert!(formatted.contains(report.platform.gilt_version));
     }
 
     #[test]

@@ -47,7 +47,7 @@ pub fn detect_color_env() -> ColorEnvOverride {
     // 1. NO_COLOR – only a *non-empty* value disables color (rich v14 semantics).
     // An empty `NO_COLOR=""` is treated as unset, per https://no-color.org/ and
     // upstream rich commit a919527f.
-    if env::var("NO_COLOR").map_or(false, |v| !v.is_empty()) {
+    if env::var("NO_COLOR").is_ok_and(|v| !v.is_empty()) {
         return ColorEnvOverride::NoColor;
     }
 

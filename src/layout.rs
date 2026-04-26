@@ -280,7 +280,7 @@ impl Layout {
         }
 
         // Sort by region (y, x) for deterministic order
-        layout_regions.sort_by(|a, b| (a.1.y, a.1.x).cmp(&(b.1.y, b.1.x)));
+        layout_regions.sort_by_key(|a| (a.1.y, a.1.x));
 
         layout_regions
     }
@@ -351,7 +351,7 @@ impl Renderable for Layout {
         // Collect all (region, lines) sorted by position
         let mut entries: Vec<(Region, &Vec<Vec<Segment>>)> =
             render_map.values().map(|(r, lines)| (*r, lines)).collect();
-        entries.sort_by(|a, b| (a.0.y, a.0.x).cmp(&(b.0.y, b.0.x)));
+        entries.sort_by_key(|a| (a.0.y, a.0.x));
 
         let mut layout_lines: Vec<Vec<Segment>> = vec![Vec::new(); height];
 

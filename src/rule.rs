@@ -437,7 +437,7 @@ mod tests {
         // The rule line segment should have a style
         let rule_segs: Vec<&Segment> = segments
             .iter()
-            .filter(|s| s.text.trim().len() > 0 && s.text != "\n")
+            .filter(|s| !s.text.trim().is_empty() && s.text != "\n")
             .collect();
         assert!(!rule_segs.is_empty());
         for seg in &rule_segs {
