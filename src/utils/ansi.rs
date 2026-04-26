@@ -506,7 +506,7 @@ mod tests {
         assert_eq!(text.plain(), "Red");
         assert_eq!(text.spans().len(), 1);
         let color = text.spans()[0].style.color().unwrap();
-        assert_eq!(color.number, Some(1));
+        assert_eq!(color.number(), Some(1));
     }
 
     #[test]
@@ -516,7 +516,7 @@ mod tests {
         assert_eq!(text.plain(), "Red256");
         assert_eq!(text.spans().len(), 1);
         let color = text.spans()[0].style.color().unwrap();
-        assert_eq!(color.number, Some(196));
+        assert_eq!(color.number(), Some(196));
     }
 
     #[test]
@@ -526,9 +526,9 @@ mod tests {
         assert_eq!(text.plain(), "Orange");
         assert_eq!(text.spans().len(), 1);
         let color = text.spans()[0].style.color().unwrap();
-        assert_eq!(color.triplet.unwrap().red, 255);
-        assert_eq!(color.triplet.unwrap().green, 128);
-        assert_eq!(color.triplet.unwrap().blue, 0);
+        assert_eq!(color.triplet().unwrap().red, 255);
+        assert_eq!(color.triplet().unwrap().green, 128);
+        assert_eq!(color.triplet().unwrap().blue, 0);
     }
 
     #[test]
@@ -558,7 +558,7 @@ mod tests {
         assert_eq!(text.spans().len(), 1);
         assert_eq!(text.spans()[0].style.bold(), Some(true));
         let color = text.spans()[0].style.color().unwrap();
-        assert_eq!(color.number, Some(1));
+        assert_eq!(color.number(), Some(1));
     }
 
     #[test]
@@ -568,7 +568,7 @@ mod tests {
         assert_eq!(text.plain(), "GreenBG");
         assert_eq!(text.spans().len(), 1);
         let bgcolor = text.spans()[0].style.bgcolor().unwrap();
-        assert_eq!(bgcolor.number, Some(2));
+        assert_eq!(bgcolor.number(), Some(2));
     }
 
     #[test]
@@ -578,7 +578,7 @@ mod tests {
         assert_eq!(text.plain(), "BG256");
         assert_eq!(text.spans().len(), 1);
         let bgcolor = text.spans()[0].style.bgcolor().unwrap();
-        assert_eq!(bgcolor.number, Some(100));
+        assert_eq!(bgcolor.number(), Some(100));
     }
 
     #[test]
@@ -588,9 +588,9 @@ mod tests {
         assert_eq!(text.plain(), "BGRGB");
         assert_eq!(text.spans().len(), 1);
         let bgcolor = text.spans()[0].style.bgcolor().unwrap();
-        assert_eq!(bgcolor.triplet.unwrap().red, 10);
-        assert_eq!(bgcolor.triplet.unwrap().green, 20);
-        assert_eq!(bgcolor.triplet.unwrap().blue, 30);
+        assert_eq!(bgcolor.triplet().unwrap().red, 10);
+        assert_eq!(bgcolor.triplet().unwrap().green, 20);
+        assert_eq!(bgcolor.triplet().unwrap().blue, 30);
     }
 
     #[test]
@@ -677,7 +677,7 @@ mod tests {
         assert_eq!(text.plain(), "BrightRed");
         assert_eq!(text.spans().len(), 1);
         let color = text.spans()[0].style.color().unwrap();
-        assert_eq!(color.number, Some(9));
+        assert_eq!(color.number(), Some(9));
     }
 
     #[test]
@@ -687,7 +687,7 @@ mod tests {
         assert_eq!(text.plain(), "BrightRedBG");
         assert_eq!(text.spans().len(), 1);
         let bgcolor = text.spans()[0].style.bgcolor().unwrap();
-        assert_eq!(bgcolor.number, Some(9));
+        assert_eq!(bgcolor.number(), Some(9));
     }
 
     #[test]
@@ -730,9 +730,9 @@ mod tests {
         assert_eq!(text.plain(), "RedOnGreen");
         assert_eq!(text.spans().len(), 1);
         let fg = text.spans()[0].style.color().unwrap();
-        assert_eq!(fg.number, Some(1));
+        assert_eq!(fg.number(), Some(1));
         let bg = text.spans()[0].style.bgcolor().unwrap();
-        assert_eq!(bg.number, Some(2));
+        assert_eq!(bg.number(), Some(2));
     }
 
     #[test]
@@ -798,7 +798,7 @@ mod tests {
         // Span covers "red" (chars 0..3), not the trailing newline
         assert_eq!(texts[0].spans().len(), 1);
         let color = texts[0].spans()[0].style.color().unwrap();
-        assert_eq!(color.number, Some(1)); // ANSI red = color(1)
+        assert_eq!(color.number(), Some(1)); // ANSI red = color(1)
     }
 
     #[test]

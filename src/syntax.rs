@@ -918,9 +918,9 @@ mod tests {
         };
         let gilt_style = syntect_to_gilt_style(style);
         let color = gilt_style.color().expect("should have foreground color");
-        assert_eq!(color.triplet.unwrap().red, 255);
-        assert_eq!(color.triplet.unwrap().green, 128);
-        assert_eq!(color.triplet.unwrap().blue, 0);
+        assert_eq!(color.triplet().unwrap().red, 255);
+        assert_eq!(color.triplet().unwrap().green, 128);
+        assert_eq!(color.triplet().unwrap().blue, 0);
     }
 
     // -- guess_lexer test ---------------------------------------------------

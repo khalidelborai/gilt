@@ -126,7 +126,7 @@ impl Gradient {
             return Color::default_color();
         }
         if self.colors.len() == 1 || total <= 1 {
-            return self.colors[0].clone();
+            return self.colors[0];
         }
 
         let t = index as f64 / (total - 1) as f64; // 0.0 .. 1.0

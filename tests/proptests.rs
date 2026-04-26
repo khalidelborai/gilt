@@ -103,11 +103,11 @@ proptest! {
         b in 0u8..=255u8,
     ) {
         let color = Color::from_rgb(r, g, b);
-        assert_eq!(color.color_type, ColorType::TrueColor);
+        assert_eq!(color.kind(), ColorType::TrueColor);
 
         let downgraded = color.downgrade(ColorSystem::EightBit);
-        assert_eq!(downgraded.color_type, ColorType::EightBit);
-        let _number = downgraded.number.expect("EightBit color must have a number");
+        assert_eq!(downgraded.kind(), ColorType::EightBit);
+        let _number = downgraded.number().expect("EightBit color must have a number");
         // u8 guarantees 0-255 range; the key assertion is that downgrade
         // produces a color with EightBit type and a valid number.
     }
@@ -120,8 +120,8 @@ proptest! {
     ) {
         let color = Color::from_rgb(r, g, b);
         let downgraded = color.downgrade(ColorSystem::Standard);
-        assert_eq!(downgraded.color_type, ColorType::Standard);
-        let number = downgraded.number.expect("Standard color must have a number");
+        assert_eq!(downgraded.kind(), ColorType::Standard);
+        let number = downgraded.number().expect("Standard color must have a number");
         assert!(
             number < 16,
             "Standard index {} out of range [0,15] for rgb({},{},{})",
@@ -135,8 +135,8 @@ proptest! {
     ) {
         let color = Color::from_ansi(n);
         let downgraded = color.downgrade(ColorSystem::Standard);
-        assert_eq!(downgraded.color_type, ColorType::Standard);
-        let number = downgraded.number.expect("Standard color must have a number");
+        assert_eq!(downgraded.kind(), ColorType::Standard);
+        let number = downgraded.number().expect("Standard color must have a number");
         assert!(
             number < 16,
             "Standard index {} out of range [0,15] for color({})",
@@ -377,7 +377,7 @@ proptest! {
 
         // The hex string should be parseable back to the same color
         let parsed = Color::parse(&hex).expect("hex should be parseable");
-        let parsed_triplet = parsed.triplet.expect("parsed hex should have triplet");
+        let parsed_triplet = parsed.triplet().expect("parsed hex should have triplet");
         assert_eq!(triplet, parsed_triplet);
     }
 

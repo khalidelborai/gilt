@@ -5,6 +5,87 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.11.0-alpha.3] - 2026-04-26
+
+L1 Color enum (PR2 of the v0.11.0 break bundle). The largest single
+break of the bundle. Color shrinks from ~40 B + heap String to **~4 B
+inline** and becomes `Copy`.
+
+### Changed (breaking)
+
+- **`Color` is now a 5-variant enum** with one variant per color
+  classification:
+  ```rust
+  pub enum Color {
+      Default,
+      Standard(u8),       // ANSI 0..16
+      EightBit(u8),       // 16..=255
+      TrueColor(ColorTriplet),
+      Windows(u8),        // legacy Windows console palette
+  }
+  ```
+- **`Color: Copy`** — pass and store by value; no more `.clone()` on
+  every Color access.
+- **`Color.name: String` field → `Color::name() -> Cow<'_, str>`
+  method.** Borrowed for the 16 named ANSI colors and `"default"`;
+  owned `format!("color({n})")` for EightBit/Windows numbered, owned
+  hex for TrueColor.
+- **`Color.color_type: ColorType` field → `Color::kind() -> ColorType`
+  method.** `ColorType` enum is preserved for backward compatibility.
+- **`Color.number: Option<u8>` field → `Color::number() -> Option<u8>`
+  method.**
+- **`Color.triplet: Option<ColorTriplet>` field → `Color::triplet() ->
+  Option<ColorTriplet>` method.**
+
+### Migration
+
+```rust
+// Before:
+Color { name: "red".into(), color_type: ColorType::Standard,
+        number: Some(1), triplet: None }
+// After:
+Color::Standard(1)
+// or
+Color::parse("red")?
+
+// Before:                       // After:
+color.name                       color.name()             // -> Cow<'_, str>
+color.color_type                 color.kind()             // -> ColorType
+color.number                     color.number()           // -> Option<u8>
+color.triplet                    color.triplet()          // -> Option<ColorTriplet>
+match color.color_type { ... }   match color.kind() { ... }
+```
+
+### Deliberate behavior change
+
+EightBit colors no longer round-trip their named form through Display.
+`Color::parse("yellow4")?.name()` was `"yellow4"`, now returns
+`"color(106)"`. Only the 16 standard ANSI colors get canonical names
+from the inverse table. `Color::parse("color(106)")` still works in
+both directions. A future PR can build a comprehensive inverse map for
+named EightBit colors if needed.
+
+### Why keep Windows?
+
+Per AskUserQuestion, kept the `Windows` variant rather than folding
+into `Standard`. Windows colors have their own resolution palette in
+`get_truecolor`. Folding would lose `system() == ColorSystem::Windows`
+distinction. The 5-variant enum is still ~4-5 B vs the previous ~40 B
++ heap.
+
+### Memory impact
+
+For a 256-row table with 5 styled columns (~1280 Color values per
+render): ~45 KB saved before counting heap deallocation of `name`
+strings. The interner activation in PR3 will compound this further.
+
+### Notes
+
+- Kept `Style.color/bgcolor/underline_color: Option<Color>` for now;
+  PR3 (interner activation) handles the next-level shrink.
+- 27 internal call sites + 4 external (anstyle_adapter, syntax bridge,
+  gradient, diagnose) migrated. ~30 test fixtures updated.
+
 ## [0.11.0-alpha.2] - 2026-04-26
 
 PR1b of the v0.11.0 break bundle. **API change** to `Segment` so PR3 can

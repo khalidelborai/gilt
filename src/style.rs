@@ -453,13 +453,13 @@ impl Style {
             // Manually inline Add::add with rhs taken by reference — clones
             // only the chosen Option fields, not the entire rhs Style.
             acc = Style {
-                color: style.color.clone().or(acc.color),
-                bgcolor: style.bgcolor.clone().or(acc.bgcolor),
+                color: style.color.or(acc.color),
+                bgcolor: style.bgcolor.or(acc.bgcolor),
                 set_attributes: acc.set_attributes | style.set_attributes,
                 attributes: (acc.attributes & !style.set_attributes)
                     | (style.attributes & style.set_attributes),
                 link: style.link.clone().or(acc.link),
-                underline_color: style.underline_color.clone().or(acc.underline_color),
+                underline_color: style.underline_color.or(acc.underline_color),
                 underline_style: style.underline_style.or(acc.underline_style),
             };
         }
@@ -619,7 +619,7 @@ impl Style {
             set_attributes: self.set_attributes,
             attributes: self.attributes,
             link: self.link.clone(),
-            underline_color: self.underline_color.clone(),
+            underline_color: self.underline_color,
             underline_style: self.underline_style,
         }
     }
@@ -628,7 +628,7 @@ impl Style {
     pub fn background_style(&self) -> Style {
         Style {
             color: None,
-            bgcolor: self.bgcolor.clone(),
+            bgcolor: self.bgcolor,
             set_attributes: 0,
             attributes: 0,
             link: None,
@@ -646,12 +646,12 @@ impl Style {
     /// Returns a copy without metadata and links.
     pub fn clear_meta_and_links(&self) -> Style {
         Style {
-            color: self.color.clone(),
-            bgcolor: self.bgcolor.clone(),
+            color: self.color,
+            bgcolor: self.bgcolor,
             set_attributes: self.set_attributes,
             attributes: self.attributes,
             link: None,
-            underline_color: self.underline_color.clone(),
+            underline_color: self.underline_color,
             underline_style: self.underline_style,
         }
     }
@@ -672,12 +672,12 @@ impl Style {
     /// Returns a copy with an updated link.
     pub fn update_link(&self, link: Option<&str>) -> Style {
         Style {
-            color: self.color.clone(),
-            bgcolor: self.bgcolor.clone(),
+            color: self.color,
+            bgcolor: self.bgcolor,
             set_attributes: self.set_attributes,
             attributes: self.attributes,
             link: link.map(|s| s.to_string()),
-            underline_color: self.underline_color.clone(),
+            underline_color: self.underline_color,
             underline_style: self.underline_style,
         }
     }
@@ -801,13 +801,13 @@ impl fmt::Display for Style {
 
         // Foreground color
         if let Some(color) = &self.color {
-            parts.push(color.name.clone());
+            parts.push(color.name().into_owned());
         }
 
         // Background color
         if let Some(bgcolor) = &self.bgcolor {
             parts.push("on".to_string());
-            parts.push(bgcolor.name.clone());
+            parts.push(bgcolor.name().into_owned());
         }
 
         // Underline style — match to a static &'static str (avoids two
@@ -827,7 +827,7 @@ impl fmt::Display for Style {
 
         // Underline color
         if let Some(ul_color) = &self.underline_color {
-            parts.push(format!("underline_color({})", ul_color.name));
+            parts.push(format!("underline_color({})", ul_color.name()));
         }
 
         // Link
@@ -1332,7 +1332,7 @@ mod tests {
     #[test]
     fn test_parse_red() {
         let style = Style::parse("red").unwrap();
-        assert_eq!(style.color().unwrap().name, "red");
+        assert_eq!(style.color().unwrap().name(), "red");
     }
 
     #[test]
@@ -1345,8 +1345,8 @@ mod tests {
     fn test_parse_bold_red_on_black() {
         let style = Style::parse("bold red on black").unwrap();
         assert_eq!(style.bold(), Some(true));
-        assert_eq!(style.color().unwrap().name, "red");
-        assert_eq!(style.bgcolor().unwrap().name, "black");
+        assert_eq!(style.color().unwrap().name(), "red");
+        assert_eq!(style.bgcolor().unwrap().name(), "black");
     }
 
     #[test]
@@ -1436,7 +1436,7 @@ mod tests {
         let style1 = Style::parse("red").unwrap();
         let style2 = Style::parse("bold").unwrap();
         let result = style1 + style2;
-        assert_eq!(result.color().unwrap().name, "red");
+        assert_eq!(result.color().unwrap().name(), "red");
         assert_eq!(result.bold(), Some(true));
     }
 
@@ -1445,21 +1445,21 @@ mod tests {
         let style1 = Style::parse("red").unwrap();
         let style2 = Style::parse("blue").unwrap();
         let result = style1 + style2;
-        assert_eq!(result.color().unwrap().name, "blue");
+        assert_eq!(result.color().unwrap().name(), "blue");
     }
 
     // StyleStack tests
     #[test]
     fn test_style_stack_new() {
         let stack = StyleStack::new(Style::parse("red").unwrap());
-        assert_eq!(stack.current().color().unwrap().name, "red");
+        assert_eq!(stack.current().color().unwrap().name(), "red");
     }
 
     #[test]
     fn test_style_stack_push() {
         let mut stack = StyleStack::new(Style::parse("red").unwrap());
         stack.push(Style::parse("bold").unwrap());
-        assert_eq!(stack.current().color().unwrap().name, "red");
+        assert_eq!(stack.current().color().unwrap().name(), "red");
         assert_eq!(stack.current().bold(), Some(true));
     }
 
@@ -1468,7 +1468,7 @@ mod tests {
         let mut stack = StyleStack::new(Style::parse("red").unwrap());
         stack.push(Style::parse("bold").unwrap());
         stack.pop().unwrap();
-        assert_eq!(stack.current().color().unwrap().name, "red");
+        assert_eq!(stack.current().color().unwrap().name(), "red");
         assert_eq!(stack.current().bold(), None);
     }
 
@@ -1519,7 +1519,7 @@ mod tests {
         let style = Style::parse("bold yellow on red").unwrap();
         let bg = style.background_style();
         assert!(bg.color().is_none());
-        assert_eq!(bg.bgcolor().unwrap().name, "red");
+        assert_eq!(bg.bgcolor().unwrap().name(), "red");
         assert_eq!(bg.bold(), None);
     }
 
@@ -1529,7 +1529,7 @@ mod tests {
         let style = Style::parse("bold red link https://example.org").unwrap();
         let cleared = style.clear_meta_and_links();
         assert_eq!(cleared.bold(), Some(true));
-        assert_eq!(cleared.color().unwrap().name, "red");
+        assert_eq!(cleared.color().unwrap().name(), "red");
         assert!(cleared.link().is_none());
     }
 
@@ -1548,9 +1548,9 @@ mod tests {
             Style::parse("on blue").unwrap(),
         ];
         let result = Style::combine(&styles);
-        assert_eq!(result.color().unwrap().name, "red");
+        assert_eq!(result.color().unwrap().name(), "red");
         assert_eq!(result.bold(), Some(true));
-        assert_eq!(result.bgcolor().unwrap().name, "blue");
+        assert_eq!(result.bgcolor().unwrap().name(), "blue");
     }
 
     // Attribute aliases tests
@@ -1620,8 +1620,8 @@ mod tests {
         let color = Color::parse("red").unwrap();
         let bgcolor = Color::parse("blue").unwrap();
         let style = Style::from_color(Some(color), Some(bgcolor));
-        assert_eq!(style.color().unwrap().name, "red");
-        assert_eq!(style.bgcolor().unwrap().name, "blue");
+        assert_eq!(style.color().unwrap().name(), "red");
+        assert_eq!(style.bgcolor().unwrap().name(), "blue");
         assert!(style.bold().is_none());
     }
 
@@ -1687,7 +1687,10 @@ mod tests {
         let null = Style::null();
         let picked = Style::pick_first(&[Some(&null), Some(&s1), Some(&s2)]);
         assert_eq!(picked.bold(), Some(true));
-        assert_eq!(picked.color().map(|c| c.name.as_str()), Some("red"));
+        assert_eq!(
+            picked.color().map(|c| c.name().into_owned()),
+            Some("red".to_string())
+        );
     }
 
     #[test]
@@ -1761,7 +1764,7 @@ mod tests {
         ];
         let result = Style::combine(&styles);
         assert_eq!(result.link(), Some("https://example.com"));
-        assert_eq!(result.color().unwrap().name, "red");
+        assert_eq!(result.color().unwrap().name(), "red");
         assert_eq!(result.bold(), Some(true));
     }
 
@@ -1782,7 +1785,7 @@ mod tests {
         let red = Color::parse("red").unwrap();
         style.set_underline_color(Some(red));
         assert!(style.underline_color().is_some());
-        assert_eq!(style.underline_color().unwrap().name, "red");
+        assert_eq!(style.underline_color().unwrap().name(), "red");
     }
 
     #[test]
@@ -1829,7 +1832,7 @@ mod tests {
         s1.set_underline_color(Some(Color::parse("red").unwrap()));
         let s2 = Style::parse("bold").unwrap();
         let result = s1 + s2;
-        assert_eq!(result.underline_color().unwrap().name, "red");
+        assert_eq!(result.underline_color().unwrap().name(), "red");
     }
 
     #[test]
@@ -1866,7 +1869,7 @@ mod tests {
         assert!(without.color().is_none());
         assert!(without.bgcolor().is_none());
         assert!(without.underline_color().is_some());
-        assert_eq!(without.underline_color().unwrap().name, "green");
+        assert_eq!(without.underline_color().unwrap().name(), "green");
     }
 
     #[test]

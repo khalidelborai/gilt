@@ -19,8 +19,8 @@ fn main() {
         println!(
             "{:<20} type={:<10?} number={:<6} system={:?}",
             name,
-            color.color_type,
-            color.number.map_or("-".into(), |n| n.to_string()),
+            color.kind(),
+            color.number().map_or("-".into(), |n| n.to_string()),
             color.system()
         );
     }

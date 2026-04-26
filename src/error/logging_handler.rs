@@ -461,7 +461,7 @@ mod tests {
         let error_style = styles.get(&log::Level::Error).unwrap();
         assert_eq!(error_style.bold(), Some(true));
         assert!(error_style.color().is_some());
-        assert_eq!(error_style.color().unwrap().name, "red");
+        assert_eq!(error_style.color().unwrap().name(), "red");
     }
 
     #[test]
@@ -469,7 +469,7 @@ mod tests {
         let styles = RichHandler::default_level_styles();
         let warn_style = styles.get(&log::Level::Warn).unwrap();
         assert_eq!(warn_style.bold(), Some(true));
-        assert_eq!(warn_style.color().unwrap().name, "yellow");
+        assert_eq!(warn_style.color().unwrap().name(), "yellow");
     }
 
     #[test]
@@ -477,7 +477,7 @@ mod tests {
         let styles = RichHandler::default_level_styles();
         let info_style = styles.get(&log::Level::Info).unwrap();
         assert_eq!(info_style.bold(), Some(true));
-        assert_eq!(info_style.color().unwrap().name, "green");
+        assert_eq!(info_style.color().unwrap().name(), "green");
     }
 
     #[test]
@@ -485,7 +485,7 @@ mod tests {
         let styles = RichHandler::default_level_styles();
         let debug_style = styles.get(&log::Level::Debug).unwrap();
         assert_eq!(debug_style.bold(), Some(true));
-        assert_eq!(debug_style.color().unwrap().name, "blue");
+        assert_eq!(debug_style.color().unwrap().name(), "blue");
     }
 
     #[test]

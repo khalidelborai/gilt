@@ -325,17 +325,17 @@ mod tests {
     #[test]
     fn test_color_styles() {
         let style = DEFAULT_STYLES.get("red").unwrap();
-        assert_eq!(style.color().unwrap().name, "red");
+        assert_eq!(style.color().unwrap().name(), "red");
 
         let style = DEFAULT_STYLES.get("green").unwrap();
-        assert_eq!(style.color().unwrap().name, "green");
+        assert_eq!(style.color().unwrap().name(), "green");
     }
 
     #[test]
     fn test_inspect_attr() {
         let style = DEFAULT_STYLES.get("inspect.attr").unwrap();
         assert_eq!(style.italic(), Some(true));
-        assert_eq!(style.color().unwrap().name, "yellow");
+        assert_eq!(style.color().unwrap().name(), "yellow");
     }
 
     #[test]
@@ -343,7 +343,7 @@ mod tests {
         let style = DEFAULT_STYLES.get("inspect.attr.dunder").unwrap();
         assert_eq!(style.italic(), Some(true));
         assert_eq!(style.dim(), Some(true));
-        assert_eq!(style.color().unwrap().name, "yellow");
+        assert_eq!(style.color().unwrap().name(), "yellow");
     }
 
     #[test]
@@ -351,7 +351,7 @@ mod tests {
         let style = DEFAULT_STYLES.get("logging.level.critical").unwrap();
         assert_eq!(style.bold(), Some(true));
         assert_eq!(style.reverse(), Some(true));
-        assert_eq!(style.color().unwrap().name, "red");
+        assert_eq!(style.color().unwrap().name(), "red");
     }
 
     #[test]
@@ -359,7 +359,7 @@ mod tests {
         let style = DEFAULT_STYLES.get("repr.str").unwrap();
         assert_eq!(style.italic(), Some(false));
         assert_eq!(style.bold(), Some(false));
-        assert_eq!(style.color().unwrap().name, "green");
+        assert_eq!(style.color().unwrap().name(), "green");
     }
 
     #[test]
@@ -378,8 +378,8 @@ mod tests {
     fn test_markdown_code() {
         let style = DEFAULT_STYLES.get("markdown.code").unwrap();
         assert_eq!(style.bold(), Some(true));
-        assert_eq!(style.color().unwrap().name, "cyan");
-        assert_eq!(style.bgcolor().unwrap().name, "black");
+        assert_eq!(style.color().unwrap().name(), "cyan");
+        assert_eq!(style.bgcolor().unwrap().name(), "black");
     }
 
     #[test]

@@ -1704,8 +1704,8 @@ mod tests {
         let style_at_0 = text.get_style_at_offset_themed(&console, 0);
         assert_eq!(style_at_0.bold(), Some(true), "expected bold");
         assert_eq!(
-            style_at_0.color().map(|c| c.name.as_str()),
-            Some("red"),
+            style_at_0.color().map(|c| c.name().into_owned()),
+            Some("red".to_string()),
             "expected red foreground"
         );
     }

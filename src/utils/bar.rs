@@ -279,13 +279,13 @@ mod tests {
     #[test]
     fn test_with_color() {
         let bar = Bar::new(100.0, 0.0, 50.0).with_color(Color::parse("red").unwrap());
-        assert_eq!(bar.style.color().unwrap().name, "red");
+        assert_eq!(bar.style.color().unwrap().name(), "red");
     }
 
     #[test]
     fn test_with_bgcolor() {
         let bar = Bar::new(100.0, 0.0, 50.0).with_bgcolor(Color::parse("blue").unwrap());
-        assert_eq!(bar.style.bgcolor().unwrap().name, "blue");
+        assert_eq!(bar.style.bgcolor().unwrap().name(), "blue");
     }
 
     #[test]
@@ -293,8 +293,8 @@ mod tests {
         let bar = Bar::new(100.0, 0.0, 50.0)
             .with_color(Color::parse("red").unwrap())
             .with_bgcolor(Color::parse("blue").unwrap());
-        assert_eq!(bar.style.color().unwrap().name, "red");
-        assert_eq!(bar.style.bgcolor().unwrap().name, "blue");
+        assert_eq!(bar.style.color().unwrap().name(), "red");
+        assert_eq!(bar.style.bgcolor().unwrap().name(), "blue");
     }
 
     // -- Display trait ------------------------------------------------------
