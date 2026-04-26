@@ -132,7 +132,7 @@ fn main() {
     let mut table_strings: Vec<String> = Vec::new();
 
     // Create small stat tables
-    for (title, rows) in vec![
+    for (title, rows) in [
         (
             "CPU",
             vec![("User", "45%"), ("System", "12%"), ("Idle", "43%")],
@@ -214,7 +214,7 @@ fn main() {
     let items: Vec<String> = (1..=20).map(|i| format!("Item {:02}", i)).collect();
 
     // Simulate different terminal widths
-    for (width, label) in vec![
+    for (width, label) in [
         (120, "Wide (120 cols)"),
         (80, "Medium (80 cols)"),
         (50, "Narrow (50 cols)"),
@@ -441,7 +441,7 @@ fn main() {
     // Create a complex layout with tables inside panels
     let mut complex_strings: Vec<String> = Vec::new();
 
-    for section in vec!["Frontend", "Backend", "Database"] {
+    for section in ["Frontend", "Backend", "Database"] {
         let mut table = Table::grid(&["Tech", "Status"]);
         let rows = match section {
             "Frontend" => vec![("React", "✓"), ("TypeScript", "✓"), ("Vite", "○")],

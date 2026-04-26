@@ -113,7 +113,7 @@ mod tests {
             if !seg.is_control() && !seg.text.is_empty() && seg.text.trim() == seg.text {
                 // The text content segment(s) should carry bold
                 assert!(
-                    seg.style.as_ref().map_or(false, |s| s.bold() == Some(true)),
+                    seg.style.as_ref().is_some_and(|s| s.bold() == Some(true)),
                     "segment {:?} should be bold",
                     seg.text,
                 );

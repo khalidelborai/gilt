@@ -94,7 +94,7 @@ fn main() {
         let columns: Vec<Box<dyn gilt::progress::ProgressColumn>> = vec![
             Box::new(SpinnerColumn::new("dots")),
             Box::new(TextColumn::new("{task.description}")),
-            Box::new(FileSizeColumn::default()),
+            Box::new(FileSizeColumn),
         ];
         let mut progress = Progress::new(columns);
         let task = progress.add_task("Uploading file", None);

@@ -28,7 +28,7 @@ fn main() {
     println!("[2] track() with Vec iteration");
     println!("    Tracking processing of string items\n");
 
-    let items = vec![
+    let items = [
         "apple",
         "banana",
         "cherry",
@@ -154,7 +154,7 @@ fn main() {
     println!("    Downloaded {} bytes\n", downloaded.len());
 
     // Stage 2: Process
-    let processed: Vec<u8> = track(downloaded.into_iter(), "Stage 2: Processing", Some(20.0))
+    let processed: Vec<u8> = track(downloaded, "Stage 2: Processing", Some(20.0))
         .map(|b| {
             thread::sleep(Duration::from_millis(30));
             b.wrapping_add(1)
@@ -164,10 +164,9 @@ fn main() {
     println!("    Processed {} bytes\n", processed.len());
 
     // Stage 3: Upload
-    let _uploaded: Vec<u8> = track(processed.into_iter(), "Stage 3: Uploading", Some(20.0))
-        .map(|b| {
+    let _uploaded: Vec<u8> = track(processed, "Stage 3: Uploading", Some(20.0))
+        .inspect(|b| {
             thread::sleep(Duration::from_millis(35));
-            b
         })
         .collect();
 
@@ -226,17 +225,17 @@ fn main() {
 
     // ── 10. Summary ──────────────────────────────────────────────────────────
     console.rule(Some("Summary"));
-    println!("");
+    println!();
     println!("The track() function and ProgressIteratorExt trait provide");
     println!("flexible progress tracking for iterators:");
-    println!("");
+    println!();
     println!("  • track(iter, desc, total) - wraps any iterator with progress");
     println!("  • iter.progress(desc) - extension method on iterators");
     println!("  • iter.progress_with_total(desc, total) - explicit total");
     println!("  • Custom column configurations for different visual styles");
     println!("  • Automatic progress bar or spinner based on total availability");
-    println!("");
+    println!();
     println!("All methods automatically start/stop the live display and");
     println!("advance the progress bar as items are yielded.");
-    println!("");
+    println!();
 }

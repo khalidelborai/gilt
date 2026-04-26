@@ -353,9 +353,9 @@ mod tests {
         let empty_braille = '\u{2800}';
         let expected = format!(
             "{}{}{}",
-            std::iter::repeat(empty_braille).take(3).collect::<String>(),
+            std::iter::repeat_n(empty_braille, 3).collect::<String>(),
             "\n",
-            std::iter::repeat(empty_braille).take(3).collect::<String>(),
+            std::iter::repeat_n(empty_braille, 3).collect::<String>(),
         );
         assert_eq!(frame, expected);
     }

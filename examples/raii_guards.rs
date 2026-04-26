@@ -37,7 +37,7 @@ fn main() {
     console.print_text("  [info]This uses the custom magenta 'info' style[/info]");
 
     // Pop theme
-    let _ = console.pop_theme();
+    console.pop_theme();
     console.print_text("\nAfter theme pop:");
     console.print_text("  [info]This reverts to default 'info' style[/info]");
 

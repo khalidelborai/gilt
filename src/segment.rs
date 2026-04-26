@@ -1377,8 +1377,8 @@ mod tests {
         let segments = vec![Segment::text("Hello\nWorld")];
         let lines = Segment::split_lines_terminator(&segments);
         assert_eq!(lines.len(), 2);
-        assert_eq!(lines[0].1, true); // first line has terminator
-        assert_eq!(lines[1].1, false); // last line doesn\'t
+        assert!(lines[0].1); // first line has terminator
+        assert!(!lines[1].1); // last line doesn\'t
         let text0: String = lines[0].0.iter().map(|s| s.text.as_str()).collect();
         assert_eq!(text0, "Hello");
     }
@@ -1388,7 +1388,7 @@ mod tests {
         let segments = vec![Segment::text("Hello")];
         let lines = Segment::split_lines_terminator(&segments);
         assert_eq!(lines.len(), 1);
-        assert_eq!(lines[0].1, false);
+        assert!(!lines[0].1);
     }
 
     #[test]
@@ -1396,6 +1396,6 @@ mod tests {
         let segments = vec![Segment::text("Hello\n")];
         let lines = Segment::split_lines_terminator(&segments);
         assert_eq!(lines.len(), 1);
-        assert_eq!(lines[0].1, true);
+        assert!(lines[0].1);
     }
 }

@@ -412,13 +412,11 @@ mod tests {
 
         let has_bold = segments.iter().any(|s| {
             s.text.contains("Bold item")
-                && s.style.as_ref().map_or(false, |st| st.bold() == Some(true))
+                && s.style.as_ref().is_some_and(|st| st.bold() == Some(true))
         });
         let has_italic = segments.iter().any(|s| {
             s.text.contains("Italic item")
-                && s.style
-                    .as_ref()
-                    .map_or(false, |st| st.italic() == Some(true))
+                && s.style.as_ref().is_some_and(|st| st.italic() == Some(true))
         });
         assert!(has_bold, "Expected bold segment in output");
         assert!(has_italic, "Expected italic segment in output");

@@ -689,7 +689,7 @@ fn show_performance(console: &mut Console) {
 
     // Build capture console for timing
     let (term_width, _) = Console::detect_terminal_size();
-    let width = (term_width as usize).min(CONSOLE_WIDTH);
+    let width = term_width.min(CONSOLE_WIDTH);
 
     let mut capture_console = Console::builder()
         .width(width)
@@ -1084,7 +1084,7 @@ fn show_export(console: &mut Console) {
 
     if std::fs::write(html_path, &html).is_ok() && std::fs::write(svg_path, &svg).is_ok() {
         console.line(1);
-        console.print_text(&format!("[green]✓[/green] Files saved to:"));
+        console.print_text(&"[green]✓[/green] Files saved to:".to_string());
         console.print_text(&format!("  HTML: [cyan]{}[/cyan]", html_path));
         console.print_text(&format!("  SVG:  [cyan]{}[/cyan]", svg_path));
     }

@@ -1366,8 +1366,8 @@ mod padding_tests {
         // First column keeps its left padding
         assert_eq!(t.get_padding_width(0), 1 + 2);
         // Non-first columns drop the left padding (collapses to a single gap)
-        assert_eq!(t.get_padding_width(1), 0 + 2);
-        assert_eq!(t.get_padding_width(2), 0 + 2);
+        assert_eq!(t.get_padding_width(1), 2);
+        assert_eq!(t.get_padding_width(2), 2);
     }
 
     #[test]
@@ -1378,11 +1378,11 @@ mod padding_tests {
         t.pad_edge = false;
 
         // First column: left padding zeroed (against table edge)
-        assert_eq!(t.get_padding_width(0), 0 + 2);
+        assert_eq!(t.get_padding_width(0), 2);
         // Middle column: full padding
         assert_eq!(t.get_padding_width(1), 3 + 2);
         // Last column: right padding zeroed
-        assert_eq!(t.get_padding_width(2), 3 + 0);
+        assert_eq!(t.get_padding_width(2), 3);
     }
 
     #[test]
@@ -1403,9 +1403,9 @@ mod padding_tests {
         //   last column:  pad_edge zeros pad_right  -> 0+0
         let mut t = Table::grid(&["a", "b", "c"]);
         t.padding = (0, 1, 0, 1);
-        assert_eq!(t.get_padding_width(0), 0 + 1);
-        assert_eq!(t.get_padding_width(1), 0 + 1);
-        assert_eq!(t.get_padding_width(2), 0 + 0);
+        assert_eq!(t.get_padding_width(0), 1);
+        assert_eq!(t.get_padding_width(1), 1);
+        assert_eq!(t.get_padding_width(2), 0);
     }
 
     #[test]

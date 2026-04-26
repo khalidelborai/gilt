@@ -178,7 +178,7 @@ mod tests {
         let (mut proxy, captured, _sink) = proxy_with_sink(false);
         write!(proxy, "hello").unwrap();
         assert_eq!(captured.lock().unwrap().len(), 0);
-        write!(proxy, " world\n").unwrap();
+        writeln!(proxy, " world").unwrap();
         assert_eq!(captured.lock().unwrap().len(), 1);
         assert_eq!(captured.lock().unwrap()[0].0, "hello world");
         assert!(!captured.lock().unwrap()[0].1);
@@ -242,7 +242,7 @@ mod tests {
         drop(sink);
         // Write should succeed (returns Ok with full byte count) but
         // captured should remain empty.
-        write!(proxy, "ghost\n").unwrap();
+        writeln!(proxy, "ghost").unwrap();
         assert_eq!(captured.lock().unwrap().len(), 0);
     }
 }

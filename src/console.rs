@@ -2121,8 +2121,6 @@ fn svg_escape(s: &str) -> Cow<'_, str> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::segment::ControlCode;
-    use crate::segment::ControlType;
 
     // -- ConsoleDimensions --------------------------------------------------
 

@@ -554,11 +554,9 @@ impl Style {
     /// Mirrors rich's `Style.pick_first(*candidates)` — useful in render
     /// pipelines that select among theme / row / column / cell style overrides.
     pub fn pick_first(candidates: &[Option<&Style>]) -> Style {
-        for cand in candidates {
-            if let Some(s) = cand {
-                if !s.is_null() {
-                    return (*s).clone();
-                }
+        for s in candidates.iter().flatten() {
+            if !s.is_null() {
+                return (*s).clone();
             }
         }
         Style::null()
@@ -904,6 +902,61 @@ impl StyleStack {
         }
         self.stack.pop();
         Ok(self.current())
+    }
+}
+
+// ============================================================================
+// LRU Cache for Style Parsing
+// ============================================================================
+
+use lru::LruCache;
+use std::num::NonZeroUsize;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Mutex;
+
+/// Process-wide monotonic counter for OSC 8 `id=` parameters.
+///
+/// Each call to [`next_link_id`] returns a fresh integer — used by
+/// [`Style::render`] when emitting hyperlinks so multi-line link runs are
+/// recognised as a single clickable target by terminals that group on `id=`.
+static LINK_ID_COUNTER: AtomicU64 = AtomicU64::new(1);
+
+/// Return a fresh OSC 8 link id, monotonically increasing for the process.
+pub(crate) fn next_link_id() -> u64 {
+    LINK_ID_COUNTER.fetch_add(1, Ordering::Relaxed)
+}
+
+/// Global LRU cache for parsed styles with capacity for 256 entries.
+static STYLE_CACHE: Mutex<Option<LruCache<String, Style>>> = Mutex::new(None);
+
+/// Gets or initializes the style cache.
+///
+/// Recovers from a poisoned mutex (after a panic in a previous holder) by
+/// extracting the inner value — the cache is purely a parse accelerator, so
+/// the data behind a poison flag is still safe to use.
+fn get_style_cache() -> std::sync::MutexGuard<'static, Option<LruCache<String, Style>>> {
+    let mut cache = STYLE_CACHE
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    if cache.is_none() {
+        *cache = Some(LruCache::new(NonZeroUsize::new(256).unwrap()));
+    }
+    cache
+}
+
+/// Clears the global style cache.
+pub fn clear_style_cache() {
+    if let Ok(mut cache) = STYLE_CACHE.lock() {
+        *cache = None;
+    }
+}
+
+/// Returns the current number of entries in the style cache.
+pub fn style_cache_size() -> usize {
+    if let Ok(cache) = STYLE_CACHE.lock() {
+        cache.as_ref().map(|c| c.len()).unwrap_or(0)
+    } else {
+        0
     }
 }
 
@@ -1808,60 +1861,5 @@ mod tests {
         assert_eq!(style.reverse(), Some(true));
         assert_eq!(style.conceal(), Some(true));
         assert_eq!(style.strike(), Some(true));
-    }
-}
-
-// ============================================================================
-// LRU Cache for Style Parsing
-// ============================================================================
-
-use lru::LruCache;
-use std::num::NonZeroUsize;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Mutex;
-
-/// Process-wide monotonic counter for OSC 8 `id=` parameters.
-///
-/// Each call to [`next_link_id`] returns a fresh integer — used by
-/// [`Style::render`] when emitting hyperlinks so multi-line link runs are
-/// recognised as a single clickable target by terminals that group on `id=`.
-static LINK_ID_COUNTER: AtomicU64 = AtomicU64::new(1);
-
-/// Return a fresh OSC 8 link id, monotonically increasing for the process.
-pub(crate) fn next_link_id() -> u64 {
-    LINK_ID_COUNTER.fetch_add(1, Ordering::Relaxed)
-}
-
-/// Global LRU cache for parsed styles with capacity for 256 entries.
-static STYLE_CACHE: Mutex<Option<LruCache<String, Style>>> = Mutex::new(None);
-
-/// Gets or initializes the style cache.
-///
-/// Recovers from a poisoned mutex (after a panic in a previous holder) by
-/// extracting the inner value — the cache is purely a parse accelerator, so
-/// the data behind a poison flag is still safe to use.
-fn get_style_cache() -> std::sync::MutexGuard<'static, Option<LruCache<String, Style>>> {
-    let mut cache = STYLE_CACHE
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
-    if cache.is_none() {
-        *cache = Some(LruCache::new(NonZeroUsize::new(256).unwrap()));
-    }
-    cache
-}
-
-/// Clears the global style cache.
-pub fn clear_style_cache() {
-    if let Ok(mut cache) = STYLE_CACHE.lock() {
-        *cache = None;
-    }
-}
-
-/// Returns the current number of entries in the style cache.
-pub fn style_cache_size() -> usize {
-    if let Ok(cache) = STYLE_CACHE.lock() {
-        cache.as_ref().map(|c| c.len()).unwrap_or(0)
-    } else {
-        0
     }
 }
