@@ -429,10 +429,41 @@ impl Style {
     }
 
     /// Combines multiple styles into one (left-to-right merge).
+    ///
+    /// Prefer [`Style::combine_refs`] in hot paths — `combine` clones each
+    /// input on the way through `Add<Style>`. The reference-based variant
+    /// avoids the per-step clone.
     pub fn combine(styles: &[Style]) -> Style {
         styles
             .iter()
             .fold(Style::null(), |acc, style| acc + style.clone())
+    }
+
+    /// Like [`Style::combine`] but iterates over references — avoids the
+    /// per-step `Style.clone()` that the by-value `Add<Style>` impl forces.
+    ///
+    /// Used by the per-segment span-rendering loop in `Text` where the same
+    /// active span set is consulted thousands of times per render.
+    pub fn combine_refs<'a, I>(styles: I) -> Style
+    where
+        I: IntoIterator<Item = &'a Style>,
+    {
+        let mut acc = Style::null();
+        for style in styles {
+            // Manually inline Add::add with rhs taken by reference — clones
+            // only the chosen Option fields, not the entire rhs Style.
+            acc = Style {
+                color: style.color.clone().or(acc.color),
+                bgcolor: style.bgcolor.clone().or(acc.bgcolor),
+                set_attributes: acc.set_attributes | style.set_attributes,
+                attributes: (acc.attributes & !style.set_attributes)
+                    | (style.attributes & style.set_attributes),
+                link: style.link.clone().or(acc.link),
+                underline_color: style.underline_color.clone().or(acc.underline_color),
+                underline_style: style.underline_style.or(acc.underline_style),
+            };
+        }
+        acc
     }
 
     /// Renders text with this style as ANSI escape sequences.
@@ -444,18 +475,23 @@ impl Style {
     ///
     /// Returns plain `text` when `color_system` is `None` or `text` is empty.
     pub fn render_no_link(&self, text: &str, color_system: Option<ColorSystem>) -> String {
-        let saved = self.link.clone();
-        // Temporarily strip the link so the existing render path runs without
-        // emitting OSC 8. We restore via the unsafe-free Cell-trick: clone +
-        // null-assign on a local copy.
-        let mut tmp = self.clone();
-        tmp.link = None;
-        let out = tmp.render(text, color_system);
-        let _ = saved; // suppress unused warning
-        out
+        // Skip the OSC 8 wrapping branch — no clone of `self` needed.
+        self.render_inner(text, color_system, false)
     }
 
     pub fn render(&self, text: &str, color_system: Option<ColorSystem>) -> String {
+        self.render_inner(text, color_system, true)
+    }
+
+    /// Internal render path. `emit_link` controls whether `self.link` is
+    /// wrapped in OSC 8 (the public `render` passes `true`; `render_no_link`
+    /// passes `false` to avoid cloning Style just to strip the field).
+    fn render_inner(
+        &self,
+        text: &str,
+        color_system: Option<ColorSystem>,
+        emit_link: bool,
+    ) -> String {
         if text.is_empty() || color_system.is_none() {
             return text.to_string();
         }
@@ -528,26 +564,27 @@ impl Style {
             write!(result, "\x1b[{}m{}\x1b[0m", sgr, text).unwrap();
         }
 
-        // Wrap in hyperlink if present.
+        // Wrap in hyperlink if present and the caller wants links emitted.
         //
         // Emit `id=N;url` instead of bare `;url` so terminals that group
         // multi-line links (iTerm2, Kitty, WezTerm) recognise the run as a
         // single clickable target. The id is a process-monotonic counter and
         // not guaranteed stable across renders; if you need a stable id,
         // reuse the same Style across calls.
-        if let Some(url) = &self.link {
-            let id = next_link_id();
-            let mut linked = String::new();
-            write!(
-                linked,
-                "\x1b]8;id={};{}\x1b\\{}\x1b]8;;\x1b\\",
-                id, url, result
-            )
-            .unwrap();
-            linked
-        } else {
-            result
+        if emit_link {
+            if let Some(url) = &self.link {
+                let id = next_link_id();
+                let mut linked = String::with_capacity(result.len() + url.len() + 32);
+                write!(
+                    linked,
+                    "\x1b]8;id={};{}\x1b\\{}\x1b]8;;\x1b\\",
+                    id, url, result
+                )
+                .unwrap();
+                return linked;
+            }
         }
+        result
     }
 
     /// Pick the first non-null style from the candidate list, or [`Style::null`]
