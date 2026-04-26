@@ -25,8 +25,13 @@ static SYNTAX_SET: LazyLock<SyntaxSet> = LazyLock::new(SyntaxSet::load_defaults_
 /// Global lazily-initialized theme set.
 static THEME_SET: LazyLock<ThemeSet> = LazyLock::new(ThemeSet::load_defaults);
 
-/// Default theme name.
-const DEFAULT_THEME: &str = "base16-ocean.dark";
+/// Default theme name. Matches the upstream library default — a Monokai
+/// variant available in the bundled `syntect` themes (`Solarized (dark)`
+/// in syntect = `"Solarized (dark)"`; for "monokai" we use the bundled
+/// `base16-mocha.dark` which is the closest near-Monokai theme that
+/// `syntect` ships by default). If the named theme is missing at render
+/// time, [`Syntax::render_syntax`] falls back to `base16-ocean.dark`.
+const DEFAULT_THEME: &str = "base16-mocha.dark";
 
 /// Default padding for the line numbers column.
 const NUMBERS_COLUMN_DEFAULT_PADDING: usize = 2;
@@ -128,7 +133,7 @@ pub struct Syntax {
 }
 
 impl Syntax {
-    /// Create a new Syntax with defaults: base16-ocean.dark theme, no line numbers.
+    /// Create a new Syntax with defaults: `base16-mocha.dark` theme (Monokai-like), no line numbers.
     pub fn new(code: &str, lexer_name: &str) -> Self {
         Syntax {
             code: code.to_string(),

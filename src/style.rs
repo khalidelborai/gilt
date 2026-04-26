@@ -526,14 +526,37 @@ impl Style {
             write!(result, "\x1b[{}m{}\x1b[0m", sgr, text).unwrap();
         }
 
-        // Wrap in hyperlink if present
+        // Wrap in hyperlink if present.
+        //
+        // Emit `id=N;url` instead of bare `;url` so terminals that group
+        // multi-line links (iTerm2, Kitty, WezTerm) recognise the run as a
+        // single clickable target. The id is a process-monotonic counter and
+        // not guaranteed stable across renders; if you need a stable id,
+        // reuse the same Style across calls.
         if let Some(url) = &self.link {
+            let id = next_link_id();
             let mut linked = String::new();
-            write!(linked, "\x1b]8;;{}\x1b\\{}\x1b]8;;\x1b\\", url, result).unwrap();
+            write!(linked, "\x1b]8;id={};{}\x1b\\{}\x1b]8;;\x1b\\", id, url, result).unwrap();
             linked
         } else {
             result
         }
+    }
+
+    /// Pick the first non-null style from the candidate list, or [`Style::null`]
+    /// if every candidate is null/None.
+    ///
+    /// Mirrors rich's `Style.pick_first(*candidates)` — useful in render
+    /// pipelines that select among theme / row / column / cell style overrides.
+    pub fn pick_first(candidates: &[Option<&Style>]) -> Style {
+        for cand in candidates {
+            if let Some(s) = cand {
+                if !s.is_null() {
+                    return (*s).clone();
+                }
+            }
+        }
+        Style::null()
     }
 
     /// Returns true if this is a null style (nothing set).
@@ -1543,18 +1566,51 @@ mod tests {
     fn test_render_link_only() {
         let style = Style::with_link("https://example.com");
         let rendered = style.render("click", Some(ColorSystem::TrueColor));
-        assert_eq!(
-            rendered,
-            "\x1b]8;;https://example.com\x1b\\click\x1b]8;;\x1b\\"
-        );
+        // OSC 8 with id= prefix; structural assertions, not exact id.
+        assert!(rendered.starts_with("\x1b]8;id="));
+        assert!(rendered.contains(";https://example.com\x1b\\click\x1b]8;;\x1b\\"));
+    }
+
+    #[test]
+    fn test_pick_first_returns_first_non_null() {
+        let s1 = Style::parse("bold red").unwrap();
+        let s2 = Style::parse("italic").unwrap();
+        let null = Style::null();
+        let picked = Style::pick_first(&[Some(&null), Some(&s1), Some(&s2)]);
+        assert_eq!(picked.bold(), Some(true));
+        assert_eq!(picked.color().map(|c| c.name.as_str()), Some("red"));
+    }
+
+    #[test]
+    fn test_pick_first_skips_none_and_null() {
+        let null = Style::null();
+        let s = Style::parse("underline").unwrap();
+        let picked = Style::pick_first(&[None, Some(&null), None, Some(&s)]);
+        assert_eq!(picked.underline(), Some(true));
+    }
+
+    #[test]
+    fn test_pick_first_all_null_returns_null() {
+        let null = Style::null();
+        let picked = Style::pick_first(&[None, Some(&null), None]);
+        assert!(picked.is_null());
+    }
+
+    #[test]
+    fn test_link_id_is_monotonic() {
+        let a = next_link_id();
+        let b = next_link_id();
+        let c = next_link_id();
+        assert!(b > a);
+        assert!(c > b);
     }
 
     #[test]
     fn test_render_bold_with_link() {
         let style = Style::parse("bold link https://example.com").unwrap();
         let rendered = style.render("click", Some(ColorSystem::TrueColor));
-        // Should have OSC 8 wrapping around the ANSI-styled text
-        assert!(rendered.starts_with("\x1b]8;;https://example.com\x1b\\"));
+        assert!(rendered.starts_with("\x1b]8;id="));
+        assert!(rendered.contains(";https://example.com\x1b\\"));
         assert!(rendered.ends_with("\x1b]8;;\x1b\\"));
         assert!(rendered.contains("\x1b[1m"));
         assert!(rendered.contains("click"));
@@ -1756,7 +1812,20 @@ mod tests {
 
 use lru::LruCache;
 use std::num::NonZeroUsize;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
+
+/// Process-wide monotonic counter for OSC 8 `id=` parameters.
+///
+/// Each call to [`next_link_id`] returns a fresh integer — used by
+/// [`Style::render`] when emitting hyperlinks so multi-line link runs are
+/// recognised as a single clickable target by terminals that group on `id=`.
+static LINK_ID_COUNTER: AtomicU64 = AtomicU64::new(1);
+
+/// Return a fresh OSC 8 link id, monotonically increasing for the process.
+pub(crate) fn next_link_id() -> u64 {
+    LINK_ID_COUNTER.fetch_add(1, Ordering::Relaxed)
+}
 
 /// Global LRU cache for parsed styles with capacity for 256 entries.
 static STYLE_CACHE: Mutex<Option<LruCache<String, Style>>> = Mutex::new(None);

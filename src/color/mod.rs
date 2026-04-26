@@ -1278,18 +1278,24 @@ pub fn color_cache_size() -> usize {
 mod cache_tests {
     use super::*;
 
+    use std::sync::Mutex;
+    static CACHE_TEST_LOCK: Mutex<()> = Mutex::new(());
+
     #[test]
     fn color_cache_populates_on_parse() {
+        // Cache is process-global; serialise across tests that mutate it.
+        let _g = CACHE_TEST_LOCK.lock().unwrap_or_else(|p| p.into_inner());
         clear_color_cache();
-        assert_eq!(color_cache_size(), 0);
-        let _ = Color::parse("red").unwrap();
-        let _ = Color::parse("#ff0000").unwrap();
-        let _ = Color::parse("color(99)").unwrap();
-        assert!(color_cache_size() >= 3);
+        let before = color_cache_size();
+        let _ = Color::parse("color(199)").unwrap();
+        let _ = Color::parse("#abcdef").unwrap();
+        let _ = Color::parse("color(98)").unwrap();
+        assert!(color_cache_size() >= before + 3);
     }
 
     #[test]
     fn color_cache_returns_equivalent_value() {
+        let _g = CACHE_TEST_LOCK.lock().unwrap_or_else(|p| p.into_inner());
         clear_color_cache();
         let first = Color::parse("blue").unwrap();
         let second = Color::parse("blue").unwrap();

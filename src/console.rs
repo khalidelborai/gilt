@@ -880,6 +880,25 @@ impl Console {
         self.print(&gilt_text);
     }
 
+    /// Low-level raw print: write `text` verbatim to the buffer with the
+    /// optional `style`, **without** markup parsing, emoji substitution,
+    /// highlighting, or word wrap.
+    ///
+    /// Use this when you have content that already contains literal `[`
+    /// brackets, `:tags:`, or other markup-like sequences and you don't want
+    /// the console to interpret them. A trailing newline is appended.
+    pub fn out(&mut self, text: &str, style: Option<&Style>) {
+        let segment = match style {
+            Some(s) => Segment::styled(text, s.clone()),
+            None => Segment::text(text),
+        };
+        let mut buf = vec![segment];
+        if !text.ends_with('\n') {
+            buf.push(Segment::line());
+        }
+        self.write_segments(&buf);
+    }
+
     // -- Convenience methods ------------------------------------------------
 
     /// Print a log line with a timestamp prefix.
@@ -1264,7 +1283,8 @@ impl Console {
                 (Some(new), _) => {
                     close_link(&mut output, &mut current_link);
                     use std::fmt::Write;
-                    write!(output, "\x1b]8;;{}\x1b\\", new).unwrap();
+                    let id = crate::style::next_link_id();
+                    write!(output, "\x1b]8;id={};{}\x1b\\", id, new).unwrap();
                     current_link = Some(new.to_string());
                 }
                 (None, _) => {
@@ -2533,8 +2553,8 @@ mod tests {
         let style = Style::parse("bold link https://example.com").unwrap();
         let segments = vec![Segment::styled("click", style)];
         let output = console.render_buffer(&segments);
-        // Should contain OSC 8 open and close sequences
-        assert!(output.contains("\x1b]8;;https://example.com\x1b\\"));
+        // Should contain OSC 8 open with id= prefix and close.
+        assert!(output.contains(";https://example.com\x1b\\"));
         assert!(output.contains("\x1b]8;;\x1b\\"));
         assert!(output.contains("click"));
     }
@@ -2545,10 +2565,9 @@ mod tests {
         let style = Style::with_link("https://example.com");
         let segments = vec![Segment::styled("link text", style)];
         let output = console.render_buffer(&segments);
-        assert_eq!(
-            output,
-            "\x1b]8;;https://example.com\x1b\\link text\x1b]8;;\x1b\\"
-        );
+        // id= prefix is monotonic — match by structure not exact id.
+        assert!(output.starts_with("\x1b]8;id="));
+        assert!(output.contains(";https://example.com\x1b\\link text\x1b]8;;\x1b\\"));
     }
 
     #[test]
@@ -2567,11 +2586,14 @@ mod tests {
         ];
         let output = console.render_buffer(&segments);
 
-        // Exactly one OSC 8 open and one close.
-        let opens = output.matches(&format!("\x1b]8;;{url}\x1b\\")).count();
-        let closes = output.matches("\x1b]8;;\x1b\\").count();
-        assert_eq!(opens, 1, "expected single OSC 8 open, got {opens}");
-        assert_eq!(closes, 1, "expected single OSC 8 close, got {closes}");
+        // Exactly one OSC 8 open (with id= prefix) and one close.
+        let url_in_open_pattern = format!(";{url}\x1b\\");
+        assert_eq!(
+            output.matches(&url_in_open_pattern).count(),
+            1,
+            "expected single OSC 8 open with the URL"
+        );
+        assert_eq!(output.matches("\x1b]8;;\x1b\\").count(), 1);
         assert!(output.contains("Visit "));
         assert!(output.contains("Gilt"));
         assert!(output.contains(" on GitHub"));
