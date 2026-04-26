@@ -17,9 +17,18 @@ impl Renderable for Table {
         }
 
         let extra_width = self.extra_width();
-        let widths = self.calculate_column_widths(
-            console,
+        // T9: build column cells once, share them between the
+        // measurement (calculate_column_widths) and render (render_table)
+        // passes. Was previously rebuilding via get_cells in each path.
+        let column_cells: Vec<Vec<crate::widgets::table::core::CellInfo>> = self
+            .columns
+            .iter()
+            .enumerate()
+            .map(|(i, col)| self.get_cells(console, i, col))
+            .collect();
+        let widths = self.calculate_column_widths_with_cells(
             &options.update_width(max_width.saturating_sub(extra_width)),
+            &column_cells,
         );
         let table_width: usize = widths.iter().sum::<usize>() + extra_width;
 
@@ -63,8 +72,14 @@ impl Renderable for Table {
             }
         }
 
-        // Render table body
-        segments.extend(self.render_table(console, &render_options, &widths));
+        // Render table body — pass the cached cells so render_table doesn't
+        // rebuild them.
+        segments.extend(self.render_table_with_cells(
+            console,
+            &render_options,
+            &widths,
+            column_cells,
+        ));
 
         // Caption
         if let Some(ref caption) = self.caption {

@@ -1110,12 +1110,11 @@ impl Text {
                 // Emit segment for [last_offset, offset)
                 let slice = char_slice(&self.text, last_offset, offset);
                 if !slice.is_empty() {
-                    let combined = Style::combine(
-                        &active_spans
-                            .iter()
-                            .map(|&id| style_map[id].clone())
-                            .collect::<Vec<_>>(),
-                    );
+                    // T2/T3: avoid the per-event Vec<Style> alloc and the
+                    // per-element style.clone() inside Style::combine — pass
+                    // references straight from style_map via combine_refs.
+                    let combined =
+                        Style::combine_refs(active_spans.iter().map(|&id| style_map[id]));
                     let style = if combined.is_null() {
                         None
                     } else {
@@ -1135,16 +1134,11 @@ impl Text {
             }
         }
 
-        // Emit remaining text
+        // Emit remaining text (T2/T3: same combine_refs optimisation)
         if last_offset < text_len {
             let slice = char_slice(&self.text, last_offset, text_len);
             if !slice.is_empty() {
-                let combined = Style::combine(
-                    &active_spans
-                        .iter()
-                        .map(|&id| style_map[id].clone())
-                        .collect::<Vec<_>>(),
-                );
+                let combined = Style::combine_refs(active_spans.iter().map(|&id| style_map[id]));
                 let style = if combined.is_null() {
                     None
                 } else {
