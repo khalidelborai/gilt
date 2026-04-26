@@ -22,40 +22,34 @@ use crate::style::{Style, UnderlineStyle};
 /// - `ColorType::TrueColor` -> `anstyle::RgbColor`
 impl From<&Color> for Option<anstyle::Color> {
     fn from(color: &Color) -> Self {
-        match color.color_type {
-            ColorType::Default => None,
-            ColorType::Standard | ColorType::Windows => {
-                if let Some(n) = color.number {
-                    let ansi = match n {
-                        0 => anstyle::AnsiColor::Black,
-                        1 => anstyle::AnsiColor::Red,
-                        2 => anstyle::AnsiColor::Green,
-                        3 => anstyle::AnsiColor::Yellow,
-                        4 => anstyle::AnsiColor::Blue,
-                        5 => anstyle::AnsiColor::Magenta,
-                        6 => anstyle::AnsiColor::Cyan,
-                        7 => anstyle::AnsiColor::White,
-                        8 => anstyle::AnsiColor::BrightBlack,
-                        9 => anstyle::AnsiColor::BrightRed,
-                        10 => anstyle::AnsiColor::BrightGreen,
-                        11 => anstyle::AnsiColor::BrightYellow,
-                        12 => anstyle::AnsiColor::BrightBlue,
-                        13 => anstyle::AnsiColor::BrightMagenta,
-                        14 => anstyle::AnsiColor::BrightCyan,
-                        15 => anstyle::AnsiColor::BrightWhite,
-                        _ => return Some(anstyle::Color::Ansi256(anstyle::Ansi256Color(n))),
-                    };
-                    Some(anstyle::Color::Ansi(ansi))
-                } else {
-                    None
-                }
+        match *color {
+            Color::Default => None,
+            Color::Standard(n) | Color::Windows(n) => {
+                let ansi = match n {
+                    0 => anstyle::AnsiColor::Black,
+                    1 => anstyle::AnsiColor::Red,
+                    2 => anstyle::AnsiColor::Green,
+                    3 => anstyle::AnsiColor::Yellow,
+                    4 => anstyle::AnsiColor::Blue,
+                    5 => anstyle::AnsiColor::Magenta,
+                    6 => anstyle::AnsiColor::Cyan,
+                    7 => anstyle::AnsiColor::White,
+                    8 => anstyle::AnsiColor::BrightBlack,
+                    9 => anstyle::AnsiColor::BrightRed,
+                    10 => anstyle::AnsiColor::BrightGreen,
+                    11 => anstyle::AnsiColor::BrightYellow,
+                    12 => anstyle::AnsiColor::BrightBlue,
+                    13 => anstyle::AnsiColor::BrightMagenta,
+                    14 => anstyle::AnsiColor::BrightCyan,
+                    15 => anstyle::AnsiColor::BrightWhite,
+                    _ => return Some(anstyle::Color::Ansi256(anstyle::Ansi256Color(n))),
+                };
+                Some(anstyle::Color::Ansi(ansi))
             }
-            ColorType::EightBit => color
-                .number
-                .map(|n| anstyle::Color::Ansi256(anstyle::Ansi256Color(n))),
-            ColorType::TrueColor => color
-                .triplet
-                .map(|t| anstyle::Color::Rgb(anstyle::RgbColor(t.red, t.green, t.blue))),
+            Color::EightBit(n) => Some(anstyle::Color::Ansi256(anstyle::Ansi256Color(n))),
+            Color::TrueColor(t) => {
+                Some(anstyle::Color::Rgb(anstyle::RgbColor(t.red, t.green, t.blue)))
+            }
         }
     }
 }
@@ -296,7 +290,7 @@ mod tests {
             let anstyle_opt: Option<anstyle::Color> = (&gilt_color).into();
             assert!(anstyle_opt.is_some(), "Standard color {} should convert", n);
             let back = Color::from(anstyle_opt.unwrap());
-            assert_eq!(back.number, Some(n), "Round-trip failed for color {}", n);
+            assert_eq!(back.number(), Some(n), "Round-trip failed for color {}", n);
         }
     }
 
@@ -307,7 +301,7 @@ mod tests {
             let anstyle_opt: Option<anstyle::Color> = (&gilt_color).into();
             assert!(anstyle_opt.is_some());
             let back = Color::from(anstyle_opt.unwrap());
-            assert_eq!(back.number, Some(n));
+            assert_eq!(back.number(), Some(n));
         }
     }
 
@@ -317,7 +311,7 @@ mod tests {
         let anstyle_opt: Option<anstyle::Color> = (&gilt_color).into();
         assert!(anstyle_opt.is_some());
         let back = Color::from(anstyle_opt.unwrap());
-        assert_eq!(back.triplet, Some(ColorTriplet::new(128, 64, 32)));
+        assert_eq!(back.triplet(), Some(ColorTriplet::new(128, 64, 32)));
     }
 
     #[test]
@@ -370,7 +364,7 @@ mod tests {
         let back: Style = anstyle_style.into();
         assert!(back.underline_color().is_some());
         assert_eq!(
-            back.underline_color().unwrap().triplet,
+            back.underline_color().unwrap().triplet(),
             Some(ColorTriplet::new(255, 0, 0))
         );
     }

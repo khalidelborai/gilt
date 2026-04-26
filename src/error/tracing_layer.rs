@@ -404,28 +404,28 @@ mod tests {
         let style = GiltLayer::level_style(&Level::ERROR);
         assert_eq!(style.bold(), Some(true));
         assert!(style.color().is_some());
-        assert_eq!(style.color().unwrap().name, "red");
+        assert_eq!(style.color().unwrap().name(), "red");
     }
 
     #[test]
     fn test_warn_style_is_bold_yellow() {
         let style = GiltLayer::level_style(&Level::WARN);
         assert_eq!(style.bold(), Some(true));
-        assert_eq!(style.color().unwrap().name, "yellow");
+        assert_eq!(style.color().unwrap().name(), "yellow");
     }
 
     #[test]
     fn test_info_style_is_bold_blue() {
         let style = GiltLayer::level_style(&Level::INFO);
         assert_eq!(style.bold(), Some(true));
-        assert_eq!(style.color().unwrap().name, "blue");
+        assert_eq!(style.color().unwrap().name(), "blue");
     }
 
     #[test]
     fn test_debug_style_is_bold_green() {
         let style = GiltLayer::level_style(&Level::DEBUG);
         assert_eq!(style.bold(), Some(true));
-        assert_eq!(style.color().unwrap().name, "green");
+        assert_eq!(style.color().unwrap().name(), "green");
     }
 
     #[test]
