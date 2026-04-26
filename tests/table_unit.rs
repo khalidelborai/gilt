@@ -96,7 +96,6 @@ fn measure_returns_nonzero_for_populated_table() {
 }
 
 #[test]
-#[ignore = "documents real gap: Table::measure() returns header word width even when with_width(0); rich returns (0,0)"]
 fn measure_zero_width_returns_zero() {
     let table = Table::new(&["header"]).with_width(0);
     let c = Console::builder().width(80).force_terminal(false).build();
@@ -110,16 +109,16 @@ fn measure_zero_width_returns_zero() {
 // ---------------------------------------------------------------------------
 
 #[test]
-#[ignore = "documents real gap: Table::with_width(N) does not clamp rendered output to N chars; renders at console width"]
 fn width_clamps_output() {
     let mut table = Table::new(&["foo"]).with_width(20);
     table.add_row(&["bar"]);
+    // Render at console width 80 but table width should be clamped to 20 chars
     let out = capture_table(&table, 80);
     for line in out.lines() {
         assert!(
-            line.len() <= 20,
-            "line longer than 20 chars: {line:?} (len={})",
-            line.len()
+            line.chars().count() <= 20,
+            "line wider than 20 chars: {line:?} (chars={})",
+            line.chars().count()
         );
     }
 }
@@ -348,33 +347,22 @@ fn padding_default_consistent_with_get_padding_width() {
 // ---------------------------------------------------------------------------
 
 #[test]
-#[ignore = "documents real gap: Table::with_caption() is a no-op — caption is stored on the struct but render_table never emits it"]
 fn caption_appears_below_table() {
-    let mut table = Table::new(&["H"]).with_caption("MY_CAPTION_SENTINEL");
-    table.add_row(&["data"]);
+    // Make the table wide enough (>= caption length) so caption fits without wrapping.
+    let mut table = Table::new(&["Column"]).with_caption("Note");
+    table.add_row(&["some data row content"]);
     let out = capture_table(&table, 40);
-    assert!(out.contains("MY_CAPTION_SENTINEL"), "caption should appear in output");
-    let bottom_pos = out.rfind('└').or_else(|| out.rfind('┗')).or_else(|| out.rfind('┘'));
-    let caption_pos = out.find("MY_CAPTION_SENTINEL");
+    // "Note" is short enough to fit on one line in any reasonably-sized table.
+    assert!(out.contains("Note"), "caption should appear in output");
+    // Caption must follow the table bottom edge character.
+    let plain: String = out.chars().collect();
+    let bottom_pos = plain
+        .char_indices()
+        .filter_map(|(i, c)| if c == '└' || c == '┗' || c == '┘' { Some(i) } else { None })
+        .max();
+    let caption_pos = plain.find("Note");
     if let (Some(b), Some(c)) = (bottom_pos, caption_pos) {
         assert!(c > b, "caption should appear after table bottom edge");
     }
 }
 
-#[test]
-#[ignore]
-fn debug_caption_output() {
-    let mut table = Table::new(&["H"]).with_caption("MY_CAPTION_SENTINEL");
-    table.add_row(&["data"]);
-    
-    let mut c = Console::builder()
-        .width(40)
-        .force_terminal(false)
-        .no_color(true)
-        .build();
-    c.begin_capture();
-    c.print(&table);
-    let out = c.end_capture();
-    println!("OUT = {:?}", out);
-    assert!(false, "debug: out = {:?}", out);
-}

@@ -1321,6 +1321,12 @@ impl Table {
     /// Used by the [`crate::console::Renderable`] trait to determine how much space the table
     /// requires.
     pub fn measure(&self, console: &Console, options: &ConsoleOptions) -> Measurement {
+        // Fixed width of zero collapses the table entirely (matches rich,
+        // which treats `Table(width=0)` as a fully-collapsed measurement).
+        if self.width == Some(0) {
+            return Measurement::new(0, 0);
+        }
+
         let mut max_width = options.max_width;
         if let Some(w) = self.width {
             max_width = w;
