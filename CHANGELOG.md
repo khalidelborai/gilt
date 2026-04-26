@@ -5,6 +5,66 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.10.3] - 2026-04-26
+
+T8 lock-free `Live` writers. Realistic Progress workload throughput
+improves by ~21,000× under writer + renderer contention.
+
+### Performance
+
+- **`Live::update_renderable` is now lock-free.** Pulled the hot
+  `renderable: Text` field out of `Mutex<SharedState>` into
+  `Arc<ArcSwap<Text>>`. Writers do an atomic pointer swap; the renderer
+  loads atomically. Writers no longer queue behind the renderer's mutex
+  hold during paint.
+
+### Bench delta (apples-to-apples on `live_threaded` from v0.10.2)
+
+| Bench                    | OLD        | NEW (this) |
+|--------------------------|------------|------------|
+| update_only_small/1      | 6.08 M/s   | 3.73 M/s   |
+| update_only_small/8      | 1.96 M/s   | 1.33 M/s   |
+| update_only_large/1      | 2.77 M/s   | 0.88 M/s   |
+| **update_plus_render/1** | **43 op/s**| **904 K/s**|
+| **update_plus_render/2** | 32 op/s    | 1.01 M/s   |
+| **update_plus_render/4** | 49 op/s    | 1.07 M/s   |
+| **update_plus_render/8** | ~700 op/s  | 1.31 M/s   |
+
+The realistic workload — writer + renderer thread (the default
+`auto_refresh: true` pattern used by every `Progress` instance) — speeds
+up by **3-4 orders of magnitude**.
+
+The single-writer regression on `update_only_*` (~3× on large payloads)
+is the cost of the per-store `Arc::new(Text)` allocation. The previous
+mutex-only path moved the `Text` into existing storage with zero alloc.
+A candidate-3 design (mutex-only with tightened critical section) was
+benchmarked and beats the v0.10.2 baseline on `update_only` but
+catastrophically loses (200 op/s vs 1.31 M/s) on `update_plus_render`,
+because writers still queue behind the renderer's lock hold.
+
+Real `Live` instances always have a renderer, so the trade is correct.
+The `update_only` numbers represent only `with_auto_refresh(false) +
+manual refresh` — a niche pattern.
+
+### Behavior change
+
+- `Live::update_renderable(_, false)` no longer synchronously updates
+  the internal `LiveRender`. The `LiveRender`'s stored renderable is
+  refreshed on the next `refresh()` call (which is when it actually
+  matters — for shape tracking and the next paint). Calling
+  `live.live_render()` between an update and a refresh may show stale
+  data; previously it showed the just-updated value. No production code
+  depended on this; only one in-tree test, updated to match the new
+  contract.
+
+### Added
+
+- `arc-swap = "1"` dependency.
+- Bench groups `live_threaded/update_only_{small,large}` and
+  `live_threaded/update_plus_render` with parameterised payload size, so
+  the realistic Progress workload (writer + renderer + ~2 KB Text) is
+  measurable.
+
 ## [0.10.2] - 2026-04-26
 
 T8 prep release: enable shared-`Live` use across threads and ship the

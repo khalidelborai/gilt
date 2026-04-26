@@ -42,21 +42,24 @@ fn make_live() -> Live {
 }
 
 /// Spawn `n_writers` threads, each calling `update_renderable` in a tight
-/// loop for `iterations` rounds. Returns total elapsed wall time.
-fn run_writers(live: Arc<Live>, n_writers: usize, iterations: usize) -> Duration {
+/// loop for `iterations` rounds. Returns total elapsed wall time. The
+/// payload `Text` is built outside the timed loop so the bench measures
+/// the update path itself, not Text construction.
+fn run_writers(live: Arc<Live>, n_writers: usize, iterations: usize, payload: Text) -> Duration {
     let barrier = Arc::new(Barrier::new(n_writers + 1));
+    let payload = Arc::new(payload);
     let mut handles = Vec::with_capacity(n_writers);
 
-    for tid in 0..n_writers {
+    for _tid in 0..n_writers {
         let live = Arc::clone(&live);
         let barrier = Arc::clone(&barrier);
+        let payload = Arc::clone(&payload);
         handles.push(thread::spawn(move || {
             barrier.wait();
-            for i in 0..iterations {
-                let text = Text::new(&format!("writer {} iter {}", tid, i), Style::null());
+            for _ in 0..iterations {
                 // refresh=false so writers do not also drive the render
                 // path — the bench measures pure update contention.
-                live.update_renderable(black_box(text), false);
+                live.update_renderable(black_box((*payload).clone()), false);
             }
         }));
     }
@@ -69,30 +72,45 @@ fn run_writers(live: Arc<Live>, n_writers: usize, iterations: usize) -> Duration
     start.elapsed()
 }
 
+/// A short payload (~20 chars) — represents Progress label updates.
+fn small_payload() -> Text {
+    Text::new("downloading file 42", Style::null())
+}
+
+/// A larger payload (~2 KB) — represents a fully-rendered table or panel
+/// being pushed each frame, which is the realistic Progress workload.
+fn large_payload() -> Text {
+    let line = "│ task 42 │ 67% ████████░░░░░░ │ ETA 0:00:42 │ 14.2 MB/s │\n";
+    Text::new(&line.repeat(32), Style::null())
+}
+
 fn bench_update_contention(c: &mut Criterion) {
-    let mut group = c.benchmark_group("live_threaded/update_only");
-    // Each iteration of the bench does N_WRITERS * ITERATIONS update calls.
     const ITERATIONS: usize = 200;
 
-    for n_writers in [1usize, 2, 4, 8] {
-        group.throughput(Throughput::Elements((n_writers * ITERATIONS) as u64));
-        group.bench_with_input(
-            BenchmarkId::from_parameter(n_writers),
-            &n_writers,
-            |b, &n| {
-                b.iter_custom(|reps| {
-                    let mut total = Duration::ZERO;
-                    for _ in 0..reps {
-                        let live = Arc::new(make_live());
-                        total += run_writers(live, n, ITERATIONS);
-                    }
-                    total
-                });
-            },
-        );
+    for (label, payload_fn) in [
+        ("small", small_payload as fn() -> Text),
+        ("large", large_payload as fn() -> Text),
+    ] {
+        let mut group = c.benchmark_group(format!("live_threaded/update_only_{label}"));
+        for n_writers in [1usize, 2, 4, 8] {
+            group.throughput(Throughput::Elements((n_writers * ITERATIONS) as u64));
+            group.bench_with_input(
+                BenchmarkId::from_parameter(n_writers),
+                &n_writers,
+                |b, &n| {
+                    b.iter_custom(|reps| {
+                        let mut total = Duration::ZERO;
+                        for _ in 0..reps {
+                            let live = Arc::new(make_live());
+                            total += run_writers(live, n, ITERATIONS, payload_fn());
+                        }
+                        total
+                    });
+                },
+            );
+        }
+        group.finish();
     }
-
-    group.finish();
 }
 
 /// Same as above but with a renderer thread also calling `refresh()` in a
@@ -121,7 +139,7 @@ fn bench_update_with_renderer(c: &mut Criterion) {
                                 render_live.refresh();
                             }
                         });
-                        total += run_writers(live, n, ITERATIONS);
+                        total += run_writers(live, n, ITERATIONS, large_payload());
                         stop.store(true, std::sync::atomic::Ordering::Relaxed);
                         renderer.join().unwrap();
                     }
