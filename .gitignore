@@ -1,1 +1,16 @@
 /target
+
+# Local workflow scratch (not for tracking)
+/.ck/
+/.ckignore
+/.claude/
+/.env
+/.review/
+/MODULE_DEPENDENCIES.md
+/QUICK_WINS.md
+/RESTRUCTURE_COORDINATION.md
+/RESTRUCTURING_PROPOSAL.md
+/TASK_AGENT_*.md
+/TASK_LEADER_*.md
+/t.md
+/vlc.zip
