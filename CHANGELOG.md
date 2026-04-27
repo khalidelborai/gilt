@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.13.0] - 2026-04-27
+
+Breaking release. Removes the three legacy derive aliases that were
+deprecated in v0.12.0.
+
+### Removed (breaking)
+
+- **`gilt::DeriveColumns`** — use `gilt::derives::Columns`
+- **`gilt::DeriveInspect`** — use `gilt::derives::Inspect`
+- **`gilt::DeriveRule`** — use `gilt::derives::Rule`
+
+The `gilt::derives::*` namespace (added in v0.11.3) has been the
+recommended import surface for two minor releases. All seven derives
+(`Table`, `Panel`, `Tree`, `Columns`, `Rule`, `Inspect`, `Renderable`)
+remain available there.
+
+### Migration
+
+```rust
+// Before (v0.12.x — deprecated):
+use gilt::DeriveColumns;
+#[derive(DeriveColumns)] struct Item { name: String }
+
+// After (v0.13.0):
+use gilt::derives::Columns;
+#[derive(Columns)] struct Item { name: String }
+```
+
+The non-colliding derives (`Table`, `Panel`, `Tree`, `Renderable`)
+continue to work from the crate root unchanged — only the three aliases
+that overlapped with widget type names were affected.
+
+### Internal
+
+- `crates/gilt-derive/tests/compile_fail/inspect_on_union.rs` migrated
+  to `gilt::derives::Inspect` (the `.stderr` golden continues to point
+  at the union with the same message).
+- `gilt-derive` itself is unchanged (lockstep version bump only).
+
 ## [0.12.0] - 2026-04-27
 
 Closes the gilt-derive consolidation plan by deprecating the v0.11.x

@@ -6,6 +6,14 @@ versioned in lockstep with `gilt`.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.13.0] - 2026-04-27
+
+Lockstep version bump with `gilt 0.13.0` — no source changes in this
+crate. The main crate's `DeriveColumns` / `DeriveInspect` / `DeriveRule`
+top-level aliases (deprecated in v0.12.0) are now removed; the derive
+macros themselves are unchanged and remain available via
+`gilt::derives::*`.
+
 ## [0.12.0] - 2026-04-27
 
 Lockstep version bump with `gilt 0.12.0` — no source changes in this
