@@ -66,55 +66,18 @@
 //! let panel = status.to_panel();
 //! ```
 
+mod renderable;
+mod shared;
+
+use shared::{box_style_tokens, justify_tokens, named_field_ident, snake_to_title_case};
+
 use proc_macro::TokenStream;
+#[cfg(test)]
 use proc_macro2::Span;
 use quote::quote;
 use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
 use syn::{parse_macro_input, Data, DeriveInput, Fields, Ident, LitBool, LitInt, LitStr, Token};
-
-// ---------------------------------------------------------------------------
-// snake_to_title_case
-// ---------------------------------------------------------------------------
-
-/// Convert a snake_case identifier to Title Case.
-///
-/// Get a named field's ident.
-///
-/// Every gilt-derive macro iterates `Fields::Named` (struct with named
-/// fields), so `field.ident` is logically always `Some`. This helper exists
-/// so that — if a future code path ever passes through an unnamed field
-/// (e.g. via macro composition or refactoring) — we surface a `compile_error!`
-/// pointing at the offending field instead of panicking the proc-macro.
-fn named_field_ident(field: &syn::Field) -> syn::Result<&syn::Ident> {
-    field.ident.as_ref().ok_or_else(|| {
-        syn::Error::new_spanned(
-            field,
-            "expected named field — gilt-derive only supports structs with named fields",
-        )
-    })
-}
-
-/// Examples:
-/// - `first_name` -> "First Name"
-/// - `age` -> "Age"
-/// - `department_id` -> "Department Id"
-fn snake_to_title_case(s: &str) -> String {
-    s.split('_')
-        .filter(|part| !part.is_empty())
-        .map(|part| {
-            let mut chars = part.chars();
-            match chars.next() {
-                Some(first) => {
-                    let upper: String = first.to_uppercase().collect();
-                    format!("{}{}", upper, chars.as_str())
-                }
-                None => String::new(),
-            }
-        })
-        .collect::<Vec<_>>()
-        .join(" ")
-}
 
 // ---------------------------------------------------------------------------
 // Struct-level attribute: #[table(...)]
@@ -429,70 +392,6 @@ fn col_expect_int(attr: &ColumnAttr, name: &str) -> syn::Result<LitInt> {
         _ => Err(syn::Error::new_spanned(
             &attr.key,
             format!("`{}` expects an integer literal", name),
-        )),
-    }
-}
-
-// ---------------------------------------------------------------------------
-// box_style -> token mapping
-// ---------------------------------------------------------------------------
-
-/// Map a `box_style` string literal to a token stream referencing the
-/// corresponding `gilt::box_chars::*` static.
-fn box_style_tokens(lit: &LitStr) -> syn::Result<proc_macro2::TokenStream> {
-    let val = lit.value();
-    let ident_str = match val.as_str() {
-        "ASCII" => "ASCII",
-        "ASCII2" => "ASCII2",
-        "ASCII_DOUBLE_HEAD" => "ASCII_DOUBLE_HEAD",
-        "SQUARE" => "SQUARE",
-        "SQUARE_DOUBLE_HEAD" => "SQUARE_DOUBLE_HEAD",
-        "MINIMAL" => "MINIMAL",
-        "MINIMAL_HEAVY_HEAD" => "MINIMAL_HEAVY_HEAD",
-        "MINIMAL_DOUBLE_HEAD" => "MINIMAL_DOUBLE_HEAD",
-        "SIMPLE" => "SIMPLE",
-        "SIMPLE_HEAD" => "SIMPLE_HEAD",
-        "SIMPLE_HEAVY" => "SIMPLE_HEAVY",
-        "HORIZONTALS" => "HORIZONTALS",
-        "ROUNDED" => "ROUNDED",
-        "HEAVY" => "HEAVY",
-        "HEAVY_EDGE" => "HEAVY_EDGE",
-        "HEAVY_HEAD" => "HEAVY_HEAD",
-        "DOUBLE" => "DOUBLE",
-        "DOUBLE_EDGE" => "DOUBLE_EDGE",
-        "MARKDOWN" => "MARKDOWN",
-        other => {
-            return Err(syn::Error::new_spanned(
-                lit,
-                format!(
-                    "unknown box_style `{other}`. Expected one of: ASCII, ASCII2, \
-                     ASCII_DOUBLE_HEAD, SQUARE, SQUARE_DOUBLE_HEAD, MINIMAL, \
-                     MINIMAL_HEAVY_HEAD, MINIMAL_DOUBLE_HEAD, SIMPLE, SIMPLE_HEAD, \
-                     SIMPLE_HEAVY, HORIZONTALS, ROUNDED, HEAVY, HEAVY_EDGE, HEAVY_HEAD, \
-                     DOUBLE, DOUBLE_EDGE, MARKDOWN"
-                ),
-            ));
-        }
-    };
-    let ident = Ident::new(ident_str, Span::call_site());
-    Ok(quote! { Some(&*gilt::box_chars::#ident) })
-}
-
-// ---------------------------------------------------------------------------
-// justify -> token mapping
-// ---------------------------------------------------------------------------
-
-/// Map a `justify` string literal to a token stream for `gilt::text::JustifyMethod`.
-fn justify_tokens(lit: &LitStr) -> syn::Result<proc_macro2::TokenStream> {
-    let val = lit.value();
-    match val.as_str() {
-        "left" => Ok(quote! { gilt::text::JustifyMethod::Left }),
-        "center" => Ok(quote! { gilt::text::JustifyMethod::Center }),
-        "right" => Ok(quote! { gilt::text::JustifyMethod::Right }),
-        "full" => Ok(quote! { gilt::text::JustifyMethod::Full }),
-        other => Err(syn::Error::new_spanned(
-            lit,
-            format!("unknown justify `{other}`. Expected one of: left, center, right, full"),
         )),
     }
 }
@@ -1695,185 +1594,20 @@ fn derive_tree_impl(input: &DeriveInput) -> syn::Result<proc_macro2::TokenStream
 }
 
 // ===========================================================================
-// Renderable derive macro
+// Renderable derive entry point (impl moved to crates::renderable in v0.11.4)
 // ===========================================================================
 
-// ---------------------------------------------------------------------------
-// Struct-level attribute: #[renderable(...)]
-// ---------------------------------------------------------------------------
-
-/// Parsed struct-level `#[renderable(...)]` attributes.
-#[derive(Default)]
-struct RenderableAttrs {
-    /// Which widget to delegate to: "panel" or "tree". Defaults to "panel".
-    via: Option<LitStr>,
-}
-
-/// A single key=value inside `#[renderable(...)]`.
-struct RenderableAttr {
-    key: Ident,
-    value: RenderableAttrValue,
-}
-
-enum RenderableAttrValue {
-    Str(LitStr),
-}
-
-impl Parse for RenderableAttr {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let key: Ident = input.parse()?;
-        if input.peek(Token![=]) {
-            let _eq: Token![=] = input.parse()?;
-            if input.peek(LitStr) {
-                let lit: LitStr = input.parse()?;
-                Ok(RenderableAttr {
-                    key,
-                    value: RenderableAttrValue::Str(lit),
-                })
-            } else {
-                Err(input.error("expected string literal"))
-            }
-        } else {
-            Err(input.error("expected `= \"...\"`"))
-        }
-    }
-}
-
-/// Parse all `#[renderable(...)]` attributes from a `DeriveInput`.
-fn parse_renderable_attrs(input: &DeriveInput) -> syn::Result<RenderableAttrs> {
-    let mut attrs = RenderableAttrs::default();
-
-    for attr in &input.attrs {
-        if !attr.path().is_ident("renderable") {
-            continue;
-        }
-        let items: Punctuated<RenderableAttr, Token![,]> =
-            attr.parse_args_with(Punctuated::parse_terminated)?;
-
-        for item in items {
-            let key_str = item.key.to_string();
-            match key_str.as_str() {
-                "via" => {
-                    attrs.via = Some(renderable_expect_str(&item, "via")?);
-                }
-                _ => {
-                    return Err(syn::Error::new_spanned(
-                        &item.key,
-                        format!("unknown renderable attribute `{}`", key_str),
-                    ));
-                }
-            }
-        }
-    }
-
-    Ok(attrs)
-}
-
-fn renderable_expect_str(attr: &RenderableAttr, _name: &str) -> syn::Result<LitStr> {
-    match &attr.value {
-        RenderableAttrValue::Str(s) => Ok(s.clone()),
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Renderable derive entry point
-// ---------------------------------------------------------------------------
-
-/// Derive macro that generates a `gilt::console::Renderable` implementation for a struct.
+/// Derive macro that generates a `gilt::console::Renderable` implementation
+/// for a struct, delegating to one of the existing widget derives.
 ///
-/// This delegates rendering to one of the existing widget derives (Panel or Tree).
-/// The struct must also derive the corresponding widget macro.
-///
-/// # Struct-level attributes (`#[renderable(...)]`)
-///
-/// | Attribute | Type | Description |
-/// |-----------|------|-------------|
-/// | `via` | string | Widget to delegate to: `"panel"` (default) or `"tree"` |
-///
-/// # Example
-///
-/// ```ignore
-/// use gilt_derive::{Panel, Renderable};
-///
-/// #[derive(Panel, Renderable)]
-/// #[renderable(via = "panel")]
-/// #[panel(title = "Config", box_style = "ROUNDED")]
-/// struct Config {
-///     host: String,
-///     port: u16,
-/// }
-///
-/// // Config now implements gilt::console::Renderable
-/// // and can be passed directly to console.print(&config)
-/// ```
+/// See [`crate::renderable`] for full attribute schema and behaviour.
 #[proc_macro_derive(Renderable, attributes(renderable))]
 pub fn derive_renderable(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    match derive_renderable_impl(&input) {
+    match renderable::derive_renderable_impl(&input) {
         Ok(ts) => ts.into(),
         Err(e) => e.to_compile_error().into(),
     }
-}
-
-fn derive_renderable_impl(input: &DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
-    let struct_name = &input.ident;
-
-    // Only support structs (not enums or unions).
-    match &input.data {
-        Data::Struct(_) => {}
-        Data::Enum(_) => {
-            return Err(syn::Error::new_spanned(
-                struct_name,
-                "Renderable derive does not support enums",
-            ));
-        }
-        Data::Union(_) => {
-            return Err(syn::Error::new_spanned(
-                struct_name,
-                "Renderable derive does not support unions",
-            ));
-        }
-    }
-
-    // Parse struct-level #[renderable(...)] attributes.
-    let renderable_attrs = parse_renderable_attrs(input)?;
-
-    // Determine the delegation target. Default to "panel" when `via` is absent.
-    // Restructured to keep the `LitStr` (for spanned errors) in scope rather
-    // than recovering it via `.unwrap()` after a value-only match — that
-    // unwrap was logically safe but its safety lived in the control flow,
-    // not in the types.
-    let delegate_call = match renderable_attrs.via.as_ref() {
-        None => quote! { let widget = self.to_panel(); },
-        Some(lit) => match lit.value().as_str() {
-            "panel" => quote! { let widget = self.to_panel(); },
-            "tree" => quote! { let widget = self.to_tree(); },
-            other => {
-                return Err(syn::Error::new_spanned(
-                    lit,
-                    format!(
-                        "unknown renderable via `{}`. Expected one of: panel, tree",
-                        other
-                    ),
-                ));
-            }
-        },
-    };
-
-    let expanded = quote! {
-        impl gilt::console::Renderable for #struct_name {
-            fn gilt_console(
-                &self,
-                console: &gilt::console::Console,
-                options: &gilt::console::ConsoleOptions,
-            ) -> Vec<gilt::segment::Segment> {
-                #delegate_call
-                widget.gilt_console(console, options)
-            }
-        }
-    };
-
-    Ok(expanded)
 }
 
 // ===========================================================================
@@ -3837,7 +3571,7 @@ mod tests {
                 port: u16,
             }
         };
-        let result = derive_renderable_impl(&input);
+        let result = renderable::derive_renderable_impl(&input);
         assert!(
             result.is_ok(),
             "derive_renderable_impl failed: {:?}",
@@ -3868,7 +3602,7 @@ mod tests {
                 entries: Vec<String>,
             }
         };
-        let result = derive_renderable_impl(&input);
+        let result = renderable::derive_renderable_impl(&input);
         assert!(
             result.is_ok(),
             "derive_renderable_impl failed: {:?}",
@@ -3899,7 +3633,7 @@ mod tests {
                 value: u32,
             }
         };
-        let result = derive_renderable_impl(&input);
+        let result = renderable::derive_renderable_impl(&input);
         assert!(
             result.is_ok(),
             "derive_renderable_impl should succeed with no attrs"
@@ -3923,7 +3657,7 @@ mod tests {
                 a: String,
             }
         };
-        let result = derive_renderable_impl(&input);
+        let result = renderable::derive_renderable_impl(&input);
         assert!(result.is_err(), "should reject unknown via value");
         let err_msg = result.unwrap_err().to_string();
         assert!(
@@ -3938,7 +3672,7 @@ mod tests {
         let input: DeriveInput = syn::parse_quote! {
             enum Foo { A, B }
         };
-        let result = derive_renderable_impl(&input);
+        let result = renderable::derive_renderable_impl(&input);
         assert!(result.is_err());
         assert!(result
             .unwrap_err()
@@ -3954,7 +3688,7 @@ mod tests {
                 a: String,
             }
         };
-        let result = derive_renderable_impl(&input);
+        let result = renderable::derive_renderable_impl(&input);
         assert!(result.is_err());
         assert!(result
             .unwrap_err()
@@ -3962,23 +3696,23 @@ mod tests {
             .contains("unknown renderable attribute"),);
     }
 
-    // -- RenderableAttr parsing --------------------------------------------
+    // -- renderable::RenderableAttr parsing --------------------------------------------
 
     #[test]
     fn test_parse_renderable_attr_str() {
         let tokens: proc_macro2::TokenStream = syn::parse_quote! { via = "panel" };
-        let attr: RenderableAttr = syn::parse2(tokens).unwrap();
+        let attr: renderable::RenderableAttr = syn::parse2(tokens).unwrap();
         assert_eq!(attr.key, "via");
         match attr.value {
-            RenderableAttrValue::Str(s) => assert_eq!(s.value(), "panel"),
+            renderable::RenderableAttrValue::Str(s) => assert_eq!(s.value(), "panel"),
         }
     }
 
     #[test]
     fn test_renderable_expect_str_ok() {
         let tokens: proc_macro2::TokenStream = syn::parse_quote! { via = "tree" };
-        let attr: RenderableAttr = syn::parse2(tokens).unwrap();
-        let result = renderable_expect_str(&attr, "via");
+        let attr: renderable::RenderableAttr = syn::parse2(tokens).unwrap();
+        let result = renderable::renderable_expect_str(&attr, "via");
         assert!(result.is_ok());
         assert_eq!(result.unwrap().value(), "tree");
     }
@@ -4661,7 +4395,7 @@ mod tests {
                 title: String,
             }
         };
-        let ts = derive_renderable_impl(&input).expect("Renderable derive must succeed");
+        let ts = renderable::derive_renderable_impl(&input).expect("Renderable derive must succeed");
         insta::assert_snapshot!(render_tokens(&ts));
     }
 }
