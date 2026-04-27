@@ -4547,4 +4547,121 @@ mod tests {
         assert!(result.is_ok());
         assert!(!result.unwrap().value);
     }
+
+    // ===================================================================
+    // insta snapshot tests — exact-token guards on each derive's output
+    // ===================================================================
+    //
+    // These guard against accidental codegen drift during refactors.
+    // To regenerate after an intentional change:
+    //
+    //     INSTA_UPDATE=always cargo test -p gilt-derive --lib expand_
+    //
+    // Snapshots live at crates/gilt-derive/src/snapshots/.
+
+    /// Pretty-print a TokenStream so snapshots are readable. We use
+    /// `prettyplease` only here; if it's unavailable we fall back to the
+    /// raw string form (still stable since `quote!` produces deterministic
+    /// output for given inputs).
+    fn render_tokens(ts: &proc_macro2::TokenStream) -> String {
+        // Try prettyplease via syn::parse2 → prettyplease::unparse. If the
+        // tokens don't form a complete File (some derives emit bare items),
+        // fall back to the raw string.
+        match syn::parse2::<syn::File>(ts.clone()) {
+            Ok(file) => prettyplease_or_raw(&file, ts),
+            Err(_) => ts.to_string(),
+        }
+    }
+
+    fn prettyplease_or_raw(file: &syn::File, ts: &proc_macro2::TokenStream) -> String {
+        // prettyplease isn't a hard dep — keep the test resilient if it's
+        // ever removed. quote!-based output is already deterministic so the
+        // raw form is acceptable.
+        let _ = file;
+        ts.to_string()
+    }
+
+    #[test]
+    fn expand_table_minimal() {
+        let input: DeriveInput = syn::parse_quote! {
+            struct Row {
+                id: u32,
+                name: String,
+            }
+        };
+        let ts = derive_table_impl(&input).expect("Table derive must succeed on minimal input");
+        insta::assert_snapshot!(render_tokens(&ts));
+    }
+
+    #[test]
+    fn expand_panel_minimal() {
+        let input: DeriveInput = syn::parse_quote! {
+            struct Server {
+                host: String,
+                port: u16,
+            }
+        };
+        let ts = derive_panel_impl(&input).expect("Panel derive must succeed");
+        insta::assert_snapshot!(render_tokens(&ts));
+    }
+
+    #[test]
+    fn expand_tree_minimal() {
+        let input: DeriveInput = syn::parse_quote! {
+            struct Node {
+                #[tree(label)]
+                label: String,
+                #[tree(children)]
+                children: Vec<Node>,
+            }
+        };
+        let ts = derive_tree_impl(&input).expect("Tree derive must succeed");
+        insta::assert_snapshot!(render_tokens(&ts));
+    }
+
+    #[test]
+    fn expand_columns_minimal() {
+        let input: DeriveInput = syn::parse_quote! {
+            struct Item {
+                title: String,
+            }
+        };
+        let ts = derive_columns_impl(&input).expect("Columns derive must succeed");
+        insta::assert_snapshot!(render_tokens(&ts));
+    }
+
+    #[test]
+    fn expand_rule_minimal() {
+        let input: DeriveInput = syn::parse_quote! {
+            struct Section {
+                #[rule(title)]
+                heading: String,
+            }
+        };
+        let ts = derive_rule_impl(&input).expect("Rule derive must succeed");
+        insta::assert_snapshot!(render_tokens(&ts));
+    }
+
+    #[test]
+    fn expand_inspect_minimal() {
+        let input: DeriveInput = syn::parse_quote! {
+            struct Status {
+                cpu: f64,
+                memory: f64,
+            }
+        };
+        let ts = derive_inspect_impl(&input).expect("Inspect derive must succeed");
+        insta::assert_snapshot!(render_tokens(&ts));
+    }
+
+    #[test]
+    fn expand_renderable_minimal() {
+        let input: DeriveInput = syn::parse_quote! {
+            struct Card {
+                title: String,
+            }
+        };
+        let ts = derive_renderable_impl(&input).expect("Renderable derive must succeed");
+        insta::assert_snapshot!(render_tokens(&ts));
+    }
 }

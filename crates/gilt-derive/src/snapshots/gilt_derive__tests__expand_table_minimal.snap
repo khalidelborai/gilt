@@ -1,0 +1,5 @@
+---
+source: crates/gilt-derive/src/lib.rs
+expression: render_tokens(&ts)
+---
+impl Row { # [doc = r" Creates a [`gilt::table::Table`] from a slice of items."] # [doc = r""] # [doc = r" Each non-skipped struct field becomes a column, with headers derived"] # [doc = r" from field names converted to Title Case (or overridden via"] # [doc = r#" `#[column(header = "...")]`). Struct-level `#[table(...)]` attributes"#] # [doc = r" control the overall table appearance."] pub fn to_table (items : & [Self]) -> gilt :: table :: Table { let mut table = gilt :: table :: Table :: new (& ["Id" , "Name"]) ; table . title = Some ("Row" . to_string ()) ; for item in items { table . add_row (& [& item . id . to_string () , & item . name . to_string ()]) ; } table } }

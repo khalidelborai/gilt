@@ -1,0 +1,5 @@
+---
+source: crates/gilt-derive/src/lib.rs
+expression: render_tokens(&ts)
+---
+impl gilt :: console :: Renderable for Card { fn gilt_console (& self , console : & gilt :: console :: Console , options : & gilt :: console :: ConsoleOptions ,) -> Vec < gilt :: segment :: Segment > { let widget = self . to_panel () ; widget . gilt_console (console , options) } }

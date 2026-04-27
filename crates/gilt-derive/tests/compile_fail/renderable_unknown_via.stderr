@@ -1,0 +1,5 @@
+error: unknown renderable via `made_up_widget`. Expected one of: panel, tree
+ --> tests/compile_fail/renderable_unknown_via.rs:9:20
+  |
+9 | #[renderable(via = "made_up_widget")]
+  |                    ^^^^^^^^^^^^^^^^

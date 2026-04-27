@@ -1,0 +1,5 @@
+---
+source: crates/gilt-derive/src/lib.rs
+expression: render_tokens(&ts)
+---
+impl Section { # [doc = r" Generates a [`gilt::rule::Rule`] from this struct."] # [doc = r""] # [doc = r" The title is derived from the field annotated with `#[rule(title)]`,"] # [doc = r" the struct-level `title` attribute, or the struct name (in that order)."] pub fn to_rule (& self) -> gilt :: rule :: Rule { let title_text = self . heading . to_string () ; let mut rule = gilt :: rule :: Rule :: with_title (& title_text) ; rule } }

@@ -815,6 +815,14 @@ pub use widgets::table;
 pub use color::{clear_color_cache, color_cache_size};
 pub use style::{clear_style_cache, style_cache_size};
 
+// -- Top-level derive re-exports (legacy) --------------------------------
+//
+// These are kept for backward compatibility with code written before the
+// `gilt::derives` namespace existed. New code should prefer
+// `use gilt::derives::*;` to sidestep the `DeriveX`-vs-widget-type
+// rename collisions on `Columns`, `Inspect`, and `Rule`.
+//
+// Planned deprecation: v0.12.0 (after one minor release of overlap).
 #[cfg(feature = "derive")]
 pub use gilt_derive::Columns as DeriveColumns;
 #[cfg(feature = "derive")]
@@ -829,6 +837,31 @@ pub use gilt_derive::Rule as DeriveRule;
 pub use gilt_derive::Table;
 #[cfg(feature = "derive")]
 pub use gilt_derive::Tree;
+
+/// Procedural derive macros under a single namespace.
+///
+/// Sidesteps the name collisions between derive macros and runtime widget
+/// types — `gilt::columns::Columns` (the widget) vs. `Columns` (the derive),
+/// and similarly for `Inspect` and `Rule`.
+///
+/// ```ignore
+/// use gilt::derives::{Columns, Table};
+///
+/// #[derive(Table)]
+/// struct Row { id: u32, name: String }
+///
+/// #[derive(Columns)]
+/// struct Item { name: String }
+/// ```
+///
+/// Each macro is also re-exported at the crate root with a `Derive` prefix
+/// for the colliding ones (`DeriveColumns`, `DeriveInspect`, `DeriveRule`)
+/// — those are kept for backward compatibility but will be deprecated in
+/// v0.12.0.
+#[cfg(feature = "derive")]
+pub mod derives {
+    pub use gilt_derive::{Columns, Inspect, Panel, Renderable, Rule, Table, Tree};
+}
 
 use std::sync::LazyLock;
 use std::sync::Mutex;

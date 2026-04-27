@@ -1,0 +1,5 @@
+---
+source: crates/gilt-derive/src/lib.rs
+expression: render_tokens(&ts)
+---
+impl Server { # [doc = r" Creates a [`gilt::panel::Panel`] displaying this struct's fields"] # [doc = r" as labeled key-value pairs."] # [doc = r""] # [doc = r#" Each non-skipped field becomes a line `"Label: value"`. Field styles"#] # [doc = r" are applied as markup tags around the label. The panel title defaults"] # [doc = r#" to the struct name unless overridden via `#[panel(title = "...")]`."#] pub fn to_panel (& self) -> gilt :: panel :: Panel { let mut lines : Vec < String > = Vec :: new () ; lines . push (format ! ("{}: {}" , "Host" , self . host)) ; lines . push (format ! ("{}: {}" , "Port" , self . port)) ; let content = gilt :: text :: Text :: from_markup (& lines . join ("\n")) . unwrap_or_else (| _ | gilt :: text :: Text :: from (lines . join ("\n") . as_str ())) ; let mut panel = gilt :: panel :: Panel :: new (content) ; panel . title = Some (gilt :: text :: Text :: from ("Server")) ; panel } }

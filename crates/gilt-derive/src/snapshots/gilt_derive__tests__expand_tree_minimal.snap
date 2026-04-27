@@ -1,0 +1,5 @@
+---
+source: crates/gilt-derive/src/lib.rs
+expression: render_tokens(&ts)
+---
+impl Node { # [doc = r" Creates a [`gilt::tree::Tree`] from this struct."] # [doc = r""] # [doc = r" The field marked `#[tree(label)]` becomes the node label,"] # [doc = r" fields marked `#[tree(leaf)]` become leaf nodes, and the"] # [doc = r" field marked `#[tree(children)]` is recursively converted"] # [doc = r" to child trees."] pub fn to_tree (& self) -> gilt :: tree :: Tree { let label_text = gilt :: text :: Text :: from (self . label . to_string () . as_str ()) ; let mut tree = gilt :: tree :: Tree :: new (label_text) ; for child in & self . children { let child_tree = child . to_tree () ; tree . children . push (child_tree) ; } tree } }
