@@ -14,7 +14,7 @@ gilt brings beautiful terminal output to Rust with styles, tables, trees, syntax
 
 ```toml
 [dependencies]
-gilt = "0.10"
+gilt = "0.11"
 ```
 
 ```rust
@@ -118,33 +118,20 @@ The `StyleInterner` and `StyleId` types remain in `gilt::style_interner`
 as dormant scaffolding for potential future use (e.g., a lock-free
 DashMap-backed redesign).
 
-## v0.8.0 Highlights
+## Recent releases
 
-- **Thread-safe Console** - Share consoles across threads with interior mutability
-- **LRU caching** - 2-5x speedup on Style/Color parsing with automatic caching
-- **New progress columns** - Spinner, TimeElapsed, TimeRemaining, FileSize, Download, TransferSpeed
-- **Iterator tracking** - `track()` function and `.progress()` method for iterators
-- **New widgets** - Padding, Align, and Group containers
-- **Safe stylize** - `try_fg()`, `try_bg()` for fallible style parsing
-- **Improved Unicode** - Proper width for ZWJ emojis, flags, variation selectors
+| Version  | Highlights                                                                                                  |
+|----------|-------------------------------------------------------------------------------------------------------------|
+| v0.11.0  | L1 Color enum collapse (~10× smaller, `Copy`); `Segment.style` field → method; dormant `StyleInterner` types |
+| v0.10.3  | T8 lock-free `Live` writers — **+21,000×** under writer+renderer contention                                  |
+| v0.10.2  | `Live::update_renderable: &self`; threaded contention bench                                                  |
+| v0.10.1  | `Text::char_len` cache (~1 ns cached)                                                                        |
+| v0.10.0  | Rich v15.0.0 sync — TTY env overrides, 4-tuple `Syntax.padding`, `Text::from_ansi` newline preservation     |
+| v0.8.0   | Thread-safe Console, LRU style/color caching, iterator `.progress()`                                         |
+| v0.7.0   | Builder standardization (`with_` prefix everywhere), comprehensive rustdoc                                   |
+| v0.6.0   | Soundness fix in `live_render`, hardened API, expanded prelude                                               |
 
-## v0.7.0 Highlights
-
-- **Builder standardization** -- all widget builders now use `with_` prefix (`Panel::new().with_title()`, `Table::new().with_box_chars()`, etc.)
-- **Comprehensive rustdoc** -- 731-line crate-level guide with 132 doctests covering every feature
-- **2,295 lib tests + 132 doctests** -- full coverage across all widgets
-
-## v0.6.0 Highlights
-
-- **Soundness fix** -- replaced unsafe interior mutability with `Cell` in live_render
-- **Hardened API** -- 10 `unwrap()` calls replaced with graceful handling
-- **Feature-gated `log`** -- `logging_handler` now behind `logging` feature (default on)
-- **Expanded prelude** -- `Bar`, `Layout`, `Live`, `Status`, `Prompt`, `Json` added
-- **Binary filesize** -- `filesize::binary()` for KiB/MiB/GiB units
-- **Readline autocomplete** -- rustyline-based prompt completions (feature-gated)
-- **Display on 5 more widgets** -- Constrain, Scope, Group, Align, Styled
-- **2,334 tests** -- 85 new tests for CJK/emoji, boundary widths, stress scenarios
-- **85 examples** including 4 cookbooks and 47-section showcase
+See [CHANGELOG.md](CHANGELOG.md) for details and [Migrating from 0.10.x to 0.11.0](#migrating-from-010x-to-0110) above.
 
 ## Features
 
@@ -192,13 +179,13 @@ All four heavy dependencies are **default-on**. Disable them for minimal builds:
 
 ```toml
 # Full (default) -- includes json, markdown, syntax, interactive
-gilt = "0.10"
+gilt = "0.11"
 
 # Minimal -- no heavy deps
-gilt = { version = "0.10", default-features = false }
+gilt = { version = "0.11", default-features = false }
 
 # Pick what you need
-gilt = { version = "0.10", default-features = false, features = ["json", "syntax"] }
+gilt = { version = "0.11", default-features = false, features = ["json", "syntax"] }
 ```
 
 | Feature | Default | Description |
@@ -243,7 +230,7 @@ cargo run --example miette_demo --features miette
 cargo run --example tracing_demo --features tracing
 ```
 
-See the [examples/](examples/) directory for all 73 examples.
+See the [examples/](examples/) directory for all 104 examples.
 
 ## Global Console
 
@@ -260,11 +247,23 @@ gilt::inspect(&vec![1, 2, 3]);
 
 ## Performance
 
-gilt includes a criterion benchmark suite (64 benchmarks) covering text rendering, style application, table layout, segment operations, and more:
+gilt includes a criterion benchmark suite (~80 benchmarks) covering text rendering, style application, table layout, segment operations, threaded contention, and more:
 
 ```bash
-cargo bench
+cargo bench                                       # full suite (~5 min)
+cargo bench --bench benchmarks -- console_render  # focused
+cargo bench --bench live_threaded                 # writer/renderer contention
 ```
+
+Recent perf wins from the v0.10.x → v0.11.0 cycle:
+
+| Bench                           | Before    | After     | Notes                                      |
+|---------------------------------|-----------|-----------|--------------------------------------------|
+| `console_render/table_100_rows` | 1.119 ms  | 600 µs    | -46%, T1/T2/T3/T9 + L1 Color enum          |
+| `console_render/table_10_rows`  | 90.6 µs   | 50 µs     | -45%                                       |
+| `text_operations/len_repeated_cached` | O(n) | ~1 ns     | T11 `Text::char_len` AtomicUsize cache    |
+| `live_threaded/update_plus_render/1` | 43 ops/s | 904 K ops/s | **+21,000×**, T8 ArcSwap lock-free writers |
+| `cell_len` (ASCII)              | 65.9 ns   | 4.9 ns    | -93%, ASCII fast path                      |
 
 ## Minimum Supported Rust Version
 
