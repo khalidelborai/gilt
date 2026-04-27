@@ -6,6 +6,41 @@ versioned in lockstep with `gilt`.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.11.3] - 2026-04-27
+
+Test infrastructure release. Adds `trybuild` compile-pass / compile-fail
+tests + `insta` snapshot tests for generated code stability. No changes
+to derive output for valid input.
+
+### Added
+
+- **`trybuild` test infrastructure** (`tests/trybuild.rs`) running:
+  - `tests/compile_pass/*.rs` — smoke tests for each derive on
+    minimally-correct input. New: `table_minimal.rs`,
+    `panel_minimal.rs`, `derives_namespace.rs` (the last verifies the
+    new `gilt::derives::*` namespace from main-crate v0.11.3).
+  - `tests/compile_fail/*.rs` + `.stderr` goldens — error-message
+    regression guards. Initial cases: `table_on_enum.rs` (graceful
+    error vs panic), `inspect_on_union.rs` (same for unions), and
+    `renderable_unknown_via.rs` (verifies the v0.11.2 `via`
+    restructuring still produces a spanned error pointing at the
+    offending literal).
+- **`insta` snapshot tests for generated code** (7 tests, one per
+  derive) inside `lib.rs`'s `#[cfg(test)] mod tests`. Snapshots live
+  at `crates/gilt-derive/src/snapshots/`. Catches accidental codegen
+  drift during refactors. Regenerate with
+  `INSTA_UPDATE=always cargo test -p gilt-derive --lib expand_`.
+
+### Notes
+
+- Test count: 113 unit (was 106) + 7 snapshot + 6 trybuild (3 pass + 3
+  fail). All green.
+- `cargo publish -p gilt-derive --dry-run`: clean — `[dev-dependencies]`
+  cycle (gilt-derive's tests use the main `gilt` crate) is fine because
+  dev-deps are excluded from the published crate.
+- For rustc upgrades that change `.stderr` formatting:
+  `TRYBUILD=overwrite cargo test -p gilt-derive --test trybuild`.
+
 ## [0.11.2] - 2026-04-27
 
 Robustness release. No public API changes; no behavior change for valid

@@ -1,6 +1,6 @@
 [package]
 name = "gilt-derive"
-version = "0.11.2"
+version = "0.11.3"
 edition = "2021"
 description = "Derive macros for the gilt terminal formatting library"
 license = "MIT"
@@ -19,3 +19,13 @@ proc-macro = true
 syn = { version = "2", features = ["full"] }
 quote = "1"
 proc-macro2 = "1"
+
+[dev-dependencies]
+# Compile-fail / compile-pass tests for the derive macros.
+trybuild = "1"
+# Snapshot tests for generated code stability.
+insta = { version = "1", features = ["yaml"] }
+# We test the derives by exercising them on real types; that needs the
+# main gilt crate (which in turn re-exports our derives via its `derive`
+# feature gate).
+gilt = { path = "../..", features = ["derive"] }

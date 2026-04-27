@@ -1,0 +1,5 @@
+---
+source: crates/gilt-derive/src/lib.rs
+expression: render_tokens(&ts)
+---
+impl Status { # [doc = r" Creates a [`gilt::inspect::Inspect`] widget for this value."] # [doc = r""] # [doc = r" The struct must implement `Debug`. The inspect widget displays the"] # [doc = r" type name, optional label/documentation, and the Debug representation"] # [doc = r" with syntax highlighting."] pub fn to_inspect (& self) -> gilt :: inspect :: Inspect < '_ > where Self : std :: fmt :: Debug + 'static , { gilt :: inspect :: Inspect :: new (self) } }

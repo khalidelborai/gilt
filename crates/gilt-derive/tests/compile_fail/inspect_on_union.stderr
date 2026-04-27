@@ -1,0 +1,5 @@
+error: Inspect derive does not support unions
+ --> tests/compile_fail/inspect_on_union.rs:6:7
+  |
+6 | union NotSupported {
+  |       ^^^^^^^^^^^^

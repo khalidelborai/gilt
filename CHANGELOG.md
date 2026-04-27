@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.11.3] - 2026-04-27
+
+Adds the `gilt::derives` namespace and ships `gilt-derive 0.11.3` with
+trybuild + insta test infrastructure.
+
+### Added
+
+- **`gilt::derives` module** — single namespace for all derive macros,
+  sidestepping the `Columns` / `Inspect` / `Rule` name collisions with
+  runtime widget types:
+  ```rust
+  use gilt::derives::{Columns, Inspect, Panel, Renderable, Rule, Table, Tree};
+
+  #[derive(Columns)]   // unambiguous — refers to gilt_derive::Columns
+  struct Item { name: String }
+  ```
+  Top-level `pub use gilt_derive::Columns as DeriveColumns;` etc. are
+  kept for backward compatibility. **Planned deprecation:** v0.12.0.
+
+### gilt-derive 0.11.3 highlights
+
+- New `trybuild` test suite with compile-pass smoke tests (one per
+  derive) and compile-fail tests with `.stderr` goldens (regression
+  guards for the v0.11.2 panic-removal work).
+- New `insta` snapshot tests catching codegen drift on the 7 derives.
+
+See `crates/gilt-derive/CHANGELOG.md#0113---2026-04-27` for details.
+
+### Deferred to v0.12.0
+
+- Splitting `crates/gilt-derive/src/lib.rs` (4500 lines) into per-derive
+  modules.
+- Deprecating the legacy `DeriveColumns`/`DeriveInspect`/`DeriveRule`
+  re-exports (one minor of overlap before deprecation warnings).
+
 ## [0.11.2] - 2026-04-27
 
 Lockstep release with `gilt-derive 0.11.2` — derive crate robustness
