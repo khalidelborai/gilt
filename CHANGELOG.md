@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.11.2] - 2026-04-27
+
+Lockstep release with `gilt-derive 0.11.2` — derive crate robustness
+improvements. No `gilt` (main crate) source changes; this version
+exists to publish alongside `gilt-derive 0.11.2` and pin the new
+minimum derive version.
+
+### gilt-derive 0.11.2 highlights
+
+- **Panic-free proc-macros.** All `.expect()` / `.unwrap()` paths in
+  derive code replaced with `syn::Error` returns. Malformed input now
+  produces actionable `compile_error!` diagnostics instead of
+  proc-macro panics.
+- **Better error spans.** `Renderable` derive's `via` attribute
+  validation restructured to keep the `LitStr` in scope for spanned
+  errors.
+- **`crates/gilt-derive/README.md`** added — landing page for crates.io.
+- **`crates/gilt-derive/CHANGELOG.md`** added — independent release
+  history.
+
+See `crates/gilt-derive/CHANGELOG.md#0112---2026-04-27` for the full
+entry.
+
+### Deferred to v0.11.3+
+
+- `trybuild` compile-fail tests (per-derive error message regression
+  guard) + `insta` snapshot tests for generated code.
+- Splitting the 4500-line `crates/gilt-derive/src/lib.rs` into
+  per-derive modules + shared utilities.
+- Adding a `gilt::derives::*` namespace to sidestep the
+  `DeriveColumns`/`DeriveInspect`/`DeriveRule` rename collisions with
+  runtime widget types.
+
 ## [0.11.1] - 2026-04-27
 
 Cleanup release. Removes long-deprecated items missed by the v0.11.0
