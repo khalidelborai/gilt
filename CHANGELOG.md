@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.11.4] - 2026-04-27
+
+Lockstep release with `gilt-derive 0.11.4` — internal file split of the
+4667-line `crates/gilt-derive/src/lib.rs` into per-derive modules. No
+`gilt` (main crate) source changes; this version exists to publish
+alongside `gilt-derive 0.11.4` and pin the new minimum derive version.
+
+### gilt-derive 0.11.4 highlights
+
+- 7 per-derive modules + shared helpers (`crates/gilt-derive/src/`):
+  `table.rs`, `panel.rs`, `tree.rs`, `columns.rs`, `rule.rs`,
+  `inspect.rs`, `renderable.rs`, `shared.rs`. lib.rs reduced from 4667
+  to 2085 lines.
+- Insta snapshots byte-identical to v0.11.3 — codegen verified stable
+  across the refactor.
+- 113 unit tests + 6 trybuild tests still green.
+
+See `crates/gilt-derive/CHANGELOG.md#0114---2026-04-27` for details.
+
 ## [0.11.3] - 2026-04-27
 
 Adds the `gilt::derives` namespace and ships `gilt-derive 0.11.3` with

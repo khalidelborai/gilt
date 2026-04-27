@@ -6,6 +6,52 @@ versioned in lockstep with `gilt`.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.11.4] - 2026-04-27
+
+Phase 5 of the gilt-derive consolidation plan. **Internal refactor only**
+— no API changes, no behaviour changes for valid input, all insta
+snapshots byte-identical.
+
+### Changed (internal)
+
+- **Split the 4667-line `src/lib.rs`** into per-derive modules + shared
+  helpers:
+  - `src/lib.rs` (~2085 lines, was 4667): proc-macro entry-point shims
+    + the `#[cfg(test)]` test module.
+  - `src/shared.rs` (~105 lines): `named_field_ident`,
+    `snake_to_title_case`, `box_style_tokens`, `justify_tokens` —
+    cross-cutting helpers used by 4+ derives.
+  - `src/table.rs` (~653 lines): Table derive impl + attrs.
+  - `src/panel.rs` (~493 lines): Panel derive impl + attrs +
+    `parse_field_attrs` (also used by Columns).
+  - `src/tree.rs` (~374 lines): Tree derive impl + attrs.
+  - `src/columns.rs` (~372 lines): Columns derive impl + attrs.
+  - `src/rule.rs` (~287 lines): Rule derive impl + attrs.
+  - `src/inspect.rs` (~203 lines): Inspect derive impl + attrs.
+  - `src/renderable.rs` (~151 lines): Renderable derive impl + attrs.
+
+### Why this matters
+
+Each per-derive change can now be reviewed/diffed in isolation. The
+proc-macro entry points stay at the crate root (where Rust requires
+them), but each `derive_*_impl` function lives in its own focused
+module with `pub(crate)` visibility for the test module to access.
+
+### Verification
+
+- `cargo build -p gilt-derive`: clean
+- `cargo test -p gilt-derive --lib`: 113 passed (unchanged)
+- `cargo test -p gilt-derive --test trybuild`: 2 groups (3 pass + 3
+  fail) (unchanged)
+- All 7 `insta` snapshots at `src/snapshots/` byte-identical to
+  v0.11.3 — codegen verified stable across the file split.
+
+### Notes
+
+- Test module stays inline in `lib.rs` for now. Splitting tests
+  per-derive could land in v0.12.0 alongside the planned
+  `DeriveColumns`/`DeriveInspect`/`DeriveRule` deprecations.
+
 ## [0.11.3] - 2026-04-27
 
 Test infrastructure release. Adds `trybuild` compile-pass / compile-fail
