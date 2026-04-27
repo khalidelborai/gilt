@@ -12,8 +12,19 @@ on `gilt`:
 
 ```toml
 [dependencies]
-gilt = { version = "0.11", features = ["derive"] }
+gilt = { version = "0.12", features = ["derive"] }
 ```
+
+Use the `gilt::derives` namespace to import the macros — it sidesteps the
+name collisions between derive macros and runtime widget types
+(`Columns`/`Inspect`/`Rule`):
+
+```rust
+use gilt::derives::{Columns, Inspect, Panel, Renderable, Rule, Table, Tree};
+```
+
+(The legacy top-level `gilt::DeriveColumns`/`DeriveInspect`/`DeriveRule`
+aliases were deprecated in v0.12.0 and will be removed in v0.13.0.)
 
 ## Provided derives
 
