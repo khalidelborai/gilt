@@ -175,7 +175,6 @@ pub(crate) fn has_rule_title_attr(field: &syn::Field) -> syn::Result<bool> {
 /// let br = SectionBreak { heading: "Results".into() };
 /// let rule = br.to_rule();
 /// ```
-
 pub(crate) fn derive_rule_impl(input: &DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
     let struct_name = &input.ident;
     let struct_name_str = struct_name.to_string();

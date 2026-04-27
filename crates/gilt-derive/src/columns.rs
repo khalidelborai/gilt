@@ -203,7 +203,6 @@ pub(crate) fn columns_expect_int(attr: &ColumnsAttr, name: &str) -> syn::Result<
 /// ];
 /// let cols = ProjectCard::to_columns(&items);
 /// ```
-
 pub(crate) fn derive_columns_impl(input: &DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
     let struct_name = &input.ident;
     let struct_name_str = struct_name.to_string();

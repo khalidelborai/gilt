@@ -310,7 +310,6 @@ pub(crate) fn field_expect_bool(attr: &FieldAttr, _name: &str) -> syn::Result<Li
 /// };
 /// let panel = status.to_panel();
 /// ```
-
 pub(crate) fn derive_panel_impl(input: &DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
     let struct_name = &input.ident;
     let struct_name_str = struct_name.to_string();

@@ -219,7 +219,6 @@ pub(crate) fn parse_tree_field_attrs(field: &syn::Field) -> syn::Result<TreeFiel
 /// };
 /// let tree = root.to_tree();
 /// ```
-
 pub(crate) fn derive_tree_impl(input: &DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
     let struct_name = &input.ident;
 

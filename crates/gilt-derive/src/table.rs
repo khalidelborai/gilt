@@ -395,7 +395,6 @@ pub(crate) fn col_expect_int(attr: &ColumnAttr, name: &str) -> syn::Result<LitIn
 /// ];
 /// let table = Employee::to_table(&employees);
 /// ```
-
 pub(crate) fn derive_table_impl(input: &DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
     let struct_name = &input.ident;
     let struct_name_str = struct_name.to_string();
