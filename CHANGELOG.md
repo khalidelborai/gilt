@@ -5,6 +5,87 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.11.0] - 2026-04-26
+
+Stable v0.11.0 release. Aggregates the alpha series:
+**alpha.1** dormant `StyleInterner` types, **alpha.2** `Segment.style`
+field → method conversion, **alpha.3** L1 Color enum collapse.
+
+### Highlights
+
+- **Color is now a 5-variant enum** (~40 B + heap → ~4 B inline,
+  `Copy`). See alpha.3 entry for migration details.
+- **`Segment.style` is a method, not a field.** See alpha.2 entry.
+- **`StyleInterner` + `StyleId` types added** as foundation for future
+  perf work. Currently dormant — no callers route through them yet.
+
+### Performance
+
+- `console_render/table_100_rows`: 612 µs → 600 µs (-2%, primarily
+  from Color enum's smaller footprint reducing cache pressure).
+- `Color::clone` is now a 4-byte memcpy (was: alloc + copy of `name`
+  String + ~30 B struct).
+- `Style::clone` is much cheaper since `Option<Color>` is `Copy`. The
+  only remaining heap allocation is `link: Option<String>` (rarely
+  set).
+
+### L2 interner activation: deferred
+
+The original v0.11.0 design (`.review/V0_11_DESIGN.md`) included a PR3
+that would swap `Segment.style` storage to `StyleId` and route every
+construction through the global interner. **This was attempted, then
+reverted based on benchmark evidence:**
+
+| Stage                          | table_100_rows |
+|--------------------------------|----------------|
+| Pre-L1 baseline (post-PR #5)   | 612 µs         |
+| Post-L1 (this release)         | 600 µs         |
+| Post-L2 activation (single-lock optimized) | 884 µs (**+47%**) |
+
+The `Mutex<HashMap>::lock()` per `Segment::new` plus `Arc<Style>`
+allocation cost more than the savings from cheaper clones. After L1,
+Style is small enough that interning loses its leverage.
+
+The `StyleInterner` skeleton stays in the codebase as deferred
+research. Reactivation would need a different mechanism (DashMap,
+thread-local cache + merge, or fundamentally lock-free).
+
+The `StyleInterner` and `StyleId` types remain in
+`gilt::style_interner` as dormant scaffolding for potential future
+work (e.g., a lock-free DashMap-backed redesign).
+
+### Migration from 0.10.x
+
+See README's "Migrating from 0.10.x" section. TL;DR:
+
+```rust
+// Color: struct → enum
+Color { name: "red".into(), color_type: ColorType::Standard,
+        number: Some(1), triplet: None }
+// becomes:
+Color::Standard(1)  // or Color::parse("red")?
+
+// Color field access → methods
+color.name        → color.name()        // Cow<'_, str>
+color.color_type  → color.kind()        // ColorType
+color.number      → color.number()      // Option<u8>
+color.triplet     → color.triplet()     // Option<ColorTriplet>
+
+// Segment.style field is now a method (alpha.2)
+seg.style.is_some()  → seg.style().is_some()
+seg.style.clone()    → seg.style().cloned()
+if let Some(ref s) = seg.style → if let Some(s) = seg.style()
+```
+
+### Behavior changes
+
+- **EightBit colors lose named round-trip**: `Color::parse("yellow4")?
+  .name()` now returns `"color(106)"` instead of `"yellow4"`. Only the
+  16 standard ANSI colors get canonical names. `Color::parse("color(106)")`
+  still works.
+- **`Segment::style_owned()` collapses None and Some(null)**: both map
+  to `Style::null()`. Use `style()` directly to distinguish.
+
 ## [0.11.0-alpha.3] - 2026-04-26
 
 L1 Color enum (PR2 of the v0.11.0 break bundle). The largest single

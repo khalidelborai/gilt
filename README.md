@@ -26,6 +26,98 @@ fn main() {
 }
 ```
 
+## Migrating from 0.10.x to 0.11.0
+
+`v0.11.0` collapses the `Color` struct into a 5-variant enum and converts
+`Segment.style` from a public field to a method. Both changes are
+mechanical at call sites; the type-level changes shrink Color from
+~40 B + heap String to ~4 B inline `Copy`.
+
+### Color: struct → enum
+
+```rust
+// Before:
+Color { name: "red".into(), color_type: ColorType::Standard,
+        number: Some(1), triplet: None }
+
+// After:
+Color::Standard(1)
+// or
+Color::parse("red")?
+```
+
+Field accessors are now methods:
+
+| Before                    | After                                    |
+|---------------------------|------------------------------------------|
+| `color.name`              | `color.name()` → `Cow<'_, str>`          |
+| `color.color_type`        | `color.kind()` → `ColorType`             |
+| `color.number`            | `color.number()` → `Option<u8>`          |
+| `color.triplet`           | `color.triplet()` → `Option<ColorTriplet>` |
+
+Pattern-matching uses the variants directly:
+
+```rust
+// Before:
+match color.color_type {
+    ColorType::Standard => use_palette(color.number.unwrap()),
+    ColorType::TrueColor => use_rgb(color.triplet.unwrap()),
+    _ => {}
+}
+
+// After:
+match color {
+    Color::Standard(n) => use_palette(n),
+    Color::TrueColor(t) => use_rgb(t),
+    _ => {}
+}
+```
+
+### Segment.style: field → method
+
+```rust
+// Before:                          // After:
+seg.style.is_some()                 seg.style().is_some()
+seg.style.clone()                   seg.style().cloned()
+seg.style.as_ref()                  seg.style()
+if let Some(ref s) = seg.style      if let Some(s) = seg.style()
+seg.style = Some(s)                 seg.set_style(Some(s))
+seg.style.clone().unwrap_or_else(Style::null)  seg.style_owned()
+```
+
+For struct-literal construction (`Segment { style: Some(s), … }`), use
+`Segment::new(text, Some(s), control)` or `Segment::styled(text, s)`.
+
+### Behavior changes (rare)
+
+- **EightBit colors lose named round-trip**: `Color::parse("yellow4")?
+  .name()` now returns `"color(106)"` instead of `"yellow4"`. Only the
+  16 standard ANSI colors get canonical names.
+- **`Segment::style_owned()` collapses None and Some(null)**: both map
+  to `Style::null()`. Use `style()` directly to distinguish.
+
+### What didn't change
+
+Everything else: `Console::print`, the `Renderable` trait, markup parsing,
+all widget APIs (`Panel`, `Tree`, `Table`, `Progress`, `Live`, `Status`),
+`Style::parse` / `Style::combine` / `Style::render`, color parsing,
+themes, layout, `Text` API. If you only consume widgets and never
+construct `Color` or `Segment` directly, you likely don't need to
+change anything.
+
+### Why no L2 interner activation?
+
+The original v0.11.0 design included a per-Segment style interner that
+would swap `Segment.style` storage to a 4-byte `StyleId`. After L1
+shrunk Color and made Style cheap to clone, activating the interner
+empirically regressed `console_render/table_100_rows` from 600 µs to
+884 µs (+47%) — the per-construction `Mutex<HashMap>` lock acquisition
+exceeded the savings. See CHANGELOG `[0.11.0]` for the bench table.
+
+The `StyleInterner` and `StyleId` types remain in `gilt::style_interner`
+as dormant scaffolding for potential future use (e.g., a lock-free
+DashMap-backed redesign).
+
 ## v0.8.0 Highlights
 
 - **Thread-safe Console** - Share consoles across threads with interior mutability
