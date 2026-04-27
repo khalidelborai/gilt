@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.11.1] - 2026-04-27
+
+Cleanup release. Removes long-deprecated items missed by the v0.11.0
+break window plus the only `pub(crate)` dead method.
+
+### Removed
+
+- **`Style::copy()`** — deprecated alias for `Style::clone()`. Use
+  `style.clone()` directly. (Was tagged `#[deprecated]`.)
+- **`RenderableBox::downcast_ref()`** — deprecated since v0.10.0. Always
+  returned `None` because `RenderableBox` doesn't store a `TypeId`. If
+  you need downcasting, store the concrete type instead of erasing it.
+- **`Tree::style()`, `Tree::guide_style()`, `Tree::expanded()`,
+  `Tree::hide_root()`** — deprecated since 0.2.0 (~6 years). Use the
+  `with_*` builder forms (`Tree::with_style()`, etc.).
+
+### Internal
+
+- Removed the unused `Table::render_table` wrapper (`pub(crate)`, no
+  callers since v0.10.x T9 added `render_table_with_cells`).
+- Audited remaining `#[allow(dead_code)]` suppressions: 3 in `Console`
+  (`tab_size`, `soft_wrap`, `safe_box`) are kept — they have public
+  builder setters and the comments accurately describe future use.
+- Cleaned up workflow scratch from disk (44 MB freed).
+
+### Migration from 0.11.0
+
+```rust
+// Before:                       // After:
+style.copy()                     style.clone()
+tree.style(s)                    tree.with_style(s)
+tree.guide_style(s)              tree.with_guide_style(s)
+tree.expanded(true)              tree.with_expanded(true)
+tree.hide_root(true)             tree.with_hide_root(true)
+```
+
+`RenderableBox::downcast_ref` had no working alternative — the method
+always returned `None` even before removal. If you somehow depended on
+the no-op behavior, replace `box.downcast_ref::<T>()` with `None::<&T>`.
+
 ## [0.11.0] - 2026-04-26
 
 Stable v0.11.0 release. Aggregates the alpha series:

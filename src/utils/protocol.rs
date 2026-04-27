@@ -272,25 +272,6 @@ impl RenderableBox {
     pub fn into_inner(self) -> Box<dyn Renderable> {
         self.inner
     }
-
-    /// Always returns `None`.
-    ///
-    /// **This method does not actually downcast.** `RenderableBox` does not
-    /// store type information alongside the inner `dyn Renderable`, and
-    /// `dyn Renderable` is not `Any`-castable, so a real downcast would
-    /// require either changing the `Renderable` trait bound to `Any` (a
-    /// breaking change) or storing a parallel `TypeId`. Neither has been
-    /// done; this method is preserved as a deprecated no-op.
-    ///
-    /// If you need downcasting, store the concrete type directly rather than
-    /// erasing it through `RenderableBox`.
-    #[deprecated(
-        note = "downcast_ref always returns None — RenderableBox does not store TypeId. \
-                Store concrete types instead."
-    )]
-    pub fn downcast_ref<T: Renderable + 'static>(&self) -> Option<&T> {
-        None
-    }
 }
 
 impl Renderable for RenderableBox {
