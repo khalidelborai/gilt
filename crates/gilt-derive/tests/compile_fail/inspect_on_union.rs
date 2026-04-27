@@ -1,8 +1,8 @@
 //! Inspect derive on a union should error gracefully (not panic).
 
-use gilt::DeriveInspect;
+use gilt::derives::Inspect;
 
-#[derive(DeriveInspect)]
+#[derive(Inspect)]
 union NotSupported {
     a: u32,
     b: f32,

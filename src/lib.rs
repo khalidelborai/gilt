@@ -537,7 +537,7 @@
 //! Enable in `Cargo.toml`:
 //!
 //! ```toml
-//! gilt = { version = "0.12", features = ["derive"] }
+//! gilt = { version = "0.13", features = ["derive"] }
 //! ```
 //!
 //! ## `gilt::derives` namespace
@@ -549,10 +549,6 @@
 //! ```rust,ignore
 //! use gilt::derives::{Columns, Inspect, Panel, Renderable, Rule, Table, Tree};
 //! ```
-//!
-//! The legacy `gilt::DeriveColumns` / `gilt::DeriveInspect` /
-//! `gilt::DeriveRule` aliases were deprecated in v0.12.0 and will be
-//! removed in v0.13.0 — migrate to `gilt::derives::*`.
 //!
 //! # Feature Gates
 //!
@@ -845,33 +841,6 @@ pub use gilt_derive::Table;
 #[cfg(feature = "derive")]
 pub use gilt_derive::Tree;
 
-// -- Deprecated legacy aliases (removed in v0.13.0) ----------------------
-//
-// `DeriveColumns`/`DeriveInspect`/`DeriveRule` exist only because the
-// v0.11.0 release predates the `gilt::derives` namespace and renamed the
-// colliding-name derives at the crate root. v0.11.3 added the cleaner
-// `gilt::derives::Columns` etc. — these aliases are now redundant.
-#[cfg(feature = "derive")]
-#[deprecated(
-    since = "0.12.0",
-    note = "use `gilt::derives::Columns` instead — `DeriveColumns` will be removed in v0.13.0"
-)]
-pub use gilt_derive::Columns as DeriveColumns;
-
-#[cfg(feature = "derive")]
-#[deprecated(
-    since = "0.12.0",
-    note = "use `gilt::derives::Inspect` instead — `DeriveInspect` will be removed in v0.13.0"
-)]
-pub use gilt_derive::Inspect as DeriveInspect;
-
-#[cfg(feature = "derive")]
-#[deprecated(
-    since = "0.12.0",
-    note = "use `gilt::derives::Rule` instead — `DeriveRule` will be removed in v0.13.0"
-)]
-pub use gilt_derive::Rule as DeriveRule;
-
 /// Procedural derive macros under a single namespace.
 ///
 /// Sidesteps the name collisions between derive macros and runtime widget
@@ -887,11 +856,6 @@ pub use gilt_derive::Rule as DeriveRule;
 /// #[derive(Columns)]
 /// struct Item { name: String }
 /// ```
-///
-/// Each macro is also re-exported at the crate root with a `Derive` prefix
-/// for the colliding ones (`DeriveColumns`, `DeriveInspect`, `DeriveRule`)
-/// — those are kept for backward compatibility but will be deprecated in
-/// v0.12.0.
 #[cfg(feature = "derive")]
 pub mod derives {
     pub use gilt_derive::{Columns, Inspect, Panel, Renderable, Rule, Table, Tree};
