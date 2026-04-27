@@ -79,6 +79,22 @@ use syn::{parse_macro_input, Data, DeriveInput, Fields, Ident, LitBool, LitInt, 
 
 /// Convert a snake_case identifier to Title Case.
 ///
+/// Get a named field's ident.
+///
+/// Every gilt-derive macro iterates `Fields::Named` (struct with named
+/// fields), so `field.ident` is logically always `Some`. This helper exists
+/// so that — if a future code path ever passes through an unnamed field
+/// (e.g. via macro composition or refactoring) — we surface a `compile_error!`
+/// pointing at the offending field instead of panicking the proc-macro.
+fn named_field_ident(field: &syn::Field) -> syn::Result<&syn::Ident> {
+    field.ident.as_ref().ok_or_else(|| {
+        syn::Error::new_spanned(
+            field,
+            "expected named field — gilt-derive only supports structs with named fields",
+        )
+    })
+}
+
 /// Examples:
 /// - `first_name` -> "First Name"
 /// - `age` -> "Age"
@@ -606,11 +622,7 @@ fn derive_table_impl(input: &DeriveInput) -> syn::Result<proc_macro2::TokenStrea
     let mut field_infos: Vec<FieldInfo> = Vec::new();
 
     for field in fields.iter() {
-        let ident = field
-            .ident
-            .as_ref()
-            .expect("named field must have ident")
-            .clone();
+        let ident = named_field_ident(field)?.clone();
         let col_attrs = parse_column_attrs(field)?;
 
         // Check skip.
@@ -1176,11 +1188,7 @@ fn derive_panel_impl(input: &DeriveInput) -> syn::Result<proc_macro2::TokenStrea
     let mut field_infos: Vec<PanelFieldInfo> = Vec::new();
 
     for field in fields.iter() {
-        let ident = field
-            .ident
-            .as_ref()
-            .expect("named field must have ident")
-            .clone();
+        let ident = named_field_ident(field)?.clone();
         let fa = parse_field_attrs(field)?;
 
         // Check skip.
@@ -1576,11 +1584,7 @@ fn derive_tree_impl(input: &DeriveInput) -> syn::Result<proc_macro2::TokenStream
     let mut leaf_fields: Vec<Ident> = Vec::new();
 
     for field in fields.iter() {
-        let ident = field
-            .ident
-            .as_ref()
-            .expect("named field must have ident")
-            .clone();
+        let ident = named_field_ident(field)?.clone();
         let kind = parse_tree_field_attrs(field)?;
 
         match kind {
@@ -1834,30 +1838,26 @@ fn derive_renderable_impl(input: &DeriveInput) -> syn::Result<proc_macro2::Token
     // Parse struct-level #[renderable(...)] attributes.
     let renderable_attrs = parse_renderable_attrs(input)?;
 
-    // Determine the delegation target. Default to "panel".
-    let via = renderable_attrs
-        .via
-        .as_ref()
-        .map(|lit| lit.value())
-        .unwrap_or_else(|| "panel".to_string());
-
-    let delegate_call = match via.as_str() {
-        "panel" => {
-            quote! { let widget = self.to_panel(); }
-        }
-        "tree" => {
-            quote! { let widget = self.to_tree(); }
-        }
-        other => {
-            let lit = renderable_attrs.via.as_ref().unwrap();
-            return Err(syn::Error::new_spanned(
-                lit,
-                format!(
-                    "unknown renderable via `{}`. Expected one of: panel, tree",
-                    other
-                ),
-            ));
-        }
+    // Determine the delegation target. Default to "panel" when `via` is absent.
+    // Restructured to keep the `LitStr` (for spanned errors) in scope rather
+    // than recovering it via `.unwrap()` after a value-only match — that
+    // unwrap was logically safe but its safety lived in the control flow,
+    // not in the types.
+    let delegate_call = match renderable_attrs.via.as_ref() {
+        None => quote! { let widget = self.to_panel(); },
+        Some(lit) => match lit.value().as_str() {
+            "panel" => quote! { let widget = self.to_panel(); },
+            "tree" => quote! { let widget = self.to_tree(); },
+            other => {
+                return Err(syn::Error::new_spanned(
+                    lit,
+                    format!(
+                        "unknown renderable via `{}`. Expected one of: panel, tree",
+                        other
+                    ),
+                ));
+            }
+        },
     };
 
     let expanded = quote! {
@@ -2126,11 +2126,7 @@ fn derive_columns_impl(input: &DeriveInput) -> syn::Result<proc_macro2::TokenStr
     let mut field_infos: Vec<ColFieldInfo> = Vec::new();
 
     for field in fields.iter() {
-        let ident = field
-            .ident
-            .as_ref()
-            .expect("named field must have ident")
-            .clone();
+        let ident = named_field_ident(field)?.clone();
         let fa = parse_field_attrs(field)?;
 
         // Check skip.
@@ -2466,11 +2462,7 @@ fn derive_rule_impl(input: &DeriveInput) -> syn::Result<proc_macro2::TokenStream
     // Find the field annotated with `#[rule(title)]`, if any.
     let mut title_field: Option<Ident> = None;
     for field in fields.iter() {
-        let ident = field
-            .ident
-            .as_ref()
-            .expect("named field must have ident")
-            .clone();
+        let ident = named_field_ident(field)?.clone();
         if has_rule_title_attr(field)? {
             if title_field.is_some() {
                 return Err(syn::Error::new_spanned(
