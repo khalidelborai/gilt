@@ -10,8 +10,8 @@
 
 #[cfg(feature = "derive")]
 fn main() {
+    use gilt::derives::Columns;
     use gilt::prelude::*;
-    use gilt::DeriveColumns;
 
     let mut console = Console::builder()
         .width(100)
@@ -22,7 +22,7 @@ fn main() {
     // ── 1. Basic struct — fields become Title Case labels in each card ────
     console.rule(Some("1. Basic derive — fields as columns of cards"));
 
-    #[derive(DeriveColumns)]
+    #[derive(Columns)]
     struct Language {
         name: String,
         paradigm: String,
@@ -66,7 +66,7 @@ fn main() {
     // ── 2. Title and layout options ──────────────────────────────────────
     console.rule(Some("2. Title, equal columns, and padding"));
 
-    #[derive(DeriveColumns)]
+    #[derive(Columns)]
     #[columns(title = "Cloud Regions", equal, expand, padding = 2)]
     struct Region {
         #[field(label = "Region", style = "bold cyan")]
@@ -104,7 +104,7 @@ fn main() {
     // ── 3. Styled fields with skip ───────────────────────────────────────
     console.rule(Some("3. Styled fields and #[field(skip)]"));
 
-    #[derive(DeriveColumns)]
+    #[derive(Columns)]
     #[columns(column_count = 3, padding = 1)]
     struct Dependency {
         #[field(label = "Crate", style = "bold yellow")]
@@ -161,7 +161,7 @@ fn main() {
     // ── 4. Practical example: team roster ────────────────────────────────
     console.rule(Some("4. Team roster — practical use case"));
 
-    #[derive(DeriveColumns)]
+    #[derive(Columns)]
     #[columns(title = "Engineering Team", equal, expand, padding = 2)]
     struct TeamMember {
         #[field(label = "Name", style = "bold")]

@@ -7,8 +7,8 @@
 
 #[cfg(feature = "derive")]
 fn main() {
+    use gilt::derives::Inspect;
     use gilt::prelude::*;
-    use gilt::DeriveInspect;
 
     let mut console = Console::new();
 
@@ -19,7 +19,7 @@ fn main() {
 
     console.rule(Some("1. Basic Inspect"));
 
-    #[derive(Debug, Clone, DeriveInspect)]
+    #[derive(Debug, Clone, Inspect)]
     #[allow(dead_code)]
     struct Sensor {
         id: u32,
@@ -41,7 +41,7 @@ fn main() {
 
     console.rule(Some("2. Custom Title & Label"));
 
-    #[derive(Debug, Clone, DeriveInspect)]
+    #[derive(Debug, Clone, Inspect)]
     #[inspect(title = "Cluster Node", label = "node-3a (primary)")]
     #[allow(dead_code)]
     struct ClusterNode {
@@ -66,7 +66,7 @@ fn main() {
 
     console.rule(Some("3. Doc Annotation"));
 
-    #[derive(Debug, Clone, DeriveInspect)]
+    #[derive(Debug, Clone, Inspect)]
     #[inspect(doc = "Pipeline stage configuration. Each stage runs sequentially.")]
     #[allow(dead_code)]
     struct PipelineStage {
@@ -91,7 +91,7 @@ fn main() {
 
     console.rule(Some("4. Pretty Printing"));
 
-    #[derive(Debug, Clone, DeriveInspect)]
+    #[derive(Debug, Clone, Inspect)]
     #[inspect(title = "Build Manifest", pretty)]
     #[allow(dead_code)]
     struct BuildManifest {
@@ -132,7 +132,7 @@ fn main() {
         min_version: String,
     }
 
-    #[derive(Debug, Clone, DeriveInspect)]
+    #[derive(Debug, Clone, Inspect)]
     #[inspect(
         title = "API Gateway",
         label = "production / us-east-1",

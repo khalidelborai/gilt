@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.12.0] - 2026-04-27
+
+Closes the gilt-derive consolidation plan by deprecating the v0.11.x
+legacy derive aliases.
+
+### Deprecated
+
+- **`gilt::DeriveColumns` / `gilt::DeriveInspect` / `gilt::DeriveRule`**
+  top-level re-exports. These are still functional but emit
+  deprecation warnings. Use the `gilt::derives::*` namespace (added in
+  v0.11.3) instead:
+
+  ```rust
+  // Before:
+  use gilt::DeriveColumns;
+  #[derive(DeriveColumns)] struct ... { }
+
+  // After:
+  use gilt::derives::Columns;
+  #[derive(Columns)] struct ... { }
+  ```
+
+### Removal timeline
+
+- v0.12.0 (this release): warnings on use.
+- v0.13.0+ (next minor or major): aliases removed entirely.
+
+### Internal
+
+- All in-tree examples (`derive_columns.rs`, `derive_inspect.rs`,
+  `derive_rule.rs`, `showcase.rs`) migrated to `gilt::derives::*`.
+- `gilt-derive` itself is unchanged (lockstep version bump only).
+
+### gilt-derive consolidation plan: complete
+
+| Phase | Shipped |
+|---|---|
+| 1: README + CHANGELOG | v0.11.2 |
+| 2: panic-free + spans | v0.11.2 |
+| 3: trybuild + insta | v0.11.3 |
+| 4: `gilt::derives` namespace | v0.11.3 |
+| 5: per-derive module split | v0.11.4 |
+| 6: deprecate legacy aliases | **v0.12.0** (this) |
+
 ## [0.11.4] - 2026-04-27
 
 Lockstep release with `gilt-derive 0.11.4` — internal file split of the

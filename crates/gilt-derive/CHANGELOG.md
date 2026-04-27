@@ -6,6 +6,14 @@ versioned in lockstep with `gilt`.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.12.0] - 2026-04-27
+
+Lockstep version bump with `gilt 0.12.0` — no source changes in this
+crate. The main crate's `DeriveColumns` / `DeriveInspect` / `DeriveRule`
+top-level aliases are now `#[deprecated]` in favour of
+`gilt::derives::*`. The derive macros themselves (Table, Panel, Tree,
+etc.) and their generated output are unchanged.
+
 ## [0.11.4] - 2026-04-27
 
 Phase 5 of the gilt-derive consolidation plan. **Internal refactor only**

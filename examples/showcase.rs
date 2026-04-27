@@ -1379,9 +1379,9 @@ Mumbai,India,12440000,603";
         console.print(&menu.to_tree());
 
         // Demonstrate #[derive(Columns)]
-        use gilt::DeriveColumns;
+        use gilt::derives::Columns;
 
-        #[derive(DeriveColumns)]
+        #[derive(Columns)]
         #[columns(equal, padding = 1)]
         struct Framework {
             #[field(label = "Name", style = "bold")]

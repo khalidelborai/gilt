@@ -3,15 +3,15 @@
 
 #[cfg(feature = "derive")]
 fn main() {
+    use gilt::derives::Rule;
     use gilt::prelude::*;
-    use gilt::DeriveRule;
 
     let mut console = Console::new();
 
     // ── 1. Basic derive — struct name becomes the title ─────────────────
     console.print_text("\n[bold cyan]1. Basic derive — struct name as title (no attributes)[/]");
 
-    #[derive(DeriveRule)]
+    #[derive(Rule)]
     struct Introduction {
         _placeholder: u8,
     }
@@ -22,7 +22,7 @@ fn main() {
     // ── 2. Custom style and characters ──────────────────────────────────
     console.print_text("\n[bold cyan]2. Custom style and characters[/]");
 
-    #[derive(DeriveRule)]
+    #[derive(Rule)]
     #[rule(title = "Configuration", characters = "═", style = "bold magenta")]
     struct ConfigSection {
         _placeholder: u8,
@@ -31,7 +31,7 @@ fn main() {
     let config = ConfigSection { _placeholder: 0 };
     console.print(&config.to_rule());
 
-    #[derive(DeriveRule)]
+    #[derive(Rule)]
     #[rule(title = "Warnings", characters = "!", style = "bold yellow")]
     struct WarningSection {
         _placeholder: u8,
@@ -43,7 +43,7 @@ fn main() {
     // ── 3. Field-driven title — #[rule(title)] on a field ───────────────
     console.print_text("\n[bold cyan]3. Field-driven title — title from a struct field[/]");
 
-    #[derive(DeriveRule)]
+    #[derive(Rule)]
     #[rule(characters = "─", style = "bold green")]
     struct Chapter {
         #[rule(title)]
@@ -72,7 +72,7 @@ fn main() {
     // ── 4. Alignment options ────────────────────────────────────────────
     console.print_text("\n[bold cyan]4. Alignment options — left, center, right[/]");
 
-    #[derive(DeriveRule)]
+    #[derive(Rule)]
     #[rule(title = "Left Aligned", align = "left", style = "blue")]
     struct LeftRule {
         _placeholder: u8,
@@ -81,7 +81,7 @@ fn main() {
     let left = LeftRule { _placeholder: 0 };
     console.print(&left.to_rule());
 
-    #[derive(DeriveRule)]
+    #[derive(Rule)]
     #[rule(title = "Center Aligned", align = "center", style = "cyan")]
     struct CenterRule {
         _placeholder: u8,
@@ -90,7 +90,7 @@ fn main() {
     let center = CenterRule { _placeholder: 0 };
     console.print(&center.to_rule());
 
-    #[derive(DeriveRule)]
+    #[derive(Rule)]
     #[rule(title = "Right Aligned", align = "right", style = "green")]
     struct RightRule {
         _placeholder: u8,
@@ -104,42 +104,42 @@ fn main() {
         "\n[bold cyan]5. Section dividers — different characters for visual variety[/]",
     );
 
-    #[derive(DeriveRule)]
+    #[derive(Rule)]
     #[rule(title = "Heavy", characters = "━", style = "bold red")]
     struct HeavyDivider {
         _placeholder: u8,
     }
     console.print(&(HeavyDivider { _placeholder: 0 }).to_rule());
 
-    #[derive(DeriveRule)]
+    #[derive(Rule)]
     #[rule(title = "Double", characters = "═", style = "bold bright_blue")]
     struct DoubleDivider {
         _placeholder: u8,
     }
     console.print(&(DoubleDivider { _placeholder: 0 }).to_rule());
 
-    #[derive(DeriveRule)]
+    #[derive(Rule)]
     #[rule(title = "Dashed", characters = "╌", style = "dim white")]
     struct DashedDivider {
         _placeholder: u8,
     }
     console.print(&(DashedDivider { _placeholder: 0 }).to_rule());
 
-    #[derive(DeriveRule)]
+    #[derive(Rule)]
     #[rule(title = "Stars", characters = "★", style = "bold yellow")]
     struct StarDivider {
         _placeholder: u8,
     }
     console.print(&(StarDivider { _placeholder: 0 }).to_rule());
 
-    #[derive(DeriveRule)]
+    #[derive(Rule)]
     #[rule(title = "Dots", characters = "·", style = "bright_magenta")]
     struct DotDivider {
         _placeholder: u8,
     }
     console.print(&(DotDivider { _placeholder: 0 }).to_rule());
 
-    #[derive(DeriveRule)]
+    #[derive(Rule)]
     #[rule(title = "Waves", characters = "~", style = "bright_cyan")]
     struct WaveDivider {
         _placeholder: u8,
