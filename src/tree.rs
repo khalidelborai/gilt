@@ -139,36 +139,6 @@ impl Tree {
         self
     }
 
-    // -- Deprecated aliases (old names without `with_` prefix) ----------------
-
-    /// Deprecated: use [`with_style`](Self::with_style) instead.
-    #[must_use]
-    #[deprecated(since = "0.2.0", note = "renamed to `with_style`")]
-    pub fn style(self, style: Style) -> Self {
-        self.with_style(style)
-    }
-
-    /// Deprecated: use [`with_guide_style`](Self::with_guide_style) instead.
-    #[must_use]
-    #[deprecated(since = "0.2.0", note = "renamed to `with_guide_style`")]
-    pub fn guide_style(self, style: Style) -> Self {
-        self.with_guide_style(style)
-    }
-
-    /// Deprecated: use [`with_expanded`](Self::with_expanded) instead.
-    #[must_use]
-    #[deprecated(since = "0.2.0", note = "renamed to `with_expanded`")]
-    pub fn expanded(self, expanded: bool) -> Self {
-        self.with_expanded(expanded)
-    }
-
-    /// Deprecated: use [`with_hide_root`](Self::with_hide_root) instead.
-    #[must_use]
-    #[deprecated(since = "0.2.0", note = "renamed to `with_hide_root`")]
-    pub fn hide_root(self, hide_root: bool) -> Self {
-        self.with_hide_root(hide_root)
-    }
-
     /// Measure this tree: compute minimum and maximum widths.
     pub fn measure(&self, _console: &Console, _options: &ConsoleOptions) -> Measurement {
         let mut minimum: usize = 0;

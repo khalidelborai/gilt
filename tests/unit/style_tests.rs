@@ -597,14 +597,6 @@ fn test_hash() {
     assert_eq!(set.len(), 2);
 }
 
-// Copy test
-#[test]
-fn test_copy() {
-    let style = Style::parse("bold red").unwrap();
-    let copied = style.copy();
-    assert_eq!(style, copied);
-}
-
 // from_color tests
 #[test]
 fn test_from_color() {

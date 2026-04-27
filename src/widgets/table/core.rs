@@ -1025,30 +1025,10 @@ impl Table {
         widths
     }
 
-    /// The main rendering method. Produces segments for the table body
-    /// (borders + cells). Internal callers should prefer
-    /// [`render_table_with_cells`] to share a single `get_cells` pass with
-    /// [`calculate_column_widths_with_cells`].
-    #[allow(dead_code)]
-    pub(crate) fn render_table(
-        &self,
-        console: &Console,
-        options: &ConsoleOptions,
-        widths: &[usize],
-    ) -> Vec<Segment> {
-        let column_cells: Vec<Vec<CellInfo>> = self
-            .columns
-            .iter()
-            .enumerate()
-            .map(|(i, col)| self.get_cells(console, i, col))
-            .collect();
-        self.render_table_with_cells(console, options, widths, column_cells)
-    }
-
-    /// Internal: same as [`render_table`] but takes pre-built per-column
-    /// cells. Used by `gilt_console` so the cell construction (which
-    /// calls `console.render_str` for every header / data / footer string)
-    /// happens exactly once per render — measure and render share it.
+    /// Internal: render the table body (borders + cells) using pre-built
+    /// per-column cells. Called by `gilt_console` so the cell construction
+    /// (which calls `console.render_str` for every header / data / footer
+    /// string) happens exactly once per render — measure and render share it.
     pub(crate) fn render_table_with_cells(
         &self,
         console: &Console,

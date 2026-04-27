@@ -637,12 +637,6 @@ impl Style {
         }
     }
 
-    /// Returns a deep copy of this style. Equivalent to [`Clone::clone`].
-    #[deprecated(note = "Use `style.clone()` directly — `Style::copy` is a no-op alias")]
-    pub fn copy(&self) -> Style {
-        self.clone()
-    }
-
     /// Returns a copy without metadata and links.
     pub fn clear_meta_and_links(&self) -> Style {
         Style {
@@ -1603,15 +1597,6 @@ mod tests {
         assert!(set.contains(&style2));
         set.insert(style3);
         assert_eq!(set.len(), 2);
-    }
-
-    // Copy test
-    #[test]
-    fn test_copy() {
-        let style = Style::parse("bold red").unwrap();
-        #[allow(deprecated)]
-        let copied = style.copy();
-        assert_eq!(style, copied);
     }
 
     // from_color tests
