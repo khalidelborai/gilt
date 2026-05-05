@@ -4,6 +4,7 @@
 //! console width.
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use crate::console::{Console, ConsoleOptions, Renderable};
 use crate::segment::Segment;
@@ -18,10 +19,15 @@ use crate::text::{JustifyMethod, Text};
 ///
 /// Items are laid out in a grid that auto-fits the available console width.
 /// Internally a `Table::grid()` is used for rendering.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Columns {
     /// The renderable items (stored as strings, converted to Text on demand).
+    /// Use [`from_items`](Self::from_items) for the string-list case.
     pub renderables: Vec<String>,
+    /// Renderable widgets — Spinners, Panels, Tables, etc. Populated by
+    /// [`from_renderables`](Self::from_renderables). When non-empty, the
+    /// render path uses these instead of the string list.
+    pub widgets: Vec<Arc<dyn Renderable + Send + Sync>>,
     /// Fixed column width, or `None` for auto-detect.
     pub width: Option<usize>,
     /// Padding around cells `(top, right, bottom, left)`.
@@ -69,6 +75,7 @@ impl Columns {
     pub fn new() -> Self {
         Columns {
             renderables: Vec::new(),
+            widgets: Vec::new(),
             width: None,
             padding: (0, 1, 0, 1),
             expand: false,
@@ -83,6 +90,36 @@ impl Columns {
     /// Add a renderable item (as a string).
     pub fn add_renderable(&mut self, text: &str) {
         self.renderables.push(text.to_string());
+    }
+
+    /// Build a `Columns` from an iterable of any [`Renderable`] widgets —
+    /// Spinners, Panels, Tables, etc. The widgets are captured through
+    /// a temporary console at render time and laid out as a grid, like
+    /// rich's `Columns([Spinner(name) for name in SPINNERS])` pattern.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use gilt::columns::Columns;
+    /// use gilt::status::spinner::Spinner;
+    /// use gilt::spinners::SPINNERS;
+    ///
+    /// let spinners: Vec<Spinner> = SPINNERS
+    ///     .keys()
+    ///     .filter_map(|name| Spinner::new(name).ok())
+    ///     .collect();
+    /// let cols = Columns::from_renderables(spinners).with_expand(true);
+    /// ```
+    pub fn from_renderables<I, R>(items: I) -> Self
+    where
+        I: IntoIterator<Item = R>,
+        R: Renderable + Send + Sync + 'static,
+    {
+        let mut c = Self::new();
+        for item in items {
+            c.widgets.push(Arc::new(item));
+        }
+        c
     }
 
     /// Set the fixed column width.
@@ -211,12 +248,24 @@ impl Default for Columns {
 
 impl Renderable for Columns {
     fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
-        // Convert all string renderables to Text
-        let renderables: Vec<Text> = self
-            .renderables
-            .iter()
-            .map(|s| console.render_str(s, None, None, None))
-            .collect();
+        // If widgets are present, render each through a captured console and
+        // parse back to Text. Otherwise, fall back to the string-list path.
+        let renderables: Vec<Text> = if !self.widgets.is_empty() {
+            self.widgets
+                .iter()
+                .map(|w| {
+                    let mut tmp = Console::default();
+                    tmp.begin_capture();
+                    tmp.print(w.as_ref());
+                    Text::from_ansi(&tmp.end_capture())
+                })
+                .collect()
+        } else {
+            self.renderables
+                .iter()
+                .map(|s| console.render_str(s, None, None, None))
+                .collect()
+        };
 
         if renderables.is_empty() {
             return Vec::new();
