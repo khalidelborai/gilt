@@ -144,13 +144,90 @@ to compile and behave identically.
 
 ---
 
+---
+
+## Phase 2 — Live family ergonomic setters
+
+`Live` and `Status` already had `impl Drop` calling `stop()` — Phase 2 didn't
+need to introduce `*Guard` wrapper types. The actual ergonomic gap was the
+`update().X().apply().unwrap()` chain and explicit `start()` ceremony at
+every call site. Phase 2 closes both with direct setters and auto-start
+constructors.
+
+### `Status::set` direct setter (replaces `update().status().apply().unwrap()`)
+
+```rust
+// Before (v0.13.x):
+status.update().status("step 2").apply().unwrap();
+
+// After (v1.0):
+status.set("step 2");
+```
+
+`Status::update().status(...).apply()` still exists for atomic multi-field
+updates (status text + spinner name + style + speed in one transaction).
+`set` is the direct setter for the common single-field case.
+
+### `Status::run` auto-start constructor
+
+```rust
+// Before (v0.13.x):
+let mut status = Status::new("Loading...").with_console(Console::default());
+status.start();
+
+// After (v1.0):
+let mut status = Status::run("Loading...");           // construction + start
+// .with_console(...) etc. still chains on Status::new if you need overrides
+```
+
+`Status::run` is `Status::new` + `start` in one call. The returned value
+implements `Drop`, so going out of scope automatically stops the display —
+no explicit `stop()` call required.
+
+### `Live::set` and `Live::run`
+
+```rust
+// Before:
+let mut live = Live::new(initial);
+live.start();
+live.update(new_text, true);
+
+// After:
+let live = Live::run(initial);   // construction + start
+live.set(new_text);              // no boolean noise
+```
+
+`Live::set(r)` is equivalent to `update(r, true)`. The original
+`update(r, refresh)` is unchanged for callers who need explicit refresh
+control.
+
+### Implicit-Drop semantic, made explicit in docs
+
+Both `Live` and `Status` already implemented `Drop` calling `stop()` in
+v0.13.x — but rustdoc didn't make this prominent and most examples called
+`stop()` manually. v1.0 documents this clearly: **you do not need to call
+`stop()` if you let the value go out of scope normally.** Manual `stop()`
+remains supported for cases where you want to stop early (e.g., before a
+long synchronous operation that itself prints).
+
+### Quick decision table
+
+| Old code | New code | Notes |
+|---|---|---|
+| `Status::new(s); status.start()` | `Status::run(s)` | Auto-start constructor |
+| `status.update().status(s).apply().unwrap()` | `status.set(s)` | Direct setter |
+| `live.update(r, true)` | `live.set(r)` | Drops the boolean noise |
+| `Live::new(r); live.start()` | `Live::run(r)` | Auto-start constructor |
+| `status.stop()` (at end of fn) | (nothing) | Drop calls stop automatically |
+
+---
+
 ## Future phases
 
 This document grows phase by phase. See [issue #20](https://github.com/khalidelborai/gilt/issues/20)
 for the full v1.0 roadmap. Subsequent phases will document:
 
-- Phase 2: RAII guards for Live/Status/Pager/Screen (`start()` returns a Drop guard)
-- Phase 3: `Live::from_renderable<R: Renderable>(r)` and `Status::set(&str)` direct setters
+- Phase 3: `Live::from_renderable<R: Renderable>(r)` and `Progress` simplification
 - Phase 4: Markup-first `Table::add_row`, Tree, Columns
 - Phase 5: Panel/Padding/Rule/Align unification
 - Phase 6: Rust-native extensions consistency

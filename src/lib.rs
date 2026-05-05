@@ -386,7 +386,7 @@
 //!
 //! let mut status = Status::new("Loading...");
 //! status.start();
-//! status.update().status("Processing...").apply();
+//! status.set("Processing...");
 //! status.stop();
 //! ```
 //!

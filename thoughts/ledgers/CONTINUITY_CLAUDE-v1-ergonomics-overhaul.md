@@ -36,10 +36,30 @@ Each phase = its own PR + verification gate. Phases 1-7 land additively on a `v1
 - Markup parsing API consolidation: one entry point, no per-widget reimplementation.
 - **Verification**: `cargo test --lib` green; `Console::default().print_text("hello")` smoke test.
 
-### Phase 2: RAII guards
-- `LiveGuard`, `StatusGuard`, `PagerGuard`, `ScreenGuard` returned from `start()` methods.
-- Original `start()/stop()` deleted. The guard's `Drop` impl is the only stop path.
-- **Verification**: panic-safety test for each (`std::panic::catch_unwind` shows terminal restored).
+### Phase 2: Live family ergonomic setters (was: RAII guards)
+
+**Scope correction discovered Phase 2 start (2026-04-29)**: `Live` and
+`Status` already have `impl Drop` that calls `stop()` (live/mod.rs:414,
+status/mod.rs:339). Pager is one-shot `show()` with no lifecycle. Screen
+lives inside Live. So a separate `*Guard` type would be redundant
+machinery — the ergonomic gap is **not** RAII, it's the `update().X().apply().unwrap()`
+chain and explicit `start()` ceremony.
+
+Refocused scope:
+- `Status::set(&mut self, msg: &str)` — direct setter; replaces
+  `status.update().status(s).apply().unwrap()` (4 lines → 1).
+- `Status::run(msg) -> Self` — auto-started constructor (combines `new` +
+  `start`); can chain `.with_console(...)` etc. before run.
+- `Live::set(&self, r: Text)` — shorter alias for `update(r, true)`.
+- Document the existing implicit-drop-stops semantic prominently in the
+  rustdoc on `Status` / `Live` so users know not to call `stop()` manually.
+
+Pulled forward from Phase 3 (since Phase 3 was largely about these same
+items). Phase 3 narrows to `Live::from_renderable<R: Renderable>(r)` and
+`Progress` simplification.
+
+- **Verification**: rewrite `examples/status.rs` to ≤14 lines (rich is 14).
+  This is the verification gate that the API actually composes.
 
 ### Phase 3: Live-rendering family simplification
 - `Live::from_renderable<R: Renderable>(r: R)` — accepts any renderable, no capture/from_ansi roundtrip.

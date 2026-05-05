@@ -637,7 +637,7 @@ fn main() {
 
         for msg in &messages[1..] {
             thread::sleep(Duration::from_millis(600));
-            status.update().status(msg).apply().unwrap();
+            status.set(msg);
         }
 
         thread::sleep(Duration::from_millis(300));
