@@ -393,10 +393,27 @@ ergonomics.
 
 ---
 
-## Future phases
+## Post-v1.0 releases
 
-This document grows phase by phase. See [issue #20](https://github.com/khalidelborai/gilt/issues/20)
-for the full v1.0 roadmap.
-- Phase 6: Rust-native extensions consistency
-- Phase 6.5: Standalone `Traceback` widget + deeper `Pretty`
-- Phase 7: Derive macro polish
+The roadmap items at issue [#20](https://github.com/khalidelborai/gilt/issues/20)
+shipped or were dropped:
+
+- **v1.1.0 (2026-05-05)** — paired-example coverage. Added
+  `Columns::from_renderables` + `Panel::from_renderable`. The Traceback
+  widget and deeper Pretty turned out to already exist (audit was
+  wrong); paired examples cover them now. Additive, no migration.
+- **v1.2.0 (2026-05-06)** — `Console::with_writer<W>` + internal
+  reorganisation of `console.rs` (3814 → 1117 lines via six sibling
+  files). Additive at the API level. Note: v1.2.0 silently dropped
+  `Console: Sync` (the writer override was missing `+ Sync`); patched
+  in v1.3.1.
+- **v1.3.0 (2026-05-06)** — WebAssembly compatibility documentation
+  + new CI job + `examples/wasm_export.rs`. No source change required.
+- **v1.3.1 (2026-05-06)** — patch: restored `Console: Sync` and added
+  a compile-time regression test (`console_is_send_and_sync`). Also
+  bumped two stale `gilt = "0.10"` references in `src/lib.rs` doc
+  comments. **If you were on v1.2.0 or v1.3.0 and your code uses
+  `Arc<Console>`, upgrade to 1.3.1.**
+
+For pre-v1.0 → v1.0 migration steps (the bulk of this document),
+read on above.

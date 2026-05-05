@@ -162,7 +162,7 @@ fn main() {
 
     // Stage 3: Upload
     let _uploaded: Vec<u8> = track(processed, "Stage 3: Uploading", Some(20.0))
-        .inspect(|b| {
+        .inspect(|_b| {
             thread::sleep(Duration::from_millis(35));
         })
         .collect();

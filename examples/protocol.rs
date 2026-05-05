@@ -120,6 +120,7 @@ struct LogEntry {
 }
 
 #[derive(Debug, Clone, Copy)]
+#[allow(dead_code)] // Critical is part of the level enum even if this demo doesn't emit it.
 enum LogLevel {
     Debug,
     Info,
