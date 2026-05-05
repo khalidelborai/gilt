@@ -41,6 +41,30 @@ pub struct Columns {
 }
 
 impl Columns {
+    /// Build a `Columns` from an iterable of items (strings or anything
+    /// that converts to `String`). The v1.0 ergonomic constructor for
+    /// the common case where you have a `Vec<String>` ready to lay out.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::columns::Columns;
+    /// let langs = ["Rust", "Python", "Go", "TypeScript"];
+    /// let cols = Columns::from_items(langs);
+    /// assert_eq!(cols.renderables.len(), 4);
+    /// ```
+    pub fn from_items<I, S>(items: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        let mut c = Self::new();
+        for item in items {
+            c.renderables.push(item.into());
+        }
+        c
+    }
+
     /// Create a new `Columns` with sensible defaults.
     pub fn new() -> Self {
         Columns {
