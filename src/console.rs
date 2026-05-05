@@ -819,6 +819,17 @@ impl Console {
         gilt_text
     }
 
+    /// Render a [`Renderable`] widget into a [`Text`] by capturing its
+    /// ANSI output through this console. Used by `Live::from_renderable`,
+    /// `Panel::from_renderable`, and the `Columns` widget render path to
+    /// bridge non-Text renderables into Text-only consumers without each
+    /// caller re-implementing the capture roundtrip.
+    pub fn render_widget_to_text(&mut self, renderable: &dyn Renderable) -> Text {
+        self.begin_capture();
+        self.print(renderable);
+        Text::from_ansi(&self.end_capture())
+    }
+
     // -- Print --------------------------------------------------------------
 
     /// Print a Renderable to the console.

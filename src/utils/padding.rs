@@ -34,21 +34,18 @@ impl PaddingDimensions {
 }
 
 impl From<usize> for PaddingDimensions {
-    /// `n` → `Uniform(n)`.
     fn from(n: usize) -> Self {
         PaddingDimensions::Uniform(n)
     }
 }
 
 impl From<(usize, usize)> for PaddingDimensions {
-    /// `(vertical, horizontal)` → `Pair(vertical, horizontal)`.
     fn from((v, h): (usize, usize)) -> Self {
         PaddingDimensions::Pair(v, h)
     }
 }
 
 impl From<(usize, usize, usize, usize)> for PaddingDimensions {
-    /// `(top, right, bottom, left)` → `Full(t, r, b, l)`.
     fn from((t, r, b, l): (usize, usize, usize, usize)) -> Self {
         PaddingDimensions::Full(t, r, b, l)
     }
@@ -78,24 +75,14 @@ pub struct Padding {
 }
 
 impl Padding {
-    /// Wrap content in padding — the v1.0 ergonomic constructor for the
-    /// common case. `pad` accepts a `usize` (uniform), `(v, h)` tuple,
-    /// or `(t, r, b, l)` tuple via the new `From` impls. Style is
-    /// `Style::null()` and `expand` is `true` (matches rich's default).
-    ///
-    /// # Examples
+    /// Wrap content in padding with default style and `expand: true`.
+    /// `pad` accepts `usize` (uniform), `(v, h)`, or `(t, r, b, l)`. For
+    /// styled padding background or `expand: false`, use [`new`](Self::new).
     ///
     /// ```
-    /// use gilt::padding::Padding;
-    /// use gilt::text::Text;
-    /// use gilt::style::Style;
-    ///
-    /// let content = Text::new("Hello", Style::null());
-    /// let p = Padding::wrap(content, (2, 4));     // 2 above/below, 4 left/right
+    /// # use gilt::{padding::Padding, text::Text, style::Style};
+    /// let p = Padding::wrap(Text::new("Hello", Style::null()), (2, 4));
     /// ```
-    ///
-    /// For style or `expand: false`, use the original [`new`](Self::new):
-    /// `Padding::new(content, pad.into(), Style::parse("on blue"), false)`.
     pub fn wrap(content: Text, pad: impl Into<PaddingDimensions>) -> Self {
         Self::new(content, pad.into(), Style::null(), true)
     }
