@@ -71,11 +71,11 @@ fn main() {
     console.print(&Rule::with_title("Centered Styled Text"));
 
     let mut styled = Text::new("", Style::null());
-    styled.append_str("gilt", Some(Style::parse("bold magenta").unwrap()));
+    styled.append_str("gilt", Some(Style::parse("bold magenta")));
     styled.append_str(" makes terminal output ", None);
-    styled.append_str("beautiful", Some(Style::parse("italic green").unwrap()));
+    styled.append_str("beautiful", Some(Style::parse("italic green")));
     styled.append_str(" and ", None);
-    styled.append_str("easy", Some(Style::parse("bold cyan").unwrap()));
+    styled.append_str("easy", Some(Style::parse("bold cyan")));
     styled.append_str(".", None);
     styled.justify = Some(JustifyMethod::Center);
 

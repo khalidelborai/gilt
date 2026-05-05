@@ -271,7 +271,7 @@ impl Renderable for Markdown {
                 Event::Start(Tag::Emphasis) => {
                     let em_style = console
                         .get_style("markdown.em")
-                        .unwrap_or_else(|_| Style::parse("italic").unwrap());
+                        .unwrap_or_else(|_| Style::parse("italic"));
                     style_stack.push(em_style);
                 }
                 Event::End(TagEnd::Emphasis) => {
@@ -282,7 +282,7 @@ impl Renderable for Markdown {
                 Event::Start(Tag::Strong) => {
                     let strong_style = console
                         .get_style("markdown.strong")
-                        .unwrap_or_else(|_| Style::parse("bold").unwrap());
+                        .unwrap_or_else(|_| Style::parse("bold"));
                     style_stack.push(strong_style);
                 }
                 Event::End(TagEnd::Strong) => {
@@ -293,7 +293,7 @@ impl Renderable for Markdown {
                 Event::Start(Tag::Strikethrough) => {
                     let s_style = console
                         .get_style("markdown.s")
-                        .unwrap_or_else(|_| Style::parse("strike").unwrap());
+                        .unwrap_or_else(|_| Style::parse("strike"));
                     style_stack.push(s_style);
                 }
                 Event::End(TagEnd::Strikethrough) => {
@@ -304,7 +304,7 @@ impl Renderable for Markdown {
                 Event::Code(text) => {
                     let code_style = console
                         .get_style("markdown.code")
-                        .unwrap_or_else(|_| Style::parse("bold cyan on black").unwrap());
+                        .unwrap_or_else(|_| Style::parse("bold cyan on black"));
                     let current = style_stack.current().clone();
                     let combined = current + code_style;
                     if in_table_cell {
@@ -323,7 +323,7 @@ impl Renderable for Markdown {
                 Event::Start(Tag::Link { dest_url, .. }) => {
                     let link_style = console
                         .get_style("markdown.link")
-                        .unwrap_or_else(|_| Style::parse("bright_blue").unwrap());
+                        .unwrap_or_else(|_| Style::parse("bright_blue"));
                     style_stack.push(link_style);
                     link_url = Some(dest_url.to_string());
                 }
@@ -333,7 +333,7 @@ impl Renderable for Markdown {
                         if let Some(ref url) = link_url {
                             let url_style = console
                                 .get_style("markdown.link_url")
-                                .unwrap_or_else(|_| Style::parse("underline blue").unwrap());
+                                .unwrap_or_else(|_| Style::parse("underline blue"));
                             text_buffer.append_str(" (", None);
                             text_buffer.append_str(url, Some(url_style));
                             text_buffer.append_str(")", None);
@@ -346,7 +346,7 @@ impl Renderable for Markdown {
                 Event::Start(Tag::Image { dest_url, .. }) => {
                     let link_style = console
                         .get_style("markdown.link")
-                        .unwrap_or_else(|_| Style::parse("bright_blue").unwrap());
+                        .unwrap_or_else(|_| Style::parse("bright_blue"));
                     style_stack.push(link_style);
                     link_url = Some(dest_url.to_string());
                 }
@@ -356,7 +356,7 @@ impl Renderable for Markdown {
                         if let Some(ref url) = link_url {
                             let url_style = console
                                 .get_style("markdown.link_url")
-                                .unwrap_or_else(|_| Style::parse("underline blue").unwrap());
+                                .unwrap_or_else(|_| Style::parse("underline blue"));
                             text_buffer.append_str(" (", None);
                             text_buffer.append_str(url, Some(url_style));
                             text_buffer.append_str(")", None);
@@ -373,7 +373,7 @@ impl Renderable for Markdown {
                     if let Some(code_text) = code_block_text.take() {
                         let code_style = console
                             .get_style("markdown.code_block")
-                            .unwrap_or_else(|_| Style::parse("cyan on black").unwrap());
+                            .unwrap_or_else(|_| Style::parse("cyan on black"));
 
                         if needs_newline {
                             segments.push(Segment::line());
@@ -381,7 +381,7 @@ impl Renderable for Markdown {
 
                         // Remove trailing newline from code text
                         let trimmed = code_text.trim_end_matches('\n');
-                        let code_content = Text::styled(trimmed, code_style.clone());
+                        let code_content = Text::styled_with(trimmed, code_style.clone());
 
                         // Wrap in a panel (like  does)
                         let panel = Panel::new(code_content)
@@ -432,14 +432,14 @@ impl Renderable for Markdown {
                         if ctx.ordered {
                             let num_style = console
                                 .get_style("markdown.item.number")
-                                .unwrap_or_else(|_| Style::parse("cyan").unwrap());
+                                .unwrap_or_else(|_| Style::parse("cyan"));
                             let prefix = format!("{}{}. ", indent, ctx.item_number);
                             segments.push(Segment::styled(&prefix, num_style));
                             ctx.item_number += 1;
                         } else {
                             let bullet_style = console
                                 .get_style("markdown.item.bullet")
-                                .unwrap_or_else(|_| Style::parse("bold").unwrap());
+                                .unwrap_or_else(|_| Style::parse("bold"));
                             let prefix = format!("{}\u{2022} ", indent);
                             segments.push(Segment::styled(&prefix, bullet_style));
                         }
@@ -547,7 +547,7 @@ impl Renderable for Markdown {
                     }
                     let hr_style = console
                         .get_style("markdown.hr")
-                        .unwrap_or_else(|_| Style::parse("dim").unwrap());
+                        .unwrap_or_else(|_| Style::parse("dim"));
                     let rule = Rule::new().with_style(hr_style).with_end("");
                     let rule_segs = rule.gilt_console(console, options);
                     segments.extend(rule_segs);

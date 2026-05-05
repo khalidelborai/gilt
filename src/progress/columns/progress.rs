@@ -35,7 +35,7 @@ impl Default for TaskProgressColumn {
 
 impl ProgressColumn for TaskProgressColumn {
     fn render(&self, task: &Task) -> Text {
-        let style = Style::parse("progress.percentage").unwrap_or_else(|_| Style::null());
+        let style = Style::parse("progress.percentage");
         let completed = task.completed;
         let total_str = match task.total {
             Some(t) => format!("{t}"),
@@ -81,7 +81,7 @@ impl ProgressColumn for MofNCompleteColumn {
             Some(t) => format!("{}", t as u64),
             None => "?".to_string(),
         };
-        let style = Style::parse("progress.percentage").unwrap_or_else(|_| Style::null());
+        let style = Style::parse("progress.percentage");
         Text::new(&format!("{completed}{}{total_str}", self.separator), style)
     }
 }

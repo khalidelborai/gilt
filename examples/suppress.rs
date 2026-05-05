@@ -120,8 +120,8 @@ fn main() {
 
     console.print(&Rule::with_title("How Suppression Works"));
 
-    let explanation_style = Style::parse("italic").unwrap_or_else(|_| Style::null());
-    let highlight_style = Style::parse("bold cyan").unwrap_or_else(|_| Style::null());
+    let explanation_style = Style::parse("italic");
+    let highlight_style = Style::parse("bold cyan");
 
     let mut explanation = Text::empty();
     explanation.append_str(

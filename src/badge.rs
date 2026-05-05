@@ -46,11 +46,11 @@ impl BadgeStyle {
     /// Get the background color for this badge style.
     fn bg_style(&self) -> Style {
         match self {
-            BadgeStyle::Success => Style::parse("on green").unwrap_or_else(|_| Style::null()),
-            BadgeStyle::Error => Style::parse("on red").unwrap_or_else(|_| Style::null()),
-            BadgeStyle::Warning => Style::parse("on yellow").unwrap_or_else(|_| Style::null()),
-            BadgeStyle::Info => Style::parse("on blue").unwrap_or_else(|_| Style::null()),
-            BadgeStyle::Neutral => Style::parse("on grey").unwrap_or_else(|_| Style::null()),
+            BadgeStyle::Success => Style::parse("on green"),
+            BadgeStyle::Error => Style::parse("on red"),
+            BadgeStyle::Warning => Style::parse("on yellow"),
+            BadgeStyle::Info => Style::parse("on blue"),
+            BadgeStyle::Neutral => Style::parse("on grey"),
             BadgeStyle::Custom(style) => {
                 // Extract just the background style from the custom style
                 style.background_style()
@@ -61,11 +61,11 @@ impl BadgeStyle {
     /// Get the foreground (text) color for this badge style.
     fn fg_style(&self) -> Style {
         match self {
-            BadgeStyle::Success => Style::parse("white").unwrap_or_else(|_| Style::null()),
-            BadgeStyle::Error => Style::parse("white").unwrap_or_else(|_| Style::null()),
-            BadgeStyle::Warning => Style::parse("black").unwrap_or_else(|_| Style::null()),
-            BadgeStyle::Info => Style::parse("white").unwrap_or_else(|_| Style::null()),
-            BadgeStyle::Neutral => Style::parse("white").unwrap_or_else(|_| Style::null()),
+            BadgeStyle::Success => Style::parse("white"),
+            BadgeStyle::Error => Style::parse("white"),
+            BadgeStyle::Warning => Style::parse("black"),
+            BadgeStyle::Info => Style::parse("white"),
+            BadgeStyle::Neutral => Style::parse("white"),
             BadgeStyle::Custom(style) => {
                 // Create a style with just the foreground color
                 Style::from_color(style.color().cloned(), None)
@@ -549,8 +549,8 @@ mod tests {
         assert_eq!(BadgeStyle::Success, BadgeStyle::Success);
         assert_ne!(BadgeStyle::Success, BadgeStyle::Error);
 
-        let style1 = BadgeStyle::Custom(Style::parse("red").unwrap());
-        let style2 = BadgeStyle::Custom(Style::parse("red").unwrap());
+        let style1 = BadgeStyle::Custom(Style::parse("red"));
+        let style2 = BadgeStyle::Custom(Style::parse("red"));
         assert_eq!(style1, style2);
     }
 

@@ -34,8 +34,8 @@ fn main() {
         Style::null(),
     );
     let mut panel = Panel::fit(content);
-    panel.title = Some(Text::new("About Gilt", Style::parse("bold").unwrap()));
-    panel.subtitle = Some(Text::new("v0.1.0", Style::parse("dim").unwrap()));
+    panel.title = Some(Text::new("About Gilt", Style::parse("bold")));
+    panel.subtitle = Some(Text::new("v0.1.0", Style::parse("dim")));
 
     console.print(&panel);
 
@@ -44,12 +44,12 @@ fn main() {
     console.print(&Rule::with_title("Panel with Styled Text"));
 
     let mut styled_text = Text::empty();
-    styled_text.append_str("Bold text", Some(Style::parse("bold").unwrap()));
+    styled_text.append_str("Bold text", Some(Style::parse("bold")));
     styled_text.append_str(" and ", None);
-    styled_text.append_str("italic text", Some(Style::parse("italic").unwrap()));
+    styled_text.append_str("italic text", Some(Style::parse("italic")));
     styled_text.append_str(" live together.", None);
 
-    let panel = Panel::new(styled_text).with_border_style(Style::parse("green").unwrap());
+    let panel = Panel::new(styled_text).with_border_style(Style::parse("green"));
 
     console.print(&panel);
 }

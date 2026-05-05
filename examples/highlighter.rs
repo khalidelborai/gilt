@@ -23,7 +23,7 @@ fn main() {
     console.print(&Rule::with_title("Email Highlighter"));
 
     let email_re = Regex::new(r"[\w.+-]+@[\w-]+\.[\w.-]+").unwrap();
-    let email_style = Style::parse("bold bright_cyan underline").unwrap();
+    let email_style = Style::parse("bold bright_cyan underline");
 
     let samples = [
         "Contact us at support@example.com for help.",
@@ -37,7 +37,7 @@ fn main() {
         let mut text = Text::new(sample, Style::null());
         let count = text.highlight_regex(&email_re, email_style.clone());
         let label = format!("  ({} match{})", count, if count == 1 { "" } else { "es" });
-        text.append_str(&label, Some(Style::parse("dim").unwrap()));
+        text.append_str(&label, Some(Style::parse("dim")));
         console.print(&text);
     }
 

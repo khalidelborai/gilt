@@ -109,8 +109,8 @@
 //! use gilt::style::Style;
 //!
 //! // Parse from a human-readable definition
-//! let style = Style::parse("bold red on white").unwrap();
-//! let subtle = Style::parse("dim italic #808080").unwrap();
+//! let style = Style::parse("bold red on white");
+//! let subtle = Style::parse("dim italic #808080");
 //!
 //! // Combine styles with the + operator (right side wins on conflicts)
 //! let combined = style + subtle;
@@ -144,7 +144,7 @@
 //! let text = Text::new("Hello, world!", Style::null());
 //!
 //! // Styled text (entire string has one style)
-//! let bold = Text::styled("Important", Style::parse("bold").unwrap());
+//! let bold = Text::styled("Important", "bold");
 //!
 //! // From markup (parses [tags])
 //! let rich = Text::from_markup("[red]Error:[/red] file not found").unwrap();
@@ -180,7 +180,7 @@
 //! let panel = Panel::new(Text::new("content", Style::null()))
 //!     .with_title("My Panel")
 //!     .with_box_chars(&DOUBLE)
-//!     .with_border_style(Style::parse("blue").unwrap());
+//!     .with_border_style(Style::parse("blue"));
 //!
 //! // Fit-to-content panel
 //! let compact = Panel::fit(Text::new("snug", Style::null()));
@@ -386,7 +386,7 @@
 //!
 //! let mut status = Status::new("Loading...");
 //! status.start();
-//! status.update().status("Processing...").apply();
+//! status.set("Processing...");
 //! status.stop();
 //! ```
 //!
@@ -537,7 +537,7 @@
 //! Enable in `Cargo.toml`:
 //!
 //! ```toml
-//! gilt = { version = "0.13", features = ["derive"] }
+//! gilt = { version = "1.0", features = ["derive"] }
 //! ```
 //!
 //! ## `gilt::derives` namespace
@@ -628,7 +628,7 @@
 //! use std::collections::HashMap;
 //!
 //! let mut styles = HashMap::new();
-//! styles.insert("info".to_string(), Style::parse("bold cyan").unwrap());
+//! styles.insert("info".to_string(), Style::parse("bold cyan"));
 //!
 //! let mut console = Console::new();
 //! console.push_theme(Theme::new(Some(styles), true));

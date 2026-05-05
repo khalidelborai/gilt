@@ -280,7 +280,7 @@ pub fn render(markup: &str, style: Style) -> Result<Text, MarkupError> {
 /// Theme resolution will be added when Console is implemented.
 fn resolve_tag_style(tag: &Tag) -> Style {
     let tag_str = tag.to_string();
-    Style::parse(&tag_str).unwrap_or_else(|_| {
+    Style::parse_strict(&tag_str).unwrap_or_else(|_| {
         // Tag is probably a theme/class name (e.g. "warning", "repr.number").
         // Console will resolve these via its Theme; for now use null style.
         Style::null()
@@ -417,7 +417,7 @@ mod tests {
         assert_eq!(result.spans().len(), 1);
         assert_eq!(result.spans()[0].start, 0);
         assert_eq!(result.spans()[0].end, 3);
-        assert_eq!(result.spans()[0].style, Style::parse("bold").unwrap());
+        assert_eq!(result.spans()[0].style, Style::parse("bold"));
     }
 
     #[test]
@@ -435,10 +435,10 @@ mod tests {
         // Spans sorted by start: green(0,3), blue(1,2)
         assert_eq!(result.spans()[0].start, 0);
         assert_eq!(result.spans()[0].end, 3);
-        assert_eq!(result.spans()[0].style, Style::parse("green").unwrap());
+        assert_eq!(result.spans()[0].style, Style::parse("green"));
         assert_eq!(result.spans()[1].start, 1);
         assert_eq!(result.spans()[1].end, 2);
-        assert_eq!(result.spans()[1].style, Style::parse("blue").unwrap());
+        assert_eq!(result.spans()[1].style, Style::parse("blue"));
     }
 
     #[test]
@@ -449,10 +449,10 @@ mod tests {
         // Sorted by start: green(0,2), bold(1,3)
         assert_eq!(result.spans()[0].start, 0);
         assert_eq!(result.spans()[0].end, 2);
-        assert_eq!(result.spans()[0].style, Style::parse("green").unwrap());
+        assert_eq!(result.spans()[0].style, Style::parse("green"));
         assert_eq!(result.spans()[1].start, 1);
         assert_eq!(result.spans()[1].end, 3);
-        assert_eq!(result.spans()[1].style, Style::parse("bold").unwrap());
+        assert_eq!(result.spans()[1].style, Style::parse("bold"));
     }
 
     #[test]
@@ -462,7 +462,7 @@ mod tests {
         assert_eq!(result.spans().len(), 1);
         assert_eq!(result.spans()[0].start, 0);
         assert_eq!(result.spans()[0].end, 1);
-        assert_eq!(result.spans()[0].style, Style::parse("bold").unwrap());
+        assert_eq!(result.spans()[0].style, Style::parse("bold"));
     }
 
     #[test]
@@ -473,10 +473,10 @@ mod tests {
         // Sorted by start: green(0,3), bold(1,2)
         assert_eq!(result.spans()[0].start, 0);
         assert_eq!(result.spans()[0].end, 3);
-        assert_eq!(result.spans()[0].style, Style::parse("green").unwrap());
+        assert_eq!(result.spans()[0].style, Style::parse("green"));
         assert_eq!(result.spans()[1].start, 1);
         assert_eq!(result.spans()[1].end, 2);
-        assert_eq!(result.spans()[1].style, Style::parse("bold").unwrap());
+        assert_eq!(result.spans()[1].style, Style::parse("bold"));
     }
 
     #[test]
@@ -520,7 +520,7 @@ mod tests {
         let result = render("[link=foo]FOO[/link]", Style::null()).unwrap();
         assert_eq!(result.plain(), "FOO");
         assert_eq!(result.spans().len(), 1);
-        assert_eq!(result.spans()[0].style, Style::parse("link foo").unwrap());
+        assert_eq!(result.spans()[0].style, Style::parse("link foo"));
     }
 
     #[test]
@@ -539,7 +539,7 @@ mod tests {
         assert_eq!(result.spans().len(), 1);
         assert_eq!(result.spans()[0].start, 0);
         assert_eq!(result.spans()[0].end, 5);
-        assert_eq!(result.spans()[0].style, Style::parse("bold").unwrap());
+        assert_eq!(result.spans()[0].style, Style::parse("bold"));
     }
 
     #[test]
@@ -551,12 +551,12 @@ mod tests {
 
     #[test]
     fn test_render_with_base_style() {
-        let base = Style::parse("italic").unwrap();
+        let base = Style::parse("italic");
         let result = render("[bold]hello[/bold]", base.clone()).unwrap();
         assert_eq!(result.plain(), "hello");
         // The bold span should be present.
         assert_eq!(result.spans().len(), 1);
-        assert_eq!(result.spans()[0].style, Style::parse("bold").unwrap());
+        assert_eq!(result.spans()[0].style, Style::parse("bold"));
     }
 
     #[test]

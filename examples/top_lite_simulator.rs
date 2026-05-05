@@ -150,8 +150,8 @@ fn generate_processes(rng: &mut SimpleRng, count: usize) -> Vec<Process> {
 // ---------------------------------------------------------------------------
 
 fn build_process_display(processes: &[Process]) -> Text {
-    let header_style = Style::parse("bold white on blue").unwrap_or_else(|_| Style::null());
-    let dim_style = Style::parse("dim").unwrap_or_else(|_| Style::null());
+    let header_style = Style::parse("bold white on blue");
+    let dim_style = Style::parse("dim");
 
     let mut text = Text::empty();
 
@@ -168,22 +168,22 @@ fn build_process_display(processes: &[Process]) -> Text {
     // Process rows
     for (i, proc) in processes.iter().enumerate() {
         let cpu_style = if proc.cpu_percent > 15.0 {
-            Style::parse("bold red").unwrap_or_else(|_| Style::null())
+            Style::parse("bold red")
         } else if proc.cpu_percent > 8.0 {
-            Style::parse("yellow").unwrap_or_else(|_| Style::null())
+            Style::parse("yellow")
         } else {
-            Style::parse("green").unwrap_or_else(|_| Style::null())
+            Style::parse("green")
         };
 
         let state_style = if proc.state == "running" {
-            Style::parse("bold green").unwrap_or_else(|_| Style::null())
+            Style::parse("bold green")
         } else {
-            Style::parse("dim").unwrap_or_else(|_| Style::null())
+            Style::parse("dim")
         };
 
         // Alternate row dimming
         let row_base = if i % 2 == 1 {
-            Style::parse("dim").ok()
+            Style::parse_strict("dim").ok()
         } else {
             None
         };

@@ -394,7 +394,7 @@ impl URLHighlighter {
     /// Create a new `URLHighlighter` with the default blue underline style.
     pub fn new() -> Self {
         Self {
-            style: Style::parse("bold blue underline").unwrap(),
+            style: Style::parse("bold blue underline"),
         }
     }
 }
@@ -429,7 +429,7 @@ impl ISODateHighlighter {
     /// Create a new `ISODateHighlighter` with the default bold green style.
     pub fn new() -> Self {
         Self {
-            style: Style::parse("bold green").unwrap(),
+            style: Style::parse("bold green"),
         }
     }
 }
@@ -467,7 +467,7 @@ impl UUIDHighlighter {
     /// Create a new `UUIDHighlighter` with the default bold yellow style.
     pub fn new() -> Self {
         Self {
-            style: Style::parse("bold yellow").unwrap(),
+            style: Style::parse("bold yellow"),
         }
     }
 }
@@ -506,7 +506,7 @@ impl JSONPathHighlighter {
     /// Create a new `JSONPathHighlighter` with the default bold magenta style.
     pub fn new() -> Self {
         Self {
-            style: Style::parse("bold magenta").unwrap(),
+            style: Style::parse("bold magenta"),
         }
     }
 }

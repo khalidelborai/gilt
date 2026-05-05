@@ -344,7 +344,7 @@ mod tests {
     // 11. Style application
     #[test]
     fn test_style_application() {
-        let style = Style::parse("bold red").unwrap();
+        let style = Style::parse("bold red");
         let spark = Sparkline::new(&[1.0, 2.0, 3.0]).with_style(style.clone());
         let console = Console::builder().width(80).build();
         let opts = make_options(80);
@@ -419,7 +419,7 @@ mod tests {
             .with_width(10)
             .with_min(0.0)
             .with_max(10.0)
-            .with_style(Style::parse("green").unwrap());
+            .with_style(Style::parse("green"));
         assert_eq!(spark.width, Some(10));
         assert_eq!(spark.min_value, Some(0.0));
         assert_eq!(spark.max_value, Some(10.0));

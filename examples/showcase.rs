@@ -64,7 +64,7 @@ fn main() {
     // =========================================================================
     console.line(1);
     let banner = Gradient::rainbow("  gilt -- Rich Terminal Formatting for Rust  ")
-        .with_style(Style::parse("bold").unwrap());
+        .with_style(Style::parse("bold"));
     console.print(&banner);
     console.line(1);
     console.rule(Some("Welcome"));
@@ -132,9 +132,9 @@ fn main() {
         Style::null(),
     );
     let panel = Panel::fit(content)
-        .with_title(Text::new("About Gilt", Style::parse("bold cyan").unwrap()))
-        .with_subtitle(Text::new("v0.5.0", Style::parse("dim").unwrap()))
-        .with_border_style(Style::parse("bright_blue").unwrap());
+        .with_title(Text::new("About Gilt", Style::parse("bold cyan")))
+        .with_subtitle(Text::new("v0.5.0", Style::parse("dim")))
+        .with_border_style(Style::parse("bright_blue"));
     console.print(&panel);
     pause();
 
@@ -161,12 +161,12 @@ fn main() {
     // =========================================================================
     console.rule(Some("Tree"));
 
-    let bold_blue = Style::parse("bold blue").unwrap();
-    let green = Style::parse("green").unwrap();
+    let bold_blue = Style::parse("bold blue");
+    let green = Style::parse("green");
     let default = Style::null();
 
     let mut tree = Tree::new(Text::new("my_project/", bold_blue.clone()))
-        .with_guide_style(Style::parse("dim").unwrap());
+        .with_guide_style(Style::parse("dim"));
 
     {
         let src = tree.add(Text::new("src/", bold_blue.clone()));
@@ -228,17 +228,17 @@ fn main() {
     console.print(
         &Rule::with_title("Heavy Rule")
             .with_characters("\u{2501}")
-            .with_style(Style::parse("bold red").unwrap()),
+            .with_style(Style::parse("bold red")),
     );
     console.print(
         &Rule::with_title("Double Line")
             .with_characters("=")
-            .with_style(Style::parse("green").unwrap()),
+            .with_style(Style::parse("green")),
     );
     console.print(
         &Rule::with_title("Dotted")
             .with_characters(".")
-            .with_style(Style::parse("dim").unwrap()),
+            .with_style(Style::parse("dim")),
     );
     pause();
 
@@ -564,7 +564,7 @@ Gilt supports **bold**, *italic*, and `inline code` in markdown.
 
         for msg in &messages[1..] {
             thread::sleep(Duration::from_millis(500));
-            status.update().status(msg).apply().unwrap();
+            status.set(msg);
         }
 
         thread::sleep(Duration::from_millis(500));
@@ -587,7 +587,7 @@ Gilt supports **bold**, *italic*, and `inline code` in markdown.
     ];
 
     for (label, end) in levels {
-        let label_text = Text::new(label, Style::parse("bold").unwrap());
+        let label_text = Text::new(label, Style::parse("bold"));
         console.print(&label_text);
         let bar = Bar::new(40.0, 0.0, *end).with_width(bar_width);
         console.print(&bar);
@@ -631,7 +631,7 @@ Gilt supports **bold**, *italic*, and `inline code` in markdown.
             "  {:.<20} {:>14}  {:>14}",
             "Name", "Decimal (SI)", "Binary (IEC)"
         ),
-        Style::parse("bold").unwrap(),
+        Style::parse("bold"),
     ));
     for (name, size) in sizes {
         let dec = filesize::decimal(*size, 1, " ");
@@ -748,11 +748,11 @@ Gilt supports **bold**, *italic*, and `inline code` in markdown.
     console.rule(Some("Styled Containers"));
 
     let inner = Text::new("Bold + italic overlay via Styled container", Style::null());
-    let styled_widget = Styled::new(inner, Style::parse("bold italic cyan").unwrap());
+    let styled_widget = Styled::new(inner, Style::parse("bold italic cyan"));
     console.print(&styled_widget);
 
-    let inner2 = Text::new("Red on dark background", Style::parse("red").unwrap());
-    let styled_widget2 = Styled::new(inner2, Style::parse("on grey11").unwrap());
+    let inner2 = Text::new("Red on dark background", Style::parse("red"));
+    let styled_widget2 = Styled::new(inner2, Style::parse("on grey11"));
     console.print(&styled_widget2);
     pause();
 
@@ -775,8 +775,8 @@ Gilt supports **bold**, *italic*, and `inline code` in markdown.
         );
         text.justify = Some(*justify);
         let panel = Panel::fit(text)
-            .with_title(Text::new(label, Style::parse("bold").unwrap()))
-            .with_border_style(Style::parse("dim").unwrap());
+            .with_title(Text::new(label, Style::parse("bold")))
+            .with_border_style(Style::parse("dim"));
         console.print(&panel);
     }
     pause();
@@ -799,10 +799,7 @@ Gilt supports **bold**, *italic*, and `inline code` in markdown.
         );
         text.overflow = Some(*overflow);
         let constrained_overflow = Constrain::new(text, Some(40));
-        console.print(&Text::new(
-            &format!("  {label}:"),
-            Style::parse("bold").unwrap(),
-        ));
+        console.print(&Text::new(&format!("  {label}:"), Style::parse("bold")));
         console.print(&constrained_overflow);
     }
     pause();
@@ -853,8 +850,8 @@ Gilt supports **bold**, *italic*, and `inline code` in markdown.
             .build();
         cs_console.begin_capture();
         cs_console.print(&Text::styled(
-            &format!("  {label}: Hello from rgb(255,102,0) on rgb(0,51,102)"),
-            Style::parse("rgb(255,102,0) on rgb(0,51,102) bold").unwrap(),
+            format!("  {label}: Hello from rgb(255,102,0) on rgb(0,51,102)"),
+            "rgb(255,102,0) on rgb(0,51,102) bold",
         ));
         let captured = cs_console.end_capture();
         console.print(&Text::new(captured.trim_end(), Style::null()));
@@ -870,7 +867,7 @@ Gilt supports **bold**, *italic*, and `inline code` in markdown.
         nc_console.begin_capture();
         nc_console.print(&Text::styled(
             "  No Color: Hello (styles stripped)",
-            Style::parse("bold red").unwrap(),
+            "bold red",
         ));
         let captured = nc_console.end_capture();
         console.print(&Text::new(captured.trim_end(), Style::null()));
@@ -885,10 +882,7 @@ Gilt supports **bold**, *italic*, and `inline code` in markdown.
     console.print_text("[bold]Default theme:[/bold] [info]info style[/info]");
 
     let mut custom_styles = HashMap::new();
-    custom_styles.insert(
-        "info".to_string(),
-        Style::parse("bold magenta on grey15").unwrap(),
-    );
+    custom_styles.insert("info".to_string(), Style::parse("bold magenta on grey15"));
     let custom_theme = Theme::new(Some(custom_styles), true);
     console.push_theme(custom_theme);
 
@@ -918,13 +912,10 @@ Gilt supports **bold**, *italic*, and `inline code` in markdown.
 
         console.print(&Text::new(
             "  Captured output (3 lines):",
-            Style::parse("bold").unwrap(),
+            Style::parse("bold"),
         ));
         for line in captured.lines() {
-            console.print(&Text::new(
-                &format!("    | {line}"),
-                Style::parse("dim").unwrap(),
-            ));
+            console.print(&Text::new(&format!("    | {line}"), Style::parse("dim")));
         }
     }
     pause();
@@ -937,15 +928,15 @@ Gilt supports **bold**, *italic*, and `inline code` in markdown.
     console.synchronized(|c| {
         c.print(&Text::new(
             "  These lines are rendered atomically",
-            Style::parse("bold green").unwrap(),
+            Style::parse("bold green"),
         ));
         c.print(&Text::new(
             "  inside a DEC Mode 2026 sync block.",
-            Style::parse("green").unwrap(),
+            Style::parse("green"),
         ));
         c.print(&Text::new(
             "  The terminal buffers until the block ends.",
-            Style::parse("dim green").unwrap(),
+            Style::parse("dim green"),
         ));
     });
     pause();
@@ -991,14 +982,11 @@ Gilt supports **bold**, *italic*, and `inline code` in markdown.
         8,
         false,
     );
-    console.print(&Text::new(
-        "  Wrapped at 40 cols:",
-        Style::parse("bold").unwrap(),
-    ));
+    console.print(&Text::new("  Wrapped at 40 cols:", Style::parse("bold")));
     for line in lines.iter() {
         console.print(&Text::new(
             &format!("    {}", line.plain()),
-            Style::parse("dim").unwrap(),
+            Style::parse("dim"),
         ));
     }
 
@@ -1006,12 +994,12 @@ Gilt supports **bold**, *italic*, and `inline code` in markdown.
     let tab_lines = tab_text.wrap(60, Some(JustifyMethod::Left), None, 8, false);
     console.print(&Text::new(
         "  Tab stops (tab_size=8):",
-        Style::parse("bold").unwrap(),
+        Style::parse("bold"),
     ));
     for line in tab_lines.iter() {
         console.print(&Text::new(
             &format!("    {}", line.plain()),
-            Style::parse("dim").unwrap(),
+            Style::parse("dim"),
         ));
     }
     pause();
@@ -1103,7 +1091,7 @@ Gilt supports **bold**, *italic*, and `inline code` in markdown.
     let decoded_lines = decoder.decode(ansi_input);
     console.print(&Text::new(
         "  Raw ANSI input parsed into styled Text:",
-        Style::parse("bold").unwrap(),
+        Style::parse("bold"),
     ));
     for line in &decoded_lines {
         console.print(line);
@@ -1136,8 +1124,8 @@ Gilt supports **bold**, *italic*, and `inline code` in markdown.
 
     for (name, color_spec) in &color_names {
         let combined = format!("  \u{2588}\u{2588}  {name}");
-        let combined_style = Style::parse(color_spec).unwrap_or_else(|_| Style::null());
-        console.print(&Text::styled(&combined, combined_style));
+        let combined_style = Style::parse(color_spec);
+        console.print(&Text::styled_with(&combined, combined_style));
     }
     pause();
 
@@ -1154,22 +1142,16 @@ Gilt supports **bold**, *italic*, and `inline code` in markdown.
     ];
     let spark = Sparkline::new(&cpu_data)
         .with_width(70)
-        .with_style(Style::parse("bold green").unwrap());
-    console.print(&Text::new(
-        "  CPU usage over time:",
-        Style::parse("bold").unwrap(),
-    ));
+        .with_style(Style::parse("bold green"));
+    console.print(&Text::new("  CPU usage over time:", Style::parse("bold")));
     console.print(&spark);
 
     // Memory pressure — shorter data, no resample
     let mem_data: Vec<f64> = vec![
         30.0, 32.0, 35.0, 40.0, 55.0, 70.0, 85.0, 92.0, 95.0, 88.0, 75.0, 60.0,
     ];
-    let mem_spark = Sparkline::new(&mem_data).with_style(Style::parse("bold yellow").unwrap());
-    console.print(&Text::new(
-        "  Memory pressure:",
-        Style::parse("bold").unwrap(),
-    ));
+    let mem_spark = Sparkline::new(&mem_data).with_style(Style::parse("bold yellow"));
+    console.print(&Text::new("  Memory pressure:", Style::parse("bold")));
     console.print(&mem_spark);
     pause();
 
@@ -1179,7 +1161,7 @@ Gilt supports **bold**, *italic*, and `inline code` in markdown.
     console.rule(Some("Canvas (Braille Dot-Matrix)"));
 
     // 30 cols x 8 rows => 60x32 pixel grid
-    let mut canvas = Canvas::new(30, 8).with_style(Style::parse("cyan").unwrap());
+    let mut canvas = Canvas::new(30, 8).with_style(Style::parse("cyan"));
 
     // Draw a rectangle border
     canvas.rect(0, 0, 59, 31);
@@ -1230,12 +1212,12 @@ fn main() {
     // =========================================================================
     console.rule(Some("Figlet (ASCII Art)"));
 
-    let banner = Figlet::new("GILT").with_style(Style::parse("bold bright_magenta").unwrap());
+    let banner = Figlet::new("GILT").with_style(Style::parse("bold bright_magenta"));
     console.print(&banner);
     console.line(1);
 
     let sub_banner = Figlet::new("v0.5")
-        .with_style(Style::parse("dim cyan").unwrap())
+        .with_style(Style::parse("dim cyan"))
         .with_width(90);
     console.print(&sub_banner);
     pause();
@@ -1256,7 +1238,7 @@ Mumbai,India,12440000,603";
     let csv = CsvTable::from_csv_str(csv_data)
         .unwrap()
         .with_title("World Cities")
-        .with_header_style(Style::parse("bold magenta").unwrap());
+        .with_header_style(Style::parse("bold magenta"));
     console.print(&csv);
     pause();
 
@@ -1271,15 +1253,15 @@ Mumbai,India,12440000,603";
     ));
     console.print(&Text::new(
         "    for item in (0..100).progress(\"Processing\") { ... }",
-        Style::parse("bold green").unwrap(),
+        Style::parse("bold green"),
     ));
     console.print(&Text::new(
         "    for item in data.iter().progress_with_total(\"Loading\", 500.0) { ... }",
-        Style::parse("bold green").unwrap(),
+        Style::parse("bold green"),
     ));
     console.print(&Text::new(
         "  Total is inferred from size_hint() or set explicitly.",
-        Style::parse("dim").unwrap(),
+        Style::parse("dim"),
     ));
     pause();
 
@@ -1417,8 +1399,8 @@ Mumbai,India,12440000,603";
     // Farewell
     // =========================================================================
     console.line(1);
-    let farewell = Gradient::rainbow("  Thank you for exploring gilt!  ")
-        .with_style(Style::parse("bold").unwrap());
+    let farewell =
+        Gradient::rainbow("  Thank you for exploring gilt!  ").with_style(Style::parse("bold"));
     console.print(&farewell);
     console.rule(None);
 }

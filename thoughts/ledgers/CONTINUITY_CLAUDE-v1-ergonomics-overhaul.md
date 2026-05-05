@@ -36,10 +36,30 @@ Each phase = its own PR + verification gate. Phases 1-7 land additively on a `v1
 - Markup parsing API consolidation: one entry point, no per-widget reimplementation.
 - **Verification**: `cargo test --lib` green; `Console::default().print_text("hello")` smoke test.
 
-### Phase 2: RAII guards
-- `LiveGuard`, `StatusGuard`, `PagerGuard`, `ScreenGuard` returned from `start()` methods.
-- Original `start()/stop()` deleted. The guard's `Drop` impl is the only stop path.
-- **Verification**: panic-safety test for each (`std::panic::catch_unwind` shows terminal restored).
+### Phase 2: Live family ergonomic setters (was: RAII guards)
+
+**Scope correction discovered Phase 2 start (2026-04-29)**: `Live` and
+`Status` already have `impl Drop` that calls `stop()` (live/mod.rs:414,
+status/mod.rs:339). Pager is one-shot `show()` with no lifecycle. Screen
+lives inside Live. So a separate `*Guard` type would be redundant
+machinery — the ergonomic gap is **not** RAII, it's the `update().X().apply().unwrap()`
+chain and explicit `start()` ceremony.
+
+Refocused scope:
+- `Status::set(&mut self, msg: &str)` — direct setter; replaces
+  `status.update().status(s).apply().unwrap()` (4 lines → 1).
+- `Status::run(msg) -> Self` — auto-started constructor (combines `new` +
+  `start`); can chain `.with_console(...)` etc. before run.
+- `Live::set(&self, r: Text)` — shorter alias for `update(r, true)`.
+- Document the existing implicit-drop-stops semantic prominently in the
+  rustdoc on `Status` / `Live` so users know not to call `stop()` manually.
+
+Pulled forward from Phase 3 (since Phase 3 was largely about these same
+items). Phase 3 narrows to `Live::from_renderable<R: Renderable>(r)` and
+`Progress` simplification.
+
+- **Verification**: rewrite `examples/status.rs` to ≤14 lines (rich is 14).
+  This is the verification gate that the API actually composes.
 
 ### Phase 3: Live-rendering family simplification
 - `Live::from_renderable<R: Renderable>(r: R)` — accepts any renderable, no capture/from_ansi roundtrip.
@@ -62,6 +82,15 @@ Each phase = its own PR + verification gate. Phases 1-7 land additively on a `v1
 - Gradient, Sparkline, Canvas, Diff, Figlet, CsvTable: consistency pass. Keep functionality, align constructor names with Phase 1-5 patterns.
 - **No rewrites without specific friction** — these are gilt's unique value, don't churn for churn's sake.
 
+### Phase 6.5: Close rich feature gaps (decision: 2026-04-29 round 4)
+
+Two structural gaps surfaced in the deep audit, both real (not API ergonomics):
+
+- **`Traceback` widget**: rich's `traceback.py` exposes a standalone widget that captures and renders an arbitrary error/panic as an embeddable panel. gilt has tracing/eyre/miette handlers wrapping the `?` propagation path but no widget you can put inside a Panel/Layout. Build `gilt::traceback::Traceback` (~400-500 lines: frame capture, source-line read, syntect highlighting reuse).
+- **Deeper `Pretty`**: rich's `pretty.py` is 948 lines of recursive pretty-printing with cycle detection, dataclass introspection, and a `__rich_repr__` discovery protocol. gilt's `utils/pretty.rs` is a stub. Flesh out: recursive struct/enum/Vec/HashMap rendering with depth limit + cycle detection. Reuse the `Inspect` derive for the introspection protocol.
+
+**Verification gate**: rewrite `examples/exception.rs` (currently no equivalent) and `examples/repr.rs` (depends on deeper Pretty) using the new widgets. Both must come within 1.5× of the rich originals.
+
 ### Phase 7: Derive macros polish
 - Small additive helpers consistent with new ergonomics.
 - `#[derive(Renderable)]` from `fmt::Display` if cheap.
@@ -83,9 +112,27 @@ Each phase = its own PR + verification gate. Phases 1-7 land additively on a `v1
 
 ## State
 - Done:
-  - Decisions captured (AskUserQuestion 2026-04-29)
-- Now: [→] Drafting Phase 1 design (need user go-signal before implementation)
-- Next: Phase 1 implementation
+  - [x] Decisions captured (AskUserQuestion 3 rounds 2026-04-29)
+  - [x] v1.0 integration branch created and pushed
+  - [x] Tracking issue #20 opened
+  - [x] Phase 1: Foundation (#21)
+  - [x] Phase 2: Live family setters (#22)
+  - [x] Phase 3: Live::from_renderable (#23)
+  - [x] Phase 4: Table::with_columns + markup (#24)
+  - [x] Phase 5: Padding/Columns + Tier-1/2 gates pass (#25)
+  - [x] Tier-1: 1.16× (target ≤1.30) ✓
+  - [x] Tier-2: 1.98× (target ≤2.00) ✓
+- Now: [→] Phase 6 (Rust-native extensions audit)
+- Decision (round 5 — 2026-04-29): user picked option (b) at gate-pass checkpoint.
+  Skip Phase 6.5 (Traceback widget + deeper Pretty). Defer to v1.1.
+  Remaining: Phase 6 → 7 → 9 → 10.
+- Remaining:
+  - [ ] Phase 6: Rust-native extensions audit
+  - [ ] Phase 7: Derive macros polish
+  - [ ] ~~Phase 6.5: Traceback + Pretty~~ deferred to v1.1
+  - [ ] ~~Phase 8: Examples sweep~~ already met by Phase 5
+  - [ ] Phase 9: Documentation (README + CHANGELOG)
+  - [ ] Phase 10: Release (gilt 1.0.0 + gilt-derive 1.0.0)
 - Remaining:
   - [ ] Phase 1: Foundation
   - [ ] Phase 2: RAII guards
@@ -93,10 +140,47 @@ Each phase = its own PR + verification gate. Phases 1-7 land additively on a `v1
   - [ ] Phase 4: Table/Tree/Columns markup
   - [ ] Phase 5: Panel/Padding/Rule/Align
   - [ ] Phase 6: Rust-native extensions
+  - [ ] Phase 6.5: Close rich feature gaps (Traceback widget + deeper Pretty)
   - [ ] Phase 7: Derive macros
   - [ ] Phase 8: Examples rewrite (LOC gate)
   - [ ] Phase 9: Documentation
   - [ ] Phase 10: Release
+
+## Decisions (round 3 — 2026-04-29, advisor-flagged)
+
+9. **Text::styled scope**: `Text::styled(content: impl Into<String>, style: &str)`. Content is **literal** (never parses markup). Style arg is parsed via `parse_lossy`. Cell-level markup stays scoped to `Table::add_row` (Phase 4) and existing `console.print_text`. Avoids the "user input containing `[foo]` becomes accidental markup" footgun.
+10. **Migration doc lands inside Phase 1, not Phase 9**: `MIGRATION_v1.md` ships in the Phase 1 PR with the `Style::parse` lossy-vs-strict before/after entry. Reason: lossy parse is a silent-failure trap on upgrade — users who strip `?` to compile will get null styles on typos. Each subsequent phase adds its own migration entry in its own PR.
+11. **Phase 1 verification gate includes a paired-example rewrite**: rewrite `examples/status.rs` end-to-end using only Phase 1 + existing APIs. Target: ≤35 lines (current 49; full ~14 unlocked after Phase 2 RAII + Phase 3 `Status::set`). Proves the new API actually composes; "cargo test green" doesn't.
+
+## Phase 8 baseline + recalibrated success metric (round 4 — 2026-04-29)
+
+The original 10-example sample understated the gap. Deep audit (research agent
+2026-04-29) showed the corpus-wide reality:
+
+| Scope | rich | gilt | ratio |
+|---|---:|---:|---:|
+| Library source LOC (no tests) | 38,515 | 67,718 | 1.76× |
+| 10 cherry-picked examples (entry-level) | 397 | 883 | 2.22× |
+| **All 36 paired examples (avg per file)** | **42.5** | **154.2** | **3.63×** |
+
+The 1.76× lib-level ratio is the *floor* set by Rust verbosity; the example
+ratio cannot honestly drop below it.
+
+### Recalibrated two-tier success metric (decision: option B)
+
+**Tier 1 — Easy: ≤1.30× on 12 single-widget entry examples**
+(`table`, `status`, `columns`, `tree`, `padding`, `rainbow`, `link`, `log`,
+`spinners`, `attrs`, `repr`, `rule`)
+
+**Tier 2 — Full: ≤2.00× on the 36-example paired corpus**
+
+Both must pass for Phase 8 to ship. Tier 1 protects the new-user impression;
+Tier 2 protects the honest overall claim.
+
+**Status (baseline)**: Tier 1 sample needs measurement. Tier 2 sits at ~3.63×
+today; needs to drop to ≤2.0× → roughly halving total example LOC across the
+36 paired files. Ergonomics phases (1-7) cover most; structural feature gaps
+(Traceback widget, deeper Pretty) handled in Phase 6.5 if scoped in.
 
 ## Decisions (round 2 — 2026-04-29)
 

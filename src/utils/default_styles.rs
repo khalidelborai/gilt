@@ -14,7 +14,7 @@ use crate::style::Style;
 fn ins(m: &mut HashMap<String, Style>, name: &str, def: &str) {
     m.insert(
         name.to_string(),
-        Style::parse(def).unwrap_or_else(|e| {
+        Style::parse_strict(def).unwrap_or_else(|e| {
             panic!(
                 "Failed to parse default style '{}' = '{}': {}",
                 name, def, e

@@ -173,14 +173,14 @@ mod tests {
 
     #[test]
     fn test_with_style() {
-        let style = Style::parse("bold red").unwrap();
+        let style = Style::parse("bold red");
         let emoji = Emoji::new("heart").unwrap().with_style(style.clone());
         assert_eq!(emoji.style, style);
     }
 
     #[test]
     fn test_with_style_renderable() {
-        let style = Style::parse("bold").unwrap();
+        let style = Style::parse("bold");
         let emoji = Emoji::new("heart").unwrap().with_style(style);
         let console = Console::builder().width(80).build();
         let options = console.options();
@@ -219,7 +219,7 @@ mod tests {
     fn test_chained_builders() {
         let emoji = Emoji::new("thumbs_up")
             .unwrap()
-            .with_style(Style::parse("bold").unwrap())
+            .with_style(Style::parse("bold"))
             .with_variant("emoji");
         assert_eq!(emoji.style.bold(), Some(true));
         assert!(emoji.char.ends_with('\u{FE0F}'));

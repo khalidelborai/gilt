@@ -17,10 +17,8 @@ fn main() {
         .build();
 
     // Create inner panels with different background styles
-    let panel1 = Panel::new(Text::new("Hello", Style::null()))
-        .with_style(Style::parse("on blue").unwrap_or_else(|_| Style::null()));
-    let panel2 = Panel::new(Text::new("World", Style::null()))
-        .with_style(Style::parse("on red").unwrap_or_else(|_| Style::null()));
+    let panel1 = Panel::new(Text::new("Hello", Style::null())).with_style(Style::parse("on blue"));
+    let panel2 = Panel::new(Text::new("World", Style::null())).with_style(Style::parse("on red"));
 
     // Render each inner panel to Text so they can go into a Group.
     // We use a temporary console to capture each panel's output as Text.

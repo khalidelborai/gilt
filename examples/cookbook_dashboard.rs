@@ -23,21 +23,14 @@ fn main() {
         "GILT OPS DASHBOARD  --  myapp v3.2.1\nMonitoring 6 servers across 3 regions",
         Style::null(),
     ))
-    .with_title(Text::styled(
-        "Server Monitor",
-        Style::parse("bold white").unwrap(),
-    ))
-    .with_subtitle(Text::styled(
-        "refreshed just now",
-        Style::parse("dim").unwrap(),
-    ))
-    .with_border_style(Style::parse("bright_cyan").unwrap())
+    .with_title(Text::styled("Server Monitor", "bold white"))
+    .with_subtitle(Text::styled("refreshed just now", "dim"))
+    .with_border_style(Style::parse("bright_cyan"))
     .with_box_chars(&DOUBLE);
     console.print(&header);
 
     // ── Server Status Table ─────────────────────────────────────────────
-    console
-        .print(&Rule::with_title("Server Fleet").with_style(Style::parse("bright_blue").unwrap()));
+    console.print(&Rule::with_title("Server Fleet").with_style(Style::parse("bright_blue")));
 
     let mut table = Table::new(&["Server", "Region", "CPU %", "Mem %", "Uptime", "Status"]);
     table.title = Some("Fleet Overview".to_string());
@@ -105,8 +98,7 @@ fn main() {
 
     // ── Request Rate Sparkline ──────────────────────────────────────────
     console.print(
-        &Rule::with_title("Request Rate (last 60s)")
-            .with_style(Style::parse("bright_blue").unwrap()),
+        &Rule::with_title("Request Rate (last 60s)").with_style(Style::parse("bright_blue")),
     );
 
     // Simulated requests-per-second over the last 60 seconds
@@ -122,9 +114,9 @@ fn main() {
         .with_width(70)
         .with_min(100.0)
         .with_max(320.0)
-        .with_style(Style::parse("bright_green").unwrap());
+        .with_style(Style::parse("bright_green"));
 
-    let spark_label = Text::styled("  req/s  ", Style::parse("dim").unwrap());
+    let spark_label = Text::styled("  req/s  ", "dim");
     console.print(&spark_label);
     console.print(&sparkline);
 
@@ -139,12 +131,10 @@ fn main() {
         max_val,
         rps.last().unwrap()
     );
-    console.print(&Text::styled(&stats_line, Style::parse("dim").unwrap()));
+    console.print(&Text::styled(&stats_line, "dim"));
 
     // ── Resource Bars ───────────────────────────────────────────────────
-    console.print(
-        &Rule::with_title("Cluster Resources").with_style(Style::parse("bright_blue").unwrap()),
-    );
+    console.print(&Rule::with_title("Cluster Resources").with_style(Style::parse("bright_blue")));
 
     let resources: &[(&str, f64, &str)] = &[
         ("  CPU  (avg)", 57.7, "yellow"),
@@ -154,13 +144,13 @@ fn main() {
     ];
 
     for &(label, pct, color) in resources {
-        let label_text = Text::styled(label, Style::parse("bold").unwrap());
+        let label_text = Text::styled(label, "bold");
         console.print(&label_text);
         let bar = Bar::new(100.0, 0.0, pct)
             .with_width(50)
             .with_color(Color::parse(color).unwrap());
         console.print(&bar);
-        let pct_text = Text::styled(&format!("  {pct:>5.1}%"), Style::parse("bold").unwrap());
+        let pct_text = Text::styled(&format!("  {pct:>5.1}%"), "bold");
         console.print(&pct_text);
     }
 
@@ -168,14 +158,14 @@ fn main() {
     console.print(
         &Rule::new()
             .with_characters("\u{2550}")
-            .with_style(Style::parse("bright_cyan").unwrap()),
+            .with_style(Style::parse("bright_cyan")),
     );
 
     let footer = Panel::fit(Text::styled(
         "4 OK  |  1 WARN  |  1 CRIT  |  6 total",
-        Style::parse("bold").unwrap(),
+        "bold",
     ))
-    .with_border_style(Style::parse("dim").unwrap())
+    .with_border_style(Style::parse("dim"))
     .with_box_chars(&HEAVY);
     console.print(&footer);
 }

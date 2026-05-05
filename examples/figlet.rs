@@ -35,7 +35,7 @@ fn main() {
     // -- "Hello" in red ---------------------------------------------------
     console.print(&Rule::with_title("Styled Figlet Text"));
 
-    let hello = Figlet::new("Hello").with_style(Style::parse("bold red").unwrap());
+    let hello = Figlet::new("Hello").with_style(Style::parse("bold red"));
     console.print(&hello);
 
     // -- Numbers ----------------------------------------------------------

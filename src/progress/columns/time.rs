@@ -18,10 +18,7 @@ impl ProgressColumn for TimeElapsedColumn {
     fn render(&self, task: &Task) -> Text {
         let elapsed = task.elapsed().unwrap_or(0.0);
         let formatted = format_time(elapsed);
-        Text::new(
-            &formatted,
-            Style::parse("progress.elapsed").unwrap_or_else(|_| Style::null()),
-        )
+        Text::new(&formatted, Style::parse("progress.elapsed"))
     }
 }
 
@@ -53,7 +50,7 @@ impl Default for TimeRemainingColumn {
 
 impl ProgressColumn for TimeRemainingColumn {
     fn render(&self, task: &Task) -> Text {
-        let style = Style::parse("progress.remaining").unwrap_or_else(|_| Style::null());
+        let style = Style::parse("progress.remaining");
 
         if task.finished() {
             if self.elapsed_when_finished {

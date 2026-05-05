@@ -13,8 +13,8 @@ use gilt::style::Style;
 /// boundaries.  Ported from `test_divide` (the [1, 2, 12] and [4, 20] cases).
 #[test]
 fn divide_complex_multi_segment() {
-    let bold = Style::parse("bold").unwrap();
-    let italic = Style::parse("italic").unwrap();
+    let bold = Style::parse("bold");
+    let italic = Style::parse("italic");
     let segments = vec![
         Segment::styled("Hello", bold.clone()),
         Segment::styled(" World!", italic.clone()),
@@ -56,8 +56,8 @@ fn divide_complex_multi_segment() {
 /// after slice of the next portion should start with a replacement space.
 #[test]
 fn divide_emoji_at_2_cell_boundary() {
-    let bold = Style::parse("bold").unwrap();
-    let italic = Style::parse("italic").unwrap();
+    let bold = Style::parse("bold");
+    let italic = Style::parse("italic");
     let segments = vec![
         Segment::styled("Hello", bold.clone()),
         Segment::styled("💩💩💩", italic.clone()),
@@ -120,8 +120,8 @@ fn divide_at_exact_segment_end() {
 /// of `test_divide`.
 #[test]
 fn divide_at_exact_segment_start() {
-    let bold = Style::parse("bold").unwrap();
-    let italic = Style::parse("italic").unwrap();
+    let bold = Style::parse("bold");
+    let italic = Style::parse("italic");
     let segments = vec![
         Segment::styled("Hello", bold.clone()),
         Segment::styled(" World!", italic.clone()),
@@ -158,7 +158,7 @@ fn split_lines_terminator_keeps_newline() {
     assert!(!lines[1].1, "last line should NOT be marked as terminated");
 
     // Multi-segment version: terminator still works across segment boundaries.
-    let styled = Style::parse("bold").unwrap();
+    let styled = Style::parse("bold");
     let segments2 = vec![
         Segment::styled("Line1\n", styled.clone()),
         Segment::text("Line2"),

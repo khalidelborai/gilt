@@ -249,7 +249,7 @@ fn test_get_style_from_theme() {
     let console = Console::new();
     let style = console.get_style("bold");
     assert!(style.is_ok());
-    assert_eq!(style.unwrap(), Style::parse("bold").unwrap());
+    assert_eq!(style.unwrap(), Style::parse("bold"));
 }
 
 #[test]
@@ -279,7 +279,7 @@ fn test_push_pop_theme() {
     let mut styles = std::collections::HashMap::new();
     styles.insert(
         "my_custom_style".to_string(),
-        Style::parse("red bold").unwrap(),
+        Style::parse("red bold"),
     );
     let custom = Theme::new(Some(styles), true);
     console.push_theme(custom);
@@ -426,7 +426,7 @@ fn test_export_text_with_styles() {
         .markup(false)
         .build();
 
-    let text = Text::styled("Bold text", Style::parse("bold").unwrap());
+    let text = Text::styled("Bold text", "bold");
     console.print(&text);
     let exported = console.export_text(false, true);
 
@@ -464,7 +464,7 @@ fn test_export_html_inline_styles() {
         .markup(false)
         .build();
 
-    let text = Text::styled("Red text", Style::parse("red").unwrap());
+    let text = Text::styled("Red text", "red");
     console.print(&text);
     let html = console.export_html(None, false, true);
 
@@ -481,7 +481,7 @@ fn test_export_html_stylesheet() {
         .markup(false)
         .build();
 
-    let text = Text::styled("Styled text", Style::parse("bold").unwrap());
+    let text = Text::styled("Styled text", "bold");
     console.print(&text);
     let html = console.export_html(None, false, false);
 
@@ -519,7 +519,7 @@ fn test_render_buffer_plain() {
 #[test]
 fn test_render_buffer_styled() {
     let console = Console::builder().color_system("truecolor").build();
-    let segments = vec![Segment::styled("Bold", Style::parse("bold").unwrap())];
+    let segments = vec![Segment::styled("Bold", Style::parse("bold"))];
     let output = console.render_buffer(&segments);
     // Should contain ANSI bold code
     assert!(output.contains("\x1b["));
@@ -529,7 +529,7 @@ fn test_render_buffer_styled() {
 #[test]
 fn test_render_buffer_no_color() {
     let console = Console::builder().no_color(true).color_system("").build();
-    let segments = vec![Segment::styled("NoColor", Style::parse("bold").unwrap())];
+    let segments = vec![Segment::styled("NoColor", Style::parse("bold"))];
     let output = console.render_buffer(&segments);
     // Without color system, style.render should return plain text
     assert_eq!(output, "NoColor");
@@ -547,7 +547,7 @@ fn test_render_buffer_control() {
 #[test]
 fn test_render_buffer_link() {
     let console = Console::builder().color_system("truecolor").build();
-    let style = Style::parse("bold link https://example.com").unwrap();
+    let style = Style::parse("bold link https://example.com");
     let segments = vec![Segment::styled("click", style)];
     let output = console.render_buffer(&segments);
     // Should contain OSC 8 open and close sequences
@@ -759,7 +759,7 @@ fn test_no_color_mode_strips_color() {
         .markup(false)
         .build();
 
-    let text = Text::styled("Colored text", Style::parse("red").unwrap());
+    let text = Text::styled("Colored text", "red");
     console.print(&text);
 
     // In no-color mode, the rendered output should be plain

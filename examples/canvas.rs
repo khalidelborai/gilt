@@ -19,7 +19,7 @@ fn main() {
     // -- Sine wave plot ------------------------------------------------------
     console.print(&Rule::with_title("Sine Wave (40x10 canvas)"));
 
-    let mut wave = Canvas::new(40, 10).with_style(Style::parse("cyan").unwrap());
+    let mut wave = Canvas::new(40, 10).with_style(Style::parse("cyan"));
     let pw = wave.pixel_width();
     let ph = wave.pixel_height();
     for px in 0..pw {
@@ -32,7 +32,7 @@ fn main() {
     // -- Box with diagonals --------------------------------------------------
     console.print(&Rule::with_title("Box with Diagonals (20x8)"));
 
-    let mut box_canvas = Canvas::new(20, 8).with_style(Style::parse("yellow").unwrap());
+    let mut box_canvas = Canvas::new(20, 8).with_style(Style::parse("yellow"));
     let bw = box_canvas.pixel_width();
     let bh = box_canvas.pixel_height();
     box_canvas.rect(0, 0, bw, bh);
@@ -43,7 +43,7 @@ fn main() {
     // -- Circle --------------------------------------------------------------
     console.print(&Rule::with_title("Circle (30x15)"));
 
-    let mut circle_canvas = Canvas::new(30, 15).with_style(Style::parse("green").unwrap());
+    let mut circle_canvas = Canvas::new(30, 15).with_style(Style::parse("green"));
     let cx = circle_canvas.pixel_width() as i32 / 2;
     let cy = circle_canvas.pixel_height() as i32 / 2;
     let r = cx.min(cy) - 1;
@@ -53,7 +53,7 @@ fn main() {
     // -- Scatter pattern -----------------------------------------------------
     console.print(&Rule::with_title("Deterministic Scatter (25x8)"));
 
-    let mut scatter = Canvas::new(25, 8).with_style(Style::parse("magenta").unwrap());
+    let mut scatter = Canvas::new(25, 8).with_style(Style::parse("magenta"));
     let sw = scatter.pixel_width();
     let sh = scatter.pixel_height();
     for i in 0..100 {
@@ -66,7 +66,7 @@ fn main() {
     // -- Filled shapes -------------------------------------------------------
     console.print(&Rule::with_title("Filled Rectangle + Circle"));
 
-    let mut shapes = Canvas::new(30, 8).with_style(Style::parse("red").unwrap());
+    let mut shapes = Canvas::new(30, 8).with_style(Style::parse("red"));
     shapes.fill_rect(2, 2, 12, 10);
     shapes.circle(40, 16, 12);
     console.print(&shapes);

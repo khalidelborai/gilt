@@ -23,7 +23,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     console.print(&Text::new(
         "Safe Stylize Demo",
-        Style::parse("bold underline")?,
+        Style::parse_strict("bold underline")?,
     ));
 
     // =======================================================================
@@ -32,11 +32,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     console.print(&Text::new("", Style::null()));
     console.print(&Text::new(
         "1. The Problem: Panicking Methods",
-        Style::parse("bold")?,
+        Style::parse_strict("bold")?,
     ));
     console.print(&Text::new(
         "When styling text with user input, panicking methods like .fg() and .bg() can crash your program.",
-        Style::parse("dim")?,
+        Style::parse_strict("dim")?,
     ));
 
     // These work fine with known-good values:
@@ -49,7 +49,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     console.print(&Text::new(
         "See the source code for examples of what NOT to do.",
-        Style::parse("dim")?,
+        Style::parse_strict("dim")?,
     ));
 
     // =======================================================================
@@ -58,11 +58,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     console.print(&Text::new("", Style::null()));
     console.print(&Text::new(
         "2. Safe Alternatives with ? Operator",
-        Style::parse("bold")?,
+        Style::parse_strict("bold")?,
     ));
     console.print(&Text::new(
         "Use try_fg(), try_bg(), try_styled(), and try_attr() for safe styling.",
-        Style::parse("dim")?,
+        Style::parse_strict("dim")?,
     ));
 
     // Using the ? operator for concise error propagation
@@ -91,11 +91,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     console.print(&Text::new("", Style::null()));
     console.print(&Text::new(
         "3. Error Handling with match",
-        Style::parse("bold")?,
+        Style::parse_strict("bold")?,
     ));
     console.print(&Text::new(
         "Handle different error cases explicitly.",
-        Style::parse("dim")?,
+        Style::parse_strict("dim")?,
     ));
 
     // Demonstrate handling different error types
@@ -137,11 +137,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     console.print(&Text::new("", Style::null()));
     console.print(&Text::new(
         "4. Providing Fallback Styles",
-        Style::parse("bold")?,
+        Style::parse_strict("bold")?,
     ));
     console.print(&Text::new(
         "Gracefully handle errors by falling back to default styles.",
-        Style::parse("dim")?,
+        Style::parse_strict("dim")?,
     ));
 
     // Valid color - uses it
@@ -163,11 +163,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     console.print(&Text::new("", Style::null()));
     console.print(&Text::new(
         "5. Real-World: Styling User Input",
-        Style::parse("bold")?,
+        Style::parse_strict("bold")?,
     ));
     console.print(&Text::new(
         "Example: A CLI tool that accepts style preferences from config or CLI args.",
-        Style::parse("dim")?,
+        Style::parse_strict("dim")?,
     ));
 
     let user_config = StyleConfig {
@@ -185,11 +185,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     console.print(&Text::new("", Style::null()));
     console.print(&Text::new(
         "6. Combining Safe Methods",
-        Style::parse("bold")?,
+        Style::parse_strict("bold")?,
     ));
     console.print(&Text::new(
         "Build complex styles safely by chaining fallible operations.",
-        Style::parse("dim")?,
+        Style::parse_strict("dim")?,
     ));
 
     // Successful combination
@@ -210,11 +210,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     console.print(&Text::new("", Style::null()));
     console.print(&Text::new(
         "7. Handling StyleError Variants",
-        Style::parse("bold")?,
+        Style::parse_strict("bold")?,
     ));
     console.print(&Text::new(
         "StyleError provides detailed information about what went wrong.",
-        Style::parse("dim")?,
+        Style::parse_strict("dim")?,
     ));
 
     let style_tests = vec![
@@ -238,10 +238,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     console.print(&Text::new("", Style::null()));
-    console.print(&Text::new("Demo Complete", Style::parse("bold underline")?));
+    console.print(&Text::new(
+        "Demo Complete",
+        Style::parse_strict("bold underline")?,
+    ));
     console.print(&Text::new(
         "Use try_fg(), try_bg(), try_styled(), and try_attr() for robust error handling!",
-        Style::parse("dim italic")?,
+        Style::parse_strict("dim italic")?,
     ));
 
     Ok(())

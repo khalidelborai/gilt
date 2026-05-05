@@ -15,7 +15,7 @@ use gilt::text::Text;
 fn print_in_panel(console: &mut Console, content: impl Into<Text>, title: &str) {
     let text: Text = content.into();
     let mut panel = Panel::fit(text);
-    panel.title = Some(Text::new(title, Style::parse("bold").unwrap()));
+    panel.title = Some(Text::new(title, Style::parse("bold")));
     console.print(&panel);
 }
 
@@ -61,7 +61,7 @@ fn main() {
     let s = String::from("A String argument");
     print_in_panel(&mut console, s, "From String");
 
-    let styled_text = Text::styled("A pre-styled Text", Style::parse("italic green").unwrap());
+    let styled_text = Text::styled("A pre-styled Text", "italic green");
     print_in_panel(&mut console, styled_text, "From Text");
 
     // ── Comparison: verbose vs ergonomic ─────────────────────────────────

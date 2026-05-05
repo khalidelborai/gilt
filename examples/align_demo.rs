@@ -191,7 +191,7 @@ fn main() {
     let styled_right = Align::new(
         Text::from_markup("[green on black] Styled Right [/green on black]").unwrap(),
         HorizontalAlign::Right,
-        Some(Style::parse("on black").unwrap()),
+        Some(Style::parse("on black")),
         None,
         true,
         None,

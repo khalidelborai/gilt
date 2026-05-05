@@ -513,7 +513,7 @@ mod tests {
     #[test]
     fn test_with_style() {
         let console = make_console(10);
-        let style = Style::parse("bold").unwrap();
+        let style = Style::parse("bold");
         let align = Align::new(
             Text::new("X", Style::null()),
             HorizontalAlign::Center,

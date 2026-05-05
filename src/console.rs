@@ -520,21 +520,36 @@ pub struct Console {
 }
 
 impl Console {
-    /// Create a new Console with sensible defaults.
+    /// Create a Console with sensible defaults.
+    ///
+    /// Prefer [`Console::default()`] for the common one-line case — it
+    /// calls this method. Reach for [`Console::builder`] only when you
+    /// need explicit overrides (custom width, recording for export,
+    /// forcing a specific color system).
+    ///
+    /// Defaults:
+    /// - **Color**: TrueColor, auto-disabled by `NO_COLOR`,
+    ///   auto-forced by `FORCE_COLOR` / `CLICOLOR`.
+    /// - **Width**: auto-detected from terminal; falls back to 80.
+    /// - **Markup**: enabled (`[bold]hi[/]`-style tags parsed by
+    ///   [`print_text`](Self::print_text)).
+    /// - **Recording**: off — enable via the builder for
+    ///   [`export_html`](Self::export_html) / [`export_svg`](Self::export_svg).
     ///
     /// # Examples
     ///
     /// ```
     /// use gilt::console::Console;
     ///
-    /// let console = Console::new();
-    /// assert_eq!(console.encoding(), "utf-8");
+    /// let mut c = Console::default();           // recommended
+    /// c.print_text("[bold green]ready[/]");
     /// ```
     pub fn new() -> Self {
         ConsoleBuilder::default().build()
     }
 
-    /// Create a Console using the builder pattern.
+    /// Create a Console using the builder pattern. Use when you need
+    /// explicit overrides on top of [`Console::default()`].
     ///
     /// # Examples
     ///
@@ -543,8 +558,7 @@ impl Console {
     ///
     /// let console = Console::builder()
     ///     .width(120)
-    ///     .no_color(true)
-    ///     .record(true)
+    ///     .record(true)       // for export_html / export_svg
     ///     .build();
     /// assert_eq!(console.width(), 120);
     /// ```
@@ -687,7 +701,7 @@ impl Console {
             return Ok(style.clone());
         }
         // Then try parsing as a style definition
-        Style::parse(name).map_err(|e| {
+        Style::parse_strict(name).map_err(|e| {
             ConsoleError::RenderError(format!("Failed to get style '{}': {}", name, e))
         })
     }
@@ -785,7 +799,7 @@ impl Console {
         overflow: Option<OverflowMethod>,
     ) -> Text {
         let base_style = match style {
-            Some(s) => Style::parse(s).unwrap_or_else(|_| Style::null()),
+            Some(s) => Style::parse(s),
             None => Style::null(),
         };
 
@@ -857,7 +871,7 @@ impl Console {
 
         // Apply additional style
         if let Some(style_str) = style {
-            if let Ok(s) = Style::parse(style_str) {
+            if let Ok(s) = Style::parse_strict(style_str) {
                 segments = Segment::apply_style(&segments, Some(s), None);
             }
         }
@@ -968,9 +982,9 @@ impl Console {
 
         let time_style = self
             .get_style("log.time")
-            .unwrap_or_else(|_| Style::parse("dim").unwrap_or_else(|_| Style::null()));
+            .unwrap_or_else(|_| Style::parse("dim"));
 
-        let time_text = Text::styled(&now, time_style);
+        let time_text = Text::styled_with(&now, time_style);
         let body = self.render_str(text, None, None, None);
 
         // Combine: time + space + body
@@ -1686,7 +1700,7 @@ impl Console {
     ///     .record(true)
     ///     .markup(false)
     ///     .build();
-    /// let text = Text::styled("Red text", Style::parse("red").unwrap());
+    /// let text = Text::styled("Red text", "red");
     /// console.print(&text);
     /// let html = console.export_html(None, false, true);
     /// assert!(html.contains("<!DOCTYPE html>"));
@@ -2381,7 +2395,7 @@ mod tests {
         let console = Console::new();
         let style = console.get_style("bold");
         assert!(style.is_ok());
-        assert_eq!(style.unwrap(), Style::parse("bold").unwrap());
+        assert_eq!(style.unwrap(), Style::parse("bold"));
     }
 
     #[test]
@@ -2409,10 +2423,7 @@ mod tests {
 
         // Push a theme with a custom style
         let mut styles = std::collections::HashMap::new();
-        styles.insert(
-            "my_custom_style".to_string(),
-            Style::parse("red bold").unwrap(),
-        );
+        styles.insert("my_custom_style".to_string(), Style::parse("red bold"));
         let custom = Theme::new(Some(styles), true);
         console.push_theme(custom);
 
@@ -2558,7 +2569,7 @@ mod tests {
             .markup(false)
             .build();
 
-        let text = Text::styled("Bold text", Style::parse("bold").unwrap());
+        let text = Text::styled("Bold text", "bold");
         console.print(&text);
         let exported = console.export_text(false, true);
 
@@ -2596,7 +2607,7 @@ mod tests {
             .markup(false)
             .build();
 
-        let text = Text::styled("Red text", Style::parse("red").unwrap());
+        let text = Text::styled("Red text", "red");
         console.print(&text);
         let html = console.export_html(None, false, true);
 
@@ -2613,7 +2624,7 @@ mod tests {
             .markup(false)
             .build();
 
-        let text = Text::styled("Styled text", Style::parse("bold").unwrap());
+        let text = Text::styled("Styled text", "bold");
         console.print(&text);
         let html = console.export_html(None, false, false);
 
@@ -2651,7 +2662,7 @@ mod tests {
     #[test]
     fn test_render_buffer_styled() {
         let console = Console::builder().color_system("truecolor").build();
-        let segments = vec![Segment::styled("Bold", Style::parse("bold").unwrap())];
+        let segments = vec![Segment::styled("Bold", Style::parse("bold"))];
         let output = console.render_buffer(&segments);
         // Should contain ANSI bold code
         assert!(output.contains("\x1b["));
@@ -2661,7 +2672,7 @@ mod tests {
     #[test]
     fn test_render_buffer_no_color() {
         let console = Console::builder().no_color(true).color_system("").build();
-        let segments = vec![Segment::styled("NoColor", Style::parse("bold").unwrap())];
+        let segments = vec![Segment::styled("NoColor", Style::parse("bold"))];
         let output = console.render_buffer(&segments);
         // Without color system, style.render should return plain text
         assert_eq!(output, "NoColor");
@@ -2679,7 +2690,7 @@ mod tests {
     #[test]
     fn test_render_buffer_link() {
         let console = Console::builder().color_system("truecolor").build();
-        let style = Style::parse("bold link https://example.com").unwrap();
+        let style = Style::parse("bold link https://example.com");
         let segments = vec![Segment::styled("click", style)];
         let output = console.render_buffer(&segments);
         // Should contain OSC 8 open with id= prefix and close.
@@ -2707,7 +2718,7 @@ mod tests {
         let console = Console::builder().color_system("truecolor").build();
         let url = "https://github.com/khalidelborai/gilt";
         let plain = Style::with_link(url);
-        let bold = Style::parse(&format!("bold link {url}")).unwrap();
+        let bold = Style::parse(&format!("bold link {url}"));
         let segments = vec![
             Segment::styled("Visit ", plain.clone()),
             Segment::styled("Gilt", bold),
@@ -3020,7 +3031,7 @@ mod tests {
             .markup(false)
             .build();
 
-        let text = Text::styled("Colored text", Style::parse("red").unwrap());
+        let text = Text::styled("Colored text", "red");
         console.print(&text);
 
         // In no-color mode, the rendered output should be plain
@@ -3351,7 +3362,7 @@ mod tests {
             .markup(false)
             .build();
 
-        let text = Text::styled("HTML content", Style::parse("red").unwrap());
+        let text = Text::styled("HTML content", "red");
         console.print(&text);
 
         let dir = std::env::temp_dir();

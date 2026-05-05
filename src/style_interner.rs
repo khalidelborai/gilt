@@ -124,7 +124,7 @@ mod tests {
     #[test]
     fn dedup_returns_same_id() {
         let mut interner = StyleInterner::new();
-        let s = Style::parse("bold red").unwrap();
+        let s = Style::parse("bold red");
         let id1 = interner.intern(s.clone());
         let id2 = interner.intern(s);
         assert_eq!(id1, id2);
@@ -134,8 +134,8 @@ mod tests {
     #[test]
     fn distinct_styles_get_distinct_ids() {
         let mut interner = StyleInterner::new();
-        let bold = Style::parse("bold").unwrap();
-        let italic = Style::parse("italic").unwrap();
+        let bold = Style::parse("bold");
+        let italic = Style::parse("italic");
         let id1 = interner.intern(bold);
         let id2 = interner.intern(italic);
         assert_ne!(id1, id2);
@@ -159,11 +159,11 @@ mod tests {
     #[test]
     fn ids_are_stable() {
         let mut interner = StyleInterner::new();
-        let s = Style::parse("bold").unwrap();
+        let s = Style::parse("bold");
         let id = interner.intern(s.clone());
         // Intern many other styles; original id must not move.
         for i in 0..10 {
-            interner.intern(Style::parse(&format!("color({i})")).unwrap());
+            interner.intern(Style::parse(&format!("color({i})")));
         }
         assert_eq!(interner.intern(s), id);
     }

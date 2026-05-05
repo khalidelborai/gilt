@@ -446,13 +446,13 @@ pub(crate) fn derive_panel_impl(input: &DeriveInput) -> syn::Result<proc_macro2:
     if let Some(ref lit) = panel_attrs.border_style {
         let val = lit.value();
         panel_config.push(quote! {
-            panel.border_style = gilt::style::Style::parse(#val).unwrap_or_else(|_| gilt::style::Style::null());
+            panel.border_style = gilt::style::Style::parse(#val);
         });
     }
     if let Some(ref lit) = panel_attrs.style {
         let val = lit.value();
         panel_config.push(quote! {
-            panel.style = gilt::style::Style::parse(#val).unwrap_or_else(|_| gilt::style::Style::null());
+            panel.style = gilt::style::Style::parse(#val);
         });
     }
     if let Some(ref lit) = panel_attrs.expand {

@@ -46,10 +46,7 @@ fn main() {
     console.print(&table);
 
     // -- Footer --
-    let footer = Text::styled(
-        "  Source: TIOBE Index, January 2025",
-        Style::parse("dim italic").unwrap(),
-    );
+    let footer = Text::styled("  Source: TIOBE Index, January 2025", "dim italic");
     console.print(&footer);
     console.print(&Rule::new());
 

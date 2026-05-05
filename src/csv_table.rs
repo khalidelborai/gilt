@@ -410,7 +410,7 @@ mod tests {
 
     #[test]
     fn test_header_style() {
-        let style = Style::parse("bold").unwrap();
+        let style = Style::parse("bold");
         let csv = CsvTable::from_csv_str("A,B\n1,2")
             .unwrap()
             .with_header_style(style.clone());
@@ -520,7 +520,7 @@ mod tests {
         let csv = CsvTable::from_csv_str("A\n1")
             .unwrap()
             .with_max_rows(10)
-            .with_header_style(Style::parse("bold").unwrap())
+            .with_header_style(Style::parse("bold"))
             .with_title("Title");
         assert_eq!(csv.max_rows, Some(10));
         assert!(csv.header_style.is_some());

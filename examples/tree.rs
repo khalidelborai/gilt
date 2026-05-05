@@ -15,12 +15,12 @@ fn main() {
 
     console.print(&Rule::with_title("File System Tree"));
 
-    let bold_blue = Style::parse("bold blue").unwrap();
+    let bold_blue = Style::parse("bold blue");
     let default = Style::null();
 
     // Root: Project/
-    let mut tree = Tree::new(Text::new("Project/", bold_blue.clone()))
-        .with_guide_style(Style::parse("dim").unwrap());
+    let mut tree =
+        Tree::new(Text::new("Project/", bold_blue.clone())).with_guide_style(Style::parse("dim"));
 
     // src/
     let src = tree.add(Text::new("src/", bold_blue.clone()));

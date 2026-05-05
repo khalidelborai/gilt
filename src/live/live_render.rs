@@ -207,7 +207,7 @@ mod tests {
 
     #[test]
     fn test_with_style() {
-        let style = Style::parse("bold").unwrap();
+        let style = Style::parse("bold");
         let lr = LiveRender::new(Text::new("x", Style::null())).with_style(style.clone());
         assert_eq!(lr.style, style);
     }
@@ -478,7 +478,7 @@ mod tests {
     #[test]
     fn test_render_with_style() {
         let console = Console::builder().width(80).markup(false).build();
-        let style = Style::parse("bold").unwrap();
+        let style = Style::parse("bold");
         let lr = LiveRender::new(Text::new("styled", Style::null())).with_style(style);
         let opts = console.options();
         let segments = lr.gilt_console(&console, &opts);

@@ -199,7 +199,7 @@ impl Accordion {
     /// let accordion = Accordion::new(
     ///     "Section",
     ///     Text::new("Content", Style::null())
-    /// ).style(Style::parse("dim").unwrap());
+    /// ).style(Style::parse("dim"));
     /// ```
     #[must_use]
     pub fn style(mut self, style: Style) -> Self {
@@ -220,7 +220,7 @@ impl Accordion {
     /// let accordion = Accordion::new(
     ///     "Important",
     ///     Text::new("Content", Style::null())
-    /// ).title_style(Style::parse("bold yellow").unwrap());
+    /// ).title_style(Style::parse("bold yellow"));
     /// ```
     #[must_use]
     pub fn title_style(mut self, style: Style) -> Self {
@@ -241,7 +241,7 @@ impl Accordion {
     /// let accordion = Accordion::new(
     ///     "Section",
     ///     Text::new("Content", Style::null())
-    /// ).icon_style(Style::parse("cyan").unwrap());
+    /// ).icon_style(Style::parse("cyan"));
     /// ```
     #[must_use]
     pub fn icon_style(mut self, style: Style) -> Self {
@@ -853,9 +853,9 @@ mod tests {
     fn test_builder_chain() {
         let accordion = Accordion::new("Title", Text::new("Content", Style::null()))
             .collapsed(true)
-            .style(Style::parse("dim").unwrap())
-            .title_style(Style::parse("bold").unwrap())
-            .icon_style(Style::parse("cyan").unwrap())
+            .style(Style::parse("dim"))
+            .title_style(Style::parse("bold"))
+            .icon_style(Style::parse("cyan"))
             .icons("+", "−")
             .indent(4);
 

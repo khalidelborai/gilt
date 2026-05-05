@@ -35,14 +35,14 @@ fn main() {
     let mut combined = Text::from_markup("[bold blue]First[/bold blue] line of the group").unwrap();
     combined.append_str("\n", None);
     combined.append_str("Second line with ", None);
-    combined.append_str("red emphasis", Some(Style::parse("bold red").unwrap()));
+    combined.append_str("red emphasis", Some(Style::parse("bold red")));
     combined.append_str("\n", None);
     combined.append_str("Third line with ", None);
-    combined.append_str("green flair", Some(Style::parse("bold green").unwrap()));
+    combined.append_str("green flair", Some(Style::parse("bold green")));
 
     let panel = Panel::new(combined)
-        .with_title(Text::new("Grouped Content", Style::parse("bold").unwrap()))
-        .with_border_style(Style::parse("cyan").unwrap());
+        .with_title(Text::new("Grouped Content", Style::parse("bold")))
+        .with_border_style(Style::parse("cyan"));
     console.print(&panel);
 
     // -- 3. Fit Group ---------------------------------------------------------

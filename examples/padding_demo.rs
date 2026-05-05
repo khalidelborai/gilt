@@ -28,7 +28,7 @@ fn main() {
     let padded = Padding::new(
         content,
         PaddingDimensions::Uniform(2),
-        Style::parse("on blue").unwrap(),
+        Style::parse("on blue"),
         true,
     );
     console.print(&padded);
@@ -40,7 +40,7 @@ fn main() {
     let padded = Padding::new(
         content,
         PaddingDimensions::Pair(0, 4), // (vertical=0, horizontal=4)
-        Style::parse("on green").unwrap(),
+        Style::parse("on green"),
         true,
     );
     console.print(&padded);
@@ -52,7 +52,7 @@ fn main() {
     let padded = Padding::new(
         content,
         PaddingDimensions::Pair(2, 0), // (vertical=2, horizontal=0)
-        Style::parse("on yellow").unwrap(),
+        Style::parse("on yellow"),
         true,
     );
     console.print(&padded);
@@ -64,7 +64,7 @@ fn main() {
     let padded = Padding::new(
         content,
         PaddingDimensions::Full(1, 3, 1, 6), // (top, right, bottom, left)
-        Style::parse("on magenta").unwrap(),
+        Style::parse("on magenta"),
         true,
     );
     console.print(&padded);
@@ -93,7 +93,7 @@ fn main() {
     let padded = Padding::new(
         styled_text,
         PaddingDimensions::Uniform(1),
-        Style::parse("on bright_black").unwrap(),
+        Style::parse("on bright_black"),
         true,
     );
     console.print(&padded);
@@ -104,7 +104,7 @@ fn main() {
     let panel_content = Text::new("Panel inside padding", Style::null());
     let panel = Panel::new(panel_content)
         .with_title("Inner Panel")
-        .with_border_style(Style::parse("cyan").unwrap());
+        .with_border_style(Style::parse("cyan"));
     // Convert panel to text for padding (Padding takes Text content)
     console.print_text("   [dim]→ Panel wrapped in 2-cell padding:[/dim]");
     let panel_str = format!("{}", panel);
@@ -112,7 +112,7 @@ fn main() {
     let padded_panel = Padding::new(
         panel_text,
         PaddingDimensions::Uniform(2),
-        Style::parse("on dark_blue").unwrap(),
+        Style::parse("on dark_blue"),
         true,
     );
     console.print(&padded_panel);
@@ -129,7 +129,7 @@ fn main() {
     let padded_table = Padding::new(
         table_text,
         PaddingDimensions::Uniform(1),
-        Style::parse("on dark_green").unwrap(),
+        Style::parse("on dark_green"),
         true,
     );
     console.print(&padded_table);
@@ -149,7 +149,7 @@ fn main() {
     let padded = Padding::new(
         content,
         PaddingDimensions::Uniform(3),
-        Style::parse("dim on black").unwrap(),
+        Style::parse("dim on black"),
         true,
     );
     console.print(&padded);
@@ -161,7 +161,7 @@ fn main() {
     let padded = Padding::new(
         content,
         PaddingDimensions::Pair(1, 4),
-        Style::parse("on red").unwrap(),
+        Style::parse("on red"),
         true,
     );
     console.print(&padded);
@@ -173,7 +173,7 @@ fn main() {
     let padded = Padding::new(
         content,
         PaddingDimensions::Full(2, 4, 2, 4),
-        Style::parse("dim on bright_black").unwrap(),
+        Style::parse("dim on bright_black"),
         true,
     );
     console.print(&padded);
@@ -210,7 +210,7 @@ fn main() {
     let small_pad = Padding::new(
         sample_text.clone(),
         PaddingDimensions::Uniform(1),
-        Style::parse("on bright_black").unwrap(),
+        Style::parse("on bright_black"),
         false,
     );
     console.print(&small_pad);
@@ -221,7 +221,7 @@ fn main() {
     let medium_pad = Padding::new(
         sample_text.clone(),
         PaddingDimensions::Uniform(2),
-        Style::parse("on bright_black").unwrap(),
+        Style::parse("on bright_black"),
         false,
     );
     console.print(&medium_pad);
@@ -232,7 +232,7 @@ fn main() {
     let wide_pad = Padding::new(
         sample_text.clone(),
         PaddingDimensions::Pair(1, 6),
-        Style::parse("on bright_black").unwrap(),
+        Style::parse("on bright_black"),
         false,
     );
     console.print(&wide_pad);
@@ -243,7 +243,7 @@ fn main() {
     let asym_pad = Padding::new(
         sample_text,
         PaddingDimensions::Full(2, 4, 1, 8),
-        Style::parse("on bright_black").unwrap(),
+        Style::parse("on bright_black"),
         false,
     );
     console.print(&asym_pad);
@@ -263,7 +263,7 @@ fn main() {
     let card = Panel::new(card_content)
         .with_title("Notification")
         .with_padding(PaddingDimensions::Uniform(2))
-        .with_border_style(Style::parse("green").unwrap());
+        .with_border_style(Style::parse("green"));
     console.print(&card);
     console.print_text("");
 
@@ -276,7 +276,7 @@ fn main() {
     let blockquote = Padding::new(
         quote,
         PaddingDimensions::Full(1, 2, 1, 4),
-        Style::parse("on bright_black dim").unwrap(),
+        Style::parse("on bright_black dim"),
         true,
     );
     console.print(&blockquote);
@@ -288,7 +288,7 @@ fn main() {
     let spaced_header = Padding::new(
         header,
         PaddingDimensions::Pair(1, 2),
-        Style::parse("on dark_blue").unwrap(),
+        Style::parse("on dark_blue"),
         true,
     );
     console.print(&spaced_header);
@@ -302,7 +302,7 @@ fn main() {
         let padded_item = Padding::new(
             item,
             PaddingDimensions::Uniform(1),
-            Style::parse("on bright_black").unwrap(),
+            Style::parse("on bright_black"),
             true,
         );
         console.print(&padded_item);
