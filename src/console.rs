@@ -233,232 +233,10 @@ impl Renderable for String {
     }
 }
 
-// ---------------------------------------------------------------------------
-// ConsoleBuilder
-// ---------------------------------------------------------------------------
-
-/// Builder for constructing a `Console` with custom options.
-pub struct ConsoleBuilder {
-    color_system: Option<String>,
-    color_system_override: Option<ColorSystem>,
-    width: Option<usize>,
-    height: Option<usize>,
-    force_terminal: Option<bool>,
-    record: bool,
-    theme: Option<Theme>,
-    markup: bool,
-    highlight: bool,
-    no_color: bool,
-    no_color_explicit: bool,
-    tab_size: usize,
-    quiet: bool,
-    soft_wrap: bool,
-    safe_box: bool,
-}
-
-impl Default for ConsoleBuilder {
-    fn default() -> Self {
-        ConsoleBuilder {
-            color_system: None,
-            color_system_override: None,
-            width: None,
-            height: None,
-            force_terminal: None,
-            record: false,
-            theme: None,
-            markup: true,
-            highlight: true,
-            no_color: false,
-            no_color_explicit: false,
-            tab_size: 8,
-            quiet: false,
-            soft_wrap: false,
-            safe_box: true,
-        }
-    }
-}
-
-impl ConsoleBuilder {
-    /// Create a new builder with default settings.
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Set the color system by name (`"standard"`, `"256"`, `"truecolor"`, `"windows"`).
-    pub fn color_system(mut self, cs: &str) -> Self {
-        self.color_system = Some(cs.to_string());
-        self
-    }
-
-    /// Set the console width in columns.
-    pub fn width(mut self, w: usize) -> Self {
-        self.width = Some(w);
-        self
-    }
-
-    /// Set the console height in rows.
-    pub fn height(mut self, h: usize) -> Self {
-        self.height = Some(h);
-        self
-    }
-
-    /// Force or prevent terminal detection regardless of the actual environment.
-    pub fn force_terminal(mut self, f: bool) -> Self {
-        self.force_terminal = Some(f);
-        self
-    }
-
-    /// Enable or disable recording of output for later export.
-    pub fn record(mut self, r: bool) -> Self {
-        self.record = r;
-        self
-    }
-
-    /// Set a custom theme for style lookups.
-    pub fn theme(mut self, t: Theme) -> Self {
-        self.theme = Some(t);
-        self
-    }
-
-    /// Enable or disable markup parsing in print methods.
-    pub fn markup(mut self, m: bool) -> Self {
-        self.markup = m;
-        self
-    }
-
-    /// Enable or disable automatic syntax highlighting.
-    pub fn highlight(mut self, h: bool) -> Self {
-        self.highlight = h;
-        self
-    }
-
-    /// Enable or disable all color output.
-    pub fn no_color(mut self, nc: bool) -> Self {
-        self.no_color = nc;
-        self.no_color_explicit = true;
-        self
-    }
-
-    /// Explicitly override the color system, taking priority over both
-    /// environment variables and the string-based [`color_system`](Self::color_system) method.
-    pub fn color_system_override(mut self, cs: ColorSystem) -> Self {
-        self.color_system_override = Some(cs);
-        self
-    }
-
-    /// Set the tab size in spaces for text rendering.
-    pub fn tab_size(mut self, ts: usize) -> Self {
-        self.tab_size = ts;
-        self
-    }
-
-    /// Enable or disable quiet mode, which suppresses all output.
-    pub fn quiet(mut self, q: bool) -> Self {
-        self.quiet = q;
-        self
-    }
-
-    /// Enable or disable soft wrapping (allows lines to exceed terminal width).
-    pub fn soft_wrap(mut self, sw: bool) -> Self {
-        self.soft_wrap = sw;
-        self
-    }
-
-    /// Enable or disable safe box characters (ASCII fallback for non-UTF-8 terminals).
-    pub fn safe_box(mut self, sb: bool) -> Self {
-        self.safe_box = sb;
-        self
-    }
-
-    /// Build the `Console` instance with the configured options.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use gilt::console::Console;
-    ///
-    /// let console = Console::builder()
-    ///     .width(80)
-    ///     .no_color(true)
-    ///     .build();
-    /// assert_eq!(console.width(), 80);
-    /// ```
-    pub fn build(self) -> Console {
-        // Determine the effective color system.
-        //
-        // Priority (highest first):
-        //   1. `color_system_override` (explicit ColorSystem value)
-        //   2. `color_system` (string-based, e.g. "truecolor")
-        //   3. `no_color(true)` explicitly set by the caller
-        //   4. Environment variables (NO_COLOR, FORCE_COLOR, CLICOLOR_FORCE, CLICOLOR)
-        //   5. Default: TrueColor
-        // Does the caller have an explicit, non-empty color_system string?
-        let has_explicit_cs = matches!(
-            self.color_system.as_deref(),
-            Some("standard" | "256" | "truecolor" | "windows")
-        );
-
-        let color_system = if let Some(cs) = self.color_system_override {
-            // (1) Explicit ColorSystem override always wins.
-            Some(cs)
-        } else if has_explicit_cs {
-            // (2) String-based selection (only for known, non-empty names).
-            match self.color_system.as_deref() {
-                Some("standard") => Some(ColorSystem::Standard),
-                Some("256") => Some(ColorSystem::EightBit),
-                Some("truecolor") => Some(ColorSystem::TrueColor),
-                Some("windows") => Some(ColorSystem::Windows),
-                _ => unreachable!(),
-            }
-        } else if self.no_color_explicit && self.no_color {
-            // (3) Caller explicitly asked for no colour.
-            None
-        } else {
-            // (4) Consult environment variables.
-            match detect_color_env() {
-                ColorEnvOverride::NoColor => None,
-                ColorEnvOverride::ForceColor => Some(ColorSystem::EightBit),
-                ColorEnvOverride::ForceColorTruecolor => Some(ColorSystem::TrueColor),
-                ColorEnvOverride::None => {
-                    // (5) Default.
-                    if self.no_color {
-                        None
-                    } else {
-                        Some(ColorSystem::TrueColor)
-                    }
-                }
-            }
-        };
-
-        let theme = self.theme.unwrap_or_else(|| Theme::new(None, true));
-        let theme_stack = ThemeStack::new(theme);
-
-        Console {
-            color_system,
-            width_override: self.width,
-            height_override: self.height,
-            force_terminal: self.force_terminal,
-            tab_size: self.tab_size,
-            record: self.record,
-            markup_enabled: self.markup,
-            highlight_enabled: self.highlight,
-            soft_wrap: self.soft_wrap,
-            no_color: self.no_color,
-            quiet: self.quiet,
-            safe_box: self.safe_box,
-            legacy_windows: false,
-            base_style: None,
-            theme_stack,
-            buffer: Vec::new(),
-            buffer_index: 0,
-            record_buffer: Vec::new(),
-            is_alt_screen: false,
-            capture_buffer: None,
-            live_stack: Vec::new(),
-            style_interner: Arc::new(Mutex::new(StyleInterner::new())),
-        }
-    }
-}
+// ConsoleBuilder moved to console_builder.rs (v1.2 Phase 3 split).
+#[path = "console_builder.rs"]
+mod console_builder;
+pub use console_builder::ConsoleBuilder;
 
 // ---------------------------------------------------------------------------
 // Console
@@ -563,6 +341,77 @@ impl Console {
     /// ```
     pub fn builder() -> ConsoleBuilder {
         ConsoleBuilder::default()
+    }
+
+    /// Construct a `Console` from a fully-configured `ConsoleBuilder`.
+    /// Called by `ConsoleBuilder::build`; lives here so `Console`'s
+    /// private fields stay private to console.rs.
+    pub(crate) fn from_builder(builder: ConsoleBuilder) -> Self {
+        // Color system priority (highest first):
+        //   1. color_system_override (explicit ColorSystem value)
+        //   2. color_system (string, e.g. "truecolor")
+        //   3. no_color(true) explicitly set by caller
+        //   4. Environment vars (NO_COLOR, FORCE_COLOR, CLICOLOR_FORCE, CLICOLOR)
+        //   5. Default: TrueColor
+        let has_explicit_cs = matches!(
+            builder.color_system.as_deref(),
+            Some("standard" | "256" | "truecolor" | "windows")
+        );
+
+        let color_system = if let Some(cs) = builder.color_system_override {
+            Some(cs)
+        } else if has_explicit_cs {
+            match builder.color_system.as_deref() {
+                Some("standard") => Some(ColorSystem::Standard),
+                Some("256") => Some(ColorSystem::EightBit),
+                Some("truecolor") => Some(ColorSystem::TrueColor),
+                Some("windows") => Some(ColorSystem::Windows),
+                _ => unreachable!(),
+            }
+        } else if builder.no_color_explicit && builder.no_color {
+            None
+        } else {
+            match detect_color_env() {
+                ColorEnvOverride::NoColor => None,
+                ColorEnvOverride::ForceColor => Some(ColorSystem::EightBit),
+                ColorEnvOverride::ForceColorTruecolor => Some(ColorSystem::TrueColor),
+                ColorEnvOverride::None => {
+                    if builder.no_color {
+                        None
+                    } else {
+                        Some(ColorSystem::TrueColor)
+                    }
+                }
+            }
+        };
+
+        let theme = builder.theme.unwrap_or_else(|| Theme::new(None, true));
+        let theme_stack = ThemeStack::new(theme);
+
+        Console {
+            color_system,
+            width_override: builder.width,
+            height_override: builder.height,
+            force_terminal: builder.force_terminal,
+            tab_size: builder.tab_size,
+            record: builder.record,
+            markup_enabled: builder.markup,
+            highlight_enabled: builder.highlight,
+            soft_wrap: builder.soft_wrap,
+            no_color: builder.no_color,
+            quiet: builder.quiet,
+            safe_box: builder.safe_box,
+            legacy_windows: false,
+            base_style: None,
+            theme_stack,
+            buffer: Vec::new(),
+            buffer_index: 0,
+            record_buffer: Vec::new(),
+            is_alt_screen: false,
+            capture_buffer: None,
+            live_stack: Vec::new(),
+            style_interner: Arc::new(Mutex::new(StyleInterner::new())),
+        }
     }
 
     // -- Properties ---------------------------------------------------------
