@@ -264,11 +264,69 @@ the user has to learn.
 
 ---
 
+---
+
+## Phase 4 — `Table::with_columns` shorthand + markup confirmation
+
+### Markup in `Table::add_row` was already supported
+
+`Table::add_row(&["[bold green]active[/]"])` already parses markup
+correctly in v0.13.x — `CellContent::Plain` is resolved through
+`console.render_str` which honors the markup-enabled flag. v1.0 adds
+this fact to the rustdoc on `add_row` and the `Table::with_columns`
+example below. **No code change is required at the call site.**
+
+### `Table::with_columns` for the headers + justification case
+
+The common pattern of *"declare headers and their alignment"* needed
+seven lines per column in v0.13.x:
+
+```rust
+// Before:
+let mut t = Table::new(&[]);
+t.add_column("PID", "", ColumnOptions { justify: Some(JustifyMethod::Right), ..Default::default() });
+t.add_column("Command", "", ColumnOptions { justify: Some(JustifyMethod::Left),  ..Default::default() });
+t.add_column("CPU %",   "", ColumnOptions { justify: Some(JustifyMethod::Right), ..Default::default() });
+```
+
+v1.0 collapses this to a single iterable:
+
+```rust
+// After:
+use gilt::text::JustifyMethod;
+let mut t = Table::with_columns([
+    ("PID",     JustifyMethod::Right),
+    ("Command", JustifyMethod::Left),
+    ("CPU %",   JustifyMethod::Right),
+]);
+```
+
+`Table::new(&[...])` is unchanged for the no-justify case.
+`add_column(_, _, ColumnOptions { … })` remains for advanced per-column
+configuration (min_width, max_width, ratio, etc.) — `with_columns`
+covers the >80% case.
+
+### Why Tree didn't get markup-string labels
+
+We considered changing `Tree::new` and `Tree::add` to parse markup from
+a `&str`, but it conflicts with Phase 1's "content args are literal"
+rule. The markup case stays opt-in:
+
+```rust
+let mut t = Tree::new(Text::from_markup("[bold]root[/]").unwrap());
+t.add(Text::from_markup("[red]child[/]").unwrap());
+```
+
+Future phases may revisit if a clean two-method pattern emerges
+(`Tree::new_markup` / `Tree::node_markup`) without violating the literal-content
+rule for the structured `Text` overload.
+
+---
+
 ## Future phases
 
 This document grows phase by phase. See [issue #20](https://github.com/khalidelborai/gilt/issues/20)
 for the full v1.0 roadmap.
-- Phase 4: Markup-first `Table::add_row`, Tree, Columns
 - Phase 5: Panel/Padding/Rule/Align unification
 - Phase 6: Rust-native extensions consistency
 - Phase 6.5: Standalone `Traceback` widget + deeper `Pretty`

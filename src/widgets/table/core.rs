@@ -104,6 +104,46 @@ impl Table {
     /// let table = Table::new(&["Name", "Age", "City"]);
     /// assert_eq!(table.columns.len(), 3);
     /// ```
+    /// Build a table from headers paired with their justification —
+    /// the v1.0 shorthand for the common "header + alignment" case.
+    /// Saves the 7-line `add_column(_, _, ColumnOptions { justify: ... })`
+    /// dance per column.
+    ///
+    /// Cells in the table parse markup (`"[bold red]hi[/]"`) by default —
+    /// no need to wrap each value in `Text::from_markup`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::table::Table;
+    /// use gilt::text::JustifyMethod;
+    ///
+    /// let mut t = Table::with_columns([
+    ///     ("PID", JustifyMethod::Right),
+    ///     ("Command", JustifyMethod::Left),
+    ///     ("CPU %", JustifyMethod::Right),
+    /// ]);
+    /// t.add_row(&["1234", "rustc", "[bold red]42.1%[/]"]);
+    /// ```
+    pub fn with_columns<I, S>(columns: I) -> Self
+    where
+        I: IntoIterator<Item = (S, JustifyMethod)>,
+        S: AsRef<str>,
+    {
+        let mut table = Self::new(&[]);
+        for (header, justify) in columns {
+            table.add_column(
+                header.as_ref(),
+                "",
+                ColumnOptions {
+                    justify: Some(justify),
+                    ..Default::default()
+                },
+            );
+        }
+        table
+    }
+
     pub fn new(headers: &[&str]) -> Self {
         let mut table = Table {
             columns: Vec::new(),
