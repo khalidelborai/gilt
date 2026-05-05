@@ -115,10 +115,24 @@ Two structural gaps surfaced in the deep audit, both real (not API ergonomics):
   - [x] Decisions captured (AskUserQuestion 3 rounds 2026-04-29)
   - [x] v1.0 integration branch created and pushed
   - [x] Tracking issue #20 opened
-  - [x] Phase 8 LOC baseline measured and locked (2.22; target ≤1.30)
-  - [x] Roadmap committed to main
-- Now: [→] Phase 1 implementation
-- Next: Phase 1 PR review + merge into v1.0
+  - [x] Phase 1: Foundation (#21)
+  - [x] Phase 2: Live family setters (#22)
+  - [x] Phase 3: Live::from_renderable (#23)
+  - [x] Phase 4: Table::with_columns + markup (#24)
+  - [x] Phase 5: Padding/Columns + Tier-1/2 gates pass (#25)
+  - [x] Tier-1: 1.16× (target ≤1.30) ✓
+  - [x] Tier-2: 1.98× (target ≤2.00) ✓
+- Now: [→] Phase 6 (Rust-native extensions audit)
+- Decision (round 5 — 2026-04-29): user picked option (b) at gate-pass checkpoint.
+  Skip Phase 6.5 (Traceback widget + deeper Pretty). Defer to v1.1.
+  Remaining: Phase 6 → 7 → 9 → 10.
+- Remaining:
+  - [ ] Phase 6: Rust-native extensions audit
+  - [ ] Phase 7: Derive macros polish
+  - [ ] ~~Phase 6.5: Traceback + Pretty~~ deferred to v1.1
+  - [ ] ~~Phase 8: Examples sweep~~ already met by Phase 5
+  - [ ] Phase 9: Documentation (README + CHANGELOG)
+  - [ ] Phase 10: Release (gilt 1.0.0 + gilt-derive 1.0.0)
 - Remaining:
   - [ ] Phase 1: Foundation
   - [ ] Phase 2: RAII guards

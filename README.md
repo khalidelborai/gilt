@@ -14,17 +14,19 @@ Beautiful terminal output for Rust: styles, tables, trees, syntax highlighting, 
 
 ```toml
 [dependencies]
-gilt = "0.13"
+gilt = "1.0"
 ```
 
 ```rust
-use gilt::prelude::*;
+use gilt::console::Console;
 
 fn main() {
-    let mut console = Console::new();
+    let mut console = Console::default();
     console.print_text("Hello, [bold magenta]gilt[/bold magenta]!");
 }
 ```
+
+**Upgrading from 0.13.x?** See [MIGRATION_v1.md](MIGRATION_v1.md) — most code becomes shorter (lossy `Style::parse`, ergonomic `Text::styled`, `Status::run`, `Live::from_renderable`, `Padding::wrap`, …).
 
 ## Features
 
@@ -57,9 +59,10 @@ Auto-generate widget conversions from struct definitions. See [`crates/gilt-deri
 | Resource | Where |
 |----------|-------|
 | API docs | [docs.rs/gilt](https://docs.rs/gilt) |
-| Release notes & migration | [CHANGELOG.md](CHANGELOG.md) |
+| Release notes | [CHANGELOG.md](CHANGELOG.md) |
+| **v1.0 migration guide** | [MIGRATION_v1.md](MIGRATION_v1.md) |
 | Derive macros | [crates/gilt-derive/](crates/gilt-derive/README.md) · [docs.rs/gilt-derive](https://docs.rs/gilt-derive) |
-| Examples (104 of them) | [`examples/`](examples/) — run any with `cargo run --example <name>` |
+| Examples | [`examples/`](examples/) — run any with `cargo run --example <name>` |
 | Feature flags & deps | [docs.rs/crate/gilt/latest/features](https://docs.rs/crate/gilt/latest/features) |
 
 ## Examples
