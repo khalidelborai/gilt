@@ -5,6 +5,84 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.2.0] - 2026-05-06
+
+Additive release. One new public API; everything else is internal
+file restructuring that downstream code doesn't see.
+
+### Added
+
+- **`Console::with_writer<W: std::io::Write + Send + 'static>(self, w: W) -> Self`**
+  routes terminal output to any user-supplied sink instead of the
+  default `std::io::stdout()`. Useful for log-to-file, in-memory
+  testing, or piping into a network socket. Capture and record modes
+  still take precedence when active.
+
+  ```rust
+  use gilt::console::Console;
+
+  let buf: Vec<u8> = Vec::new();
+  let mut console = Console::default().with_writer(buf);
+  console.print_text("hello");          // bytes go to `buf`, not stdout
+  ```
+
+  Closes a friction surfaced in the v1.x async-surface audit
+  (`thoughts/research/2026-05-06-async-surface.md`): `write_segments`
+  and `flush_buffer` were hard-coded to `std::io::stdout()`, less
+  swappable than Python rich's `Console(file=...)`.
+
+### Internal (no API surface change)
+
+- **`src/console.rs` reorganised** from 3814 lines to 1117 (-71%) by
+  extracting six focused sibling files via `#[path] mod` declarations.
+  Each sibling adds methods to `Console` through a separate
+  `impl Console { ... }` block. Tests still pass at every original
+  path; downstream `use gilt::console::Console` is unchanged. Files:
+  - `src/console_tests.rs` — test module
+  - `src/console_export.rs` — HTML/SVG generation helpers
+  - `src/console_builder.rs` — `ConsoleBuilder`
+  - `src/console_capture.rs` — `begin_capture`, `end_capture`,
+    `render_widget_to_text`
+  - `src/console_render.rs` — render path, print methods, segment
+    output, buffering
+- **5 large files split similarly** (sibling `_tests.rs` via
+  `#[path]`):
+  - `src/prompt.rs`: 2004 → 1084 (-920)
+  - `src/style.rs`: 1938 → 1046 (-895)
+  - `src/utils/pretty.rs`: 1525 → 702 (-826)
+  - `src/markdown.rs`: 1346 → 691 (-655)
+  - `src/error/traceback.rs`: 1398 → 789 (-612)
+- **`crates/gilt-derive/src/lib.rs`**: 2084 → 196 (-1888) by
+  extracting the 1887-line inline test module to
+  `crates/gilt-derive/src/tests.rs`. Documented as planned in the
+  v0.11.4 CHANGELOG.
+- **Capture-and-from-ansi roundtrip deduplicated** across `Live`,
+  `Panel`, and `Columns` callers via a single
+  `Console::render_widget_to_text` method (was inlined three times
+  with subtle differences).
+- **Per-frame `Console::default()` allocation fix in `Columns`**:
+  the widget-render path was creating a fresh `Console::default()`
+  per widget (clones a 153-entry `DEFAULT_STYLES` HashMap + 4 env
+  probes per call). Now reuses one `Console` per render — the only
+  measurable perf bug found during the v1.0/v1.1 cleanup.
+
+### Documentation
+
+- Two memory artifacts captured under `thoughts/`:
+  - `thoughts/research/2026-05-06-async-surface.md` — surface audit
+    that surfaced the `with_writer` gap.
+  - `thoughts/research/2026-05-06-v2-breaking-impact.md` — call-site
+    counts and migration cost for v2.0 deferred items.
+  - `thoughts/research/2026-05-06-novel-features.md` — WASM,
+    flex-layout, theme-registry feasibility ranking.
+  - `thoughts/research/2026-05-06-phase45-console-split.md` —
+    rationale for the multi-`impl Console` pattern.
+
+### gilt-derive
+
+Lockstep version bump to 1.2.0; no source changes in the derive crate
+since 1.1.0.
+
 ## [1.1.0] - 2026-05-05
 
 Closes the three v1.0 deferred items (#28). Two of them turned out to

@@ -14,7 +14,7 @@ Beautiful terminal output for Rust: styles, tables, trees, syntax highlighting, 
 
 ```toml
 [dependencies]
-gilt = "1.1"
+gilt = "1.2"
 ```
 
 ```rust
