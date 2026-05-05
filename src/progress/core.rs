@@ -83,7 +83,7 @@ impl ProgressColumn for DownloadColumn {
             Some(t) => self.format_size(t as u64),
             None => "?".to_string(),
         };
-        let style = Style::parse("progress.download").unwrap_or_else(|_| Style::null());
+        let style = Style::parse("progress.download");
         Text::new(&format!("{completed}/{total}"), style)
     }
 }
@@ -136,7 +136,7 @@ impl Default for TransferSpeedColumn {
 
 impl ProgressColumn for TransferSpeedColumn {
     fn render(&self, task: &Task) -> Text {
-        let style = Style::parse("progress.data.speed").unwrap_or_else(|_| Style::null());
+        let style = Style::parse("progress.data.speed");
         match task.speed() {
             Some(speed) => {
                 let formatted = self.format_size(speed as u64);

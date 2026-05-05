@@ -550,7 +550,7 @@ mod tests {
     // 18. Renderable with style
     #[test]
     fn test_renderable_style() {
-        let style = Style::parse("bold green").unwrap();
+        let style = Style::parse("bold green");
         let c = Canvas::new(2, 1).with_style(style.clone());
         let console = Console::builder().width(80).build();
         let opts = make_options(80);

@@ -312,7 +312,7 @@ pub(crate) fn derive_tree_impl(input: &DeriveInput) -> syn::Result<proc_macro2::
     let style_setup = if let Some(ref lit) = tree_attrs.style {
         let val = lit.value();
         quote! {
-            if let Ok(s) = gilt::style::Style::parse(#val) {
+            if let Ok(s) = gilt::style::Style::parse_strict(#val) {
                 tree.style = s;
             }
         }
@@ -323,7 +323,7 @@ pub(crate) fn derive_tree_impl(input: &DeriveInput) -> syn::Result<proc_macro2::
     let guide_style_setup = if let Some(ref lit) = tree_attrs.guide_style {
         let val = lit.value();
         quote! {
-            if let Ok(s) = gilt::style::Style::parse(#val) {
+            if let Ok(s) = gilt::style::Style::parse_strict(#val) {
                 tree.guide_style = s;
             }
         }

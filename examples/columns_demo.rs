@@ -103,7 +103,7 @@ fn main() {
     for (name, desc, color) in panel_data {
         let panel = Panel::fit(Text::from_markup(desc).unwrap())
             .with_title(name)
-            .with_border_style(Style::parse(color).unwrap());
+            .with_border_style(Style::parse(color));
 
         // Capture panel output as string
         let mut temp_console = Console::builder()
@@ -296,7 +296,7 @@ fn main() {
         )
         .with_title(format!("{} {}", icon, label))
         .with_box_chars(&ROUNDED)
-        .with_border_style(Style::parse(color).unwrap());
+        .with_border_style(Style::parse(color));
 
         let mut temp_console = Console::builder()
             .width(25)
@@ -387,7 +387,7 @@ fn main() {
     for (chars, name, color) in box_styles {
         let panel = Panel::fit(Text::new(name, Style::null()))
             .with_box_chars(chars)
-            .with_border_style(Style::parse(color).unwrap());
+            .with_border_style(Style::parse(color));
 
         let mut temp_console = Console::builder()
             .width(15)

@@ -322,12 +322,12 @@ impl Diff {
         let ops = self.ops();
         let hunks = build_hunks(&ops, self.context_lines);
 
-        let delete_style = Style::parse("red").unwrap_or_else(|_| Style::null());
-        let insert_style = Style::parse("green").unwrap_or_else(|_| Style::null());
-        let header_del_style = Style::parse("bold red").unwrap_or_else(|_| Style::null());
-        let header_ins_style = Style::parse("bold green").unwrap_or_else(|_| Style::null());
-        let hunk_style = Style::parse("cyan").unwrap_or_else(|_| Style::null());
-        let context_style = Style::parse("dim").unwrap_or_else(|_| Style::null());
+        let delete_style = Style::parse("red");
+        let insert_style = Style::parse("green");
+        let header_del_style = Style::parse("bold red");
+        let header_ins_style = Style::parse("bold green");
+        let hunk_style = Style::parse("cyan");
+        let context_style = Style::parse("dim");
 
         let mut segments = Vec::new();
 
@@ -403,11 +403,11 @@ impl Diff {
     fn render_side_by_side(&self, max_width: usize) -> Vec<Segment> {
         let ops = self.ops();
 
-        let delete_style = Style::parse("red").unwrap_or_else(|_| Style::null());
-        let insert_style = Style::parse("green").unwrap_or_else(|_| Style::null());
-        let context_style = Style::parse("dim").unwrap_or_else(|_| Style::null());
-        let border_style = Style::parse("dim").unwrap_or_else(|_| Style::null());
-        let header_style = Style::parse("bold").unwrap_or_else(|_| Style::null());
+        let delete_style = Style::parse("red");
+        let insert_style = Style::parse("green");
+        let context_style = Style::parse("dim");
+        let border_style = Style::parse("dim");
+        let header_style = Style::parse("bold");
 
         let mut segments = Vec::new();
 

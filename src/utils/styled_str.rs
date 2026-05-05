@@ -55,7 +55,7 @@ impl StyledStr {
 
     /// Convert this `StyledStr` into a [`Text`] with the style applied as a span.
     pub fn to_text(&self) -> Text {
-        Text::styled(&self.text, self.style.clone())
+        Text::styled_with(&self.text, self.style.clone())
     }
 }
 
@@ -79,7 +79,7 @@ impl Renderable for StyledStr {
 /// Build an attribute-only style. Uses `Style::parse` for known-valid attribute
 /// names, which will never fail for the strings we pass.
 fn attr_style(name: &str) -> Style {
-    Style::parse(name).expect("internal: known-valid attribute name")
+    Style::parse_strict(name).expect("internal: known-valid attribute name")
 }
 
 /// Build a foreground-color style.
@@ -301,7 +301,7 @@ pub trait Stylize: Sized {
     /// assert!("Hello".try_styled("invalid_style_name").is_err());
     /// ```
     fn try_styled(self, style_str: &str) -> Result<StyledStr, StyleError> {
-        let style = Style::parse(style_str)?;
+        let style = Style::parse_strict(style_str)?;
         Ok(self.styled(style))
     }
 
@@ -359,7 +359,7 @@ pub trait Stylize: Sized {
     /// ```
     fn try_attr(self, attr: &str) -> Result<StyledStr, StyleError> {
         // Use Style::parse to validate the attribute
-        let style = Style::parse(attr)?;
+        let style = Style::parse_strict(attr)?;
         Ok(self.styled(style))
     }
 }
@@ -572,7 +572,7 @@ mod tests {
 
     #[test]
     fn test_styled_method_with_parsed_style() {
-        let style = Style::parse("bold italic red on white").unwrap();
+        let style = Style::parse("bold italic red on white");
         let s = "custom".styled(style);
         assert_eq!(s.style.bold(), Some(true));
         assert_eq!(s.style.italic(), Some(true));

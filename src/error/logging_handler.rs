@@ -151,26 +151,11 @@ impl RichHandler {
     /// Return the default level style map.
     fn default_level_styles() -> HashMap<log::Level, Style> {
         let mut m = HashMap::new();
-        m.insert(
-            log::Level::Error,
-            Style::parse("bold red").unwrap_or_else(|_| Style::null()),
-        );
-        m.insert(
-            log::Level::Warn,
-            Style::parse("bold yellow").unwrap_or_else(|_| Style::null()),
-        );
-        m.insert(
-            log::Level::Info,
-            Style::parse("bold green").unwrap_or_else(|_| Style::null()),
-        );
-        m.insert(
-            log::Level::Debug,
-            Style::parse("bold blue").unwrap_or_else(|_| Style::null()),
-        );
-        m.insert(
-            log::Level::Trace,
-            Style::parse("dim").unwrap_or_else(|_| Style::null()),
-        );
+        m.insert(log::Level::Error, Style::parse("bold red"));
+        m.insert(log::Level::Warn, Style::parse("bold yellow"));
+        m.insert(log::Level::Info, Style::parse("bold green"));
+        m.insert(log::Level::Debug, Style::parse("bold blue"));
+        m.insert(log::Level::Trace, Style::parse("dim"));
         m
     }
 
@@ -189,7 +174,7 @@ impl RichHandler {
             .get(&level)
             .cloned()
             .unwrap_or_else(Style::null);
-        Text::styled(&padded, style)
+        Text::styled_with(&padded, style)
     }
 
     /// Build the message column, optionally parsing markup and highlighting keywords.
@@ -204,7 +189,7 @@ impl RichHandler {
 
         // Keyword highlighting
         if !self.keywords.is_empty() {
-            let kw_style = Style::parse("bold on dark_green").unwrap_or_else(|_| Style::null());
+            let kw_style = Style::parse("bold on dark_green");
             let words: Vec<&str> = self.keywords.iter().map(|s| s.as_str()).collect();
             text.highlight_words(&words, kw_style, false);
         }
@@ -216,7 +201,7 @@ impl RichHandler {
     /// Kept for tests that want the unwrapped form.
     #[cfg(test)]
     fn render_path(record: &log::Record) -> Text {
-        let dim_style = Style::parse("dim").unwrap_or_else(|_| Style::null());
+        let dim_style = Style::parse("dim");
         let module = record.module_path().unwrap_or("");
         let line = record.line().unwrap_or(0);
         let path_str = if !module.is_empty() {
@@ -224,7 +209,7 @@ impl RichHandler {
         } else {
             format!(":{}", line)
         };
-        Text::styled(&path_str, dim_style)
+        Text::styled_with(&path_str, dim_style)
     }
 
     /// Build the path column (`module::path:line`) optionally as an OSC 8
@@ -234,7 +219,7 @@ impl RichHandler {
     /// source path) for the URL when available; the visible text remains the
     /// `module::path:line` form for readability.
     fn render_path_with_link(&self, record: &log::Record) -> Text {
-        let dim_style = Style::parse("dim").unwrap_or_else(|_| Style::null());
+        let dim_style = Style::parse("dim");
         let module = record.module_path().unwrap_or("");
         let line = record.line().unwrap_or(0);
         let path_str = if !module.is_empty() {
@@ -254,12 +239,12 @@ impl RichHandler {
                     .and_then(|p| p.to_str().map(|s| s.to_string()))
                     .unwrap_or_else(|| file.to_string());
                 let url = format!("file://{}", abs);
-                let link_style = Style::parse(&format!("dim link {}", url))
+                let link_style = Style::parse_strict(&format!("dim link {}", url))
                     .unwrap_or_else(|_| dim_style.clone());
-                return Text::styled(&path_str, link_style);
+                return Text::styled_with(&path_str, link_style);
             }
         }
-        Text::styled(&path_str, dim_style)
+        Text::styled_with(&path_str, dim_style)
     }
 
     /// Compose all columns into a single line and print it.
@@ -321,8 +306,8 @@ impl RichHandler {
             }
             *last = Some(now.clone());
         }
-        let dim_style = Style::parse("dim").unwrap_or_else(|_| Style::null());
-        Text::styled(&now, dim_style)
+        let dim_style = Style::parse("dim");
+        Text::styled_with(&now, dim_style)
     }
 
     /// Return the current wall-clock time as `HH:MM:SS`.

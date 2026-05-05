@@ -325,7 +325,7 @@ mod tests {
 
     #[test]
     fn test_style_bold_roundtrip() {
-        let gilt_style = Style::parse("bold red on blue").unwrap();
+        let gilt_style = Style::parse("bold red on blue");
         let anstyle_style: anstyle::Style = (&gilt_style).into();
         let back: Style = anstyle_style.into();
         assert_eq!(back.bold(), Some(true));
@@ -335,7 +335,7 @@ mod tests {
 
     #[test]
     fn test_style_lossy_link_dropped() {
-        let gilt_style = Style::parse("bold link https://example.com").unwrap();
+        let gilt_style = Style::parse("bold link https://example.com");
         let anstyle_style: anstyle::Style = (&gilt_style).into();
         let back: Style = anstyle_style.into();
         // Link should be lost

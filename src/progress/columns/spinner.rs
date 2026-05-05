@@ -22,10 +22,7 @@ impl SpinnerColumn {
         SpinnerColumn {
             spinner_name: name.to_string(),
             style: None,
-            finished_text: Text::styled(
-                "\u{2714}",
-                Style::parse("green").unwrap_or_else(|_| Style::null()),
-            ),
+            finished_text: Text::styled("\u{2714}", "green"),
         }
     }
 

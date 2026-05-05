@@ -152,16 +152,53 @@ impl Style {
         }
     }
 
-    /// Parses a style definition string with LRU caching.
+    /// Parses a style definition string. **Lossy**: returns
+    /// [`Style::null`] on any parse error.
+    ///
+    /// This is the recommended entry point for the common case of literal
+    /// style strings (`"bold red"`, `"on blue"`, …) where a parse failure
+    /// indicates a programming bug, not a recoverable runtime condition.
+    /// For static literals there is nothing meaningful to do with an error
+    /// at the callsite — the lossy form removes the boilerplate
+    /// `unwrap_or_else(|_| Style::null())` that wrapped almost every
+    /// previous use.
+    ///
+    /// # When to use [`parse_strict`](Self::parse_strict) instead
+    ///
+    /// - You're parsing user-supplied style strings (config files, CLI
+    ///   flags) and want to surface a syntax error.
+    /// - You want to write a unit test that verifies a particular input
+    ///   *fails* to parse.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::style::Style;
+    ///
+    /// let bold_red = Style::parse("bold red");          // no `?`, no `.unwrap()`
+    /// let same     = Style::parse("BOLD RED");          // case-insensitive keywords
+    /// let null     = Style::parse("not a real style");  // returns Style::null(), no panic
+    /// assert!(null.is_null());
+    /// ```
+    pub fn parse(definition: &str) -> Self {
+        Self::parse_strict(definition).unwrap_or_else(|_| Style::null())
+    }
+
+    /// Parses a style definition string. **Strict**: returns the parse
+    /// error if the input is malformed.
+    ///
+    /// Prefer [`parse`](Self::parse) for the common case where a parse
+    /// failure indicates a programming bug, not a recoverable runtime
+    /// condition.
     ///
     /// # Grammar
     /// - Words are split by whitespace
-    /// - "on" keyword: next word is background color
-    /// - "not" keyword: next word is attribute name, set to false
-    /// - "link" keyword: next word is URL
+    /// - `"on"` keyword: next word is background color
+    /// - `"not"` keyword: next word is attribute name, set to false
+    /// - `"link"` keyword: next word is URL
     /// - Known attribute names with aliases
     /// - Anything else: try as foreground color
-    pub fn parse(definition: &str) -> Result<Self, StyleError> {
+    pub fn parse_strict(definition: &str) -> Result<Self, StyleError> {
         // Check cache first
         let mut cache = get_style_cache();
         if let Some(ref mut c) = *cache {
@@ -1319,25 +1356,25 @@ mod tests {
     // Parse tests
     #[test]
     fn test_parse_empty() {
-        let style = Style::parse("").unwrap();
+        let style = Style::parse("");
         assert!(style.is_null());
     }
 
     #[test]
     fn test_parse_red() {
-        let style = Style::parse("red").unwrap();
+        let style = Style::parse("red");
         assert_eq!(style.color().unwrap().name(), "red");
     }
 
     #[test]
     fn test_parse_not_bold() {
-        let style = Style::parse("not bold").unwrap();
+        let style = Style::parse("not bold");
         assert_eq!(style.bold(), Some(false));
     }
 
     #[test]
     fn test_parse_bold_red_on_black() {
-        let style = Style::parse("bold red on black").unwrap();
+        let style = Style::parse("bold red on black");
         assert_eq!(style.bold(), Some(true));
         assert_eq!(style.color().unwrap().name(), "red");
         assert_eq!(style.bgcolor().unwrap().name(), "black");
@@ -1345,51 +1382,51 @@ mod tests {
 
     #[test]
     fn test_parse_bold_link() {
-        let style = Style::parse("bold link https://example.org").unwrap();
+        let style = Style::parse("bold link https://example.org");
         assert_eq!(style.bold(), Some(true));
         assert_eq!(style.link(), Some("https://example.org"));
     }
 
     #[test]
     fn test_parse_error_on_alone() {
-        let result = Style::parse("on");
+        let result = Style::parse_strict("on");
         assert!(result.is_err());
     }
 
     #[test]
     fn test_parse_error_on_invalid_color() {
-        let result = Style::parse("on nothing");
+        let result = Style::parse_strict("on nothing");
         assert!(result.is_err());
     }
 
     #[test]
     fn test_parse_error_rgb_out_of_range() {
-        let result = Style::parse("rgb(999,999,999)");
+        let result = Style::parse_strict("rgb(999,999,999)");
         assert!(result.is_err());
     }
 
     #[test]
     fn test_parse_error_not_unknown_attribute() {
-        let result = Style::parse("not monkey");
+        let result = Style::parse_strict("not monkey");
         assert!(result.is_err());
     }
 
     #[test]
     fn test_parse_error_link_alone() {
-        let result = Style::parse("link");
+        let result = Style::parse_strict("link");
         assert!(result.is_err());
     }
 
     // Render tests
     #[test]
     fn test_render_no_color_system() {
-        let style = Style::parse("red").unwrap();
+        let style = Style::parse("red");
         assert_eq!(style.render("foo", None), "foo");
     }
 
     #[test]
     fn test_render_empty_text() {
-        let style = Style::parse("red").unwrap();
+        let style = Style::parse("red");
         assert_eq!(style.render("", Some(ColorSystem::TrueColor)), "");
     }
 
@@ -1401,7 +1438,7 @@ mod tests {
 
     #[test]
     fn test_render_bold_red_on_black() {
-        let style = Style::parse("bold red on black").unwrap();
+        let style = Style::parse("bold red on black");
         let rendered = style.render("foo", Some(ColorSystem::TrueColor));
         assert!(rendered.contains("\x1b[1;31;40m"));
         assert!(rendered.contains("foo"));
@@ -1410,9 +1447,7 @@ mod tests {
 
     #[test]
     fn test_render_all_attributes() {
-        let style = Style::parse(
-            "bold dim italic underline blink blink2 reverse conceal strike underline2 frame encircle overline red on black"
-        ).unwrap();
+        let style = Style::parse("bold dim italic underline blink blink2 reverse conceal strike underline2 frame encircle overline red on black");
         let rendered = style.render("foo", Some(ColorSystem::TrueColor));
         assert!(rendered.contains("1;2;3;4;5;6;7;8;9;21;51;52;53;31;40"));
     }
@@ -1420,15 +1455,15 @@ mod tests {
     // Add tests
     #[test]
     fn test_add_with_none() {
-        let style = Style::parse("red").unwrap();
+        let style = Style::parse("red");
         let result = style.clone() + None;
         assert_eq!(result, style);
     }
 
     #[test]
     fn test_add_styles() {
-        let style1 = Style::parse("red").unwrap();
-        let style2 = Style::parse("bold").unwrap();
+        let style1 = Style::parse("red");
+        let style2 = Style::parse("bold");
         let result = style1 + style2;
         assert_eq!(result.color().unwrap().name(), "red");
         assert_eq!(result.bold(), Some(true));
@@ -1436,8 +1471,8 @@ mod tests {
 
     #[test]
     fn test_add_override_color() {
-        let style1 = Style::parse("red").unwrap();
-        let style2 = Style::parse("blue").unwrap();
+        let style1 = Style::parse("red");
+        let style2 = Style::parse("blue");
         let result = style1 + style2;
         assert_eq!(result.color().unwrap().name(), "blue");
     }
@@ -1445,22 +1480,22 @@ mod tests {
     // StyleStack tests
     #[test]
     fn test_style_stack_new() {
-        let stack = StyleStack::new(Style::parse("red").unwrap());
+        let stack = StyleStack::new(Style::parse("red"));
         assert_eq!(stack.current().color().unwrap().name(), "red");
     }
 
     #[test]
     fn test_style_stack_push() {
-        let mut stack = StyleStack::new(Style::parse("red").unwrap());
-        stack.push(Style::parse("bold").unwrap());
+        let mut stack = StyleStack::new(Style::parse("red"));
+        stack.push(Style::parse("bold"));
         assert_eq!(stack.current().color().unwrap().name(), "red");
         assert_eq!(stack.current().bold(), Some(true));
     }
 
     #[test]
     fn test_style_stack_pop() {
-        let mut stack = StyleStack::new(Style::parse("red").unwrap());
-        stack.push(Style::parse("bold").unwrap());
+        let mut stack = StyleStack::new(Style::parse("red"));
+        stack.push(Style::parse("bold"));
         stack.pop().unwrap();
         assert_eq!(stack.current().color().unwrap().name(), "red");
         assert_eq!(stack.current().bold(), None);
@@ -1476,8 +1511,7 @@ mod tests {
     // HTML style tests
     #[test]
     fn test_get_html_style_complex() {
-        let style =
-            Style::parse("reverse dim red on blue bold italic underline strike overline").unwrap();
+        let style = Style::parse("reverse dim red on blue bold italic underline strike overline");
         let html = style.get_html_style(None);
         // With reverse: blue becomes fg, red becomes bg
         // With dim: blend blue (0,0,128) with red (128,0,0) at 50% = (64,0,64) = #400040
@@ -1491,7 +1525,7 @@ mod tests {
 
     #[test]
     fn test_get_html_style_simple() {
-        let style = Style::parse("bold red").unwrap();
+        let style = Style::parse("bold red");
         let html = style.get_html_style(None);
         assert!(html.contains("color: #800000"));
         assert!(html.contains("font-weight: bold"));
@@ -1500,7 +1534,7 @@ mod tests {
     // without_color tests
     #[test]
     fn test_without_color() {
-        let style = Style::parse("bold red on blue").unwrap();
+        let style = Style::parse("bold red on blue");
         let without = style.without_color();
         assert_eq!(without.bold(), Some(true));
         assert!(without.color().is_none());
@@ -1510,7 +1544,7 @@ mod tests {
     // background_style tests
     #[test]
     fn test_background_style() {
-        let style = Style::parse("bold yellow on red").unwrap();
+        let style = Style::parse("bold yellow on red");
         let bg = style.background_style();
         assert!(bg.color().is_none());
         assert_eq!(bg.bgcolor().unwrap().name(), "red");
@@ -1520,7 +1554,7 @@ mod tests {
     // clear_meta_and_links tests
     #[test]
     fn test_clear_meta_and_links() {
-        let style = Style::parse("bold red link https://example.org").unwrap();
+        let style = Style::parse("bold red link https://example.org");
         let cleared = style.clear_meta_and_links();
         assert_eq!(cleared.bold(), Some(true));
         assert_eq!(cleared.color().unwrap().name(), "red");
@@ -1537,9 +1571,9 @@ mod tests {
     #[test]
     fn test_combine_multiple() {
         let styles = vec![
-            Style::parse("red").unwrap(),
-            Style::parse("bold").unwrap(),
-            Style::parse("on blue").unwrap(),
+            Style::parse("red"),
+            Style::parse("bold"),
+            Style::parse("on blue"),
         ];
         let result = Style::combine(&styles);
         assert_eq!(result.color().unwrap().name(), "red");
@@ -1550,37 +1584,37 @@ mod tests {
     // Attribute aliases tests
     #[test]
     fn test_parse_attribute_alias_b() {
-        let style = Style::parse("b").unwrap();
+        let style = Style::parse("b");
         assert_eq!(style.bold(), Some(true));
     }
 
     #[test]
     fn test_parse_attribute_alias_i() {
-        let style = Style::parse("i").unwrap();
+        let style = Style::parse("i");
         assert_eq!(style.italic(), Some(true));
     }
 
     #[test]
     fn test_parse_attribute_alias_u() {
-        let style = Style::parse("u").unwrap();
+        let style = Style::parse("u");
         assert_eq!(style.underline(), Some(true));
     }
 
     #[test]
     fn test_parse_attribute_alias_s() {
-        let style = Style::parse("s").unwrap();
+        let style = Style::parse("s");
         assert_eq!(style.strike(), Some(true));
     }
 
     #[test]
     fn test_parse_attribute_alias_uu() {
-        let style = Style::parse("uu").unwrap();
+        let style = Style::parse("uu");
         assert_eq!(style.underline2(), Some(true));
     }
 
     #[test]
     fn test_parse_attribute_alias_o() {
-        let style = Style::parse("o").unwrap();
+        let style = Style::parse("o");
         assert_eq!(style.overline(), Some(true));
     }
 
@@ -1589,9 +1623,9 @@ mod tests {
     fn test_hash() {
         use std::collections::HashSet;
         let mut set = HashSet::new();
-        let style1 = Style::parse("bold red").unwrap();
-        let style2 = Style::parse("bold red").unwrap();
-        let style3 = Style::parse("bold blue").unwrap();
+        let style1 = Style::parse("bold red");
+        let style2 = Style::parse("bold red");
+        let style3 = Style::parse("bold blue");
 
         set.insert(style1);
         assert!(set.contains(&style2));
@@ -1637,20 +1671,20 @@ mod tests {
 
     #[test]
     fn test_parse_link_equals_syntax() {
-        let style = Style::parse("link=https://example.com").unwrap();
+        let style = Style::parse("link=https://example.com");
         assert_eq!(style.link(), Some("https://example.com"));
     }
 
     #[test]
     fn test_parse_bold_link_equals_syntax() {
-        let style = Style::parse("bold link=https://example.com").unwrap();
+        let style = Style::parse("bold link=https://example.com");
         assert_eq!(style.bold(), Some(true));
         assert_eq!(style.link(), Some("https://example.com"));
     }
 
     #[test]
     fn test_parse_link_equals_empty_error() {
-        let result = Style::parse("link=");
+        let result = Style::parse_strict("link=");
         assert!(result.is_err());
     }
 
@@ -1667,8 +1701,8 @@ mod tests {
 
     #[test]
     fn test_pick_first_returns_first_non_null() {
-        let s1 = Style::parse("bold red").unwrap();
-        let s2 = Style::parse("italic").unwrap();
+        let s1 = Style::parse("bold red");
+        let s2 = Style::parse("italic");
         let null = Style::null();
         let picked = Style::pick_first(&[Some(&null), Some(&s1), Some(&s2)]);
         assert_eq!(picked.bold(), Some(true));
@@ -1681,7 +1715,7 @@ mod tests {
     #[test]
     fn test_pick_first_skips_none_and_null() {
         let null = Style::null();
-        let s = Style::parse("underline").unwrap();
+        let s = Style::parse("underline");
         let picked = Style::pick_first(&[None, Some(&null), None, Some(&s)]);
         assert_eq!(picked.underline(), Some(true));
     }
@@ -1704,7 +1738,7 @@ mod tests {
 
     #[test]
     fn test_render_bold_with_link() {
-        let style = Style::parse("bold link https://example.com").unwrap();
+        let style = Style::parse("bold link https://example.com");
         let rendered = style.render("click", Some(ColorSystem::TrueColor));
         assert!(rendered.starts_with("\x1b]8;id="));
         assert!(rendered.contains(";https://example.com\x1b\\"));
@@ -1725,16 +1759,16 @@ mod tests {
 
     #[test]
     fn test_add_link_override() {
-        let style1 = Style::parse("link https://a.com").unwrap();
-        let style2 = Style::parse("link https://b.com").unwrap();
+        let style1 = Style::parse("link https://a.com");
+        let style2 = Style::parse("link https://b.com");
         let result = style1 + style2;
         assert_eq!(result.link(), Some("https://b.com"));
     }
 
     #[test]
     fn test_add_link_preserved() {
-        let style1 = Style::parse("link https://a.com").unwrap();
-        let style2 = Style::parse("bold").unwrap();
+        let style1 = Style::parse("link https://a.com");
+        let style2 = Style::parse("bold");
         let result = style1 + style2;
         assert_eq!(result.link(), Some("https://a.com"));
         assert_eq!(result.bold(), Some(true));
@@ -1743,9 +1777,9 @@ mod tests {
     #[test]
     fn test_combine_link() {
         let styles = vec![
-            Style::parse("red").unwrap(),
+            Style::parse("red"),
             Style::with_link("https://example.com"),
-            Style::parse("bold").unwrap(),
+            Style::parse("bold"),
         ];
         let result = Style::combine(&styles);
         assert_eq!(result.link(), Some("https://example.com"));
@@ -1815,7 +1849,7 @@ mod tests {
     fn test_underline_color_add() {
         let mut s1 = Style::null();
         s1.set_underline_color(Some(Color::parse("red").unwrap()));
-        let s2 = Style::parse("bold").unwrap();
+        let s2 = Style::parse("bold");
         let result = s1 + s2;
         assert_eq!(result.underline_color().unwrap().name(), "red");
     }
@@ -1848,7 +1882,7 @@ mod tests {
 
     #[test]
     fn test_without_color_preserves_underline_color() {
-        let mut style = Style::parse("bold red on blue").unwrap();
+        let mut style = Style::parse("bold red on blue");
         style.set_underline_color(Some(Color::parse("green").unwrap()));
         let without = style.without_color();
         assert!(without.color().is_none());
@@ -1859,7 +1893,7 @@ mod tests {
 
     #[test]
     fn test_background_style_clears_underline() {
-        let mut style = Style::parse("bold red on blue").unwrap();
+        let mut style = Style::parse("bold red on blue");
         style.set_underline_color(Some(Color::parse("green").unwrap()));
         style.set_underline_style(Some(UnderlineStyle::Curly));
         let bg = style.background_style();

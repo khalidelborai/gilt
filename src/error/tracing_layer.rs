@@ -180,7 +180,7 @@ impl GiltLayer {
             Level::DEBUG => "bold green",
             Level::TRACE => "dim",
         };
-        Style::parse(spec).unwrap_or_else(|_| Style::null())
+        Style::parse(spec)
     }
 
     /// Build the time column text (HH:MM:SS) in dim style.
@@ -196,8 +196,8 @@ impl GiltLayer {
             let seconds = total_secs % 60;
             format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
         };
-        let dim_style = Style::parse("dim").unwrap_or_else(|_| Style::null());
-        Text::styled(&now, dim_style)
+        let dim_style = Style::parse("dim");
+        Text::styled_with(&now, dim_style)
     }
 
     /// Build the level column text, left-padded to 8 chars.
@@ -211,13 +211,13 @@ impl GiltLayer {
         };
         let padded = format!("{:<8}", name);
         let style = Self::level_style(level);
-        Text::styled(&padded, style)
+        Text::styled_with(&padded, style)
     }
 
     /// Build the target column (module path) in dim style.
     fn render_target(target: &str) -> Text {
-        let dim_style = Style::parse("dim").unwrap_or_else(|_| Style::null());
-        Text::styled(target, dim_style)
+        let dim_style = Style::parse("dim");
+        Text::styled_with(target, dim_style)
     }
 
     /// Format structured fields as `key=value` pairs in dim italic style.
@@ -227,8 +227,8 @@ impl GiltLayer {
         }
         let parts: Vec<String> = fields.iter().map(|(k, v)| format!("{}={}", k, v)).collect();
         let joined = parts.join(" ");
-        let style = Style::parse("dim italic").unwrap_or_else(|_| Style::null());
-        Text::styled(&joined, style)
+        let style = Style::parse("dim italic");
+        Text::styled_with(&joined, style)
     }
 
     /// Compose all columns into a single line and print via the console.
@@ -264,8 +264,8 @@ impl GiltLayer {
                 let span_names: Vec<&str> = scope.from_root().map(|s| s.name()).collect();
                 if !span_names.is_empty() {
                     let path = span_names.join(":");
-                    let span_style = Style::parse("italic cyan").unwrap_or_else(|_| Style::null());
-                    let span_text = Text::styled(&path, span_style);
+                    let span_style = Style::parse("italic cyan");
+                    let span_text = Text::styled_with(&path, span_style);
                     parts.append_text(&span_text);
                     parts.append_str(" ", None);
                 }

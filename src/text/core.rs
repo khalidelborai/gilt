@@ -53,9 +53,9 @@ pub enum TextOrStr<'a> {
 /// use gilt::text::Span;
 ///
 /// let mut text = Text::new("Hello, World!", Style::null());
-/// text.stylize(Style::parse("bold").unwrap(), 0, Some(5));
+/// text.stylize(Style::parse("bold"), 0, Some(5));
 /// assert_eq!(text.plain(), "Hello, World!");
-/// assert_eq!(text.spans()[0], Span::new(0, 5, Style::parse("bold").unwrap()));
+/// assert_eq!(text.spans()[0], Span::new(0, 5, Style::parse("bold")));
 /// # }
 /// ```
 #[derive(Debug)]
@@ -109,7 +109,7 @@ impl Text {
     /// # fn main() {
     /// use gilt::prelude::*;
     ///
-    /// let text = Text::new("Hello", Style::parse("bold").unwrap());
+    /// let text = Text::new("Hello", Style::parse("bold"));
     /// assert_eq!(text.plain(), "Hello");
     /// # }
     /// ```
@@ -132,9 +132,34 @@ impl Text {
         Text::new("", Style::null())
     }
 
-    /// Create Text with style applied as a span (not as base style).
-    pub fn styled(text: &str, style: Style) -> Self {
-        let mut t = Text::new(text, Style::null());
+    /// Create `Text` with a style applied as a span. The style is parsed
+    /// from a string via [`Style::parse`] (lossy: bad input → null span).
+    ///
+    /// This is the recommended ergonomic constructor — no `?`, no wrapping
+    /// `Style::parse(...)` at the callsite. Content is treated as **literal**
+    /// (markup tags inside the content are not parsed; for that, use
+    /// [`Text::from_markup`](Self::from_markup)).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::text::Text;
+    ///
+    /// let warn = Text::styled("watch out", "bold yellow");
+    /// let url  = Text::styled("https://example.com", "link blue underline");
+    /// ```
+    ///
+    /// For an existing `Style` value, use [`styled_with`](Self::styled_with).
+    pub fn styled(text: impl Into<String>, style: &str) -> Self {
+        Self::styled_with(text, Style::parse(style))
+    }
+
+    /// Create `Text` with a pre-built [`Style`] applied as a span.
+    /// Use this when you already have a `Style` value; for the common
+    /// case of a string-form style, prefer [`Text::styled`].
+    pub fn styled_with(text: impl Into<String>, style: Style) -> Self {
+        let owned = text.into();
+        let mut t = Text::new(&owned, Style::null());
         let len = t.len();
         if len > 0 && !style.is_null() {
             t.spans.push(Span::new(0, len, style));
@@ -154,7 +179,7 @@ impl Text {
     /// let text = Text::assemble(
     ///     &[
     ///         TextPart::Raw("Hello ".into()),
-    ///         TextPart::Styled("World".into(), Style::parse("bold").unwrap()),
+    ///         TextPart::Styled("World".into(), Style::parse("bold")),
     ///     ],
     ///     Style::null(),
     /// );
@@ -337,7 +362,7 @@ impl Text {
     /// use gilt::prelude::*;
     ///
     /// let mut text = Text::new("Hello", Style::null());
-    /// text.append_str(", World!", Some(Style::parse("italic").unwrap()));
+    /// text.append_str(", World!", Some(Style::parse("italic")));
     /// assert_eq!(text.plain(), "Hello, World!");
     /// # }
     /// ```
@@ -401,7 +426,7 @@ impl Text {
     /// use gilt::prelude::*;
     ///
     /// let mut text = Text::new("Hello, World!", Style::null());
-    /// text.stylize(Style::parse("bold red").unwrap(), 0, Some(5));
+    /// text.stylize(Style::parse("bold red"), 0, Some(5));
     /// assert_eq!(text.spans().len(), 1);
     /// # }
     /// ```
@@ -826,7 +851,7 @@ impl Text {
     ///
     /// let mut text = Text::new("error: not found", Style::null());
     /// let re = Regex::new(r"error").unwrap();
-    /// let count = text.highlight_regex(&re, Style::parse("bold red").unwrap());
+    /// let count = text.highlight_regex(&re, Style::parse("bold red"));
     /// assert_eq!(count, 1);
     /// # }
     /// ```
@@ -885,7 +910,7 @@ impl Text {
             for name in pattern.capture_names().flatten() {
                 if let Some(mat) = captures.name(name) {
                     let style_str = format!("{}{}", style_prefix, name);
-                    if let Ok(style) = Style::parse(&style_str) {
+                    if let Ok(style) = Style::parse_strict(&style_str) {
                         pending.push((style, mat.start(), mat.end()));
                     }
                 }
@@ -1653,9 +1678,8 @@ mod tests {
         // plain = "XYZ"
         let mut text = Text::new("XYZ", Style::null());
         text.spans_mut()
-            .push(Span::new(0, 2, Style::parse("green").unwrap()));
-        text.spans_mut()
-            .push(Span::new(1, 3, Style::parse("bold").unwrap()));
+            .push(Span::new(0, 2, Style::parse("green")));
+        text.spans_mut().push(Span::new(1, 3, Style::parse("bold")));
 
         let m = text.markup();
         let rt = Text::from_markup(&m).unwrap();
@@ -1667,11 +1691,11 @@ mod tests {
         let has_green = rt
             .spans()
             .iter()
-            .any(|s| s.start == 0 && s.end == 2 && s.style == Style::parse("green").unwrap());
+            .any(|s| s.start == 0 && s.end == 2 && s.style == Style::parse("green"));
         let has_bold = rt
             .spans()
             .iter()
-            .any(|s| s.start == 1 && s.end == 3 && s.style == Style::parse("bold").unwrap());
+            .any(|s| s.start == 1 && s.end == 3 && s.style == Style::parse("bold"));
         assert!(has_green, "missing green span in round-trip");
         assert!(has_bold, "missing bold span in round-trip");
     }
@@ -1688,7 +1712,7 @@ mod tests {
         use std::collections::HashMap;
 
         // Build a theme that maps "highlight" → bold red.
-        let highlight_style = Style::parse("bold red").unwrap();
+        let highlight_style = Style::parse("bold red");
         let mut styles = HashMap::new();
         styles.insert("highlight".to_string(), highlight_style.clone());
         let theme = Theme::new(Some(styles), false);

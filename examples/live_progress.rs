@@ -29,15 +29,15 @@ fn bar_text(completed: f64, total: f64, width: usize) -> String {
 
 /// Build a styled Text renderable showing multiple task rows.
 fn build_display(tasks: &[(&str, f64, f64)]) -> Text {
-    let header_style = Style::parse("bold cyan").unwrap();
-    let mut text = Text::styled("  Task Progress Dashboard\n\n", header_style);
+    let header_style = Style::parse("bold cyan");
+    let mut text = Text::styled_with("  Task Progress Dashboard\n\n", header_style);
 
     for (name, completed, total) in tasks {
         let bar = bar_text(*completed, *total, 20);
         let line = format!("  {:<24} {}\n", name, bar);
 
         let style = if *completed >= *total {
-            Style::parse("green").unwrap()
+            Style::parse("green")
         } else {
             Style::null()
         };
@@ -45,10 +45,7 @@ fn build_display(tasks: &[(&str, f64, f64)]) -> Text {
         text.append_str(&line, Some(style));
     }
 
-    text.append_str(
-        "\n  Press Ctrl-C to cancel",
-        Some(Style::parse("dim").unwrap()),
-    );
+    text.append_str("\n  Press Ctrl-C to cancel", Some(Style::parse("dim")));
 
     text
 }

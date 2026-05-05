@@ -622,7 +622,7 @@ mod tests {
 
     #[test]
     fn test_style_application() {
-        let style = Style::parse("bold").unwrap();
+        let style = Style::parse("bold");
         let f = Figlet::new("A").with_style(style);
         let console = make_console(80);
         let opts = console.options();

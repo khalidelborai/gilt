@@ -77,9 +77,9 @@ fn main() {
         "Users".into(),
         "User Details".into(),
     ])
-    .style(Style::parse("dim").unwrap())
-    .separator_style(Style::parse("dim").unwrap())
-    .active_style(Style::parse("bold green").unwrap());
+    .style(Style::parse("dim"))
+    .separator_style(Style::parse("dim"))
+    .active_style(Style::parse("bold green"));
     console.print(&styled_active);
     console.print_text("");
 

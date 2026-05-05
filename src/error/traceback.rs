@@ -392,10 +392,7 @@ impl Traceback {
                 n,
                 if n == 1 { "" } else { "s" }
             );
-            parts.push(TextPart::Styled(
-                msg,
-                Style::parse("dim italic").unwrap_or_else(|_| Style::null()),
-            ));
+            parts.push(TextPart::Styled(msg, Style::parse("dim italic")));
             return Text::assemble(&parts, Style::null());
         }
 
@@ -422,10 +419,7 @@ impl Traceback {
                 inserted_ellipsis = true;
                 let omitted = frame_count - show_count;
                 let msg = format!("\n  ... {} frames omitted ...\n", omitted);
-                parts.push(TextPart::Styled(
-                    msg,
-                    Style::parse("dim italic").unwrap_or_else(|_| Style::null()),
-                ));
+                parts.push(TextPart::Styled(msg, Style::parse("dim italic")));
             }
 
             let frame = visible[frame_idx];
@@ -438,11 +432,11 @@ impl Traceback {
 
             parts.push(TextPart::Styled(
                 format!("  File \"{}\"", location),
-                Style::parse("green").unwrap_or_else(|_| Style::null()),
+                Style::parse("green"),
             ));
             parts.push(TextPart::Styled(
                 format!(", in {}", frame.name),
-                Style::parse("magenta").unwrap_or_else(|_| Style::null()),
+                Style::parse("magenta"),
             ));
             parts.push(TextPart::Raw("\n".to_string()));
 
@@ -545,10 +539,7 @@ impl Renderable for Traceback {
                 n,
                 if n == 1 { "" } else { "s" }
             );
-            content_parts.push(TextPart::Styled(
-                msg,
-                Style::parse("dim italic").unwrap_or_else(|_| Style::null()),
-            ));
+            content_parts.push(TextPart::Styled(msg, Style::parse("dim italic")));
             let content = Text::assemble(&content_parts, Style::null());
             let panel = Panel::new(content).with_title(self.title.clone());
             return panel.gilt_console(console, options);
@@ -579,10 +570,7 @@ impl Renderable for Traceback {
             if truncated && i == half_mark {
                 let omitted = frame_count - show_count;
                 let msg = format!("\n... {} frames omitted ...\n\n", omitted);
-                content_parts.push(TextPart::Styled(
-                    msg,
-                    Style::parse("dim italic").unwrap_or_else(|_| Style::null()),
-                ));
+                content_parts.push(TextPart::Styled(msg, Style::parse("dim italic")));
             }
 
             // File location line
@@ -593,11 +581,11 @@ impl Renderable for Traceback {
 
             content_parts.push(TextPart::Styled(
                 format!("File \"{}\"", location),
-                Style::parse("green").unwrap_or_else(|_| Style::null()),
+                Style::parse("green"),
             ));
             content_parts.push(TextPart::Styled(
                 format!(", in {}", frame.name),
-                Style::parse("magenta").unwrap_or_else(|_| Style::null()),
+                Style::parse("magenta"),
             ));
             content_parts.push(TextPart::Raw("\n".to_string()));
 
@@ -674,30 +662,21 @@ impl Renderable for Traceback {
         // Error message at the bottom
         if !self.message.is_empty() {
             content_parts.push(TextPart::Raw("\n".to_string()));
-            content_parts.push(TextPart::Styled(
-                self.message.clone(),
-                Style::parse("bold").unwrap_or_else(|_| Style::null()),
-            ));
+            content_parts.push(TextPart::Styled(self.message.clone(), Style::parse("bold")));
         }
 
         let content_text = Text::assemble(&content_parts, Style::null());
 
         // Wrap in a Panel
         let title_text = if self.title.is_empty() {
-            Text::styled(
-                "Traceback",
-                Style::parse("bold red").unwrap_or_else(|_| Style::null()),
-            )
+            Text::styled("Traceback", "bold red")
         } else {
-            Text::styled(
-                &self.title,
-                Style::parse("bold red").unwrap_or_else(|_| Style::null()),
-            )
+            Text::styled(&self.title, "bold red")
         };
 
         let panel = Panel::new(content_text)
             .with_title(title_text)
-            .with_border_style(Style::parse("red").unwrap_or_else(|_| Style::null()))
+            .with_border_style(Style::parse("red"))
             .with_expand(true);
 
         let panel_opts = if let Some(w) = self.width {

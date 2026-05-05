@@ -30,7 +30,7 @@ fn main() {
         100.0, 102.5, 101.0, 105.0, 107.0, 106.5, 110.0, 108.0, 112.0, 115.0, 113.0, 118.0, 120.0,
         117.0, 122.0, 125.0, 123.0, 128.0, 130.0, 127.0,
     ];
-    let stock_spark = Sparkline::new(&prices).with_style(Style::parse("green").unwrap());
+    let stock_spark = Sparkline::new(&prices).with_style(Style::parse("green"));
     console.print(&stock_spark);
 
     // -- CPU usage -----------------------------------------------------------
@@ -44,7 +44,7 @@ fn main() {
         .with_width(40)
         .with_min(0.0)
         .with_max(100.0)
-        .with_style(Style::parse("red").unwrap());
+        .with_style(Style::parse("red"));
     console.print(&cpu_spark);
 
     // -- Sine wave -----------------------------------------------------------
@@ -55,7 +55,7 @@ fn main() {
         .collect();
     let sine_spark = Sparkline::new(&sine)
         .with_width(60)
-        .with_style(Style::parse("cyan").unwrap());
+        .with_style(Style::parse("cyan"));
     console.print(&sine_spark);
 
     // -- Random walk ---------------------------------------------------------
@@ -68,7 +68,7 @@ fn main() {
         val += ((i * 7 + 3) % 11) as f64 - 5.0;
         *item = val;
     }
-    let walk_spark = Sparkline::new(&walk).with_style(Style::parse("magenta").unwrap());
+    let walk_spark = Sparkline::new(&walk).with_style(Style::parse("magenta"));
     console.print(&walk_spark);
 
     // -- Gradient style sparkline --------------------------------------------
@@ -77,8 +77,7 @@ fn main() {
     let triangle: Vec<f64> = (0..20)
         .map(|i| if i < 10 { i as f64 } else { (20 - i) as f64 })
         .collect();
-    let styled_spark =
-        Sparkline::new(&triangle).with_style(Style::parse("bold yellow on blue").unwrap());
+    let styled_spark = Sparkline::new(&triangle).with_style(Style::parse("bold yellow on blue"));
     console.print(&styled_spark);
 
     // -- Display trait -------------------------------------------------------

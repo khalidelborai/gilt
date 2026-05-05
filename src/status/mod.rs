@@ -397,7 +397,7 @@ mod tests {
 
     #[test]
     fn test_with_spinner_style() {
-        let style = Style::parse("bold red").unwrap();
+        let style = Style::parse("bold red");
         let status = Status::new("test").with_spinner_style(style.clone());
         assert_eq!(status.spinner_style, style);
         assert_eq!(status.spinner.style, Some(style));
@@ -425,7 +425,7 @@ mod tests {
 
     #[test]
     fn test_builder_chaining() {
-        let style = Style::parse("bold").unwrap();
+        let style = Style::parse("bold");
         let status = Status::new("test")
             .with_spinner_style(style.clone())
             .with_speed(3.0)
@@ -488,7 +488,7 @@ mod tests {
     #[test]
     fn test_update_style() {
         let mut status = Status::new("test");
-        let style = Style::parse("bold green").unwrap();
+        let style = Style::parse("bold green");
         status
             .update()
             .spinner_style(style.clone())
@@ -500,7 +500,7 @@ mod tests {
     #[test]
     fn test_update_style_applied_to_spinner_update() {
         let mut status = Status::new("test");
-        let style = Style::parse("italic").unwrap();
+        let style = Style::parse("italic");
         status
             .update()
             .spinner_style(style.clone())
@@ -525,7 +525,7 @@ mod tests {
     #[test]
     fn test_update_multiple_fields() {
         let mut status = Status::new("original");
-        let style = Style::parse("bold").unwrap();
+        let style = Style::parse("bold");
         status
             .update()
             .status("changed")
@@ -542,7 +542,7 @@ mod tests {
     #[test]
     fn test_update_all_with_new_spinner() {
         let mut status = Status::new("original");
-        let style = Style::parse("underline").unwrap();
+        let style = Style::parse("underline");
         status
             .update()
             .status("new status")

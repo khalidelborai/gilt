@@ -271,7 +271,7 @@ mod tests {
 
     #[test]
     fn test_with_style() {
-        let style = Style::parse("bold red on blue").unwrap();
+        let style = Style::parse("bold red on blue");
         let bar = Bar::new(100.0, 0.0, 50.0).with_style(style.clone());
         assert_eq!(bar.style, style);
     }
@@ -458,7 +458,7 @@ mod tests {
 
     #[test]
     fn test_segments_have_style() {
-        let style = Style::parse("red on blue").unwrap();
+        let style = Style::parse("red on blue");
         let bar = Bar::new(100.0, 0.0, 50.0)
             .with_width(10)
             .with_style(style.clone());

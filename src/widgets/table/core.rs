@@ -503,7 +503,7 @@ impl Table {
     /// use gilt::style::Style;
     ///
     /// let mut table = Table::new(&["Name"]);
-    /// let bold_name = Text::new("Alice", Style::parse("bold").unwrap());
+    /// let bold_name = Text::new("Alice", Style::parse("bold"));
     /// table.add_row_text(&[bold_name]);
     /// assert_eq!(table.row_count(), 1);
     /// ```

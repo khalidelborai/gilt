@@ -103,7 +103,7 @@ fn main() {
     console.print(&Rule::with_title("Text with Panel (rendered to text)"));
 
     let panel = Panel::new(Text::from_markup("[bold]Panel content[/bold] inside a group").unwrap())
-        .with_title(Text::new("Inner Panel", Style::parse("cyan").unwrap()));
+        .with_title(Text::new("Inner Panel", Style::parse("cyan")));
 
     // Render panel to text for inclusion in group
     let panel_text = render_to_text(&console, &panel);
@@ -140,7 +140,7 @@ fn main() {
     let info_panel = Panel::fit(
         Text::from_markup("[bold]Info[/bold]\nThis demonstrates mixed content").unwrap(),
     )
-    .with_border_style(Style::parse("blue").unwrap());
+    .with_border_style(Style::parse("blue"));
     let info_text = render_to_text(&console, &info_panel);
 
     let mixed_content = Group::fit(vec![
@@ -171,9 +171,9 @@ fn main() {
     let panel_with_group = Panel::new(inner_group_text)
         .with_title(Text::new(
             "Panel Containing Group",
-            Style::parse("bold magenta").unwrap(),
+            Style::parse("bold magenta"),
         ))
-        .with_border_style(Style::parse("green").unwrap());
+        .with_border_style(Style::parse("green"));
     console.print(&panel_with_group);
 
     // Multiple groups in a Columns-like layout (using a container panel)
@@ -200,7 +200,7 @@ fn main() {
 
     let outer_panel = Panel::new(render_to_text(&console, &combined)).with_title(Text::new(
         "Container with Nested Groups",
-        Style::parse("bold cyan").unwrap(),
+        Style::parse("bold cyan"),
     ));
     console.print(&outer_panel);
 
@@ -236,8 +236,8 @@ fn main() {
     ]);
 
     let status_panel = Panel::new(render_to_text(&console, &status_group))
-        .with_title(Text::new("Dashboard", Style::parse("bold white").unwrap()))
-        .with_border_style(Style::parse("bright_black").unwrap());
+        .with_title(Text::new("Dashboard", Style::parse("bold white")))
+        .with_border_style(Style::parse("bright_black"));
     console.print(&status_panel);
 
     console.rule(Some("End of Demo"));

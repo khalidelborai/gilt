@@ -24,7 +24,7 @@ fn main() {
     // Print intro panel via the progress console
     let intro = Panel::new(Text::new(
         "A demonstration of progress with a current task and overall progress.",
-        Style::parse("bold blue").unwrap_or_else(|_| Style::null()),
+        Style::parse("bold blue"),
     ));
     progress.print(&intro);
 
@@ -64,9 +64,6 @@ fn main() {
 
     // Print completion panel
     let mut done_console = Console::new();
-    let done = Panel::new(Text::new(
-        "All done!",
-        Style::parse("bold green").unwrap_or_else(|_| Style::null()),
-    ));
+    let done = Panel::new(Text::new("All done!", Style::parse("bold green")));
     done_console.print(&done);
 }

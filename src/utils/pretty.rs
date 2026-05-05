@@ -241,9 +241,8 @@ impl Pretty {
         }
 
         // Cache the parsed style across calls — was re-parsing on every render.
-        static GUIDE_STYLE: std::sync::LazyLock<Style> = std::sync::LazyLock::new(|| {
-            Style::parse("dim green").unwrap_or_else(|_| Style::null())
-        });
+        static GUIDE_STYLE: std::sync::LazyLock<Style> =
+            std::sync::LazyLock::new(|| Style::parse("dim green"));
         self.text
             .with_indent_guides(Some(self.indent_size), '\u{2502}', GUIDE_STYLE.clone())
     }
@@ -271,7 +270,7 @@ impl Renderable for Pretty {
 
         if self.type_annotation {
             let type_name = infer_type_name(self.text.plain());
-            let annotation_style = Style::parse("dim italic").unwrap_or_else(|_| Style::null());
+            let annotation_style = Style::parse("dim italic");
             use crate::text::TextPart;
             text = Text::assemble(
                 &[

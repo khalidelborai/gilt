@@ -8,19 +8,19 @@ use crate::text::*;
 use ::regex::Regex;
 
 fn bold() -> Style {
-    Style::parse("bold").unwrap()
+    Style::parse("bold")
 }
 
 fn italic() -> Style {
-    Style::parse("italic").unwrap()
+    Style::parse("italic")
 }
 
 fn underline() -> Style {
-    Style::parse("underline").unwrap()
+    Style::parse("underline")
 }
 
 fn red() -> Style {
-    Style::parse("red").unwrap()
+    Style::parse("red")
 }
 
 // -- Span tests ---------------------------------------------------------
@@ -542,7 +542,7 @@ fn test_assemble() {
 
 #[test]
 fn test_styled() {
-    let text = Text::styled("Hello", bold());
+    let text = Text::styled_with("Hello", bold());
     assert_eq!(text.plain(), "Hello");
     assert_eq!(text.spans().len(), 1);
     assert_eq!(text.spans()[0], Span::new(0, 5, bold()));
@@ -766,7 +766,7 @@ fn test_from_ansi_multiple_styles() {
 
 #[test]
 fn test_get_style_at_offset_no_spans() {
-    let style = Style::parse("bold").unwrap();
+    let style = Style::parse("bold");
     let text = Text::new("hello", style.clone());
     let result = text.get_style_at_offset(2);
     assert_eq!(result.bold(), Some(true));
@@ -775,7 +775,7 @@ fn test_get_style_at_offset_no_spans() {
 #[test]
 fn test_get_style_at_offset_single_span() {
     let mut text = Text::new("hello", Style::null());
-    text.stylize(Style::parse("bold").unwrap(), 1, Some(4));
+    text.stylize(Style::parse("bold"), 1, Some(4));
     // offset 2 is inside the span [1..4)
     let result = text.get_style_at_offset(2);
     assert_eq!(result.bold(), Some(true));
@@ -787,8 +787,8 @@ fn test_get_style_at_offset_single_span() {
 #[test]
 fn test_get_style_at_offset_overlapping_spans() {
     let mut text = Text::new("hello world", Style::null());
-    text.stylize(Style::parse("bold").unwrap(), 0, Some(8));
-    text.stylize(Style::parse("italic").unwrap(), 3, Some(11));
+    text.stylize(Style::parse("bold"), 0, Some(8));
+    text.stylize(Style::parse("italic"), 3, Some(11));
     // offset 5 overlaps both spans
     let result = text.get_style_at_offset(5);
     assert_eq!(result.bold(), Some(true));
@@ -801,8 +801,8 @@ fn test_get_style_at_offset_overlapping_spans() {
 
 #[test]
 fn test_get_style_at_offset_out_of_range() {
-    let mut text = Text::new("hi", Style::parse("bold").unwrap());
-    text.stylize(Style::parse("italic").unwrap(), 0, Some(2));
+    let mut text = Text::new("hi", Style::parse("bold"));
+    text.stylize(Style::parse("italic"), 0, Some(2));
     // offset 99 is beyond text length; only root style returned
     let result = text.get_style_at_offset(99);
     assert_eq!(result.bold(), Some(true));
@@ -812,8 +812,8 @@ fn test_get_style_at_offset_out_of_range() {
 #[test]
 fn test_flatten_spans_no_overlaps() {
     let mut text = Text::new("hello world", Style::null());
-    text.stylize(Style::parse("bold").unwrap(), 0, Some(5));
-    text.stylize(Style::parse("italic").unwrap(), 6, Some(11));
+    text.stylize(Style::parse("bold"), 0, Some(5));
+    text.stylize(Style::parse("italic"), 6, Some(11));
     let flat = text.flatten_spans();
     assert_eq!(flat.len(), 2);
     assert_eq!(flat[0].start, 0);
@@ -829,8 +829,8 @@ fn test_flatten_spans_no_overlaps() {
 #[test]
 fn test_flatten_spans_overlapping() {
     let mut text = Text::new("hello world", Style::null());
-    text.stylize(Style::parse("bold").unwrap(), 0, Some(8));
-    text.stylize(Style::parse("italic").unwrap(), 3, Some(11));
+    text.stylize(Style::parse("bold"), 0, Some(8));
+    text.stylize(Style::parse("italic"), 3, Some(11));
     let flat = text.flatten_spans();
     // Expected regions: [0..3) bold, [3..8) bold+italic, [8..11) italic
     assert_eq!(flat.len(), 3);

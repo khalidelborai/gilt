@@ -40,7 +40,7 @@ fn main() {
 
     // The famous message in large, friendly letters.
     let message = format!("{:^width$}\n", "DON'T PANIC!", width = width);
-    content.append_str(&message, Some(Style::parse("bold yellow on blue").unwrap()));
+    content.append_str(&message, Some(Style::parse("bold yellow on blue")));
 
     content.append_str(&format!("{:^width$}\n", "", width = width), None);
 
@@ -49,12 +49,12 @@ fn main() {
         "-- The Hitchhiker's Guide to the Galaxy",
         width = width
     );
-    content.append_str(&sub, Some(Style::parse("italic white").unwrap()));
+    content.append_str(&sub, Some(Style::parse("italic white")));
 
     content.append_str(&format!("{:^width$}\n", "", width = width), None);
 
     let hint = format!("{:^width$}", "Exiting in 3 seconds...", width = width);
-    content.append_str(&hint, Some(Style::parse("dim").unwrap()));
+    content.append_str(&hint, Some(Style::parse("dim")));
 
     // Render as a full screen.
     let screen = Screen::new(content);

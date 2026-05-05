@@ -251,7 +251,7 @@ pub(crate) fn derive_rule_impl(input: &DeriveInput) -> syn::Result<proc_macro2::
     if let Some(ref lit) = rule_attrs.style {
         let val = lit.value();
         rule_config.push(quote! {
-            rule = rule.with_style(gilt::style::Style::parse(#val).unwrap_or_else(|_| gilt::style::Style::null()));
+            rule = rule.with_style(gilt::style::Style::parse(#val));
         });
     }
     if let Some(ref lit) = rule_attrs.align {

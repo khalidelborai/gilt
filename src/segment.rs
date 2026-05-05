@@ -90,7 +90,7 @@ impl Segment {
     /// use gilt::segment::Segment;
     /// use gilt::style::Style;
     ///
-    /// let seg = Segment::new("hello", Some(Style::parse("bold").unwrap()), None);
+    /// let seg = Segment::new("hello", Some(Style::parse("bold")), None);
     /// assert_eq!(seg.text, "hello");
     /// assert!(!seg.is_control());
     /// ```
@@ -134,7 +134,7 @@ impl Segment {
     /// use gilt::segment::Segment;
     /// use gilt::style::Style;
     ///
-    /// let seg = Segment::styled("warning", Style::parse("bold yellow").unwrap());
+    /// let seg = Segment::styled("warning", Style::parse("bold yellow"));
     /// assert_eq!(seg.text, "warning");
     /// assert!(seg.style().is_some());
     /// ```
@@ -294,7 +294,7 @@ impl Segment {
     /// let segments = vec![Segment::text("hello")];
     /// let styled = Segment::apply_style(
     ///     &segments,
-    ///     Some(Style::parse("bold").unwrap()),
+    ///     Some(Style::parse("bold")),
     ///     None,
     /// );
     /// assert!(styled[0].style().is_some());
@@ -912,14 +912,14 @@ mod tests {
     fn test_apply_style() {
         let segments = vec![
             Segment::text("foo"),
-            Segment::styled("bar", Style::parse("bold").unwrap()),
+            Segment::styled("bar", Style::parse("bold")),
         ];
-        let result = Segment::apply_style(&segments, Some(Style::parse("italic").unwrap()), None);
+        let result = Segment::apply_style(&segments, Some(Style::parse("italic")), None);
         assert_eq!(
             result,
             vec![
-                Segment::styled("foo", Style::parse("italic").unwrap()),
-                Segment::styled("bar", Style::parse("italic bold").unwrap()),
+                Segment::styled("foo", Style::parse("italic")),
+                Segment::styled("bar", Style::parse("italic bold")),
             ]
         );
     }
@@ -937,7 +937,7 @@ mod tests {
     #[test]
     fn test_adjust_line_length_pad() {
         let line = vec![Segment::text("Hello")];
-        let style = Style::parse("red").unwrap();
+        let style = Style::parse("red");
         let result = Segment::adjust_line_length(&line, 10, &style, true);
         assert_eq!(Segment::get_line_length(&result), 10);
     }
@@ -994,7 +994,7 @@ mod tests {
 
     #[test]
     fn test_strip_styles() {
-        let segments = vec![Segment::styled("foo", Style::parse("bold").unwrap())];
+        let segments = vec![Segment::styled("foo", Style::parse("bold"))];
         assert_eq!(Segment::strip_styles(&segments), vec![Segment::text("foo")]);
     }
 
@@ -1002,7 +1002,7 @@ mod tests {
     fn test_strip_links() {
         let segments = vec![Segment::styled(
             "foo",
-            Style::parse("bold link https://www.example.org").unwrap(),
+            Style::parse("bold link https://www.example.org"),
         )];
         let result = Segment::strip_links(&segments);
         assert_eq!(result[0].style.as_ref().unwrap().link(), None);
@@ -1012,7 +1012,7 @@ mod tests {
     #[test]
     fn test_remove_color() {
         let segments = vec![
-            Segment::styled("foo", Style::parse("bold red").unwrap()),
+            Segment::styled("foo", Style::parse("bold red")),
             Segment::text("bar"),
         ];
         let result = Segment::remove_color(&segments);
@@ -1028,8 +1028,8 @@ mod tests {
 
     #[test]
     fn test_divide() {
-        let bold = Style::parse("bold").unwrap();
-        let italic = Style::parse("italic").unwrap();
+        let bold = Style::parse("bold");
+        let italic = Style::parse("italic");
         let segments = vec![
             Segment::styled("Hello", bold.clone()),
             Segment::styled(" World!", italic.clone()),
@@ -1154,8 +1154,8 @@ mod tests {
     #[test]
     fn test_simplify_different_styles() {
         let segments = vec![
-            Segment::styled("Hello", Style::parse("bold").unwrap()),
-            Segment::styled("World", Style::parse("italic").unwrap()),
+            Segment::styled("Hello", Style::parse("bold")),
+            Segment::styled("World", Style::parse("italic")),
         ];
         let result = Segment::simplify(&segments);
         assert_eq!(result.len(), 2); // Should not merge
@@ -1210,7 +1210,7 @@ mod tests {
             Segment::new("", None, Some(control_code.clone())),
             Segment::text("bar"),
         ];
-        let result = Segment::apply_style(&segments, Some(Style::parse("bold").unwrap()), None);
+        let result = Segment::apply_style(&segments, Some(Style::parse("bold")), None);
 
         assert_eq!(result[0].style.as_ref().unwrap().bold(), Some(true));
         assert!(result[1].is_control());
@@ -1220,8 +1220,8 @@ mod tests {
 
     #[test]
     fn test_apply_style_post_style() {
-        let segments = vec![Segment::styled("foo", Style::parse("bold").unwrap())];
-        let result = Segment::apply_style(&segments, None, Some(Style::parse("italic").unwrap()));
+        let segments = vec![Segment::styled("foo", Style::parse("bold"))];
+        let result = Segment::apply_style(&segments, None, Some(Style::parse("italic")));
         assert_eq!(result[0].style.as_ref().unwrap().bold(), Some(true));
         assert_eq!(result[0].style.as_ref().unwrap().italic(), Some(true));
     }
@@ -1339,7 +1339,7 @@ mod tests {
 
     #[test]
     fn test_split_lines_with_styled_segments() {
-        let bold = Style::parse("bold").unwrap();
+        let bold = Style::parse("bold");
         let segments = vec![Segment::styled("Hello\nWorld", bold.clone())];
         let result = Segment::split_lines(&segments);
         assert_eq!(result.len(), 2);

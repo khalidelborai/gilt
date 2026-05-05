@@ -204,13 +204,13 @@ fn make_test_card(console: &mut Console) -> Table {
                      Quisque in metus sed sapien ultricies pretium a at justo. \
                      Maecenas luctus velit et auctor maximus.";
 
-        let mut t_left = Text::new(lorem, Style::parse("green").unwrap());
+        let mut t_left = Text::new(lorem, Style::parse("green"));
         t_left.justify = Some(JustifyMethod::Left);
-        let mut t_center = Text::new(lorem, Style::parse("yellow").unwrap());
+        let mut t_center = Text::new(lorem, Style::parse("yellow"));
         t_center.justify = Some(JustifyMethod::Center);
-        let mut t_right = Text::new(lorem, Style::parse("blue").unwrap());
+        let mut t_right = Text::new(lorem, Style::parse("blue"));
         t_right.justify = Some(JustifyMethod::Right);
-        let mut t_full = Text::new(lorem, Style::parse("red").unwrap());
+        let mut t_full = Text::new(lorem, Style::parse("red"));
         t_full.justify = Some(JustifyMethod::Full);
 
         let mut lorem_table = Table::grid(&[]);
@@ -416,7 +416,7 @@ Supports much of the *markdown* __syntax__!
 - Block quotes
 - Lists, and more...
 ";
-            let left = Text::new(markdown_source, Style::parse("cyan").unwrap());
+            let left = Text::new(markdown_source, Style::parse("cyan"));
             let md = Markdown::new(markdown_source);
 
             let demo = comparison(console, &left, &md);
@@ -434,11 +434,11 @@ Supports much of the *markdown* __syntax__!
 
     // ── Row 9: Tree ─────────────────────────────────────────────────────
     {
-        let bold_blue = Style::parse("bold blue").unwrap();
+        let bold_blue = Style::parse("bold blue");
         let default = Style::null();
 
         let mut tree = Tree::new(Text::new("gilt/", bold_blue.clone()))
-            .with_guide_style(Style::parse("dim green").unwrap());
+            .with_guide_style(Style::parse("dim green"));
 
         let src = tree.add(Text::new("src/", bold_blue.clone()));
         src.add(Text::new("console.rs", default.clone()));
@@ -454,7 +454,7 @@ Supports much of the *markdown* __syntax__!
         examples.add(Text::new("testcard.rs", default.clone()));
         examples.add(Text::new("table_movie.rs", default));
 
-        tree.add(Text::new("Cargo.toml", Style::parse("dim").unwrap()));
+        tree.add(Text::new("Cargo.toml", Style::parse("dim")));
 
         let demo = render_to_text(console, &tree);
         table.add_row_text(&[Text::from_markup("[bold red]Tree[/]").unwrap(), demo]);
@@ -570,10 +570,7 @@ fn main() {
         )
         .unwrap(),
     )
-    .with_title(Text::styled(
-        " gilt v0.3.0 ",
-        Style::parse("bold green").unwrap(),
-    ))
-    .with_border_style(Style::parse("green").unwrap());
+    .with_title(Text::styled(" gilt v0.3.0 ", "bold green"))
+    .with_border_style(Style::parse("green"));
     console.print(&farewell);
 }

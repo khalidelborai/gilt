@@ -38,7 +38,7 @@ fn main() {
         Style::null(),
     );
     let mut panel = Panel::fit(panel_text);
-    panel.title = Some(Text::new("Constrained", Style::parse("bold").unwrap()));
+    panel.title = Some(Text::new("Constrained", Style::parse("bold")));
 
     // Constrain works with Text, so render the panel description inside one
     let inner_text = Text::new(

@@ -174,16 +174,16 @@ fn build_month_table(
                 format!("{:>2}", day)
             };
 
-            let mut style = Style::parse("magenta").unwrap_or_else(|_| Style::null());
+            let mut style = Style::parse("magenta");
 
             // Weekend days (Sat=5, Sun=6) in blue
             if col >= 5 {
-                style = Style::parse("blue").unwrap_or_else(|_| Style::null());
+                style = Style::parse("blue");
             }
 
             // Highlight today
             if day > 0 && day == today_day && month == today_month && year == today_year {
-                style = Style::parse("white on dark_red").unwrap_or_else(|_| Style::null());
+                style = Style::parse("white on dark_red");
             }
 
             cells.push(Text::new(&label, style));

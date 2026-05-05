@@ -74,10 +74,10 @@ impl ToastType {
     /// Get the border style for this toast type.
     fn border_style(&self) -> Style {
         match self {
-            ToastType::Success => Style::parse("green").unwrap_or_else(|_| Style::null()),
-            ToastType::Error => Style::parse("red").unwrap_or_else(|_| Style::null()),
-            ToastType::Warning => Style::parse("yellow").unwrap_or_else(|_| Style::null()),
-            ToastType::Info => Style::parse("blue").unwrap_or_else(|_| Style::null()),
+            ToastType::Success => Style::parse("green"),
+            ToastType::Error => Style::parse("red"),
+            ToastType::Warning => Style::parse("yellow"),
+            ToastType::Info => Style::parse("blue"),
             ToastType::Custom(style) => style.clone(),
         }
     }
@@ -85,14 +85,10 @@ impl ToastType {
     /// Get the background style (subtle) for this toast type.
     fn background_style(&self) -> Style {
         match self {
-            ToastType::Success => {
-                Style::parse("on dark_green dim").unwrap_or_else(|_| Style::null())
-            }
-            ToastType::Error => Style::parse("on dark_red dim").unwrap_or_else(|_| Style::null()),
-            ToastType::Warning => {
-                Style::parse("on dark_yellow dim").unwrap_or_else(|_| Style::null())
-            }
-            ToastType::Info => Style::parse("on dark_blue dim").unwrap_or_else(|_| Style::null()),
+            ToastType::Success => Style::parse("on dark_green dim"),
+            ToastType::Error => Style::parse("on dark_red dim"),
+            ToastType::Warning => Style::parse("on dark_yellow dim"),
+            ToastType::Info => Style::parse("on dark_blue dim"),
             ToastType::Custom(style) => style.background_style(),
         }
     }
@@ -100,10 +96,10 @@ impl ToastType {
     /// Get the icon style for this toast type.
     fn icon_style(&self) -> Style {
         match self {
-            ToastType::Success => Style::parse("bold green").unwrap_or_else(|_| Style::null()),
-            ToastType::Error => Style::parse("bold red").unwrap_or_else(|_| Style::null()),
-            ToastType::Warning => Style::parse("bold yellow").unwrap_or_else(|_| Style::null()),
-            ToastType::Info => Style::parse("bold blue").unwrap_or_else(|_| Style::null()),
+            ToastType::Success => Style::parse("bold green"),
+            ToastType::Error => Style::parse("bold red"),
+            ToastType::Warning => Style::parse("bold yellow"),
+            ToastType::Info => Style::parse("bold blue"),
             ToastType::Custom(style) => style.clone(),
         }
     }
@@ -138,7 +134,7 @@ impl ToastType {
 ///     .show(&mut console);
 ///
 /// // Custom styled toast
-/// let custom_style = Style::parse("magenta bold").unwrap();
+/// let custom_style = Style::parse("magenta bold");
 /// Toast::new("Custom notification")
 ///     .toast_type(ToastType::Custom(custom_style))
 ///     .icon("🎉")
@@ -961,7 +957,7 @@ mod tests {
 
     #[test]
     fn test_custom_style() {
-        let style = Style::parse("magenta bold").unwrap();
+        let style = Style::parse("magenta bold");
         let toast = Toast::new("Custom").toast_type(ToastType::Custom(style));
         assert!(matches!(toast.toast_type, ToastType::Custom(_)));
     }

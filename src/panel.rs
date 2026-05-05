@@ -32,7 +32,7 @@ use crate::text::Text;
 /// // Panel with styled border and title
 /// let panel = Panel::new(Text::new("Important message", Style::null()))
 ///     .with_title("Notice")
-///     .with_border_style(Style::parse("red").unwrap());
+///     .with_border_style(Style::parse("red"));
 ///
 /// // Panel with Table content (render table to text first)
 /// let mut table = Table::new(&["Name", "Value"]);
@@ -866,8 +866,8 @@ mod tests {
             .with_subtitle(Text::new("S", Style::null()))
             .with_subtitle_align(HorizontalAlign::Right)
             .with_expand(false)
-            .with_style(Style::parse("bold").unwrap())
-            .with_border_style(Style::parse("red").unwrap())
+            .with_style(Style::parse("bold"))
+            .with_border_style(Style::parse("red"))
             .with_width(40)
             .with_height(5)
             .with_padding(PaddingDimensions::Uniform(2));
@@ -1057,7 +1057,7 @@ mod tests {
             .no_color(false)
             .markup(false)
             .build();
-        let border_style = Style::parse("bold").unwrap();
+        let border_style = Style::parse("bold");
         let panel =
             Panel::new(Text::new("X", Style::null())).with_border_style(border_style.clone());
         let opts = console.options();
