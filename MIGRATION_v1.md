@@ -222,12 +222,52 @@ long synchronous operation that itself prints).
 
 ---
 
+---
+
+## Phase 3 — `Live::from_renderable` for any widget
+
+`Live::new` accepts only `Text`. v0.13.x users wanting to live-update a
+`Table`, `Panel`, `Tree`, or `Layout` had to write a manual capture
+roundtrip:
+
+```rust
+// Before (v0.13.x):
+let mut tmp = Console::builder().force_terminal(true).record(true).build();
+tmp.begin_capture();
+tmp.print(&table);
+let text = Text::from_ansi(&tmp.end_capture());
+let live = Live::new(text).with_transient(true);
+```
+
+v1.0 wraps that roundtrip behind `Live::from_renderable<R: Renderable>(&R)`:
+
+```rust
+// After (v1.0):
+let live = Live::from_renderable(&table).with_transient(true);
+```
+
+For tick updates of the same widget shape (e.g. a process table that
+re-renders every 500ms), `Live::set_renderable_widget(&new_widget)` is
+the matching setter.
+
+The implementation is the same capture roundtrip — it just lives inside
+`gilt` now instead of every caller. No performance change; one fewer thing
+the user has to learn.
+
+### Quick decision table
+
+| Old code | New code | Notes |
+|---|---|---|
+| `Live::new(Text::from_ansi(&capture))` | `Live::from_renderable(&widget)` | Construction |
+| `live.set(Text::from_ansi(&new_capture))` | `live.set_renderable_widget(&new_widget)` | Tick update |
+| `Live::new(text)` | `Live::new(text)` | Unchanged for direct-Text use |
+
+---
+
 ## Future phases
 
 This document grows phase by phase. See [issue #20](https://github.com/khalidelborai/gilt/issues/20)
-for the full v1.0 roadmap. Subsequent phases will document:
-
-- Phase 3: `Live::from_renderable<R: Renderable>(r)` and `Progress` simplification
+for the full v1.0 roadmap.
 - Phase 4: Markup-first `Table::add_row`, Tree, Columns
 - Phase 5: Panel/Padding/Rule/Align unification
 - Phase 6: Rust-native extensions consistency

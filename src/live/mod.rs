@@ -21,6 +21,21 @@ use self::live_render::{LiveRender, VerticalOverflowMethod};
 use self::screen::Screen;
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/// Render any `Renderable` widget into a `Text` via a captured console.
+/// Used by [`Live::from_renderable`] and [`Live::set_renderable_widget`]
+/// to bridge non-Text widgets (Table, Panel, Tree, Layout, …) into the
+/// Text-only `Live` rendering loop.
+fn render_widget_to_text<R: Renderable>(renderable: &R) -> Text {
+    let mut tmp = Console::default();
+    tmp.begin_capture();
+    tmp.print(renderable);
+    Text::from_ansi(&tmp.end_capture())
+}
+
+// ---------------------------------------------------------------------------
 // SharedState -- data accessed by both the main thread and the refresh thread
 // ---------------------------------------------------------------------------
 
@@ -417,6 +432,36 @@ impl Live {
     /// ```
     pub fn set(&self, renderable: Text) {
         self.update_renderable(renderable, true);
+    }
+
+    /// Create a new `Live` display from any [`Renderable`] widget — Table,
+    /// Panel, Tree, Layout, etc. The widget is rendered through a
+    /// temporary capture console and the resulting ANSI is parsed into
+    /// the `Text` `Live` actually drives.
+    ///
+    /// Use this when you want to live-update a non-`Text` widget without
+    /// the manual `console.begin_capture() / .print(&w) / .end_capture()
+    /// / Text::from_ansi(...)` roundtrip at the call site. For tick
+    /// updates of the same widget shape, use
+    /// [`set_renderable_widget`](Self::set_renderable_widget).
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use gilt::{live::Live, table::Table};
+    /// let mut t = Table::new(&["Name", "CPU"]);
+    /// t.add_row(&["systemd", "1.2%"]);
+    /// let _live = Live::from_renderable(&t);
+    /// ```
+    pub fn from_renderable<R: crate::console::Renderable>(renderable: &R) -> Self {
+        Self::new(render_widget_to_text(renderable))
+    }
+
+    /// Set the renderable from any [`Renderable`] widget, capturing it
+    /// through a temporary console. Companion to
+    /// [`from_renderable`](Self::from_renderable) for tick updates.
+    pub fn set_renderable_widget<R: crate::console::Renderable>(&self, renderable: &R) {
+        self.set(render_widget_to_text(renderable));
     }
 
     /// Construct a new `Live` and immediately start it. Combines
