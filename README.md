@@ -14,7 +14,7 @@ Beautiful terminal output for Rust: styles, tables, trees, syntax highlighting, 
 
 ```toml
 [dependencies]
-gilt = "1.2"
+gilt = "1.3"
 ```
 
 ```rust
@@ -74,6 +74,21 @@ cargo run --example progress
 cargo run --example markdown
 cargo run --example derive_table --features derive
 ```
+
+## WebAssembly
+
+gilt compiles for `wasm32-unknown-unknown` without modification — no
+`libc`, `crossterm`, or terminal-syscall dependencies. The intended
+browser path is record-mode + export:
+
+```rust
+let mut console = Console::builder().width(80).record(true).build();
+console.print(&my_widget);
+let ansi = console.export_text(false, true);    // pipe into xterm.js
+let html = console.export_html(None, false, true);  // inject into the DOM
+```
+
+See [`examples/wasm_export.rs`](examples/wasm_export.rs).
 
 ## Performance
 
