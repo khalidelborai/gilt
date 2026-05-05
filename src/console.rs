@@ -298,6 +298,11 @@ pub struct Console {
     /// be shared across threads (e.g. by a future Live integration) and
     /// to leave room for cross-Console resegmenting in PR3.
     style_interner: Arc<Mutex<StyleInterner>>,
+
+    /// Optional output sink override. When `Some`, render output goes here
+    /// instead of `std::io::stdout()`. Set via [`Console::with_writer`].
+    /// Capture and record modes still take precedence.
+    pub(crate) writer_override: Option<Box<dyn std::io::Write + Send>>,
 }
 
 impl Console {
@@ -415,7 +420,25 @@ impl Console {
             capture_buffer: None,
             live_stack: Vec::new(),
             style_interner: Arc::new(Mutex::new(StyleInterner::new())),
+            writer_override: None,
         }
+    }
+
+    /// Send all output to a custom writer instead of `std::io::stdout()`.
+    /// Use for log-to-file, in-memory testing, or piping into a pre-existing
+    /// sink (e.g. a network socket). Capture and record modes still take
+    /// precedence over the override.
+    ///
+    /// ```
+    /// # use gilt::console::Console;
+    /// let buf: Vec<u8> = Vec::new();
+    /// let mut console = Console::default().with_writer(buf);
+    /// console.print_text("hello");
+    /// // output is in console's writer, not on stdout
+    /// ```
+    pub fn with_writer<W: std::io::Write + Send + 'static>(mut self, writer: W) -> Self {
+        self.writer_override = Some(Box::new(writer));
+        self
     }
 
     // -- Properties ---------------------------------------------------------

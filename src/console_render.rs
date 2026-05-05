@@ -527,11 +527,20 @@ impl Console {
             return;
         }
 
-        // Default path: render to ANSI and write to stdout immediately.
+        // Default path: render to ANSI and write to the configured sink
+        // (custom writer if set via `Console::with_writer`, else stdout).
         let output = self.render_buffer(segments);
-        use std::io::Write;
-        let _ = std::io::stdout().write_all(output.as_bytes());
-        let _ = std::io::stdout().flush();
+        use std::io::Write as _;
+        match self.writer_override.as_mut() {
+            Some(w) => {
+                let _ = w.write_all(output.as_bytes());
+                let _ = w.flush();
+            }
+            None => {
+                let _ = std::io::stdout().write_all(output.as_bytes());
+                let _ = std::io::stdout().flush();
+            }
+        }
     }
 
     // -- Buffering ----------------------------------------------------------
@@ -577,9 +586,17 @@ impl Console {
             return;
         }
         let output = self.render_buffer(&segments);
-        use std::io::Write;
-        let _ = std::io::stdout().write_all(output.as_bytes());
-        let _ = std::io::stdout().flush();
+        use std::io::Write as _;
+        match self.writer_override.as_mut() {
+            Some(w) => {
+                let _ = w.write_all(output.as_bytes());
+                let _ = w.flush();
+            }
+            None => {
+                let _ = std::io::stdout().write_all(output.as_bytes());
+                let _ = std::io::stdout().flush();
+            }
+        }
     }
 
     /// Convert a slice of segments into an ANSI-rendered string.
