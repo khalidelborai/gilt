@@ -28,7 +28,7 @@ Dave,28,Seattle,DevOps";
     let csv = CsvTable::from_csv_str(csv_data)
         .unwrap()
         .with_title("Team Directory")
-        .with_header_style(Style::parse("bold cyan").unwrap());
+        .with_header_style(Style::parse("bold cyan"));
 
     console.print(&csv);
 
@@ -77,7 +77,7 @@ Go";
 
     let single = CsvTable::from_csv_str(single_col)
         .unwrap()
-        .with_header_style(Style::parse("bold magenta").unwrap());
+        .with_header_style(Style::parse("bold magenta"));
 
     console.print(&single);
 

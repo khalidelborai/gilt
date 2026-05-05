@@ -118,10 +118,7 @@ fn main() {
 
     let custom_columns: Vec<Box<dyn gilt::progress::ProgressColumn>> = vec![
         Box::new(SpinnerColumn::new("dots")),
-        Box::new(
-            TextColumn::new("{task.description}")
-                .with_style(Style::parse("bold cyan").unwrap_or_else(|_| Style::null())),
-        ),
+        Box::new(TextColumn::new("{task.description}").with_style(Style::parse("bold cyan"))),
         Box::new(BarColumn::default()),
         Box::new(TimeRemainingColumn::new()),
     ];

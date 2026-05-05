@@ -538,8 +538,8 @@ mod tests {
 
     #[test]
     fn test_builder_pattern() {
-        let style = Style::parse("bold").unwrap();
-        let guide_style = Style::parse("red").unwrap();
+        let style = Style::parse("bold");
+        let guide_style = Style::parse("red");
 
         let tree = Tree::new(Text::new("root", Style::null()))
             .with_style(style.clone())
@@ -603,8 +603,8 @@ mod tests {
 
     #[test]
     fn test_add_inherits_styles() {
-        let style = Style::parse("bold").unwrap();
-        let guide_style = Style::parse("red").unwrap();
+        let style = Style::parse("bold");
+        let guide_style = Style::parse("red");
 
         let mut tree = Tree::new(Text::new("root", Style::null()))
             .with_style(style.clone())
@@ -724,8 +724,8 @@ mod tests {
 
     #[test]
     fn test_bold_guide_style() {
-        let mut tree = Tree::new(Text::new("root", Style::null()))
-            .with_guide_style(Style::parse("bold").unwrap());
+        let mut tree =
+            Tree::new(Text::new("root", Style::null())).with_guide_style(Style::parse("bold"));
         tree.add(Text::new("child1", Style::null()));
         tree.add(Text::new("child2", Style::null()));
 
@@ -740,7 +740,7 @@ mod tests {
     #[test]
     fn test_double_guide_style() {
         let mut tree = Tree::new(Text::new("root", Style::null()))
-            .with_guide_style(Style::parse("underline2").unwrap());
+            .with_guide_style(Style::parse("underline2"));
         tree.add(Text::new("child1", Style::null()));
         tree.add(Text::new("child2", Style::null()));
 

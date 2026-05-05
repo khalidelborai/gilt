@@ -25,10 +25,7 @@ fn main() {
 
     // Create custom theme
     let mut custom_styles = HashMap::new();
-    custom_styles.insert(
-        "info".to_string(),
-        Style::parse("bold magenta on grey15").unwrap(),
-    );
+    custom_styles.insert("info".to_string(), Style::parse("bold magenta on grey15"));
     let custom_theme = Theme::new(Some(custom_styles), true);
 
     // Push theme

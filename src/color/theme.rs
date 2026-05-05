@@ -123,7 +123,7 @@ impl Theme {
                     )));
                 }
 
-                let style = Style::parse(value).map_err(|e| ThemeFromStrError::Style {
+                let style = Style::parse_strict(value).map_err(|e| ThemeFromStrError::Style {
                     name: name.to_string(),
                     source: e,
                 })?;
@@ -282,19 +282,19 @@ mod tests {
     #[test]
     fn test_theme_new_inherit() {
         let mut custom = HashMap::new();
-        custom.insert("warning".to_string(), Style::parse("red").unwrap());
+        custom.insert("warning".to_string(), Style::parse("red"));
         let theme = Theme::new(Some(custom), true);
 
         // Custom style is present
-        assert_eq!(theme.get("warning").unwrap(), &Style::parse("red").unwrap());
+        assert_eq!(theme.get("warning").unwrap(), &Style::parse("red"));
         // Inherited default style is also present
-        assert_eq!(theme.get("dim").unwrap(), &Style::parse("dim").unwrap());
+        assert_eq!(theme.get("dim").unwrap(), &Style::parse("dim"));
     }
 
     #[test]
     fn test_theme_new_no_inherit() {
         let mut custom = HashMap::new();
-        custom.insert("warning".to_string(), Style::parse("red").unwrap());
+        custom.insert("warning".to_string(), Style::parse("red"));
         let theme = Theme::new(Some(custom), false);
 
         // Custom style is present
@@ -313,7 +313,7 @@ mod tests {
     #[test]
     fn test_theme_config() {
         let mut custom = HashMap::new();
-        custom.insert("warning".to_string(), Style::parse("red").unwrap());
+        custom.insert("warning".to_string(), Style::parse("red"));
         let theme = Theme::new(Some(custom), true);
         let config = theme.config();
         assert!(config.starts_with("[styles]\n"));
@@ -323,8 +323,8 @@ mod tests {
     #[test]
     fn test_theme_config_sorted() {
         let mut custom = HashMap::new();
-        custom.insert("zebra".to_string(), Style::parse("bold").unwrap());
-        custom.insert("alpha".to_string(), Style::parse("dim").unwrap());
+        custom.insert("zebra".to_string(), Style::parse("bold"));
+        custom.insert("alpha".to_string(), Style::parse("dim"));
         let theme = Theme::new(Some(custom), false);
         let config = theme.config();
         let lines: Vec<&str> = config.lines().collect();
@@ -343,46 +343,43 @@ mod tests {
     #[test]
     fn test_theme_stack_basic() {
         let mut custom = HashMap::new();
-        custom.insert("warning".to_string(), Style::parse("red").unwrap());
+        custom.insert("warning".to_string(), Style::parse("red"));
         let theme = Theme::new(Some(custom), true);
         let stack = ThemeStack::new(theme);
-        assert_eq!(stack.get("warning").unwrap(), &Style::parse("red").unwrap());
+        assert_eq!(stack.get("warning").unwrap(), &Style::parse("red"));
     }
 
     #[test]
     fn test_theme_stack_push_pop() {
         let mut custom = HashMap::new();
-        custom.insert("warning".to_string(), Style::parse("red").unwrap());
+        custom.insert("warning".to_string(), Style::parse("red"));
         let theme = Theme::new(Some(custom), true);
         let mut stack = ThemeStack::new(theme);
 
         // Verify base style
-        assert_eq!(stack.get("warning").unwrap(), &Style::parse("red").unwrap());
+        assert_eq!(stack.get("warning").unwrap(), &Style::parse("red"));
 
         // Push override
         let mut override_styles = HashMap::new();
-        override_styles.insert("warning".to_string(), Style::parse("bold yellow").unwrap());
+        override_styles.insert("warning".to_string(), Style::parse("bold yellow"));
         let new_theme = Theme::new(Some(override_styles), false);
         stack.push_theme(new_theme, true);
-        assert_eq!(
-            stack.get("warning").unwrap(),
-            &Style::parse("bold yellow").unwrap()
-        );
+        assert_eq!(stack.get("warning").unwrap(), &Style::parse("bold yellow"));
 
         // Pop restores original
         stack.pop_theme().unwrap();
-        assert_eq!(stack.get("warning").unwrap(), &Style::parse("red").unwrap());
+        assert_eq!(stack.get("warning").unwrap(), &Style::parse("red"));
     }
 
     #[test]
     fn test_theme_stack_push_no_inherit() {
         let mut custom = HashMap::new();
-        custom.insert("warning".to_string(), Style::parse("red").unwrap());
+        custom.insert("warning".to_string(), Style::parse("red"));
         let theme = Theme::new(Some(custom), true);
         let mut stack = ThemeStack::new(theme);
 
         let mut override_styles = HashMap::new();
-        override_styles.insert("alert".to_string(), Style::parse("bold").unwrap());
+        override_styles.insert("alert".to_string(), Style::parse("bold"));
         let new_theme = Theme::new(Some(override_styles), false);
         stack.push_theme(new_theme, false);
 
@@ -430,10 +427,10 @@ mod tests {
     fn test_theme_override_default() {
         // Override a default style
         let mut custom = HashMap::new();
-        custom.insert("bold".to_string(), Style::parse("italic").unwrap());
+        custom.insert("bold".to_string(), Style::parse("italic"));
         let theme = Theme::new(Some(custom), true);
         // The "bold" name now maps to italic style
-        assert_eq!(theme.get("bold").unwrap(), &Style::parse("italic").unwrap());
+        assert_eq!(theme.get("bold").unwrap(), &Style::parse("italic"));
     }
 
     // ---- File-loading / INI parsing tests ----
@@ -447,18 +444,9 @@ warning = magenta
 danger = bold red
 ";
         let theme = Theme::from_str(content, false).unwrap();
-        assert_eq!(
-            theme.get("info").unwrap(),
-            &Style::parse("dim cyan").unwrap()
-        );
-        assert_eq!(
-            theme.get("warning").unwrap(),
-            &Style::parse("magenta").unwrap()
-        );
-        assert_eq!(
-            theme.get("danger").unwrap(),
-            &Style::parse("bold red").unwrap()
-        );
+        assert_eq!(theme.get("info").unwrap(), &Style::parse("dim cyan"));
+        assert_eq!(theme.get("warning").unwrap(), &Style::parse("magenta"));
+        assert_eq!(theme.get("danger").unwrap(), &Style::parse("bold red"));
         // No inheritance — only the 3 styles we defined
         assert_eq!(theme.styles.len(), 3);
     }
@@ -471,10 +459,7 @@ info = dim cyan
 ";
         let theme = Theme::from_str(content, true).unwrap();
         // Our custom style is present
-        assert_eq!(
-            theme.get("info").unwrap(),
-            &Style::parse("dim cyan").unwrap()
-        );
+        assert_eq!(theme.get("info").unwrap(), &Style::parse("dim cyan"));
         // Inherited default styles are also present
         assert!(theme.get("dim").is_some());
         assert!(theme.styles.len() > 1);
@@ -581,7 +566,7 @@ this has no equals sign
     #[test]
     fn test_to_config_alias() {
         let mut custom = HashMap::new();
-        custom.insert("info".to_string(), Style::parse("cyan").unwrap());
+        custom.insert("info".to_string(), Style::parse("cyan"));
         let theme = Theme::new(Some(custom), false);
         // to_config and config should return the same thing
         assert_eq!(theme.to_config(), theme.config());
@@ -591,9 +576,9 @@ this has no equals sign
     fn test_round_trip() {
         // Create a theme, export it, re-import it, verify styles match
         let mut custom = HashMap::new();
-        custom.insert("info".to_string(), Style::parse("dim cyan").unwrap());
-        custom.insert("warning".to_string(), Style::parse("magenta").unwrap());
-        custom.insert("danger".to_string(), Style::parse("bold red").unwrap());
+        custom.insert("info".to_string(), Style::parse("dim cyan"));
+        custom.insert("warning".to_string(), Style::parse("magenta"));
+        custom.insert("danger".to_string(), Style::parse("bold red"));
         let original = Theme::new(Some(custom), false);
 
         let config = original.to_config();
@@ -619,14 +604,8 @@ warning = magenta
 ";
         let mut reader = std::io::Cursor::new(content);
         let theme = Theme::read(&mut reader).unwrap();
-        assert_eq!(
-            theme.get("info").unwrap(),
-            &Style::parse("dim cyan").unwrap()
-        );
-        assert_eq!(
-            theme.get("warning").unwrap(),
-            &Style::parse("magenta").unwrap()
-        );
+        assert_eq!(theme.get("info").unwrap(), &Style::parse("dim cyan"));
+        assert_eq!(theme.get("warning").unwrap(), &Style::parse("magenta"));
     }
 
     #[test]
@@ -639,14 +618,8 @@ warning = magenta
             write!(f, "[styles]\ninfo = dim cyan\nwarning = magenta\n").unwrap();
         }
         let theme = Theme::from_file(&path).unwrap();
-        assert_eq!(
-            theme.get("info").unwrap(),
-            &Style::parse("dim cyan").unwrap()
-        );
-        assert_eq!(
-            theme.get("warning").unwrap(),
-            &Style::parse("magenta").unwrap()
-        );
+        assert_eq!(theme.get("info").unwrap(), &Style::parse("dim cyan"));
+        assert_eq!(theme.get("warning").unwrap(), &Style::parse("magenta"));
         // Clean up
         let _ = std::fs::remove_file(&path);
     }
@@ -686,7 +659,7 @@ alert = bold red on white
         let theme = Theme::from_str(content, false).unwrap();
         assert_eq!(
             theme.get("alert").unwrap(),
-            &Style::parse("bold red on white").unwrap()
+            &Style::parse("bold red on white")
         );
     }
 

@@ -274,7 +274,7 @@ impl AnsiDecoder {
                     if code == 0 {
                         self.style = Style::null();
                     } else if let Some(style_str) = sgr_style(code) {
-                        if let Ok(parsed) = Style::parse(style_str) {
+                        if let Ok(parsed) = Style::parse_strict(style_str) {
                             self.style = self.style.clone() + parsed;
                         }
                     } else if code == 38 {

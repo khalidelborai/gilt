@@ -290,7 +290,7 @@ mod tests {
     fn test_styled_content_preserved() {
         let console = make_console(80);
         let opts = console.options();
-        let text = Text::styled("Bold text", Style::parse("bold").unwrap());
+        let text = Text::styled("Bold text", "bold");
 
         let c = Constrain::new(text, Some(40));
         let segments = c.gilt_console(&console, &opts);

@@ -137,9 +137,9 @@ fn show_intro(console: &mut Console) {
     .unwrap();
 
     let info_panel = Panel::new(version_text)
-        .with_title(Text::styled("About", Style::parse("bold cyan").unwrap()))
+        .with_title(Text::styled("About", "bold cyan"))
         .with_box_chars(&ROUNDED)
-        .with_border_style(Style::parse("cyan").unwrap());
+        .with_border_style(Style::parse("cyan"));
     console.print(&info_panel);
 
     console.line(1);
@@ -256,10 +256,10 @@ fn show_widgets(console: &mut Console) {
     )
     .unwrap();
     let panel = Panel::new(panel_content)
-        .with_title(Text::styled("My Panel", Style::parse("bold cyan").unwrap()))
-        .with_subtitle(Text::styled("v0.8.0", Style::parse("dim").unwrap()))
+        .with_title(Text::styled("My Panel", "bold cyan"))
+        .with_subtitle(Text::styled("v0.8.0", "dim"))
         .with_box_chars(&ROUNDED)
-        .with_border_style(Style::parse("blue").unwrap());
+        .with_border_style(Style::parse("blue"));
     console.print(&panel);
     console.line(1);
 
@@ -267,17 +267,17 @@ fn show_widgets(console: &mut Console) {
     console.print_text("[bold blue]Border Styles[/bold blue]");
     let simple_panel = Panel::new(Text::new("SIMPLE borders", Style::null()))
         .with_box_chars(&SIMPLE)
-        .with_border_style(Style::parse("green").unwrap());
+        .with_border_style(Style::parse("green"));
     console.print(&simple_panel);
 
     let heavy_panel = Panel::new(Text::new("HEAVY borders", Style::null()))
         .with_box_chars(&HEAVY)
-        .with_border_style(Style::parse("red").unwrap());
+        .with_border_style(Style::parse("red"));
     console.print(&heavy_panel);
 
     let double_panel = Panel::new(Text::new("DOUBLE borders", Style::null()))
         .with_box_chars(&DOUBLE)
-        .with_border_style(Style::parse("magenta").unwrap());
+        .with_border_style(Style::parse("magenta"));
     console.print(&double_panel);
     console.line(1);
 
@@ -300,12 +300,12 @@ fn show_widgets(console: &mut Console) {
 
     // Tree
     console.print_text("[bold blue]Tree[/bold blue] — Hierarchical data display");
-    let bold_blue = Style::parse("bold blue").unwrap();
-    let green = Style::parse("green").unwrap();
+    let bold_blue = Style::parse("bold blue");
+    let green = Style::parse("green");
     let default = Style::null();
 
     let mut tree = Tree::new(Text::new("my_project/", bold_blue.clone()))
-        .with_guide_style(Style::parse("dim green").unwrap());
+        .with_guide_style(Style::parse("dim green"));
 
     {
         let src = tree.add(Text::new("src/", bold_blue.clone()));
@@ -367,12 +367,12 @@ fn show_widgets(console: &mut Console) {
     console.print(
         &Rule::with_title("Heavy Rule")
             .with_characters("━")
-            .with_style(Style::parse("red").unwrap()),
+            .with_style(Style::parse("red")),
     );
     console.print(
         &Rule::with_title("Double Line")
             .with_characters("=")
-            .with_style(Style::parse("green").unwrap()),
+            .with_style(Style::parse("green")),
     );
     console.line(1);
 
@@ -467,7 +467,7 @@ fn show_new_features(console: &mut Console) {
             Style::null(),
         ),
     )
-    .title_style(Style::parse("bold cyan").unwrap());
+    .title_style(Style::parse("bold cyan"));
     console.print(&accordion_expanded);
     console.line(1);
 
@@ -479,7 +479,7 @@ fn show_new_features(console: &mut Console) {
         ),
     )
     .collapsed(true)
-    .title_style(Style::parse("dim").unwrap());
+    .title_style(Style::parse("dim"));
     console.print(&accordion_collapsed);
     console.line(1);
 
@@ -605,15 +605,12 @@ fn main() {
         live.start();
 
         for i in 0..=5 {
-            let text = Text::new(
-                &format!("Processing... {}/5", i),
-                Style::parse("cyan").unwrap(),
-            );
+            let text = Text::new(&format!("Processing... {}/5", i), Style::parse("cyan"));
             live.update_renderable(text, true);
             thread::sleep(Duration::from_millis(300));
         }
 
-        let done = Text::new("✓ Complete!", Style::parse("bold green").unwrap());
+        let done = Text::new("✓ Complete!", Style::parse("bold green"));
         live.update_renderable(done, true);
         thread::sleep(Duration::from_millis(500));
         live.stop();
@@ -770,11 +767,11 @@ fn make_test_card(console: &mut Console) -> Table {
     {
         let lorem = "Lorem ipsum dolor sit amet, consectetur adipiscing elit.";
 
-        let mut t_left = Text::new(lorem, Style::parse("green").unwrap());
+        let mut t_left = Text::new(lorem, Style::parse("green"));
         t_left.justify = Some(JustifyMethod::Left);
-        let mut t_center = Text::new(lorem, Style::parse("yellow").unwrap());
+        let mut t_center = Text::new(lorem, Style::parse("yellow"));
         t_center.justify = Some(JustifyMethod::Center);
-        let mut t_right = Text::new(lorem, Style::parse("blue").unwrap());
+        let mut t_right = Text::new(lorem, Style::parse("blue"));
         t_right.justify = Some(JustifyMethod::Right);
 
         let mut justify_table = Table::grid(&[]);
@@ -910,7 +907,7 @@ fn make_test_card(console: &mut Console) -> Table {
         use gilt::markdown::Markdown;
 
         let markdown_source = "# Hello\n\nSupports **bold**, *italic*, and `code`.\n\n- Lists\n- Quotes\n\n> Block quote";
-        let left = Text::new(markdown_source, Style::parse("cyan").unwrap());
+        let left = Text::new(markdown_source, Style::parse("cyan"));
         let md = Markdown::new(markdown_source);
 
         let demo = comparison(console, &left, &md);
@@ -919,11 +916,11 @@ fn make_test_card(console: &mut Console) -> Table {
 
     // Row 9: Tree
     {
-        let bold_blue = Style::parse("bold blue").unwrap();
+        let bold_blue = Style::parse("bold blue");
         let default = Style::null();
 
         let mut tree = Tree::new(Text::new("gilt/", bold_blue.clone()))
-            .with_guide_style(Style::parse("dim green").unwrap());
+            .with_guide_style(Style::parse("dim green"));
 
         let src = tree.add(Text::new("src/", bold_blue.clone()));
         src.add(Text::new("console.rs", default.clone()));
@@ -1041,7 +1038,7 @@ fn show_export(console: &mut Console) {
     recording_console.print(&rule);
 
     let mut text = Text::new("Hello from ", Style::null());
-    text.append_str("gilt", Some(Style::parse("bold green").unwrap()));
+    text.append_str("gilt", Some(Style::parse("bold green")));
     text.append_str("! This content is recorded for export.", None);
     recording_console.print(&text);
 
@@ -1065,7 +1062,7 @@ fn show_export(console: &mut Console) {
     console.print(
         &Panel::new(Text::new(&plain, Style::null()))
             .with_box_chars(&SIMPLE)
-            .with_border_style(Style::parse("dim").unwrap()),
+            .with_border_style(Style::parse("dim")),
     );
 
     console.line(1);
@@ -1123,12 +1120,9 @@ fn show_farewell(console: &mut Console) {
     .unwrap();
 
     let farewell_panel = Panel::new(farewell_content)
-        .with_title(Text::styled(
-            " gilt v0.8.0 ",
-            Style::parse("bold green").unwrap(),
-        ))
+        .with_title(Text::styled(" gilt v0.8.0 ", "bold green"))
         .with_box_chars(&ROUNDED)
-        .with_border_style(Style::parse("green").unwrap());
+        .with_border_style(Style::parse("green"));
 
     console.print(&farewell_panel);
 

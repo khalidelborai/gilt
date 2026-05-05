@@ -430,7 +430,7 @@ mod tests {
     #[test]
     fn test_custom_style() {
         let console = make_console(20);
-        let custom_style = Style::parse("bold").unwrap();
+        let custom_style = Style::parse("bold");
         let rule = Rule::new().with_style(custom_style);
         let opts = console.options();
         let segments = rule.gilt_console(&console, &opts);
@@ -463,7 +463,7 @@ mod tests {
             .with_characters("=")
             .with_align(HorizontalAlign::Left)
             .with_end("")
-            .with_style(Style::parse("bold").unwrap());
+            .with_style(Style::parse("bold"));
         assert_eq!(rule.characters, "=");
         assert_eq!(rule.align, HorizontalAlign::Left);
         assert_eq!(rule.end, "");

@@ -19,8 +19,7 @@ fn main() {
 
     // Create a small non-expanding panel with styled content
     let content = Text::new("Gilt", Style::null());
-    let panel =
-        Panel::fit(content).with_style(Style::parse("on red").unwrap_or_else(|_| Style::null()));
+    let panel = Panel::fit(content).with_style(Style::parse("on red"));
 
     // Default justify (no explicit justify)
     console.print_styled(&panel, Some(style), None, None, false, true, false);

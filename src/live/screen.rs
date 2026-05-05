@@ -126,7 +126,7 @@ mod tests {
 
     #[test]
     fn test_with_style() {
-        let style = Style::parse("bold").unwrap();
+        let style = Style::parse("bold");
         let screen = Screen::new(Text::new("x", Style::null())).with_style(style.clone());
         assert_eq!(screen.style, Some(style));
     }

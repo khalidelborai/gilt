@@ -251,7 +251,7 @@ fn export_svg_contains_svg_tags() {
 
 #[test]
 fn style_parse_complex() {
-    let style = Style::parse("bold italic red on blue").unwrap();
+    let style = Style::parse("bold italic red on blue");
     assert_eq!(style.bold(), Some(true));
     assert_eq!(style.italic(), Some(true));
 }

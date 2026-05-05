@@ -93,7 +93,7 @@ fn main() {
         let mut c = Console::new();
         let panel = Panel::new(Text::new("System Status: OK", Style::null()))
             .with_title("Status")
-            .with_border_style(Style::parse("green").unwrap());
+            .with_border_style(Style::parse("green"));
         c.print(&panel);
     });
 

@@ -16,15 +16,15 @@ fn main() {
     ];
 
     for def in definitions {
-        let style = Style::parse(def).unwrap();
+        let style = Style::parse(def);
         let rendered = style.render(def, Some(ColorSystem::TrueColor));
         println!("  {:<35} → {}", def, rendered);
     }
 
     println!("\n=== Style Merging (operator +) ===\n");
 
-    let base = Style::parse("bold red").unwrap();
-    let overlay = Style::parse("italic on blue").unwrap();
+    let base = Style::parse("bold red");
+    let overlay = Style::parse("italic on blue");
     let merged = base.clone() + overlay.clone();
     println!("  base:    {}", base);
     println!("  overlay: {}", overlay);
@@ -36,20 +36,20 @@ fn main() {
 
     println!("\n=== Tri-State Attributes ===\n");
 
-    let style = Style::parse("bold not italic").unwrap();
+    let style = Style::parse("bold not italic");
     println!("  bold:      {:?}", style.bold()); // Some(true)
     println!("  italic:    {:?}", style.italic()); // Some(false)
     println!("  underline: {:?}", style.underline()); // None (not set)
 
     println!("\n=== Style Stack ===\n");
 
-    let mut stack = StyleStack::new(Style::parse("white").unwrap());
+    let mut stack = StyleStack::new(Style::parse("white"));
     println!("  base:   {}", stack.current());
 
-    stack.push(Style::parse("bold").unwrap());
+    stack.push(Style::parse("bold"));
     println!("  +bold:  {}", stack.current());
 
-    stack.push(Style::parse("italic red").unwrap());
+    stack.push(Style::parse("italic red"));
     println!("  +ital:  {}", stack.current());
 
     stack.pop().unwrap();
@@ -60,7 +60,7 @@ fn main() {
 
     println!("\n=== HTML Export ===\n");
 
-    let style = Style::parse("bold italic #e06c75 on #282c34").unwrap();
+    let style = Style::parse("bold italic #e06c75 on #282c34");
     println!("  style: {}", style);
     println!("  css:   {}", style.get_html_style(None));
 

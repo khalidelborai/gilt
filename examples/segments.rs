@@ -7,7 +7,7 @@ use gilt::style::Style;
 fn main() {
     println!("=== Segment Basics ===\n");
 
-    let seg = Segment::styled("Hello, World!", Style::parse("bold green").unwrap());
+    let seg = Segment::styled("Hello, World!", Style::parse("bold green"));
     println!("  text:        {:?}", seg.text);
     println!("  cell_length: {}", seg.cell_length());
     println!("  is_control:  {}", seg.is_control());
@@ -38,8 +38,8 @@ fn main() {
     println!("\n=== Split Lines ===\n");
 
     let segments = vec![
-        Segment::styled("Hello\n", Style::parse("bold").unwrap()),
-        Segment::styled("World!", Style::parse("italic").unwrap()),
+        Segment::styled("Hello\n", Style::parse("bold")),
+        Segment::styled("World!", Style::parse("italic")),
     ];
     let lines = Segment::split_lines(&segments);
     for (i, line) in lines.iter().enumerate() {
@@ -81,8 +81,8 @@ fn main() {
 
     println!("\n=== Divide at Positions ===\n");
 
-    let bold = Style::parse("bold").unwrap();
-    let italic = Style::parse("italic").unwrap();
+    let bold = Style::parse("bold");
+    let italic = Style::parse("italic");
     let segments = vec![
         Segment::styled("Hello", bold),
         Segment::styled(" World!", italic),

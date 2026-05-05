@@ -234,7 +234,7 @@ proptest! {
     #[test]
     fn style_parse_roundtrip(definition in style_definition_strategy()) {
         // Parse the generated definition
-        let style = Style::parse(&definition).unwrap_or_else(|e| panic!("Failed to parse {:?}: {}", definition, e));
+        let style = Style::parse_strict(&definition).unwrap_or_else(|e| panic!("Failed to parse {:?}: {}", definition, e));
         let display = style.to_string();
 
         // Style::null().to_string() produces "none", which is not parseable as
@@ -242,7 +242,7 @@ proptest! {
         let reparse_input = if display == "none" { "" } else { &display };
 
         // The display string should also be parseable
-        let reparsed = Style::parse(reparse_input).unwrap_or_else(|e| panic!(
+        let reparsed = Style::parse_strict(reparse_input).unwrap_or_else(|e| panic!(
             "Failed to reparse display {:?} from original {:?}: {}",
             display, definition, e,
         ));
@@ -263,9 +263,9 @@ proptest! {
             "frame", "encircle",
         ]),
     ) {
-        let style = Style::parse(attr).unwrap();
+        let style = Style::parse(attr);
         let display = style.to_string();
-        let reparsed = Style::parse(&display).unwrap();
+        let reparsed = Style::parse(&display);
         assert_eq!(style, reparsed);
     }
 
@@ -276,9 +276,9 @@ proptest! {
         ]),
     ) {
         let definition = format!("not {}", attr);
-        let style = Style::parse(&definition).unwrap();
+        let style = Style::parse(&definition);
         let display = style.to_string();
-        let reparsed = Style::parse(&display).unwrap();
+        let reparsed = Style::parse(&display);
         assert_eq!(style, reparsed);
     }
 }
@@ -349,7 +349,7 @@ proptest! {
         s in "[a-z]{1,10}",
         cut in 0usize..=15,
     ) {
-        let style = Style::parse("bold red").unwrap();
+        let style = Style::parse("bold red");
         let segment = Segment::styled(&s, style.clone());
         let (left, right) = segment.split_cells(cut);
 

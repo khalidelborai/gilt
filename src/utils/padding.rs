@@ -368,7 +368,7 @@ mod tests {
     #[test]
     fn test_padding_with_styled_content() {
         let console = make_console(20);
-        let text = Text::styled("Bold", Style::parse("bold").unwrap());
+        let text = Text::styled("Bold", "bold");
         let padding = Padding::new(text, PaddingDimensions::Uniform(1), Style::null(), true);
         let opts = console.options();
         let segments = padding.gilt_console(&console, &opts);

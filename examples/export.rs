@@ -24,9 +24,9 @@ fn main() {
 
     // 2. Some styled text
     let mut text = Text::new("Hello from ", Style::null());
-    text.append_str("gilt", Some(Style::parse("bold green").unwrap()));
+    text.append_str("gilt", Some(Style::parse("bold green")));
     text.append_str("! This text is ", None);
-    text.append_str("recorded", Some(Style::parse("italic cyan").unwrap()));
+    text.append_str("recorded", Some(Style::parse("italic cyan")));
     text.append_str(" for export.", None);
     console.print(&text);
 

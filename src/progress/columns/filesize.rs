@@ -19,10 +19,7 @@ impl ProgressColumn for FileSizeColumn {
     fn render(&self, task: &Task) -> Text {
         let size = task.completed as u64;
         let formatted = filesize::decimal(size, 1, " ");
-        Text::new(
-            &formatted,
-            Style::parse("progress.filesize").unwrap_or_else(|_| Style::null()),
-        )
+        Text::new(&formatted, Style::parse("progress.filesize"))
     }
 }
 
@@ -40,9 +37,6 @@ impl ProgressColumn for TotalFileSizeColumn {
     fn render(&self, task: &Task) -> Text {
         let size = task.total.unwrap_or(0.0) as u64;
         let formatted = filesize::decimal(size, 1, " ");
-        Text::new(
-            &formatted,
-            Style::parse("progress.filesize.total").unwrap_or_else(|_| Style::null()),
-        )
+        Text::new(&formatted, Style::parse("progress.filesize.total"))
     }
 }

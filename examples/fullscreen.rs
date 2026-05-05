@@ -36,12 +36,12 @@ fn main() {
 
     // Centered title.
     let title = format!("{:^80}\n", "Gilt Fullscreen Demo");
-    content.append_str(&title, Some(Style::parse("bold magenta").unwrap()));
+    content.append_str(&title, Some(Style::parse("bold magenta")));
 
     content.append_str(&format!("{:^80}\n", ""), None);
 
     let subtitle = format!("{:^80}\n", "A Rust port of Python's rich library");
-    content.append_str(&subtitle, Some(Style::parse("italic cyan").unwrap()));
+    content.append_str(&subtitle, Some(Style::parse("italic cyan")));
 
     content.append_str(&format!("{:^80}\n", ""), None);
 
@@ -52,10 +52,10 @@ fn main() {
     content.append_str(&format!("{:^80}\n", ""), None);
 
     let exit_msg = format!("{:^80}", "Returning to normal screen in 2 seconds...");
-    content.append_str(&exit_msg, Some(Style::parse("dim").unwrap()));
+    content.append_str(&exit_msg, Some(Style::parse("dim")));
 
     // Use the Screen widget to fill exactly width x height.
-    let screen = Screen::new(content).with_style(Style::parse("on black").unwrap());
+    let screen = Screen::new(content).with_style(Style::parse("on black"));
 
     console.print(&screen);
 

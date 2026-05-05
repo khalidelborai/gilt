@@ -75,7 +75,7 @@ mod tests {
     #[test]
     fn test_new_basic() {
         let text = Text::new("Hello", Style::null());
-        let style = Style::parse("bold").unwrap();
+        let style = Style::parse("bold");
         let styled = Styled::new(text.clone(), style.clone());
         assert_eq!(styled.renderable.plain(), "Hello");
         assert_eq!(styled.style, style);
@@ -91,7 +91,7 @@ mod tests {
     #[test]
     fn test_new_complex_style() {
         let text = Text::new("fancy", Style::null());
-        let style = Style::parse("bold italic red on blue").unwrap();
+        let style = Style::parse("bold italic red on blue");
         let styled = Styled::new(text, style.clone());
         assert_eq!(styled.style, style);
     }
@@ -104,7 +104,7 @@ mod tests {
         let opts = console.options();
 
         let text = Text::new("Hello", Style::null());
-        let style = Style::parse("bold").unwrap();
+        let style = Style::parse("bold");
         let styled = Styled::new(text, style);
 
         let segments = styled.gilt_console(&console, &opts);
@@ -127,8 +127,8 @@ mod tests {
         let opts = console.options();
 
         // Create text with an existing span style
-        let text = Text::styled("Hello World", Style::parse("italic").unwrap());
-        let overlay = Style::parse("bold").unwrap();
+        let text = Text::styled("Hello World", "italic");
+        let overlay = Style::parse("bold");
         let styled = Styled::new(text, overlay);
 
         let segments = styled.gilt_console(&console, &opts);
@@ -160,8 +160,8 @@ mod tests {
         let opts = console.options();
 
         let mut text = Text::new("AB", Style::null());
-        text.stylize(Style::parse("italic").unwrap(), 0, Some(2));
-        let styled = Styled::new(text, Style::parse("bold").unwrap());
+        text.stylize(Style::parse("italic"), 0, Some(2));
+        let styled = Styled::new(text, Style::parse("bold"));
 
         let segments = styled.gilt_console(&console, &opts);
         // Find the segment(s) containing "AB"
@@ -182,8 +182,8 @@ mod tests {
         let console = Console::builder().width(80).markup(false).build();
         let opts = console.options();
 
-        let text = Text::new("color test", Style::parse("red").unwrap());
-        let styled = Styled::new(text, Style::parse("bold").unwrap());
+        let text = Text::new("color test", Style::parse("red"));
+        let styled = Styled::new(text, Style::parse("bold"));
 
         let segments = styled.gilt_console(&console, &opts);
         for seg in &segments {
@@ -202,7 +202,7 @@ mod tests {
     fn test_measure_unchanged() {
         let text = Text::new("Hello, World!", Style::null());
         let expected = text.measure();
-        let styled = Styled::new(text, Style::parse("bold italic underline").unwrap());
+        let styled = Styled::new(text, Style::parse("bold italic underline"));
         assert_eq!(styled.measure(), expected);
     }
 
@@ -210,14 +210,14 @@ mod tests {
     fn test_measure_multiline() {
         let text = Text::new("short\na somewhat longer line", Style::null());
         let expected = text.measure();
-        let styled = Styled::new(text, Style::parse("red on blue").unwrap());
+        let styled = Styled::new(text, Style::parse("red on blue"));
         assert_eq!(styled.measure(), expected);
     }
 
     #[test]
     fn test_measure_empty() {
         let text = Text::new("", Style::null());
-        let styled = Styled::new(text, Style::parse("bold").unwrap());
+        let styled = Styled::new(text, Style::parse("bold"));
         assert_eq!(styled.measure(), Measurement::new(0, 0));
     }
 
@@ -247,7 +247,7 @@ mod tests {
     fn test_console_render() {
         let console = Console::builder().width(80).markup(false).build();
         let text = Text::new("via console", Style::null());
-        let styled = Styled::new(text, Style::parse("bold").unwrap());
+        let styled = Styled::new(text, Style::parse("bold"));
         let segments = console.render(&styled, None);
         let combined: String = segments.iter().map(|s| s.text.as_str()).collect();
         assert!(combined.contains("via console"));
@@ -257,10 +257,7 @@ mod tests {
 
     #[test]
     fn test_clone() {
-        let styled = Styled::new(
-            Text::new("clone me", Style::null()),
-            Style::parse("italic").unwrap(),
-        );
+        let styled = Styled::new(Text::new("clone me", Style::null()), Style::parse("italic"));
         let cloned = styled.clone();
         assert_eq!(cloned.renderable.plain(), "clone me");
         assert_eq!(cloned.style, styled.style);

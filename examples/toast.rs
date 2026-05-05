@@ -51,14 +51,14 @@ fn main() {
     println!("\n=== Custom Styling ===\n");
 
     // Custom style with magenta color
-    let custom_style = Style::parse("magenta bold").unwrap();
+    let custom_style = Style::parse("magenta bold");
     Toast::new("Custom notification")
         .toast_type(ToastType::Custom(custom_style))
         .icon("🎉")
         .show(&mut console);
 
     // Custom style with dimmed appearance
-    let subtle_style = Style::parse("dim italic").unwrap();
+    let subtle_style = Style::parse("dim italic");
     Toast::new("Background task completed")
         .toast_type(ToastType::Custom(subtle_style))
         .icon("◌")

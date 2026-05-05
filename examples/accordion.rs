@@ -62,8 +62,8 @@ fn main() {
             Style::null(),
         ),
     )
-    .title_style(Style::parse("bold yellow").unwrap())
-    .icon_style(Style::parse("cyan").unwrap());
+    .title_style(Style::parse("bold yellow"))
+    .icon_style(Style::parse("cyan"));
 
     console.print(&styled);
     console.line(1);
@@ -81,7 +81,7 @@ fn main() {
         ),
     )
     .icons("+", "−")
-    .icon_style(Style::parse("green").unwrap());
+    .icon_style(Style::parse("green"));
 
     console.print(&custom_icons);
     console.line(1);
@@ -197,8 +197,8 @@ fn main() {
     )
     .unwrap();
 
-    let rich_content = Accordion::new("Feature Highlights", rich_text)
-        .title_style(Style::parse("bold cyan").unwrap());
+    let rich_content =
+        Accordion::new("Feature Highlights", rich_text).title_style(Style::parse("bold cyan"));
 
     console.print(&rich_content);
     console.line(1);

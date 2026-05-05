@@ -42,7 +42,7 @@ fn main() {
             Err(_) => {
                 let line = Text::new(
                     &format!("  :{name}:  =>  (not found)"),
-                    Style::parse("dim red").unwrap_or_else(|_| Style::null()),
+                    Style::parse("dim red"),
                 );
                 console.print(&line);
             }
@@ -63,10 +63,7 @@ fn main() {
 
     for sample in &samples {
         let replaced = emoji_replace(sample, None);
-        let before = Text::new(
-            &format!("  Before: {sample}"),
-            Style::parse("dim").unwrap_or_else(|_| Style::null()),
-        );
+        let before = Text::new(&format!("  Before: {sample}"), Style::parse("dim"));
         let after = Text::new(&format!("  After:  {replaced}"), Style::null());
         console.print(&before);
         console.print(&after);
@@ -89,7 +86,7 @@ fn main() {
     let result = emoji_replace(text_with_unknown, None);
     let line = Text::new(
         &format!("  Input:  {text_with_unknown}"),
-        Style::parse("dim").unwrap_or_else(|_| Style::null()),
+        Style::parse("dim"),
     );
     console.print(&line);
     let line = Text::new(&format!("  Output: {result}"), Style::null());

@@ -206,7 +206,7 @@ impl Prompt {
         if self.show_choices {
             if let Some(ref choices) = self.choices {
                 let choices_str = format!("[{}]", choices.join("/"));
-                let choices_style = Style::parse("magenta bold").unwrap_or_else(|_| Style::null());
+                let choices_style = Style::parse("magenta bold");
                 prompt.append_str(" ", None);
                 prompt.append_str(&choices_str, Some(choices_style));
             }
@@ -215,7 +215,7 @@ impl Prompt {
         if self.show_default {
             if let Some(ref default) = self.default {
                 let default_str = format!("({})", default);
-                let default_style = Style::parse("cyan bold").unwrap_or_else(|_| Style::null());
+                let default_style = Style::parse("cyan bold");
                 prompt.append_str(" ", None);
                 prompt.append_str(&default_str, Some(default_style));
             }
@@ -606,8 +606,8 @@ impl Select {
             prompt: prompt.to_string(),
             choices,
             default: None,
-            style: Style::parse("bold").unwrap_or_else(|_| Style::null()),
-            highlight_style: Style::parse("cyan bold").unwrap_or_else(|_| Style::null()),
+            style: Style::parse("bold"),
+            highlight_style: Style::parse("cyan bold"),
         }
     }
 
@@ -831,8 +831,8 @@ impl MultiSelect {
             defaults: Vec::new(),
             min_selections: 0,
             max_selections: None,
-            style: Style::parse("bold").unwrap_or_else(|_| Style::null()),
-            highlight_style: Style::parse("cyan bold").unwrap_or_else(|_| Style::null()),
+            style: Style::parse("bold"),
+            highlight_style: Style::parse("cyan bold"),
         }
     }
 
@@ -1686,14 +1686,14 @@ mod tests {
 
     #[test]
     fn test_select_builder_with_style() {
-        let style = Style::parse("red bold").unwrap();
+        let style = Style::parse("red bold");
         let s = Select::new("Pick", vec!["A".into()]).with_style(style);
         assert_eq!(s.style.bold(), Some(true));
     }
 
     #[test]
     fn test_select_builder_with_highlight_style() {
-        let style = Style::parse("green").unwrap();
+        let style = Style::parse("green");
         let s = Select::new("Pick", vec!["A".into()]).with_highlight_style(style);
         assert!(s.highlight_style.color().is_some());
     }
@@ -1924,14 +1924,14 @@ mod tests {
 
     #[test]
     fn test_multiselect_builder_with_style() {
-        let style = Style::parse("red bold").unwrap();
+        let style = Style::parse("red bold");
         let ms = MultiSelect::new("Pick", vec!["A".into()]).with_style(style);
         assert_eq!(ms.style.bold(), Some(true));
     }
 
     #[test]
     fn test_multiselect_builder_with_highlight_style() {
-        let style = Style::parse("green").unwrap();
+        let style = Style::parse("green");
         let ms = MultiSelect::new("Pick", vec!["A".into()]).with_highlight_style(style);
         assert!(ms.highlight_style.color().is_some());
     }

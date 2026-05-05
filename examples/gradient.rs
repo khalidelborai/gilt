@@ -54,7 +54,7 @@ fn main() {
     // ── Gradient with Bold Style ─────────────────────────────────────────
     console.print(&Rule::with_title("Gradient + Bold Style"));
 
-    let bold_style = Style::parse("bold").unwrap();
+    let bold_style = Style::parse("bold");
     let bold_gradient =
         Gradient::rainbow("Bold rainbow text stands out even more in the terminal!")
             .with_style(bold_style);

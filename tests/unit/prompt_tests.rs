@@ -609,14 +609,14 @@ fn test_select_builder_with_default() {
 
 #[test]
 fn test_select_builder_with_style() {
-    let style = Style::parse("red bold").unwrap();
+    let style = Style::parse("red bold");
     let s = Select::new("Pick", vec!["A".into()]).with_style(style);
     assert_eq!(s.style.bold(), Some(true));
 }
 
 #[test]
 fn test_select_builder_with_highlight_style() {
-    let style = Style::parse("green").unwrap();
+    let style = Style::parse("green");
     let s = Select::new("Pick", vec!["A".into()]).with_highlight_style(style);
     assert!(s.highlight_style.color().is_some());
 }
@@ -847,14 +847,14 @@ fn test_multiselect_builder_with_max() {
 
 #[test]
 fn test_multiselect_builder_with_style() {
-    let style = Style::parse("red bold").unwrap();
+    let style = Style::parse("red bold");
     let ms = MultiSelect::new("Pick", vec!["A".into()]).with_style(style);
     assert_eq!(ms.style.bold(), Some(true));
 }
 
 #[test]
 fn test_multiselect_builder_with_highlight_style() {
-    let style = Style::parse("green").unwrap();
+    let style = Style::parse("green");
     let ms = MultiSelect::new("Pick", vec!["A".into()]).with_highlight_style(style);
     assert!(ms.highlight_style.color().is_some());
 }

@@ -21,7 +21,7 @@ fn main() {
     let padded = Padding::new(
         content,
         PaddingDimensions::Uniform(2),
-        Style::parse("on blue").unwrap(),
+        Style::parse("on blue"),
         true,
     );
     console.print(&padded);
@@ -36,7 +36,7 @@ fn main() {
     let padded2 = Padding::new(
         content2,
         PaddingDimensions::Pair(1, 4),
-        Style::parse("on dark_green").unwrap(),
+        Style::parse("on dark_green"),
         true,
     );
     console.print(&padded2);
@@ -49,7 +49,7 @@ fn main() {
     let padded3 = Padding::new(
         content3,
         PaddingDimensions::Full(0, 8, 0, 4),
-        Style::parse("on red").unwrap(),
+        Style::parse("on red"),
         true,
     );
     console.print(&padded3);

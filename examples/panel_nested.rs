@@ -35,13 +35,13 @@ fn main() {
     // ── Section 2: Panel with styled Text ──────────────────────────────────
     console.print_text("\n[bold cyan]2. Panel with styled Text content[/]");
 
-    let styled_text = Text::styled(
+    let styled_text = Text::styled_with(
         "This text has [bold]bold[/] and [italic green]styled[/] content using markup!",
         Style::null(),
     );
     let styled_panel = Panel::new(styled_text)
         .with_title("Styled Content")
-        .with_border_style(Style::parse("bright_blue").unwrap());
+        .with_border_style(Style::parse("bright_blue"));
     console.print(&styled_panel);
 
     // ── Section 3: Panel containing a Table ────────────────────────────────
@@ -58,14 +58,14 @@ fn main() {
     let table_panel = Panel::new(table_text)
         .with_title("Programming Languages")
         .with_box_chars(&DOUBLE)
-        .with_border_style(Style::parse("magenta").unwrap());
+        .with_border_style(Style::parse("magenta"));
     console.print(&table_panel);
 
     // ── Section 4: Panel containing a Tree ─────────────────────────────────
     console.print_text("\n[bold cyan]4. Panel containing a Tree[/]");
 
-    let bold_green = Style::parse("bold green").unwrap();
-    let dim = Style::parse("dim").unwrap();
+    let bold_green = Style::parse("bold green");
+    let dim = Style::parse("dim");
 
     let mut tree = Tree::new(Text::new("project/", bold_green.clone()));
     {
@@ -89,7 +89,7 @@ fn main() {
     let tree_panel = Panel::new(tree_text)
         .with_title("Project Structure")
         .with_box_chars(&HEAVY)
-        .with_border_style(Style::parse("cyan").unwrap());
+        .with_border_style(Style::parse("cyan"));
     console.print(&tree_panel);
 
     // ── Section 5: Panel containing Columns ────────────────────────────────
@@ -108,7 +108,7 @@ fn main() {
     let columns_panel = Panel::new(columns_text)
         .with_title("Available Options")
         .with_box_chars(&ROUNDED)
-        .with_border_style(Style::parse("yellow").unwrap());
+        .with_border_style(Style::parse("yellow"));
     console.print(&columns_panel);
 
     // ── Section 6: Nested Panels (Panel inside Panel) ──────────────────────
@@ -116,25 +116,25 @@ fn main() {
 
     let inner_panel = Panel::new(Text::new(
         "This is the innermost panel!",
-        Style::parse("italic").unwrap(),
+        Style::parse("italic"),
     ))
     .with_title("Inner")
     .with_box_chars(&ASCII)
-    .with_border_style(Style::parse("dim").unwrap());
+    .with_border_style(Style::parse("dim"));
 
     // Convert inner panel to text for nesting
     let inner_text = Text::from(format!("{}", inner_panel));
     let middle_panel = Panel::new(inner_text)
         .with_title("Middle Layer")
         .with_box_chars(&SQUARE)
-        .with_border_style(Style::parse("bright_green").unwrap());
+        .with_border_style(Style::parse("bright_green"));
 
     // Convert middle panel to text for final nesting
     let middle_text = Text::from(format!("{}", middle_panel));
     let outer_panel = Panel::new(middle_text)
         .with_title("Outer Layer")
         .with_box_chars(&DOUBLE)
-        .with_border_style(Style::parse("bright_red").unwrap());
+        .with_border_style(Style::parse("bright_red"));
 
     console.print(&outer_panel);
 
@@ -151,7 +151,7 @@ fn main() {
     let sys_info_panel = Panel::new(sys_info_text)
         .with_title("System Info")
         .with_box_chars(&ROUNDED)
-        .with_border_style(Style::parse("bright_cyan").unwrap());
+        .with_border_style(Style::parse("bright_cyan"));
 
     // Resources Panel with mini table
     let mut resources_table = Table::grid(&["Resource", "Usage"]);
@@ -164,7 +164,7 @@ fn main() {
     let resources_panel = Panel::new(resources_text)
         .with_title("Resources")
         .with_box_chars(&ROUNDED)
-        .with_border_style(Style::parse("bright_green").unwrap());
+        .with_border_style(Style::parse("bright_green"));
 
     // Status Panel
     let status_text = Text::from(
@@ -176,10 +176,10 @@ fn main() {
     let status_panel = Panel::new(status_text)
         .with_title("Services")
         .with_box_chars(&ROUNDED)
-        .with_border_style(Style::parse("bright_magenta").unwrap());
+        .with_border_style(Style::parse("bright_magenta"));
 
     // Print dashboard panels side by side conceptually
-    console.print(&Rule::with_title("Dashboard").with_style(Style::parse("bright_white").unwrap()));
+    console.print(&Rule::with_title("Dashboard").with_style(Style::parse("bright_white")));
     console.print(&sys_info_panel);
     console.print(&resources_panel);
     console.print(&status_panel);
@@ -202,7 +202,7 @@ fn main() {
     let level1 = Panel::new(Text::from(format!("{}\nLevel 1: Outer", level2)))
         .with_title("L1 - Deep Nest")
         .with_box_chars(&DOUBLE)
-        .with_border_style(Style::parse("bright_yellow").unwrap());
+        .with_border_style(Style::parse("bright_yellow"));
 
     console.print(&level1);
 

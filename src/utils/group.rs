@@ -404,8 +404,8 @@ mod tests {
         let console = make_console(80);
         let opts = console.options();
         let items = vec![
-            Text::styled("Bold item", Style::parse("bold").unwrap()),
-            Text::styled("Italic item", Style::parse("italic").unwrap()),
+            Text::styled("Bold item", "bold"),
+            Text::styled("Italic item", "italic"),
         ];
         let group = Group::new(items);
         let segments = group.gilt_console(&console, &opts);

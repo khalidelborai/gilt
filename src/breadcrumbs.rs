@@ -48,8 +48,8 @@ use crate::style::Style;
 /// // Styled breadcrumbs with custom active style
 /// let crumbs = Breadcrumbs::new(vec!["A".into(), "B".into(), "C".into()])
 ///     .style(Style::null())
-///     .separator_style(Style::parse("dim").unwrap())
-///     .active_style(Style::parse("bold green").unwrap());
+///     .separator_style(Style::parse("dim"))
+///     .active_style(Style::parse("bold green"));
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Breadcrumbs {
@@ -99,7 +99,7 @@ impl Breadcrumbs {
             items,
             separator: " > ".to_string(),
             style: Style::null(),
-            separator_style: Style::parse("dim").unwrap_or_else(|_| Style::null()),
+            separator_style: Style::parse("dim"),
             active_style: None,
         }
     }
@@ -132,7 +132,7 @@ impl Breadcrumbs {
     /// use gilt::style::Style;
     ///
     /// let crumbs = Breadcrumbs::new(vec!["A".into(), "B".into()])
-    ///     .style(Style::parse("blue").unwrap());
+    ///     .style(Style::parse("blue"));
     /// ```
     #[must_use]
     pub fn style(mut self, style: Style) -> Self {
@@ -151,7 +151,7 @@ impl Breadcrumbs {
     /// use gilt::style::Style;
     ///
     /// let crumbs = Breadcrumbs::new(vec!["A".into(), "B".into()])
-    ///     .separator_style(Style::parse("yellow").unwrap());
+    ///     .separator_style(Style::parse("yellow"));
     /// ```
     #[must_use]
     pub fn separator_style(mut self, style: Style) -> Self {
@@ -171,7 +171,7 @@ impl Breadcrumbs {
     /// use gilt::style::Style;
     ///
     /// let crumbs = Breadcrumbs::new(vec!["Home".into(), "Profile".into()])
-    ///     .active_style(Style::parse("bold green").unwrap());
+    ///     .active_style(Style::parse("bold green"));
     /// ```
     #[must_use]
     pub fn active_style(mut self, style: Style) -> Self {
@@ -452,21 +452,21 @@ mod tests {
 
     #[test]
     fn test_builder_style() {
-        let style = Style::parse("blue").unwrap();
+        let style = Style::parse("blue");
         let crumbs = Breadcrumbs::new(vec!["A".into()]).style(style.clone());
         assert_eq!(crumbs.base_style(), &style);
     }
 
     #[test]
     fn test_builder_separator_style() {
-        let style = Style::parse("yellow").unwrap();
+        let style = Style::parse("yellow");
         let crumbs = Breadcrumbs::new(vec!["A".into()]).separator_style(style.clone());
         assert_eq!(crumbs.sep_style(), &style);
     }
 
     #[test]
     fn test_builder_active_style() {
-        let style = Style::parse("bold").unwrap();
+        let style = Style::parse("bold");
         let crumbs = Breadcrumbs::new(vec!["A".into()]).active_style(style.clone());
         assert_eq!(crumbs.active_style_opt(), Some(&style));
     }
@@ -475,9 +475,9 @@ mod tests {
     fn test_builder_chain() {
         let crumbs = Breadcrumbs::new(vec!["Home".into(), "Profile".into()])
             .separator(" / ")
-            .style(Style::parse("white").unwrap())
-            .separator_style(Style::parse("dim").unwrap())
-            .active_style(Style::parse("bold green").unwrap());
+            .style(Style::parse("white"))
+            .separator_style(Style::parse("dim"))
+            .active_style(Style::parse("bold green"));
 
         assert_eq!(crumbs.separator_str(), " / ");
         assert_eq!(crumbs.len(), 2);
@@ -621,7 +621,7 @@ mod tests {
     fn test_clone() {
         let crumbs = Breadcrumbs::new(vec!["A".into(), "B".into()])
             .separator(" / ")
-            .active_style(Style::parse("bold").unwrap());
+            .active_style(Style::parse("bold"));
 
         let cloned = crumbs.clone();
         assert_eq!(crumbs.items(), cloned.items());
@@ -653,7 +653,7 @@ mod tests {
             "Users".into(),
             "User Details".into(),
         ])
-        .active_style(Style::parse("bold").unwrap());
+        .active_style(Style::parse("bold"));
 
         let console = make_console(80);
         let output = render_breadcrumbs(&console, &crumbs);

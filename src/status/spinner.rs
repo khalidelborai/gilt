@@ -249,7 +249,7 @@ mod tests {
 
     #[test]
     fn test_with_style() {
-        let style = Style::parse("bold red").unwrap();
+        let style = Style::parse("bold red");
         let spinner = Spinner::new("dots").unwrap().with_style(style.clone());
         assert!(spinner.style.is_some());
         assert_eq!(spinner.style.unwrap(), style);
@@ -348,7 +348,7 @@ mod tests {
         let mut spinner = Spinner::new("dots").unwrap();
         assert!(spinner.style.is_none());
 
-        let style = Style::parse("bold").unwrap();
+        let style = Style::parse("bold");
         spinner.update(None, Some(style.clone()), None);
         assert_eq!(spinner.style, Some(style));
     }
@@ -471,7 +471,7 @@ mod tests {
 
     #[test]
     fn test_render_with_style() {
-        let style = Style::parse("bold").unwrap();
+        let style = Style::parse("bold");
         let mut spinner = Spinner::new("dots").unwrap().with_style(style);
         let text = spinner.render(0.0);
         // The rendered text should have spans (from the style)

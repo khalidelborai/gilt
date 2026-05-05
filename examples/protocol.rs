@@ -71,7 +71,7 @@ impl protocol::GiltCast for User {
         Box::new(
             Panel::new(content)
                 .with_title("User Profile")
-                .with_border_style(Style::parse("blue").unwrap()),
+                .with_border_style(Style::parse("blue")),
         )
     }
 }

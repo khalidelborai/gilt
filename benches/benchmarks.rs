@@ -23,29 +23,27 @@ fn bench_style_parsing(c: &mut Criterion) {
     let mut group = c.benchmark_group("style_parsing");
 
     group.bench_function("bold_red_on_blue", |b| {
-        b.iter(|| Style::parse(black_box("bold red on blue")).unwrap());
+        b.iter(|| Style::parse(black_box("bold red on blue")));
     });
 
     group.bench_function("dim_italic_underline", |b| {
-        b.iter(|| Style::parse(black_box("dim italic underline")).unwrap());
+        b.iter(|| Style::parse(black_box("dim italic underline")));
     });
 
     group.bench_function("complex_hex_colors", |b| {
-        b.iter(|| {
-            Style::parse(black_box("bold italic underline strike #ff5733 on #1a1a2e")).unwrap()
-        });
+        b.iter(|| Style::parse(black_box("bold italic underline strike #ff5733 on #1a1a2e")));
     });
 
     group.bench_function("combine_three", |b| {
-        let s1 = Style::parse("bold red").unwrap();
-        let s2 = Style::parse("italic on blue").unwrap();
-        let s3 = Style::parse("underline").unwrap();
+        let s1 = Style::parse("bold red");
+        let s2 = Style::parse("italic on blue");
+        let s3 = Style::parse("underline");
         let styles = [s1, s2, s3];
         b.iter(|| Style::combine(black_box(&styles)));
     });
 
     group.bench_function("render_ansi", |b| {
-        let style = Style::parse("bold red on blue").unwrap();
+        let style = Style::parse("bold red on blue");
         b.iter(|| style.render(black_box("Hello, World!"), Some(ColorSystem::TrueColor)));
     });
 
@@ -69,8 +67,8 @@ fn bench_text_creation(c: &mut Criterion) {
     });
 
     group.bench_function("styled", |b| {
-        let style = Style::parse("bold red").unwrap();
-        b.iter(|| Text::styled(black_box("Hello, World!"), style.clone()));
+        let style = Style::parse("bold red");
+        b.iter(|| Text::styled_with(black_box("Hello, World!"), style.clone()));
     });
 
     group.bench_function("from_markup_simple", |b| {
@@ -272,11 +270,8 @@ fn bench_console_render(c: &mut Criterion) {
     )
     .unwrap();
     let styled_panel = Panel::new(styled_panel_text)
-        .with_title(Text::new(
-            "Alert",
-            Style::parse("bold white on red").unwrap(),
-        ))
-        .with_style(Style::parse("red").unwrap());
+        .with_title(Text::new("Alert", Style::parse("bold white on red")))
+        .with_style(Style::parse("red"));
     group.bench_function("panel_styled", |b| {
         b.iter(|| console.render(black_box(&styled_panel), None));
     });
@@ -547,9 +542,9 @@ fn bench_segment_operations(c: &mut Criterion) {
     let mixed_segments: Vec<Segment> = (0..100)
         .map(|i| {
             let style = if i % 3 == 0 {
-                Some(Style::parse("bold").unwrap())
+                Some(Style::parse("bold"))
             } else if i % 3 == 1 {
-                Some(Style::parse("italic").unwrap())
+                Some(Style::parse("italic"))
             } else {
                 None
             };

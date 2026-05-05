@@ -214,10 +214,10 @@ impl ProgressBar {
     fn render_pulse(&self, console: &Console, width: usize) -> Vec<Segment> {
         let fore_style = console
             .get_style(&self.pulse_style)
-            .unwrap_or_else(|_| Style::parse("white").unwrap_or_else(|_| Style::null()));
+            .unwrap_or_else(|_| Style::parse("white"));
         let back_style = console
             .get_style(&self.style)
-            .unwrap_or_else(|_| Style::parse("black").unwrap_or_else(|_| Style::null()));
+            .unwrap_or_else(|_| Style::parse("black"));
 
         let color_system = console.color_system();
         let pulse_segments = self.get_pulse_segments(&fore_style, &back_style, color_system);
