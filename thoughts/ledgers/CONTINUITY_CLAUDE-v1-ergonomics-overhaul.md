@@ -110,29 +110,30 @@ Two structural gaps surfaced in the deep audit, both real (not API ergonomics):
 - Publish gilt-derive 1.0.0 then gilt 1.0.0.
 - Tag, GitHub release, crates.io verification.
 
-## State
+## State (as of 2026-05-05)
 - Done:
-  - [x] Decisions captured (AskUserQuestion 3 rounds 2026-04-29)
-  - [x] v1.0 integration branch created and pushed
-  - [x] Tracking issue #20 opened
-  - [x] Phase 1: Foundation (#21)
-  - [x] Phase 2: Live family setters (#22)
-  - [x] Phase 3: Live::from_renderable (#23)
-  - [x] Phase 4: Table::with_columns + markup (#24)
-  - [x] Phase 5: Padding/Columns + Tier-1/2 gates pass (#25)
-  - [x] Tier-1: 1.16× (target ≤1.30) ✓
-  - [x] Tier-2: 1.98× (target ≤2.00) ✓
-- Now: [→] Phase 6 (Rust-native extensions audit)
-- Decision (round 5 — 2026-04-29): user picked option (b) at gate-pass checkpoint.
-  Skip Phase 6.5 (Traceback widget + deeper Pretty). Defer to v1.1.
-  Remaining: Phase 6 → 7 → 9 → 10.
-- Remaining:
-  - [ ] Phase 6: Rust-native extensions audit
-  - [ ] Phase 7: Derive macros polish
-  - [ ] ~~Phase 6.5: Traceback + Pretty~~ deferred to v1.1
-  - [ ] ~~Phase 8: Examples sweep~~ already met by Phase 5
-  - [ ] Phase 9: Documentation (README + CHANGELOG)
-  - [ ] Phase 10: Release (gilt 1.0.0 + gilt-derive 1.0.0)
+  - [x] All v1.0 phases (#21-#27) — gilt 1.0.0 published
+  - [x] All v1.1 phases (#29-#32) — gilt 1.1.0 published
+  - [x] Cleanup #33 (gilt-derive tests split + v1 capture-path dedupe + perf fix)
+  - [x] Cleanup #34 (5 large test mod extractions, awaiting CI)
+  - [x] Memory entries written (audit-skepticism + v1 release state)
+  - [x] Stale phase branches pruned
+- Now: [→] v1.2 planning (Round 1+2+3 design decisions captured 2026-05-05)
+- v1.2 plan (additive only, no API breaks):
+  - Phase 1.2.1: console.rs tests extraction
+  - Phase 1.2.2: console.rs export_html / export_svg → src/console/export.rs (or sibling)
+  - Phase 1.2.3: ConsoleBuilder → src/console/builder.rs
+  - Phase 1.2.4: capture path → src/console/capture.rs
+  - Phase 1.2.5: render path → src/console/render.rs
+  - Phase 1.2.6: full audit re-verification (single agent, primary-source protocol)
+- v2.0 bundle (deferred breaking changes):
+  - Renderable streaming variant (`fn render_streaming(&self) -> impl Iterator<Item = Segment>`)
+  - Columns parallel-fields collapse to `enum ColumnsItem { Text(String), Widget(Arc<...>) }`
+  - Console::default() lite-mode for capture paths (skip 153-entry HashMap clone)
+  - Padding::wrap-only (drop or hide Padding::new)
+- Out of scope:
+  - emoji_codes.rs (5865 LOC) — pure data table, no split
+  - text/core.rs / table/core.rs / segment.rs — under 40% test ratio, low ROI
 - Remaining:
   - [ ] Phase 1: Foundation
   - [ ] Phase 2: RAII guards
