@@ -8,7 +8,6 @@
 
 use gilt::console::Console;
 use gilt::rule::Rule;
-use gilt::style::Style;
 use gilt::table::Table;
 use gilt::text::Text;
 
