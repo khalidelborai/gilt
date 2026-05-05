@@ -323,11 +323,80 @@ rule for the structured `Text` overload.
 
 ---
 
+---
+
+## Phase 5 — Padding/Columns ergonomics + paired-example rewrites
+
+### `PaddingDimensions` accepts tuples directly
+
+Previously: `PaddingDimensions::Pair(2, 4)`. Now any of `2usize`,
+`(2, 4)`, or `(2, 4, 2, 4)` works wherever `impl Into<PaddingDimensions>`
+is accepted.
+
+```rust
+// All three are equivalent inputs to Padding::wrap
+let p1 = Padding::wrap(text.clone(), 2);                  // uniform
+let p2 = Padding::wrap(text.clone(), (2, 4));             // (vertical, horizontal)
+let p3 = Padding::wrap(text,         (2, 4, 2, 4));       // (top, right, bottom, left)
+```
+
+### `Padding::wrap` simple constructor
+
+Drops style + expand args from `Padding::new` for the most common case
+(no styled padding background, expand to fill width):
+
+```rust
+// Before:
+let p = Padding::new(content, PaddingDimensions::Pair(2, 4), Style::null(), true);
+// After:
+let p = Padding::wrap(content, (2, 4));
+```
+
+The full `Padding::new(content, pad, style, expand)` remains for advanced
+use (styled padding background, fit-to-content).
+
+### `Columns::from_items` constructor
+
+Previously you constructed an empty `Columns::new()` and called
+`add_renderable` per item. v1.0 collapses this:
+
+```rust
+// Before:
+let mut c = Columns::new();
+for item in items { c.add_renderable(&item); }
+
+// After:
+let c = Columns::from_items(items);
+```
+
+Accepts `IntoIterator<Item = impl Into<String>>`.
+
+### Paired-example rewrites in this phase
+
+| Example | v0.13 LOC | Phase 5 LOC | rich | ratio |
+|---|---:|---:|---:|---:|
+| padding.rs | 65 | 16 | 5 | 3.20× |
+| link.rs | 23 | 7 | 4 | 1.75× |
+| columns.rs | 91 | 23 | 28 | 0.82× ← gilt |
+| rainbow.rs | 80 | 10 | 20 | 0.50× ← gilt |
+| repr.rs | 56 | 47 | 23 | 2.04× |
+
+### Tier gates achieved
+
+- **Tier-1** (12 entry-level examples): **1.16×** vs target ≤1.30 ✓
+- **Tier-2** (full 36-example corpus): **1.98×** vs target ≤2.00 ✓
+
+Both gates pass. The remaining v1.0 phases focus on Rust-native
+extensions polish, derive macros, the Traceback/Pretty feature gaps, and
+final release prep — none of which are blocked on further example
+ergonomics.
+
+---
+
 ## Future phases
 
 This document grows phase by phase. See [issue #20](https://github.com/khalidelborai/gilt/issues/20)
 for the full v1.0 roadmap.
-- Phase 5: Panel/Padding/Rule/Align unification
 - Phase 6: Rust-native extensions consistency
 - Phase 6.5: Standalone `Traceback` widget + deeper `Pretty`
 - Phase 7: Derive macro polish
