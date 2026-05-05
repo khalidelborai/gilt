@@ -6,6 +6,12 @@ versioned in lockstep with `gilt`.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.3.0] - 2026-05-06
+
+Lockstep version bump with `gilt 1.3.0` — no source changes in this
+crate. The main crate's v1.3 release adds WebAssembly documentation
++ CI verification; see the main [CHANGELOG.md](../../CHANGELOG.md).
+
 ## [1.2.0] - 2026-05-06
 
 Lockstep version bump with `gilt 1.2.0` — no source changes in this

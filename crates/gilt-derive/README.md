@@ -12,7 +12,7 @@ on `gilt`:
 
 ```toml
 [dependencies]
-gilt = { version = "1.2", features = ["derive"] }
+gilt = { version = "1.3", features = ["derive"] }
 ```
 
 Use the `gilt::derives` namespace to import the macros — it sidesteps the

@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.3.0] - 2026-05-06
+
+WebAssembly compatibility release. No source changes — gilt was already
+WASM-friendly (no `libc`, `crossterm`, or terminal-syscall dependencies)
+since v1.2.0; this release just documents the path and adds CI coverage.
+
+### Added
+
+- **`examples/wasm_export.rs`** — demo of the `record(true)` +
+  `export_text(styles=true)` / `export_html` pipeline. Output suits
+  xterm.js (ANSI) or direct DOM injection (HTML).
+- **`README.md`** new "WebAssembly" section pointing at the demo.
+- **CI**: new `WASM build` job that compiles gilt for
+  `wasm32-unknown-unknown` with `--no-default-features --features
+  json,markdown,syntax`.
+
+### Verified
+
+- `cargo build --target wasm32-unknown-unknown` clean with default
+  features (logging + interactive included — `rpassword` and `log`
+  both build for wasm32, the methods that would actually need stdin
+  are unreachable in browser usage).
+
+### gilt-derive
+
+Lockstep version bump to 1.3.0; no source changes.
+
+### Why this is its own release vs folded into 1.2.0
+
+The 1.2.0 changelog already shipped before the WASM verification
+landed. Documenting WASM support is non-trivial (changes README +
+ships a new example + adds a CI job) and is a discoverability win —
+worth a release note. Fully additive, no breakage.
+
 ## [1.2.0] - 2026-05-06
 
 Additive release. One new public API; everything else is internal
