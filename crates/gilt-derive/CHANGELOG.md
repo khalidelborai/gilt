@@ -6,6 +6,13 @@ versioned in lockstep with `gilt`.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.2.0] - 2026-05-06
+
+Lockstep version bump with `gilt 1.2.0` — no source changes in this
+crate. The main crate's v1.2 release adds `Console::with_writer`
+(additive) and reorganises `console.rs` internally; see the main
+[CHANGELOG.md](../../CHANGELOG.md) for details.
+
 ## [1.1.0] - 2026-05-05
 
 Lockstep version bump with `gilt 1.1.0` — no source changes in this
