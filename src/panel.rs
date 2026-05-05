@@ -113,24 +113,10 @@ impl Panel {
         panel
     }
 
-    /// Wrap any [`Renderable`] widget — `Columns`, `Table`, `Tree`, etc. —
-    /// in a `Panel`. The widget is rendered through a captured console
-    /// and the resulting ANSI is parsed into the `Text` `Panel` actually
-    /// stores. Mirrors [`Live::from_renderable`](crate::live::Live::from_renderable).
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use gilt::columns::Columns;
-    /// use gilt::panel::Panel;
-    /// let cols = Columns::from_items(["one", "two", "three"]);
-    /// let panel = Panel::from_renderable(&cols).with_title("Items");
-    /// ```
+    /// Wrap any [`Renderable`] in a `Panel`. Mirror of
+    /// [`Live::from_renderable`](crate::live::Live::from_renderable).
     pub fn from_renderable<R: crate::console::Renderable>(renderable: &R) -> Self {
-        let mut tmp = crate::console::Console::default();
-        tmp.begin_capture();
-        tmp.print(renderable);
-        Self::new(Text::from_ansi(&tmp.end_capture()))
+        Self::new(crate::console::Console::default().render_widget_to_text(renderable))
     }
 
     // -- Builder methods ----------------------------------------------------

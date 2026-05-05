@@ -320,21 +320,8 @@ impl Status {
         }
     }
 
-    /// Set the status text. Direct ergonomic setter — the v1.0
-    /// replacement for the `update().status(s).apply().unwrap()` chain.
-    ///
-    /// Updates the spinner's accompanying text and pushes the new
-    /// rendering to the live display in one step. For multi-field
-    /// updates (status + spinner + style + speed atomically), use
-    /// [`update`](Self::update).
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use gilt::status::Status;
-    /// let mut s = Status::run("Working...");
-    /// s.set("Almost done");
-    /// ```
+    /// Update the status text. For atomic multi-field updates (status +
+    /// spinner + style + speed), use [`update`](Self::update).
     pub fn set(&mut self, status: &str) {
         self.status_text = status.to_string();
         self.spinner.update(
@@ -344,21 +331,8 @@ impl Status {
         );
     }
 
-    /// Construct a new `Status` and immediately start its live display.
-    /// Combines [`Status::new`] + [`start`](Self::start) into one call so
-    /// the common case is a one-liner.
-    ///
-    /// `Drop` stops the display automatically when the returned value
-    /// goes out of scope — no explicit [`stop`](Self::stop) call required.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use gilt::status::Status;
-    /// let _s = Status::run("Loading...");
-    /// // ... do work ...
-    /// // _s drops at end of scope, terminal is restored.
-    /// ```
+    /// Construct + start in one call. `Drop` calls [`stop`](Self::stop)
+    /// automatically when the returned value goes out of scope.
     pub fn run(status: &str) -> Self {
         let mut s = Self::new(status);
         s.start();

@@ -21,12 +21,9 @@ use crate::text::{JustifyMethod, Text};
 /// Internally a `Table::grid()` is used for rendering.
 #[derive(Clone)]
 pub struct Columns {
-    /// The renderable items (stored as strings, converted to Text on demand).
-    /// Use [`from_items`](Self::from_items) for the string-list case.
     pub renderables: Vec<String>,
-    /// Renderable widgets — Spinners, Panels, Tables, etc. Populated by
-    /// [`from_renderables`](Self::from_renderables). When non-empty, the
-    /// render path uses these instead of the string list.
+    /// Populated by [`from_renderables`](Self::from_renderables); takes
+    /// precedence over `renderables` when non-empty.
     pub widgets: Vec<Arc<dyn Renderable + Send + Sync>>,
     /// Fixed column width, or `None` for auto-detect.
     pub width: Option<usize>,
@@ -47,16 +44,11 @@ pub struct Columns {
 }
 
 impl Columns {
-    /// Build a `Columns` from an iterable of items (strings or anything
-    /// that converts to `String`). The v1.0 ergonomic constructor for
-    /// the common case where you have a `Vec<String>` ready to lay out.
-    ///
-    /// # Examples
+    /// Build a `Columns` from string-like items.
     ///
     /// ```
-    /// use gilt::columns::Columns;
-    /// let langs = ["Rust", "Python", "Go", "TypeScript"];
-    /// let cols = Columns::from_items(langs);
+    /// # use gilt::columns::Columns;
+    /// let cols = Columns::from_items(["Rust", "Python", "Go", "TypeScript"]);
     /// assert_eq!(cols.renderables.len(), 4);
     /// ```
     pub fn from_items<I, S>(items: I) -> Self
@@ -92,24 +84,10 @@ impl Columns {
         self.renderables.push(text.to_string());
     }
 
-    /// Build a `Columns` from an iterable of any [`Renderable`] widgets —
-    /// Spinners, Panels, Tables, etc. The widgets are captured through
-    /// a temporary console at render time and laid out as a grid, like
-    /// rich's `Columns([Spinner(name) for name in SPINNERS])` pattern.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use gilt::columns::Columns;
-    /// use gilt::status::spinner::Spinner;
-    /// use gilt::spinners::SPINNERS;
-    ///
-    /// let spinners: Vec<Spinner> = SPINNERS
-    ///     .keys()
-    ///     .filter_map(|name| Spinner::new(name).ok())
-    ///     .collect();
-    /// let cols = Columns::from_renderables(spinners).with_expand(true);
-    /// ```
+    /// Build a `Columns` from an iterable of [`Renderable`] widgets
+    /// (Spinners, Panels, Tables, …). Items are owned (stored as
+    /// `Arc<dyn Renderable>`); for the string case use
+    /// [`from_items`](Self::from_items).
     pub fn from_renderables<I, R>(items: I) -> Self
     where
         I: IntoIterator<Item = R>,
@@ -248,17 +226,14 @@ impl Default for Columns {
 
 impl Renderable for Columns {
     fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
-        // If widgets are present, render each through a captured console and
-        // parse back to Text. Otherwise, fall back to the string-list path.
         let renderables: Vec<Text> = if !self.widgets.is_empty() {
+            // Share a single capture console across all widgets to avoid
+            // paying Console::default()'s theme-clone + env-detect cost
+            // per widget on every render frame.
+            let mut tmp = Console::default();
             self.widgets
                 .iter()
-                .map(|w| {
-                    let mut tmp = Console::default();
-                    tmp.begin_capture();
-                    tmp.print(w.as_ref());
-                    Text::from_ansi(&tmp.end_capture())
-                })
+                .map(|w| tmp.render_widget_to_text(w.as_ref()))
                 .collect()
         } else {
             self.renderables
