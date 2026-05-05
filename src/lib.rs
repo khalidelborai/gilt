@@ -537,7 +537,7 @@
 //! Enable in `Cargo.toml`:
 //!
 //! ```toml
-//! gilt = { version = "1.0", features = ["derive"] }
+//! gilt = { version = "1.1", features = ["derive"] }
 //! ```
 //!
 //! ## `gilt::derives` namespace

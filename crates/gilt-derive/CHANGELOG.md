@@ -6,6 +6,14 @@ versioned in lockstep with `gilt`.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] - 2026-05-05
+
+Lockstep version bump with `gilt 1.1.0` — no source changes in this
+crate. The main crate's v1.1 closes three v1.0 deferred items
+(`Columns::from_renderables`, `Panel::from_renderable`, paired examples
+for Traceback and Spinner-as-renderable). See the main repo's
+[CHANGELOG.md](../../CHANGELOG.md) for details.
+
 ## [1.0.0] - 2026-04-29
 
 Lockstep version bump with `gilt 1.0.0` — no source changes in this
