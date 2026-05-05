@@ -1,6 +1,6 @@
 [package]
 name = "gilt-derive"
-version = "0.13.0"
+version = "1.0.0"
 edition = "2021"
 description = "Derive macros for the gilt terminal formatting library"
 license = "MIT"

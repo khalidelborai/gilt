@@ -6,6 +6,17 @@ versioned in lockstep with `gilt`.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.0.0] - 2026-04-29
+
+Lockstep version bump with `gilt 1.0.0` — no source changes in this
+crate. The derive macros (Table, Panel, Tree, Columns, Rule, Inspect,
+Renderable) and their generated output are unchanged. The main crate's
+v1.0 ergonomics overhaul (lossy `Style::parse`, `Text::styled`,
+`Console::default`, `Status::set/run`, `Live::set/run`,
+`Live::from_renderable`, `Table::with_columns`, `Padding::wrap`,
+`Columns::from_items`) is described in the main repo's
+[MIGRATION_v1.md](../../MIGRATION_v1.md).
+
 ## [0.13.0] - 2026-04-27
 
 Lockstep version bump with `gilt 0.13.0` — no source changes in this

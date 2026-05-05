@@ -5,6 +5,84 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.0.0] - 2026-04-29
+
+The ergonomics overhaul. v1.0 closes the rich-parity gap on entry-level
+examples while keeping idiomatic Rust at the library level. Both
+verification gates passed against rich's example corpus:
+
+- **Tier-1** (12 entry-level examples): **1.16×** rich line count (target ≤1.30)
+- **Tier-2** (full 36-example paired corpus): **1.98×** rich line count (target ≤2.00)
+
+Single example to motivate: `examples/status.rs` is **13 lines** (rich
+is 13). It was 49 lines in v0.13.x.
+
+See [MIGRATION_v1.md](MIGRATION_v1.md) for the complete before/after
+guide. Highlights:
+
+### Breaking changes
+
+- **`Style::parse(s)`** is now lossy: returns `Style`, falls back to
+  `Style::null()` on bad input. Drops the
+  `.unwrap()` / `.unwrap_or_else(|_| Style::null())` ceremony at every
+  static-literal callsite. Use `Style::parse_strict(s) -> Result<…>`
+  for user-supplied input where syntax errors should surface.
+- **`Text::styled(content, "bold red")`** now takes a markup-string
+  style. The previous `Text::styled(content, Style)` form is renamed
+  to `Text::styled_with`.
+
+### Additive (new ergonomic APIs)
+
+- **`Console::default()`** — already existed; now the documented
+  one-line entry point. Auto-detects color from `NO_COLOR` /
+  `FORCE_COLOR` / `CLICOLOR`.
+- **`Status::run(s) -> Self`** + **`Status::set(&str)`** — auto-start
+  constructor and direct setter. Drops the
+  `update().status().apply().unwrap()` chain.
+- **`Live::run(t)`** + **`Live::set(t)`** — same shape for `Live`.
+  Plus **`Live::from_renderable(&widget)`** + 
+  **`Live::set_renderable_widget(&w)`** for live-updating any
+  `Renderable` (Table, Panel, Tree, …) without manual capture
+  roundtrips.
+- **`Table::with_columns([(header, justify), …])`** — collapses 7-line
+  per-column `add_column(_, _, ColumnOptions { justify: … })` pattern.
+  Markup in `Table::add_row` already worked in 0.13.x; v1.0 documents
+  this prominently.
+- **`Padding::wrap(content, pad)`** — simple constructor. `pad`
+  accepts `usize` (uniform), `(v, h)` tuple, or `(t, r, b, l)` tuple
+  via new `From` impls on `PaddingDimensions`.
+- **`Columns::from_items(I)`** — `IntoIterator<Item = impl Into<String>>`
+  constructor.
+
+### Documentation
+
+- All paired examples rewritten to demonstrate the new ergonomic
+  surface. `examples/columns.rs` and `examples/rainbow.rs` now have
+  fewer lines than their rich equivalents.
+- Per-method rustdoc updated to point users at the recommended v1.0
+  entry points (`Console::default`, `Status::run`, `Live::run`,
+  `Padding::wrap`, etc.) — the original `new()` / `builder()` /
+  `start()` methods remain for advanced use.
+
+### Internal
+
+- Migration sweep across 110+ callsites of `Style::parse(s).unwrap()`
+  and `.unwrap_or_else(|_| Style::null())` reduced gilt's library
+  source by ~70 LOC before any example changes.
+- gilt-derive bumps in lockstep to 1.0.0; codegen unchanged from
+  0.13.x.
+
+### Deferred to v1.1
+
+- Standalone `Traceback` widget that renders an arbitrary error as an
+  embeddable panel. v1.0's tracing/eyre/miette handlers still cover
+  the `?`-propagation path.
+- Recursive `Pretty` printer with `__rich_repr__`-equivalent protocol.
+  Current `Pretty::from_debug` still works; deeper introspection
+  arrives in v1.1.
+- `Columns` accepting `Renderable` items (currently text-only). This
+  unblocks rewriting `examples/spinners.rs` to match rich's pattern.
+
 ## [0.13.0] - 2026-04-27
 
 Breaking release. Removes the three legacy derive aliases that were
