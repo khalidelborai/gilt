@@ -5,6 +5,57 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] - 2026-05-05
+
+Closes the three v1.0 deferred items (#28). Two of them turned out to
+be discoverability problems rather than missing code — the Traceback
+widget and a deeper Pretty already existed in v1.0; v1.1 adds the
+paired examples that surface them.
+
+### Added
+
+- **`Columns::from_renderables<I, R>(I)`** — accepts an iterable of any
+  `Renderable + Send + Sync + 'static` widget (Spinners, Panels, Tables,
+  nested Columns, …). Internally stored as
+  `Vec<Arc<dyn Renderable + Send + Sync>>` on the new `widgets` field;
+  when non-empty, the render path uses these instead of the existing
+  string list. The `add_renderable(&str)` / `from_items(I)` paths are
+  unchanged.
+- **`Panel::from_renderable(&R)`** — captures any Renderable through a
+  temporary console and parses back to Text. Mirrors
+  `Live::from_renderable`.
+- **`examples/spinners.rs`** rewritten — 53 → 29 lines (1.26× rich), now
+  matches rich's `Columns([Spinner(name) for name in SPINNERS])` pattern.
+- **`examples/exception.rs`** new — 43 lines (1.05× rich's
+  `exception.py`), demonstrates the existing `Traceback::from_error`
+  widget on a fallible-divide loop.
+
+### Internal
+
+- `Columns` lost its `Debug` derive (`Arc<dyn Renderable>` doesn't
+  implement Debug). `Clone` retained via Arc-clone semantics.
+- gilt-derive bumps in lockstep to 1.1.0; codegen unchanged from
+  1.0.0.
+
+### Final tier metrics (improved from v1.0)
+
+- Tier-1 (12 entry-level examples): **1.08×** rich (was 1.16× at v1.0)
+- Tier-2 (full 36-example corpus): **1.94×** rich (was 1.98×)
+
+### Discovery findings
+
+- **`Traceback` widget** already existed in v1.0 at
+  `src/error/traceback.rs` — fully-implemented `Renderable` with
+  `from_backtrace` / `from_error` / `from_panic` constructors and
+  syntax-highlighted source frames. The v1.0 audit's claim of a missing
+  widget was a discoverability issue.
+- **`Pretty`** at `src/utils/pretty.rs` is **1525 lines** vs rich's
+  `pretty.py` at **1016 lines** — gilt's is *deeper*, not a stub. Same
+  audit error.
+
+Both findings reduced v1.1's scope from "build new widgets" to "add
+paired examples" — no new widget code shipped.
+
 ## [1.0.0] - 2026-04-29
 
 The ergonomics overhaul. v1.0 closes the rich-parity gap on entry-level
