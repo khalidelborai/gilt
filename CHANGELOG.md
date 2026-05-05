@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.3.1] - 2026-05-06
+
+Patch release. Fixes a `Console: !Sync` regression introduced in v1.2.0
+plus stale doc-comment version refs in `src/lib.rs`.
+
+### Fixed
+
+- **`Console: Sync` restored.** The `writer_override` field added in
+  v1.2.0 was typed `Option<Box<dyn Write + Send>>` (no `+ Sync`),
+  which silently dropped the `Sync` impl on `Console` between v1.1.0
+  and v1.2.0. Code that wrapped a `Console` in `Arc<…>` for
+  cross-task sharing would have started failing to compile after
+  upgrading. Field is now `Option<Box<dyn Write + Send + Sync>>`,
+  matching the `+ Send + Sync` bounds on the public
+  `Console::with_writer<W>` method (also tightened to require `Sync`).
+- **`src/lib.rs:16`/`:573`** stale `gilt = "0.10"` strings in the
+  crate-level docstring updated to `gilt = "1.3"`. These were
+  rendering on docs.rs; users copying from there hit a
+  six-major-versions-old version.
+
+### Added (regression guards)
+
+- `console::tests::console_is_send_and_sync` — compile-time assertion
+  that `Console: Send + Sync`. This is the test that would have caught
+  the v1.2.0 regression.
+- `console::tests::with_writer_routes_output_to_buffer` — exercises
+  the `with_writer` override end-to-end (was previously untested).
+
+### Compatibility
+
+`Console::with_writer<W>` now requires `W: Write + Send + Sync + 'static`
+(was `Send + 'static`). This is technically a tightened trait bound,
+but in practice any writer that was usable as `Send + 'static` and
+not `Sync` would have been awkward to share across threads anyway.
+The 0 in-tree callsites + the absence of `with_writer` from the public
+v1.2.0 examples make this a no-op for downstream code.
+
+### gilt-derive
+
+Lockstep version bump to 1.3.1; no source changes.
+
 ## [1.3.0] - 2026-05-06
 
 WebAssembly compatibility release. No source changes — gilt was already
