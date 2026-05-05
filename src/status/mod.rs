@@ -9,7 +9,7 @@
 //!
 //! let mut status = Status::new("Loading...");
 //! status.start();
-//! status.update().status("Processing...").apply();
+//! status.set("Processing...");
 //! status.stop();
 //! ```
 
@@ -164,7 +164,7 @@ impl<'a> StatusUpdate<'a> {
 /// let mut status = Status::new("Downloading...");
 /// status.start();
 /// // ... do work ...
-/// status.update().status("Compiling...").apply().unwrap();
+/// status.set("Compiling...");
 /// // ... do more work ...
 /// status.stop();
 /// ```
@@ -320,12 +320,64 @@ impl Status {
         }
     }
 
+    /// Set the status text. Direct ergonomic setter — the v1.0
+    /// replacement for the `update().status(s).apply().unwrap()` chain.
+    ///
+    /// Updates the spinner's accompanying text and pushes the new
+    /// rendering to the live display in one step. For multi-field
+    /// updates (status + spinner + style + speed atomically), use
+    /// [`update`](Self::update).
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use gilt::status::Status;
+    /// let mut s = Status::run("Working...");
+    /// s.set("Almost done");
+    /// ```
+    pub fn set(&mut self, status: &str) {
+        self.status_text = status.to_string();
+        self.spinner.update(
+            Some(Text::new(status, Style::null())),
+            Some(self.spinner_style.clone()),
+            Some(self.speed),
+        );
+    }
+
+    /// Construct a new `Status` and immediately start its live display.
+    /// Combines [`Status::new`] + [`start`](Self::start) into one call so
+    /// the common case is a one-liner.
+    ///
+    /// `Drop` stops the display automatically when the returned value
+    /// goes out of scope — no explicit [`stop`](Self::stop) call required.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use gilt::status::Status;
+    /// let _s = Status::run("Loading...");
+    /// // ... do work ...
+    /// // _s drops at end of scope, terminal is restored.
+    /// ```
+    pub fn run(status: &str) -> Self {
+        let mut s = Self::new(status);
+        s.start();
+        s
+    }
+
     /// Start the live display.
+    ///
+    /// Prefer [`Status::run`] for the common case — it constructs and
+    /// starts in one call. Drop will stop the display automatically.
     pub fn start(&mut self) {
         self.live.start();
     }
 
     /// Stop the live display.
+    ///
+    /// You usually do not need to call this — `Status` implements
+    /// [`Drop`] which calls `stop` automatically when the value goes
+    /// out of scope.
     pub fn stop(&mut self) {
         self.live.stop();
     }

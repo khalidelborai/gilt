@@ -404,6 +404,39 @@ impl Live {
         self.update_renderable(renderable, refresh);
     }
 
+    /// Set the renderable and trigger an immediate refresh. Direct
+    /// ergonomic setter — equivalent to `update(r, true)` with no
+    /// boolean noise at the call site.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use gilt::{live::Live, text::Text, style::Style};
+    /// let live = Live::run(Text::new("starting", Style::null()));
+    /// live.set(Text::new("step 2", Style::null()));
+    /// ```
+    pub fn set(&self, renderable: Text) {
+        self.update_renderable(renderable, true);
+    }
+
+    /// Construct a new `Live` and immediately start it. Combines
+    /// [`Live::new`] + [`start`](Self::start) into one call.
+    ///
+    /// `Drop` stops the display automatically when the returned value
+    /// goes out of scope — no explicit [`stop`](Self::stop) call required.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use gilt::{live::Live, text::Text, style::Style};
+    /// let _live = Live::run(Text::new("Hello", Style::null()));
+    /// ```
+    pub fn run(initial: Text) -> Self {
+        let mut live = Self::new(initial);
+        live.start();
+        live
+    }
+
     /// Get a clone of the current renderable.
     pub fn renderable(&self) -> Text {
         // Lock-free read via ArcSwap — no mutex acquisition.
