@@ -1622,3 +1622,50 @@ fn make_default_options() -> ConsoleOptions {
         height: None,
     }
 }
+
+// -- v1.3.1: Sync regression guard + with_writer coverage ----------------
+
+/// Compile-time assertion that `Console: Send + Sync`. The v1.2.0 release
+/// silently lost `Sync` because the writer_override field was typed
+/// `Box<dyn Write + Send>` — without `+ Sync`. This test catches that
+/// class of regression at build time.
+#[test]
+fn console_is_send_and_sync() {
+    fn assert_send<T: Send>() {}
+    fn assert_sync<T: Sync>() {}
+    assert_send::<Console>();
+    assert_sync::<Console>();
+}
+
+#[test]
+fn with_writer_routes_output_to_buffer() {
+    use std::sync::{Arc, Mutex};
+    let sink: Arc<Mutex<Vec<u8>>> = Arc::new(Mutex::new(Vec::new()));
+
+    struct ArcWriter(Arc<Mutex<Vec<u8>>>);
+    impl std::io::Write for ArcWriter {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            self.0.lock().unwrap().extend_from_slice(buf);
+            Ok(buf.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    let mut console = Console::builder()
+        .width(40)
+        .no_color(true)
+        .markup(false)
+        .build()
+        .with_writer(ArcWriter(Arc::clone(&sink)));
+    console.print_text("hello via writer");
+
+    let bytes = sink.lock().unwrap().clone();
+    let captured = String::from_utf8(bytes).unwrap();
+    assert!(
+        captured.contains("hello via writer"),
+        "writer override should receive the printed text, got {:?}",
+        captured
+    );
+}

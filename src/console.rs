@@ -302,7 +302,11 @@ pub struct Console {
     /// Optional output sink override. When `Some`, render output goes here
     /// instead of `std::io::stdout()`. Set via [`Console::with_writer`].
     /// Capture and record modes still take precedence.
-    pub(crate) writer_override: Option<Box<dyn std::io::Write + Send>>,
+    ///
+    /// `+ Send + Sync` (not just `+ Send`) preserves `Console: Sync` so
+    /// downstream code can wrap a Console in `Arc<…>` for cross-task
+    /// sharing — same trait bounds Console had pre-v1.2.0.
+    pub(crate) writer_override: Option<Box<dyn std::io::Write + Send + Sync>>,
 }
 
 impl Console {
@@ -436,7 +440,7 @@ impl Console {
     /// console.print_text("hello");
     /// // output is in console's writer, not on stdout
     /// ```
-    pub fn with_writer<W: std::io::Write + Send + 'static>(mut self, writer: W) -> Self {
+    pub fn with_writer<W: std::io::Write + Send + Sync + 'static>(mut self, writer: W) -> Self {
         self.writer_override = Some(Box::new(writer));
         self
     }

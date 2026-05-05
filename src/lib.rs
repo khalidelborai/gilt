@@ -13,7 +13,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! gilt = "0.10"
+//! gilt = "1.3"
 //! ```
 //!
 //! Then use the [`prelude`] for convenient access to common types:
@@ -570,7 +570,7 @@
 //! For a minimal build with no heavy dependencies:
 //!
 //! ```toml
-//! gilt = { version = "0.10", default-features = false }
+//! gilt = { version = "1.3", default-features = false }
 //! ```
 //!
 //! # Integrations
