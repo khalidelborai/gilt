@@ -1,6 +1,7 @@
 //! Accordion widget -- collapsible content panels for organizing complex output.
 //!
 
+use crate::cells::cell_len;
 use crate::console::{Console, ConsoleOptions, Renderable};
 use crate::segment::Segment;
 use crate::style::Style;
@@ -500,7 +501,7 @@ impl Renderable for Accordion {
 
         // Calculate available width for content
         let max_width = options.max_width;
-        let icon_width = self.current_icon().chars().count() + 1; // icon + space
+        let icon_width = cell_len(self.current_icon()) + 1; // icon + space
         let content_width = max_width.saturating_sub(icon_width.max(self.indent));
 
         // Build header line: icon + space + title

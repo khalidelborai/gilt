@@ -7,6 +7,7 @@
 use std::collections::HashMap;
 use std::sync::Mutex;
 
+use crate::cells::cell_len;
 use crate::console::Console;
 use crate::error::traceback::Traceback;
 use crate::markup;
@@ -301,7 +302,7 @@ impl RichHandler {
         if self.omit_repeated_times {
             let mut last = self.last_time_str.lock().unwrap_or_else(|p| p.into_inner());
             if last.as_ref() == Some(&now) {
-                let blanks = " ".repeat(now.chars().count());
+                let blanks = " ".repeat(cell_len(&now));
                 return Text::new(&blanks, Style::null());
             }
             *last = Some(now.clone());
