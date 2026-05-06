@@ -14,7 +14,7 @@ Beautiful terminal output for Rust: styles, tables, trees, syntax highlighting, 
 
 ```toml
 [dependencies]
-gilt = "1.3"
+gilt = "1.4"
 ```
 
 ```rust
@@ -89,6 +89,34 @@ let html = console.export_html(None, false, true);  // inject into the DOM
 ```
 
 See [`examples/wasm_export.rs`](examples/wasm_export.rs).
+
+## Unicode handling
+
+gilt computes visible cell width via [`unicode-width`](https://docs.rs/unicode-width)
+and iterates by extended grapheme cluster (UAX #29) via
+[`unicode-segmentation`](https://docs.rs/unicode-segmentation) where
+correctness matters.
+
+**Supported (correct visible width and intact iteration):**
+
+- ASCII, Latin-1, Latin Extended
+- CJK fullwidth (Chinese, Japanese, Korean) — 2 cells
+- Single-codepoint emoji — 2 cells
+- ZWJ family clusters (`👨‍👩‍👧`) — single 2-cell unit, never split mid-cluster
+- Flag emoji (`🇺🇸` = 2 regional-indicator codepoints) — single 2-cell unit
+- Variation selector sequences (`❤️` = `❤` + VS-16) — emoji-presentation width
+- Combining mark sequences (`café` as `cafe + ́`) — 0-width combining stays with its base
+
+**Not supported (out of scope, deferred):**
+
+- Bidi text direction (Arabic, Hebrew RTL). `Columns::right_to_left` reverses column order, not character bidi.
+- NFC/NFD normalisation — input is used as-is.
+- Vertical text layout (Mongolian, classical Chinese).
+
+Truncation and cropping (`Console::truncate`, `Text::truncate`,
+`Text::right_crop`, anything routing through `set_cell_size`) snap to
+grapheme-cluster boundaries — a 3-cell crop of `"👨‍👩‍👧 family"` will
+not leave a dangling ZWJ joiner.
 
 ## Performance
 
