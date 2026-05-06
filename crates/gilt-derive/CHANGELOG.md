@@ -6,6 +6,12 @@ versioned in lockstep with `gilt`.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.4.0] - 2026-05-06
+
+Lockstep with `gilt 1.4.0` — no source changes in this crate. The
+main crate adds `unicode-segmentation`-backed grapheme-aware width
+math + truncation. See the main [CHANGELOG.md](../../CHANGELOG.md).
+
 ## [1.3.1] - 2026-05-06
 
 Lockstep with `gilt 1.3.1` patch — no source changes in this crate.

@@ -5,6 +5,60 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.4.0] - 2026-05-06
+
+Unicode-correctness pass. Visible width math now treats multi-codepoint
+graphemes as single visible units; truncation never leaves a dangling
+ZWJ joiner or splits a flag emoji's regional-indicator pair. Public API
+unchanged — downstream code gets correct output without modifications.
+
+### Added
+
+- **`unicode-segmentation = "1"`** as a direct dependency (~50 KB
+  compiled, MIT, zero transitive deps). Builds for `wasm32-unknown-unknown`.
+- **README "Unicode handling" section** documenting what's supported
+  (ASCII, CJK, single-emoji, ZWJ clusters, flag emoji, variation
+  selectors, combining marks) and what's deferred (bidi, NFC/NFD).
+- **`tests/unicode_edge_cases.rs`** — 11 end-to-end assertions
+  covering ZWJ family emoji, US flag, combining acute, Hangul,
+  variation-selector heart, and grapheme-safe `set_cell_size` /
+  `Text::truncate`.
+
+### Fixed
+
+- **Five `.chars().count()` sites that miscounted multi-codepoint
+  graphemes as visible width** now route through `cell_len()`:
+  - `src/accordion.rs:503` icon width
+  - `src/gradient.rs:175` gradient justify-padding
+  - `src/error/logging_handler.rs:304` repeated-time blank padding
+  - `src/utils/bar.rs:182` bar body width
+  - `src/utils/bar.rs:188` bar prefix width
+- **`set_cell_size` (and every caller — `Text::truncate`,
+  `Text::right_crop`, etc.) iterates extended grapheme clusters
+  instead of codepoints** when cropping. A 3-cell crop of
+  `"👨‍👩‍👧 family"` no longer emits `"👨\u{200d}👩"` with a dangling
+  ZWJ; it replaces the partial cluster with whitespace.
+
+### Improves on rich (the upstream Python library)
+
+Rich's `cells.py:194-199` hardcodes special-case logic for `\u200d`
+(ZWJ) and `\ufe0f` (VS-16) only; flag emoji measure as 2 separate
+cells in rich (silent breakage). gilt v1.4 uses true UAX #29
+extended grapheme clusters everywhere — flag emoji, ZWJ families,
+combining marks, and any future emoji-cluster format are handled
+uniformly without per-cluster special cases.
+
+### Performance
+
+`cargo bench --bench benchmarks` against the v1.3.1 baseline:
+**24 statistically-significant improvements (most in the 30-70%
+range), 0 statistically-significant regressions.** Comparison archived
+at `thoughts/research/2026-05-06-bench-comparison.txt`.
+
+### gilt-derive
+
+Lockstep version bump to 1.4.0; no source changes.
+
 ## [1.3.1] - 2026-05-06
 
 Patch release. Fixes a `Console: !Sync` regression introduced in v1.2.0
