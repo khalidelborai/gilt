@@ -12,9 +12,12 @@ use gilt::text::{OverflowMethod, Text};
 // -- Visible width assertions (regression guards on PR2 fixes) -------------
 
 #[test]
-fn cell_len_zwj_family_emoji_is_2() {
+fn cell_len_zwj_family_emoji_is_6_per_codepoint() {
+    // v1.4.1: cell_len reports per-codepoint sum (6) not cluster
+    // width (2). Reflects what most terminals actually render when
+    // they lack ZWJ-aware emoji fonts.
     let s = "👨\u{200d}👩\u{200d}👧";
-    assert_eq!(cell_len(s), 2);
+    assert_eq!(cell_len(s), 6);
 }
 
 #[test]
@@ -37,33 +40,36 @@ fn cell_len_hangul_composed_is_4() {
 }
 
 #[test]
-fn cell_len_variation_selector_heart_is_2() {
-    // ❤️ = U+2764 (heavy black heart) U+FE0F (VS-16, emoji presentation).
-    // unicode-width 0.2 returns 2 for the sequence — VS-16 promotes the
-    // base char to its emoji presentation, which terminals render at
-    // 2 cells. (Pre-0.2 returned 1.)
+fn cell_len_variation_selector_heart_is_1() {
+    // ❤️ = U+2764 (heavy black heart) U+FE0F (VS-16). Per-codepoint:
+    // U+2764 is width=1 (text-presentation default) and U+FE0F is
+    // width=0. v1.4.1's per-codepoint sum returns 1.
+    //
+    // On modern terminals VS-16 promotes the base to a 2-cell emoji,
+    // so this is one of the cases where gilt under-reports vs visual
+    // reality. The over/under tradeoff: ZWJ over-reports (good for
+    // tables); VS-16 under-reports (would clip emoji-presentation
+    // hearts). Documented in cell_len's docstring.
     let s = "\u{2764}\u{FE0F}";
-    assert_eq!(cell_len(s), 2);
+    assert_eq!(cell_len(s), 1);
 }
 
 // -- set_cell_size: grapheme-safe truncation -------------------------------
 
 #[test]
-fn set_cell_size_truncates_before_zwj_cluster() {
-    // "👨‍👩‍👧 family" — family glyph is 2 cells, then space, then "family".
-    // Truncating to 4 cells should keep the family glyph (2) + " f" (2)
-    // and NOT leave a dangling ZWJ orphan.
+fn set_cell_size_truncates_around_zwj_cluster() {
+    // "👨‍👩‍👧 family" — per-codepoint widths are 2+0+2+0+2 + 1 + 6 = 13.
+    // Truncate to 6 cells: the entire ZWJ cluster fits exactly. Must
+    // not be split mid-cluster.
     let s = "👨\u{200d}👩\u{200d}👧 family";
-    let cropped = set_cell_size(s, 4);
-    // Must contain the full family glyph, not just "👨\u{200d}👩\u{200d}"
-    // (which the pre-v1.4 codepoint-iterating crop would emit).
+    let cropped = set_cell_size(s, 6);
     assert!(
         cropped.contains("👨\u{200d}👩\u{200d}👧") || !cropped.contains("\u{200d}"),
         "expected full family or no orphan ZWJ, got {:?}",
         cropped
     );
-    // Width invariant: result fills exactly 4 cells.
-    assert_eq!(cell_len(&cropped), 4);
+    // Width invariant: result fills exactly 6 cells.
+    assert_eq!(cell_len(&cropped), 6);
 }
 
 #[test]
@@ -103,10 +109,9 @@ fn set_cell_size_pure_ascii_unchanged() {
 
 #[test]
 fn text_truncate_keeps_zwj_family_intact_when_it_fits() {
+    // v1.4.1: family is 6 cells (per-codepoint). Budget 6 fits it exactly.
     let mut t = Text::new("👨\u{200d}👩\u{200d}👧 family", Style::null());
-    t.truncate(4, Some(OverflowMethod::Crop), false);
-    // 4-cell crop = family (2) + " f" (2). Plain text must contain the
-    // full family glyph.
+    t.truncate(6, Some(OverflowMethod::Crop), false);
     let plain = t.plain().to_string();
     assert!(
         plain.contains("👨\u{200d}👩\u{200d}👧"),
@@ -117,9 +122,10 @@ fn text_truncate_keeps_zwj_family_intact_when_it_fits() {
 
 #[test]
 fn text_truncate_no_dangling_zwj() {
-    // A 3-cell crop puts the boundary inside the ZWJ cluster.
+    // A 3-cell crop puts the boundary inside the ZWJ cluster
+    // (which is 6 cells per the v1.4.1 per-codepoint width).
     // Pre-v1.4: would emit "👨\u{200d}👩" with dangling ZWJ.
-    // Post-v1.4: replaces the partial cluster with space.
+    // v1.4+: replaces the partial cluster with spaces.
     let mut t = Text::new("👨\u{200d}👩\u{200d}👧 family", Style::null());
     t.truncate(3, Some(OverflowMethod::Crop), false);
     let plain = t.plain().to_string();

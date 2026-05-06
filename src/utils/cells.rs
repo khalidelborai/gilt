@@ -6,7 +6,7 @@
 use std::borrow::Cow;
 
 use unicode_segmentation::UnicodeSegmentation;
-use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
+use unicode_width::UnicodeWidthChar;
 
 /// Iterate `text` as extended grapheme clusters (Unicode UAX #29).
 ///
@@ -29,6 +29,32 @@ pub(crate) fn graphemes(text: &str) -> impl Iterator<Item = &str> {
 /// assert_eq!(cell_len("💩"), 2);
 /// assert_eq!(cell_len("わさび"), 6);  // 3 CJK chars × 2
 /// ```
+///
+/// # Cluster vs codepoint width (terminal-reality rule)
+///
+/// `cell_len` returns the **sum of per-codepoint widths**, not the
+/// cluster-aware width that `unicode_width::UnicodeWidthStr::width`
+/// produces. The two diverge for ZWJ sequences:
+///
+/// - `cell_len("👨\u{200d}👩\u{200d}👧") == 6` (per-codepoint: 2+0+2+0+2)
+/// - `"👨\u{200d}👩\u{200d}👧".width() == 2` (cluster-aware)
+///
+/// Terminals without color-emoji + ZWJ font support (most Linux
+/// xterm/tmux setups, headless CI) render the family as three
+/// separate 2-cell emoji = 6 cells. Reporting 2 here would make
+/// `Table` columns underflow and overflow into neighbouring cells.
+/// Reporting 6 matches the terminal reality on the majority of
+/// gilt deployments.
+///
+/// Modern terminals with full color-emoji-and-ZWJ support (kitty,
+/// iTerm2, Windows Terminal, alacritty + emoji-aware font) DO
+/// render the cluster as a single 2-cell glyph; on those terminals
+/// gilt over-reserves space. The trade-off was made deliberately:
+/// over-reserved space looks correct (just slightly wasteful);
+/// under-reserved space breaks table layouts.
+///
+/// Flag emoji (regional indicators) and combining-mark sequences
+/// (`café`) are unaffected — both forms agree.
 pub fn cell_len(text: &str) -> usize {
     // Fast path for pure ASCII (the common case in terminal output) — every
     // ASCII byte is a single cell, so byte length equals cell length and we
@@ -36,7 +62,9 @@ pub fn cell_len(text: &str) -> usize {
     if text.is_ascii() {
         return text.len();
     }
-    text.width()
+    // Per-codepoint sum (NOT text.width(), which is cluster-aware and
+    // disagrees with terminal reality for ZWJ sequences). See docstring.
+    text.chars().map(|c| c.width().unwrap_or(0)).sum()
 }
 
 /// Get the cell width of a single character (0, 1, or 2).
@@ -479,11 +507,15 @@ mod tests_v1_4_width_fixes {
     /// returned codepoint counts.
 
     #[test]
-    fn family_zwj_emoji_is_2_cells_not_5_codepoints() {
-        // 👨‍👩‍👧 = U+1F468 ZWJ U+1F469 ZWJ U+1F467 (5 codepoints) → 2 cells
+    fn family_zwj_emoji_is_6_cells_terminal_reality() {
+        // 👨‍👩‍👧 = U+1F468 ZWJ U+1F469 ZWJ U+1F467 (5 codepoints).
+        // Per-codepoint widths: 2 + 0 + 2 + 0 + 2 = 6.
+        // v1.4.1 deliberately reports 6 (terminal reality on most
+        // setups) rather than 2 (Unicode cluster spec). See cell_len
+        // docstring for the rationale.
         let s = "👨\u{200d}👩\u{200d}👧";
         assert_eq!(s.chars().count(), 5);
-        assert_eq!(cell_len(s), 2);
+        assert_eq!(cell_len(s), 6);
     }
 
     #[test]

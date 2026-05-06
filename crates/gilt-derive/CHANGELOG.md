@@ -6,6 +6,12 @@ versioned in lockstep with `gilt`.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.4.1] - 2026-05-06
+
+Lockstep with `gilt 1.4.1` patch — no source changes in this crate.
+The main crate switches `cell_len` to per-codepoint summation to
+match terminal reality on setups without ZWJ font support.
+
 ## [1.4.0] - 2026-05-06
 
 Lockstep with `gilt 1.4.0` — no source changes in this crate. The
