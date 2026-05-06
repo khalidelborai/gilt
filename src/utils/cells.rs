@@ -5,7 +5,18 @@
 
 use std::borrow::Cow;
 
+use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
+
+/// Iterate `text` as extended grapheme clusters (Unicode UAX #29).
+///
+/// Use this when slicing or wrapping needs to keep ZWJ sequences
+/// (`👨‍👩‍👧`), flag emoji (`🇺🇸`), and combining-mark sequences
+/// (`café`) intact. For pure-ASCII input, prefer `text.chars()` —
+/// the segmentation pass adds overhead without changing the result.
+pub(crate) fn graphemes(text: &str) -> impl Iterator<Item = &str> {
+    UnicodeSegmentation::graphemes(text, true)
+}
 
 /// Get the cell width of a string (how many terminal columns it occupies).
 ///
@@ -89,23 +100,27 @@ pub fn set_cell_size(text: &str, total: usize) -> Cow<'_, str> {
         return Cow::Borrowed("");
     }
 
-    // Need to crop
+    // Need to crop. Iterate by GRAPHEME CLUSTER (not codepoint) so we
+    // don't leave a dangling ZWJ joiner / variation selector / regional
+    // indicator half. v1.4.0 grapheme-correctness fix; pre-v1.4 used
+    // `text.chars()` which could split inside a ZWJ family emoji.
     let mut result = String::with_capacity(text.len());
     let mut cell_position = 0;
 
-    for c in text.chars() {
-        let char_width = get_character_cell_size(c);
+    for cluster in graphemes(text) {
+        let cluster_width = cell_len(cluster);
 
-        if cell_position + char_width <= total {
-            result.push(c);
-            cell_position += char_width;
+        if cell_position + cluster_width <= total {
+            result.push_str(cluster);
+            cell_position += cluster_width;
         } else if cell_position < total {
-            // We have space left but the character doesn't fit
-            // Replace with space(s) to fill remaining cells
+            // The cluster doesn't fit; replace with space(s) to fill
+            // the remaining width. Matches the pre-v1.4 wide-char-crop
+            // behaviour but at the grapheme-cluster level.
             result.push_str(&" ".repeat(total - cell_position));
             break;
         } else {
-            // Already at target width
+            // Already at target width.
             break;
         }
     }
@@ -450,5 +465,45 @@ mod tests {
             "Newline width should be <= 1, got {}",
             newline_width
         );
+    }
+}
+
+#[cfg(test)]
+mod tests_v1_4_width_fixes {
+    use super::cell_len;
+
+    /// Codepoint-as-width sites (accordion icons, log time alignment,
+    /// bar prefix/body lengths, gradient justification padding) all
+    /// route through `cell_len`. These assertions document the
+    /// correct visible-width values for the inputs that previously
+    /// returned codepoint counts.
+
+    #[test]
+    fn family_zwj_emoji_is_2_cells_not_5_codepoints() {
+        // 👨‍👩‍👧 = U+1F468 ZWJ U+1F469 ZWJ U+1F467 (5 codepoints) → 2 cells
+        let s = "👨\u{200d}👩\u{200d}👧";
+        assert_eq!(s.chars().count(), 5);
+        assert_eq!(cell_len(s), 2);
+    }
+
+    #[test]
+    fn flag_emoji_is_2_cells_not_2_codepoints_misread_as_1_each() {
+        // 🇺🇸 = U+1F1FA U+1F1F8 (2 regional indicators) → 2 cells
+        let s = "\u{1F1FA}\u{1F1F8}";
+        assert_eq!(cell_len(s), 2);
+    }
+
+    #[test]
+    fn combining_acute_zero_width() {
+        // "café" with combining acute = 5 codepoints, 4 cells
+        let s = "cafe\u{0301}";
+        assert_eq!(s.chars().count(), 5);
+        assert_eq!(cell_len(s), 4);
+    }
+
+    #[test]
+    fn ascii_fast_path_unchanged() {
+        assert_eq!(cell_len("hello"), 5);
+        assert_eq!(cell_len(""), 0);
     }
 }

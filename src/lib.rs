@@ -13,7 +13,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! gilt = "1.3"
+//! gilt = "1.4"
 //! ```
 //!
 //! Then use the [`prelude`] for convenient access to common types:
@@ -537,7 +537,7 @@
 //! Enable in `Cargo.toml`:
 //!
 //! ```toml
-//! gilt = { version = "1.3", features = ["derive"] }
+//! gilt = { version = "1.4", features = ["derive"] }
 //! ```
 //!
 //! ## `gilt::derives` namespace
@@ -570,7 +570,7 @@
 //! For a minimal build with no heavy dependencies:
 //!
 //! ```toml
-//! gilt = { version = "1.3", default-features = false }
+//! gilt = { version = "1.4", default-features = false }
 //! ```
 //!
 //! # Integrations

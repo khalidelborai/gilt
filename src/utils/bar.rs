@@ -6,6 +6,7 @@
 
 use std::fmt;
 
+use crate::cells::cell_len;
 use crate::color::Color;
 use crate::console::{Console, ConsoleOptions, Renderable};
 use crate::measure::Measurement;
@@ -179,13 +180,13 @@ impl Renderable for Bar {
         // -- suffix (space after the bar) -----------------------------------
 
         // Use character (cell) count for width arithmetic, not byte count.
-        let body_char_len = body.chars().count();
+        let body_char_len = cell_len(&body);
         let suffix = " ".repeat(width.saturating_sub(body_char_len));
 
         // Combine: skip the prefix portion of body (just like Python's
         // `body[len(prefix):]`).  `prefix` is already the correct number of
         // *characters* wide because it is built from single-cell-wide pieces.
-        let prefix_char_len = prefix.chars().count();
+        let prefix_char_len = cell_len(&prefix);
         let body_tail: String = body.chars().skip(prefix_char_len).collect();
 
         let bar_text = format!("{prefix}{body_tail}{suffix}");
