@@ -464,3 +464,43 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+mod tests_v1_4_width_fixes {
+    use super::cell_len;
+
+    /// Codepoint-as-width sites (accordion icons, log time alignment,
+    /// bar prefix/body lengths, gradient justification padding) all
+    /// route through `cell_len`. These assertions document the
+    /// correct visible-width values for the inputs that previously
+    /// returned codepoint counts.
+
+    #[test]
+    fn family_zwj_emoji_is_2_cells_not_5_codepoints() {
+        // 👨‍👩‍👧 = U+1F468 ZWJ U+1F469 ZWJ U+1F467 (5 codepoints) → 2 cells
+        let s = "👨\u{200d}👩\u{200d}👧";
+        assert_eq!(s.chars().count(), 5);
+        assert_eq!(cell_len(s), 2);
+    }
+
+    #[test]
+    fn flag_emoji_is_2_cells_not_2_codepoints_misread_as_1_each() {
+        // 🇺🇸 = U+1F1FA U+1F1F8 (2 regional indicators) → 2 cells
+        let s = "\u{1F1FA}\u{1F1F8}";
+        assert_eq!(cell_len(s), 2);
+    }
+
+    #[test]
+    fn combining_acute_zero_width() {
+        // "café" with combining acute = 5 codepoints, 4 cells
+        let s = "cafe\u{0301}";
+        assert_eq!(s.chars().count(), 5);
+        assert_eq!(cell_len(s), 4);
+    }
+
+    #[test]
+    fn ascii_fast_path_unchanged() {
+        assert_eq!(cell_len("hello"), 5);
+        assert_eq!(cell_len(""), 0);
+    }
+}

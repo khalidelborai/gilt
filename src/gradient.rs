@@ -17,6 +17,7 @@
 //! let g = Gradient::rainbow("All the colors!");
 //! ```
 
+use crate::cells::cell_len;
 use crate::color::Color;
 use crate::console::{Console, ConsoleOptions, Renderable};
 use crate::segment::Segment;
@@ -172,7 +173,7 @@ impl Renderable for Gradient {
 
             // Apply justification if requested
             if let Some(just) = justify {
-                let line_len = line.chars().count();
+                let line_len = cell_len(line);
                 if line_len < options.max_width {
                     let padding = options.max_width - line_len;
                     match just {
