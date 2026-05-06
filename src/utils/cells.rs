@@ -14,7 +14,6 @@ use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 /// (`👨‍👩‍👧`), flag emoji (`🇺🇸`), and combining-mark sequences
 /// (`café`) intact. For pure-ASCII input, prefer `text.chars()` —
 /// the segmentation pass adds overhead without changing the result.
-#[allow(dead_code)] // wired up by PRs 2-3; landed here in PR 1 as plumbing.
 pub(crate) fn graphemes(text: &str) -> impl Iterator<Item = &str> {
     UnicodeSegmentation::graphemes(text, true)
 }
@@ -101,23 +100,27 @@ pub fn set_cell_size(text: &str, total: usize) -> Cow<'_, str> {
         return Cow::Borrowed("");
     }
 
-    // Need to crop
+    // Need to crop. Iterate by GRAPHEME CLUSTER (not codepoint) so we
+    // don't leave a dangling ZWJ joiner / variation selector / regional
+    // indicator half. v1.4.0 grapheme-correctness fix; pre-v1.4 used
+    // `text.chars()` which could split inside a ZWJ family emoji.
     let mut result = String::with_capacity(text.len());
     let mut cell_position = 0;
 
-    for c in text.chars() {
-        let char_width = get_character_cell_size(c);
+    for cluster in graphemes(text) {
+        let cluster_width = cell_len(cluster);
 
-        if cell_position + char_width <= total {
-            result.push(c);
-            cell_position += char_width;
+        if cell_position + cluster_width <= total {
+            result.push_str(cluster);
+            cell_position += cluster_width;
         } else if cell_position < total {
-            // We have space left but the character doesn't fit
-            // Replace with space(s) to fill remaining cells
+            // The cluster doesn't fit; replace with space(s) to fill
+            // the remaining width. Matches the pre-v1.4 wide-char-crop
+            // behaviour but at the grapheme-cluster level.
             result.push_str(&" ".repeat(total - cell_position));
             break;
         } else {
-            // Already at target width
+            // Already at target width.
             break;
         }
     }
