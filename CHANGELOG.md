@@ -5,6 +5,66 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.4.1] - 2026-05-06
+
+Patch release. Fixes a Unicode-spec-vs-terminal-reality divergence
+that broke `Table` layouts on terminals without color-emoji + ZWJ
+font support (most Linux xterm/tmux setups, headless CI).
+
+### Changed
+
+- **`cell_len(text)` now returns the per-codepoint width sum, not the
+  cluster-aware `unicode_width::UnicodeWidthStr::width(text)` value.**
+  The two differ only for ZWJ sequences:
+
+  | Input | v1.4.0 | v1.4.1 | Most terminals render |
+  |---|---:|---:|---:|
+  | `👨‍👩‍👧` (ZWJ family) | 2 | 6 | 6 (3 separate emoji) |
+  | `🇺🇸` (US flag) | 2 | 2 | 2 |
+  | `café` (combining) | 4 | 4 | 4 |
+  | `中` (CJK) | 2 | 2 | 2 |
+  | `❤️` (VS-16 heart) | 2 | 1 | 1–2 (font-dependent) |
+
+  Tables, columns, padding, and any layout that asks `cell_len("…")`
+  now reserves space matching what the terminal actually draws on
+  the majority of deployments. Terminals with full color-emoji + ZWJ
+  support (kitty, iTerm2, Windows Terminal, alacritty + emoji-aware
+  font) will see slightly over-reserved space on ZWJ sequences —
+  trade-off chosen because over-reserved looks fine, under-reserved
+  breaks layout.
+
+### Fixed
+
+- **`Table` columns containing ZWJ family emoji** (`👨‍👩‍👧`) no longer
+  overflow into neighbouring columns on terminals without ZWJ font
+  support. The user's bug report screenshot showed this directly.
+
+### Test updates
+
+- `family_zwj_emoji_is_2_cells_not_5_codepoints` →
+  `family_zwj_emoji_is_6_cells_terminal_reality` (assertion flipped
+  from `cell_len == 2` to `== 6`).
+- `cell_len_variation_selector_heart_is_2` →
+  `cell_len_variation_selector_heart_is_1` (per-codepoint sum, not
+  emoji-presentation cluster width).
+- `set_cell_size_truncates_before_zwj_cluster` →
+  `set_cell_size_truncates_around_zwj_cluster` (budget bumped 4 → 6
+  to fit the now-6-cell family).
+- `text_truncate_keeps_zwj_family_intact_when_it_fits` budget
+  bumped 4 → 6 for the same reason.
+
+### Unchanged
+
+- `set_cell_size`'s grapheme-cluster iteration (v1.4.0) is preserved.
+  When a ZWJ cluster fits the budget, it's kept whole; when the
+  budget cuts mid-cluster, the partial is replaced with whitespace
+  (no orphan ZWJ joiners).
+- Public API.
+
+### gilt-derive
+
+Lockstep version bump to 1.4.1; no source changes.
+
 ## [1.4.0] - 2026-05-06
 
 Unicode-correctness pass. Visible width math now treats multi-codepoint
