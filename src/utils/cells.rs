@@ -5,7 +5,19 @@
 
 use std::borrow::Cow;
 
+use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
+
+/// Iterate `text` as extended grapheme clusters (Unicode UAX #29).
+///
+/// Use this when slicing or wrapping needs to keep ZWJ sequences
+/// (`👨‍👩‍👧`), flag emoji (`🇺🇸`), and combining-mark sequences
+/// (`café`) intact. For pure-ASCII input, prefer `text.chars()` —
+/// the segmentation pass adds overhead without changing the result.
+#[allow(dead_code)] // wired up by PRs 2-3; landed here in PR 1 as plumbing.
+pub(crate) fn graphemes(text: &str) -> impl Iterator<Item = &str> {
+    UnicodeSegmentation::graphemes(text, true)
+}
 
 /// Get the cell width of a string (how many terminal columns it occupies).
 ///

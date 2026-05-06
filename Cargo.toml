@@ -19,6 +19,7 @@ rust-version = "1.82.0"
 [dependencies]
 thiserror = "2"
 unicode-width = "0.2"
+unicode-segmentation = "1"
 regex = "1"
 serde = { version = "1", optional = true }
 serde_json = { version = "1", optional = true }
