@@ -6,6 +6,18 @@ versioned in lockstep with `gilt`.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.7.0] - 2026-06-05
+
+### Added
+
+- **`text!` function-like macro** — `text!("[bold red]x[/]")` validates gilt
+  markup at compile time (balanced brackets, matched open/close tags, known
+  style tokens — mirroring `gilt`'s `Style::parse`/`Color::parse`) and expands
+  to a `gilt::text::Text`. Bad markup is a `cargo build` error. Re-exported as
+  `gilt::text!` under the `derive` feature.
+
+(Versions 1.5.x–1.6.x: lockstep with `gilt`, no source changes in this crate.)
+
 ## [1.4.1] - 2026-05-06
 
 Lockstep with `gilt 1.4.1` patch — no source changes in this crate.

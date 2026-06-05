@@ -3,7 +3,7 @@ members = ["crates/gilt-derive"]
 
 [package]
 name = "gilt"
-version = "1.6.0"
+version = "1.7.0"
 edition = "2021"
 exclude = [".claude/", ".review/", "vlc.zip"]
 description = "Fast, beautiful terminal formatting for Rust — styles, tables, trees, syntax highlighting, progress bars, markdown."
@@ -25,9 +25,9 @@ serde = { version = "1", optional = true }
 serde_json = { version = "1", optional = true }
 pulldown-cmark = { version = "0.12", optional = true }
 log = { version = "0.4", features = ["std"], optional = true }
-syntect = { version = "5", default-features = false, features = ["default-syntaxes", "default-themes", "regex-fancy", "plist-load"], optional = true }
+syntect = { version = "5", default-features = false, features = ["default-syntaxes", "default-themes", "regex-fancy"], optional = true }
 rpassword = { version = "7", optional = true }
-gilt-derive = { version = "1.5.0", path = "crates/gilt-derive", optional = true }
+gilt-derive = { version = "1.7.0", path = "crates/gilt-derive", optional = true }
 tracing = { version = "0.1", optional = true }
 tracing-subscriber = { version = "0.3", features = ["registry"], optional = true }
 miette = { version = "7", optional = true }
@@ -50,6 +50,10 @@ default = ["json", "markdown", "syntax", "interactive", "logging", "terminal-siz
 json = ["dep:serde", "dep:serde_json"]
 markdown = ["dep:pulldown-cmark"]
 syntax = ["dep:syntect"]
+# Opt-in: load .tmTheme files via syntect's plist loader (native only).
+# Kept out of the default `syntax` path because `plist` pulls `time`, which
+# would bloat the default dep tree and break MSRV 1.82.
+syntax-theme-file = ["syntax", "syntect/plist-load"]
 interactive = ["dep:rpassword"]
 logging = ["dep:log"]
 # Real terminal size detection via ioctl on native targets. Enabled by default.

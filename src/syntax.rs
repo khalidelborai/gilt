@@ -302,15 +302,17 @@ impl Syntax {
     ///
     /// # Examples
     ///
+    /// Requires the opt-in `syntax-theme-file` feature (native only).
+    ///
     /// ```no_run
-    /// # #[cfg(all(feature = "syntax", not(target_arch = "wasm32")))] {
+    /// # #[cfg(all(feature = "syntax-theme-file", not(target_arch = "wasm32")))] {
     /// use gilt::syntax::Syntax;
     ///
     /// let theme = Syntax::load_theme_from_file("/path/to/My.tmTheme").unwrap();
     /// let syntax = Syntax::new("fn main() {}", "rs").with_syntect_theme(theme);
     /// # }
     /// ```
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(all(feature = "syntax-theme-file", not(target_arch = "wasm32")))]
     pub fn load_theme_from_file(
         path: impl AsRef<std::path::Path>,
     ) -> Result<SyntectTheme, SyntaxError> {
@@ -1537,7 +1539,7 @@ mod tests {
         );
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(all(feature = "syntax-theme-file", not(target_arch = "wasm32")))]
     #[test]
     fn test_load_theme_from_file_nonexistent() {
         let result = Syntax::load_theme_from_file("/nonexistent/path/theme.tmTheme");

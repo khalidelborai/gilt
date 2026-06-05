@@ -14,7 +14,7 @@ Beautiful terminal output for Rust: styles, tables, trees, syntax highlighting, 
 
 ```toml
 [dependencies]
-gilt = "1.6"
+gilt = "1.7"
 ```
 
 ```rust
@@ -84,7 +84,7 @@ browser-safe feature set (the default-on `terminal-size` and `interactive`
 features are native-only and excluded here):
 
 ```toml
-gilt = { version = "1.6", default-features = false, features = ["json", "markdown", "syntax"] }
+gilt = { version = "1.7", default-features = false, features = ["json", "markdown", "syntax"] }
 ```
 
 The intended browser path is record-mode + export — always set the width
