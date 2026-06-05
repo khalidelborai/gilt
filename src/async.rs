@@ -362,7 +362,7 @@ impl LiveAsync {
     /// }
     /// ```
     pub async fn update(&mut self, renderable: Text) {
-        let mut state = self.state.lock().await;
+        let state = self.state.lock().await;
         state.live.update_renderable(renderable, true);
     }
 

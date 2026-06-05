@@ -3,7 +3,7 @@
 //! This module enables interop with the anstyle ecosystem (clap, owo-colors, anstream)
 //! by providing `From` implementations for color and style types.
 
-use crate::color::{Color, ColorType};
+use crate::color::Color;
 #[cfg(test)]
 use crate::color_triplet::ColorTriplet;
 use crate::style::{Style, UnderlineStyle};
