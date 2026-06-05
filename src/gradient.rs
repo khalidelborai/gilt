@@ -32,7 +32,7 @@ use crate::text::JustifyMethod;
 ///
 /// Both colors are resolved to RGB triplets (truecolor) and each channel is
 /// interpolated independently.  The result is always a `Color::TrueColor`.
-fn interpolate_color(c1: &Color, c2: &Color, t: f64) -> Color {
+pub(crate) fn interpolate_color(c1: &Color, c2: &Color, t: f64) -> Color {
     let t = t.clamp(0.0, 1.0);
     let t1 = c1.get_truecolor(None, true);
     let t2 = c2.get_truecolor(None, true);

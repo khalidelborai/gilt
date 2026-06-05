@@ -624,3 +624,135 @@ fn suppress_path_non_prefix_not_suppressed() {
     // Neither filename starts with "tokio-", so both are visible.
     assert_eq!(visible.len(), 2);
 }
+
+// -- Task 1: Frame locals builder methods ------------------------------------
+
+#[test]
+fn test_frame_with_locals_builder() {
+    let frame = Frame::new("src/main.rs", Some(10), "foo").with_locals(vec![
+        ("x".to_string(), "42".to_string()),
+        ("name".to_string(), "\"hello\"".to_string()),
+    ]);
+    assert_eq!(frame.locals.len(), 2);
+    assert_eq!(frame.locals[0], ("x".to_string(), "42".to_string()));
+    assert_eq!(frame.locals[1].0, "name");
+}
+
+#[test]
+fn test_frame_with_local_chaining() {
+    let frame = Frame::new("src/main.rs", Some(10), "foo")
+        .with_local("a", "1")
+        .with_local("b", "2")
+        .with_local("c", "3");
+    assert_eq!(frame.locals.len(), 3);
+    assert_eq!(frame.locals[0], ("a".to_string(), "1".to_string()));
+    assert_eq!(frame.locals[2], ("c".to_string(), "3".to_string()));
+}
+
+#[test]
+fn test_frame_default_locals_empty() {
+    let frame = Frame::new("src/main.rs", Some(1), "func");
+    assert!(frame.locals.is_empty());
+}
+
+// -- Task 1: Traceback show_locals render path --------------------------------
+
+#[test]
+fn test_show_locals_true_renders_locals_in_renderable() {
+    let mut tb = Traceback::new()
+        .with_title("LocalsTest")
+        .with_show_locals(true);
+    tb.frames.push(
+        Frame::new("src/main.rs", Some(5), "run")
+            .with_source_line("    let x = 42;")
+            .with_local("x", "42")
+            .with_local("msg", "\"hello world\""),
+    );
+
+    let console = Console::builder()
+        .width(80)
+        .no_color(true)
+        .markup(false)
+        .build();
+    let options = console.options();
+    let segments = tb.gilt_console(&console, &options);
+    let output: String = segments.iter().map(|s| s.text.as_str()).collect();
+
+    assert!(
+        output.contains("x"),
+        "locals 'x' should appear in output; got:\n{}",
+        output
+    );
+    assert!(
+        output.contains("42"),
+        "local value '42' should appear; got:\n{}",
+        output
+    );
+    assert!(
+        output.contains("msg"),
+        "local name 'msg' should appear; got:\n{}",
+        output
+    );
+}
+
+#[test]
+fn test_show_locals_false_does_not_render_locals() {
+    // When show_locals is false, locals should NOT appear in the output.
+    let mut tb = Traceback::new()
+        .with_title("NoLocalsTest")
+        .with_show_locals(false);
+    tb.frames
+        .push(Frame::new("src/main.rs", Some(5), "run").with_local("secret_var", "99999"));
+
+    let console = Console::builder()
+        .width(80)
+        .no_color(true)
+        .markup(false)
+        .build();
+    let options = console.options();
+    let segments = tb.gilt_console(&console, &options);
+    let output: String = segments.iter().map(|s| s.text.as_str()).collect();
+
+    assert!(
+        !output.contains("secret_var"),
+        "locals should not appear when show_locals=false; got:\n{}",
+        output
+    );
+}
+
+#[test]
+fn test_show_locals_true_render_content() {
+    let mut tb = Traceback::new().with_show_locals(true);
+    tb.frames.push(
+        Frame::new("src/lib.rs", Some(1), "f")
+            .with_local("foo", "\"bar\"")
+            .with_local("count", "10"),
+    );
+
+    let content = tb.render_content();
+    let plain = content.plain().to_string();
+
+    assert!(
+        plain.contains("foo"),
+        "render_content should include 'foo'; got: {plain}"
+    );
+    assert!(
+        plain.contains("count"),
+        "render_content should include 'count'; got: {plain}"
+    );
+}
+
+#[test]
+fn test_show_locals_false_render_content() {
+    let mut tb = Traceback::new().with_show_locals(false);
+    tb.frames
+        .push(Frame::new("src/lib.rs", Some(1), "f").with_local("hidden_local", "true"));
+
+    let content = tb.render_content();
+    let plain = content.plain().to_string();
+
+    assert!(
+        !plain.contains("hidden_local"),
+        "render_content should NOT include locals when show_locals=false; got: {plain}"
+    );
+}

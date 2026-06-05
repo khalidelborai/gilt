@@ -158,6 +158,7 @@ impl Renderable for Markdown {
         let mut md_options = Options::empty();
         md_options.insert(Options::ENABLE_TABLES);
         md_options.insert(Options::ENABLE_STRIKETHROUGH);
+        md_options.insert(Options::ENABLE_TASKLISTS);
 
         // P3 perf: iterate the parser directly (no lookahead needed)
         let parser = Parser::new_ext(&self.markup, md_options);
@@ -678,6 +679,23 @@ impl Renderable for Markdown {
                         cell_text.append_str(" ", None);
                     } else {
                         text_buffer.append_str("\n", None);
+                    }
+                }
+
+                // -- GFM task-list markers ------------------------------------
+                // pulldown-cmark emits TaskListMarker *inside* the list item,
+                // before the item's text.  We prepend the checkbox as the
+                // item's bullet/prefix inline with the text buffer.
+                Event::TaskListMarker(checked) => {
+                    // ☑ (U+2611) for checked, ☐ (U+2610) for unchecked
+                    let marker = if checked { "\u{2611} " } else { "\u{2610} " };
+                    let bullet_style = console
+                        .get_style("markdown.item.bullet")
+                        .unwrap_or_else(|_| Style::parse("bold"));
+                    if in_table_cell {
+                        cell_text.append_str(marker, Some(bullet_style));
+                    } else {
+                        text_buffer.append_str(marker, Some(bullet_style));
                     }
                 }
 
