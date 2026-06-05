@@ -1,6 +1,10 @@
 /target
 
+# macOS
+.DS_Store
+
 # Local workflow scratch (not for tracking)
+/.remember/
 /.ck/
 /.ckignore
 /.claude/
