@@ -157,13 +157,13 @@ mod tests {
         }
     }
 
-    fn proxy_with_sink(
-        is_stderr: bool,
-    ) -> (
+    type ProxyWithSinkResult = (
         FileProxy,
         Arc<Mutex<Vec<(String, bool)>>>,
         Arc<Mutex<MockSink>>,
-    ) {
+    );
+
+    fn proxy_with_sink(is_stderr: bool) -> ProxyWithSinkResult {
         let captured = Arc::new(Mutex::new(Vec::new()));
         let sink = Arc::new(Mutex::new(MockSink {
             captured: Arc::clone(&captured),

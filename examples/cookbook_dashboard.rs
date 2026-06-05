@@ -150,7 +150,7 @@ fn main() {
             .with_width(50)
             .with_color(Color::parse(color).unwrap());
         console.print(&bar);
-        let pct_text = Text::styled(&format!("  {pct:>5.1}%"), "bold");
+        let pct_text = Text::styled(format!("  {pct:>5.1}%"), "bold");
         console.print(&pct_text);
     }
 

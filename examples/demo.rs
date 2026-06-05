@@ -1081,7 +1081,7 @@ fn show_export(console: &mut Console) {
 
     if std::fs::write(html_path, &html).is_ok() && std::fs::write(svg_path, &svg).is_ok() {
         console.line(1);
-        console.print_text(&"[green]✓[/green] Files saved to:".to_string());
+        console.print_text("[green]✓[/green] Files saved to:");
         console.print_text(&format!("  HTML: [cyan]{}[/cyan]", html_path));
         console.print_text(&format!("  SVG:  [cyan]{}[/cyan]", svg_path));
     }

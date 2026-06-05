@@ -439,15 +439,15 @@ mod tests {
     #[test]
     fn test_all_errors_implement_debug() {
         // Verify Debug implementation works for all error types
-        format!(
+        let _ = format!(
             "{:?}",
             ColorParseError::InvalidHexFormat("test".to_string())
         );
-        format!("{:?}", StyleError::InvalidSyntax("test".to_string()));
-        format!("{:?}", ConsoleError::Generic("test".to_string()));
-        format!("{:?}", SegmentError::InvalidSegment("test".to_string()));
-        format!("{:?}", CellError::InvalidWidth("test".to_string()));
-        format!("{:?}", PaletteError::InvalidIndex(0));
+        let _ = format!("{:?}", StyleError::InvalidSyntax("test".to_string()));
+        let _ = format!("{:?}", ConsoleError::Generic("test".to_string()));
+        let _ = format!("{:?}", SegmentError::InvalidSegment("test".to_string()));
+        let _ = format!("{:?}", CellError::InvalidWidth("test".to_string()));
+        let _ = format!("{:?}", PaletteError::InvalidIndex(0));
     }
 
     #[test]

@@ -1145,7 +1145,7 @@ mod tests {
         let mut progress_stream = stream.track_progress("Testing", Some(5.0));
 
         let mut count = 0;
-        while let Some(_) = progress_stream.next().await {
+        while progress_stream.next().await.is_some() {
             count += 1;
         }
 

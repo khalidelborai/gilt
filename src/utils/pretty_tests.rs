@@ -52,6 +52,7 @@ fn test_from_str_single_line() {
 #[test]
 fn test_from_debug_struct() {
     #[derive(Debug)]
+    #[allow(dead_code)]
     struct Foo {
         x: i32,
         y: String,
@@ -602,6 +603,7 @@ fn test_max_length_with_nested_arrays() {
 #[test]
 fn test_rebuild_debug_max_string() {
     #[derive(Debug)]
+    #[allow(dead_code)]
     struct Data {
         name: String,
     }
@@ -937,6 +939,7 @@ fn test_type_annotation_for_debug_struct() {
     let console = make_console();
     let opts = console.options();
     #[derive(Debug)]
+    #[allow(dead_code)]
     struct Foo {
         x: i32,
     }
