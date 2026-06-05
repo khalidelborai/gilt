@@ -270,7 +270,8 @@ impl Status {
             .with_get_renderable(move || {
                 let elapsed = current_time_secs() - start;
                 let mut sp = spinner_for_callback.lock().unwrap();
-                sp.render(elapsed)
+                std::sync::Arc::new(sp.render(elapsed))
+                    as std::sync::Arc<dyn crate::console::Renderable + Send + Sync>
             });
 
         let spinner_snapshot = shared_spinner.lock().unwrap().clone();
@@ -340,7 +341,8 @@ impl Status {
             .with_get_renderable(move || {
                 let elapsed = current_time_secs() - start;
                 let mut sp = spinner_for_callback.lock().unwrap();
-                sp.render(elapsed)
+                std::sync::Arc::new(sp.render(elapsed))
+                    as std::sync::Arc<dyn crate::console::Renderable + Send + Sync>
             });
         self
     }
@@ -357,7 +359,8 @@ impl Status {
             .with_get_renderable(move || {
                 let elapsed = current_time_secs() - start;
                 let mut sp = spinner_for_callback.lock().unwrap();
-                sp.render(elapsed)
+                std::sync::Arc::new(sp.render(elapsed))
+                    as std::sync::Arc<dyn crate::console::Renderable + Send + Sync>
             });
         self
     }

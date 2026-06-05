@@ -21,7 +21,7 @@ fn main() {
     )
     .with_title("Spinners");
 
-    let live = Live::from_renderable(&panel).with_refresh_per_second(20.0);
+    let live = Live::from_renderable(panel).with_refresh_per_second(20.0);
     let mut live = live;
     live.start();
     thread::sleep(Duration::from_secs(5));

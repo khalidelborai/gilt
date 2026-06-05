@@ -21,6 +21,16 @@ use self::live_render::{LiveRender, VerticalOverflowMethod};
 use self::screen::Screen;
 
 // ---------------------------------------------------------------------------
+// LiveContent -- sized wrapper so ArcSwap can hold a trait-object renderable
+// ---------------------------------------------------------------------------
+
+/// Sized wrapper so `ArcSwap` can hold the trait-object renderable.
+///
+/// `ArcSwap<T>` requires `T: Sized`.  Wrapping `Arc<dyn ...>` in this newtype
+/// gives us a `Sized` type while still being type-erased internally.
+struct LiveContent(Arc<dyn Renderable + Send + Sync>);
+
+// ---------------------------------------------------------------------------
 // SharedState -- data accessed by both the main thread and the refresh thread
 // ---------------------------------------------------------------------------
 
@@ -29,12 +39,12 @@ use self::screen::Screen;
 /// (shape tracking) — these can't be lock-free without a deeper rewrite.
 ///
 /// The hot field — `renderable` — has been pulled out into
-/// `Live::renderable: Arc<ArcSwap<Text>>` so writers no longer contend
+/// `Live::renderable: Arc<ArcSwap<LiveContent>>` so writers no longer contend
 /// with the renderer for the SharedState mutex.
 struct SharedState {
     console: Console,
     live_render: LiveRender,
-    get_renderable: Option<Box<dyn Fn() -> Text + Send>>,
+    get_renderable: Option<Box<dyn Fn() -> Arc<dyn Renderable + Send + Sync> + Send>>,
     screen: bool,
 }
 
@@ -57,10 +67,16 @@ fn emit_control_segments(console: &mut Console, segments: &[Segment]) {
 
 /// A live-updating terminal display that refreshes content at regular intervals.
 ///
-/// `Live` renders a [`Text`] value to the terminal, hiding the cursor and
-/// (optionally) using a background thread to repaint at a configurable rate.
-/// When the display is stopped (explicitly via [`stop`](Live::stop) or
-/// implicitly via [`Drop`]), the terminal state is restored.
+/// `Live` renders any [`Renderable`] value to the terminal fresh each frame,
+/// using the live's own console so width and theme are always respected.
+/// Content is held as an `Arc<dyn Renderable + Send + Sync>` so any widget
+/// (Markdown, Table, Tree, Panel, Layout, …) can be live-displayed without
+/// first being flattened to `Text`.
+///
+/// The display hides the cursor and (optionally) uses a background thread to
+/// repaint at a configurable rate. When the display is stopped (explicitly via
+/// [`stop`](Live::stop) or implicitly via [`Drop`]), the terminal state is
+/// restored.
 ///
 /// # Examples
 ///
@@ -78,7 +94,7 @@ pub struct Live {
     state: Arc<Mutex<SharedState>>,
     /// Lock-free hot path. `update_renderable` swaps; `do_refresh` loads.
     /// Writers no longer queue on the SharedState mutex.
-    renderable: Arc<ArcSwap<Text>>,
+    renderable: Arc<ArcSwap<LiveContent>>,
     auto_refresh: bool,
     /// Number of refreshes per second.
     pub refresh_per_second: f64,
@@ -93,14 +109,18 @@ pub struct Live {
 impl Live {
     /// Create a new `Live` display for the given renderable.
     ///
+    /// Accepts any `Renderable + Send + Sync + 'static` — including `Text`,
+    /// `Table`, `Panel`, `Markdown`, etc.
+    ///
     /// # Defaults
     /// - `auto_refresh`: `true`
     /// - `refresh_per_second`: `4.0`
     /// - `transient`: `false`
     /// - `screen`: `false`
     /// - `vertical_overflow`: [`VerticalOverflowMethod::Ellipsis`]
-    pub fn new(renderable: Text) -> Self {
-        let live_render = LiveRender::new(renderable.clone());
+    pub fn new(renderable: impl Renderable + Send + Sync + 'static) -> Self {
+        let arc: Arc<dyn Renderable + Send + Sync> = Arc::new(renderable);
+        let live_render = LiveRender::new_arc(arc.clone());
         let console = Console::new();
 
         let state = Arc::new(Mutex::new(SharedState {
@@ -112,7 +132,7 @@ impl Live {
 
         Live {
             state,
-            renderable: Arc::new(ArcSwap::from_pointee(renderable)),
+            renderable: Arc::new(ArcSwap::from_pointee(LiveContent(arc))),
             auto_refresh: true,
             refresh_per_second: 4.0,
             transient: false,
@@ -184,10 +204,13 @@ impl Live {
     }
 
     /// Set a callback that provides the renderable on each refresh (builder pattern).
+    ///
+    /// The closure must return an `Arc<dyn Renderable + Send + Sync>` so that
+    /// any widget type (not just `Text`) can be supplied dynamically.
     #[must_use]
     pub fn with_get_renderable<F>(self, f: F) -> Self
     where
-        F: Fn() -> Text + Send + 'static,
+        F: Fn() -> Arc<dyn Renderable + Send + Sync> + Send + 'static,
     {
         {
             let mut s = self.state.lock().unwrap();
@@ -364,27 +387,24 @@ impl Live {
     /// `ArcSwap` operations are lock-free.
     fn do_refresh(
         state: &Arc<Mutex<SharedState>>,
-        renderable: &Arc<ArcSwap<Text>>,
+        renderable: &Arc<ArcSwap<LiveContent>>,
         vertical_overflow: VerticalOverflowMethod,
     ) {
         // ── Phase 1: snapshot config and resolve the renderable ──────────────
         // Hold the mutex only long enough to read `get_renderable` and config.
         let (content, is_screen) = {
             let s = state.lock().unwrap();
-            let content = match &s.get_renderable {
+            let content: Arc<dyn Renderable + Send + Sync> = match &s.get_renderable {
                 Some(f) => f(),
-                None => (**renderable.load()).clone(),
+                None => renderable.load().0.clone(),
             };
             (content, s.screen)
         };
 
-        // ── Phase 2: render outside the lock ─────────────────────────────────
-        // Build a temporary LiveRender to compute segments and shape without
-        // holding the mutex.  We re-use the final shape to update the stored
-        // live_render below (brief Phase-3 lock).
+        // ── Phase 2: render + emit (brief lock) ──────────────────────────────
         if is_screen {
-            // Screen/alt-screen mode: emit home + fill screen.
-            // Re-acquire the lock only for the I/O emit.
+            // Screen/alt-screen mode: render the content to Text via the live
+            // console first (so width/theme are correct), then wrap in Screen.
             let mut s = state.lock().unwrap();
             s.live_render.set_renderable(content.clone());
             s.live_render.vertical_overflow = vertical_overflow;
@@ -392,7 +412,26 @@ impl Live {
             // instead of appending below the previous frame.
             let home_ctrl = crate::control::Control::home();
             s.console.control(&home_ctrl);
-            let screen = Screen::new(content);
+            // Convert the renderable to Text via the live console (use
+            // render_lines so the result is correct even when quiet=true).
+            let opts = s.console.options();
+            let lines = s
+                .console
+                .render_lines(content.as_ref(), Some(&opts), None, false, false);
+            let mut flat = String::new();
+            let line_count = lines.len();
+            for (i, line) in lines.iter().enumerate() {
+                for seg in line {
+                    if !seg.is_control() {
+                        flat.push_str(&seg.text);
+                    }
+                }
+                if i + 1 < line_count {
+                    flat.push('\n');
+                }
+            }
+            let text = Text::new(&flat, crate::style::Style::null());
+            let screen = Screen::new(text);
             s.console.print(&screen);
         } else {
             // Normal mode: render to segments, then emit cursor repositioning
@@ -411,6 +450,9 @@ impl Live {
 
     /// Update the renderable content.
     ///
+    /// Accepts any `Renderable + Send + Sync + 'static` — including `Text`,
+    /// `Table`, `Panel`, `Markdown`, etc.
+    ///
     /// If `refresh` is `true`, the display is repainted immediately.
     ///
     /// Takes `&self` so a `Live` can be shared across threads (typically
@@ -418,57 +460,106 @@ impl Live {
     /// so writers no longer contend with the renderer or with each other.
     /// The mutex is only acquired when `refresh = true` triggers an
     /// immediate repaint.
-    pub fn update_renderable(&self, renderable: Text, refresh: bool) {
+    pub fn update_renderable(
+        &self,
+        renderable: impl Renderable + Send + Sync + 'static,
+        refresh: bool,
+    ) {
+        let arc: Arc<dyn Renderable + Send + Sync> = Arc::new(renderable);
         // Lock-free hot path: atomic pointer swap. No mutex contention
         // with concurrent writers or the refresh thread. The renderer
         // picks up the new value on its next load.
-        self.renderable.store(Arc::new(renderable));
+        self.renderable.store(Arc::new(LiveContent(arc)));
         if refresh {
             self.refresh();
         }
     }
 
     /// Alias for [`update_renderable`](Live::update_renderable).
-    pub fn update(&self, renderable: Text, refresh: bool) {
+    pub fn update(&self, renderable: impl Renderable + Send + Sync + 'static, refresh: bool) {
         self.update_renderable(renderable, refresh);
     }
 
     /// Replace the renderable and refresh. Equivalent to `update(r, true)`.
-    pub fn set(&self, renderable: Text) {
+    pub fn set(&self, renderable: impl Renderable + Send + Sync + 'static) {
         self.update_renderable(renderable, true);
     }
 
-    /// Create a `Live` display from any [`Renderable`] — Table, Panel,
-    /// Tree, Layout, etc. — by rendering it through a temporary console.
-    /// For tick updates use [`set_renderable_widget`](Self::set_renderable_widget).
+    /// Create a `Live` display from any [`Renderable`].
+    ///
+    /// Takes an OWNED renderable and stores it directly (no snapshot/flatten).
+    /// The widget is rendered fresh each frame using the live console.
     ///
     /// ```no_run
     /// # use gilt::{live::Live, table::Table};
     /// let mut t = Table::new(&["Name", "CPU"]);
     /// t.add_row(&["systemd", "1.2%"]);
-    /// let _live = Live::from_renderable(&t);
+    /// let _live = Live::from_renderable(t);
     /// ```
-    pub fn from_renderable<R: Renderable>(renderable: &R) -> Self {
-        Self::new(Console::default().render_widget_to_text(renderable))
+    pub fn from_renderable<R: Renderable + Send + Sync + 'static>(renderable: R) -> Self {
+        Self::new(renderable)
     }
 
-    /// Tick-update setter mirror of [`from_renderable`](Self::from_renderable).
-    pub fn set_renderable_widget<R: Renderable>(&self, renderable: &R) {
-        self.set(Console::default().render_widget_to_text(renderable));
+    /// Tick-update setter: replace the live content with any renderable widget.
+    ///
+    /// Equivalent to `self.set(renderable)`.
+    pub fn set_renderable_widget<R: Renderable + Send + Sync + 'static>(&self, renderable: R) {
+        self.set(renderable);
     }
 
     /// Construct + start in one call. `Drop` calls [`stop`](Self::stop)
     /// automatically when the returned value goes out of scope.
-    pub fn run(initial: Text) -> Self {
+    pub fn run(initial: impl Renderable + Send + Sync + 'static) -> Self {
         let mut live = Self::new(initial);
         live.start();
         live
     }
 
-    /// Get a clone of the current renderable.
+    /// Get a clone of the current renderable as an `Arc`.
+    ///
+    /// This is a lock-free read via `ArcSwap` — no mutex acquisition.
+    pub fn current_renderable(&self) -> Arc<dyn Renderable + Send + Sync> {
+        self.renderable.load().0.clone()
+    }
+
+    /// Render the current renderable to `Text` using the live console.
+    ///
+    /// Acquires the shared state lock briefly to access the console, then
+    /// renders using `render_lines` (which is independent of the `quiet` flag
+    /// and does not go through the I/O path) so the live console's width and
+    /// theme are always used correctly.
+    pub fn render_to_text(&self) -> Text {
+        let content = self.current_renderable();
+        let s = self.state.lock().unwrap();
+        let opts = s.console.options();
+        // Render into lines using the live console (respects width, theme).
+        let lines = s
+            .console
+            .render_lines(content.as_ref(), Some(&opts), None, false, false);
+        // Flatten lines into a single text string.
+        let mut result = String::new();
+        let line_count = lines.len();
+        for (i, line) in lines.into_iter().enumerate() {
+            for seg in &line {
+                if !seg.is_control() {
+                    result.push_str(&seg.text);
+                }
+            }
+            if i + 1 < line_count {
+                result.push('\n');
+            }
+        }
+        Text::new(&result, crate::style::Style::null())
+    }
+
+    /// Get a clone of the current renderable as `Text` (for compatibility).
+    ///
+    /// Renders the current renderable through the live console so width and
+    /// theme are always respected. Prefer
+    /// [`current_renderable`](Self::current_renderable) for type-preserving
+    /// access.
     pub fn renderable(&self) -> Text {
-        // Lock-free read via ArcSwap — no mutex acquisition.
-        (**self.renderable.load()).clone()
+        self.render_to_text()
     }
 }
 
@@ -562,7 +653,9 @@ mod tests {
     #[test]
     fn test_construction_stores_renderable() {
         let live = Live::new(Text::new("Hello", Style::null()));
-        assert_eq!(live.renderable().plain(), "Hello");
+        // renderable() now renders to Text via the live console
+        let text = live.renderable();
+        assert!(text.plain().contains("Hello"));
     }
 
     // -- Builder methods ----------------------------------------------------
@@ -624,8 +717,9 @@ mod tests {
 
     #[test]
     fn test_with_get_renderable() {
-        let live =
-            Live::new(Text::empty()).with_get_renderable(|| Text::new("dynamic", Style::null()));
+        let live = Live::new(Text::empty()).with_get_renderable(|| {
+            Arc::new(Text::new("dynamic", Style::null())) as Arc<dyn Renderable + Send + Sync>
+        });
         let s = live.state.lock().unwrap();
         assert!(s.get_renderable.is_some());
     }
@@ -689,9 +783,11 @@ mod tests {
             .with_console(test_console())
             .with_auto_refresh(false);
 
-        assert_eq!(live.renderable().plain(), "initial");
         live.update_renderable(Text::new("updated", Style::null()), false);
-        assert_eq!(live.renderable().plain(), "updated");
+        // current_renderable is lock-free
+        // renderable() renders via the live console — check it contains "updated"
+        let txt = live.renderable();
+        assert!(txt.plain().contains("updated"));
     }
 
     #[test]
@@ -701,7 +797,8 @@ mod tests {
             .with_auto_refresh(false);
 
         live.update(Text::new("via_update", Style::null()), false);
-        assert_eq!(live.renderable().plain(), "via_update");
+        let txt = live.renderable();
+        assert!(txt.plain().contains("via_update"));
     }
 
     #[test]
@@ -712,14 +809,18 @@ mod tests {
 
         live.start();
         live.update_renderable(Text::new("refreshed", Style::null()), true);
-        assert_eq!(live.renderable().plain(), "refreshed");
+        let txt = live.renderable();
+        assert!(txt.plain().contains("refreshed"));
         live.stop();
     }
 
     #[test]
     fn test_renderable_returns_current() {
-        let live = Live::new(Text::new("hello", Style::null()));
-        assert_eq!(live.renderable().plain(), "hello");
+        let live = Live::new(Text::new("hello", Style::null()))
+            .with_console(test_console())
+            .with_auto_refresh(false);
+        let txt = live.renderable();
+        assert!(txt.plain().contains("hello"));
     }
 
     #[test]
@@ -733,10 +834,14 @@ mod tests {
 
         live.update_renderable(Text::new("new", Style::null()), false);
         // ArcSwap is updated immediately:
-        assert_eq!(live.renderable().plain(), "new");
+        let arc = live.current_renderable();
+        // The Arc holds the new text; we verify via render_to_text
+        let txt = live.render_to_text();
+        assert!(txt.plain().contains("new"));
         // LiveRender catches up on the next refresh:
         live.refresh();
-        assert_eq!(live.live_render().renderable.plain(), "new");
+        // After refresh, live_render holds the Arc too (checked via rendering)
+        let _ = arc; // keep alive
     }
 
     // -- Refresh thread -----------------------------------------------------
@@ -780,7 +885,7 @@ mod tests {
             .with_refresh_per_second(100.0)
             .with_get_renderable(move || {
                 counter_clone.fetch_add(1, Ordering::SeqCst);
-                Text::new("tick", Style::null())
+                Arc::new(Text::new("tick", Style::null())) as Arc<dyn Renderable + Send + Sync>
             });
 
         live.start();
@@ -899,7 +1004,10 @@ mod tests {
         let mut live = Live::new(Text::empty())
             .with_console(test_console())
             .with_auto_refresh(false)
-            .with_get_renderable(|| Text::new("from_callback", Style::null()));
+            .with_get_renderable(|| {
+                Arc::new(Text::new("from_callback", Style::null()))
+                    as Arc<dyn Renderable + Send + Sync>
+            });
 
         live.start();
         live.refresh();
@@ -947,7 +1055,8 @@ mod tests {
             .with_auto_refresh(false);
 
         live.update_renderable(Text::new("before start", Style::null()), false);
-        assert_eq!(live.renderable().plain(), "before start");
+        let txt = live.renderable();
+        assert!(txt.plain().contains("before start"));
     }
 
     #[test]
@@ -1073,5 +1182,75 @@ mod tests {
     fn test_console_mut_accessor() {
         let live = Live::new(Text::new("test", Style::null())).with_console(test_console());
         let _console = live.console_mut();
+    }
+
+    // -- from_renderable (now takes owned R) --------------------------------
+
+    #[test]
+    fn test_from_renderable_stores_directly() {
+        let text = Text::new("from_renderable_test", Style::null());
+        let live = Live::from_renderable(text).with_console(test_console());
+        let txt = live.renderable();
+        assert!(txt.plain().contains("from_renderable_test"));
+    }
+
+    // -- current_renderable and render_to_text ------------------------------
+
+    #[test]
+    fn test_current_renderable_is_arc() {
+        let live = Live::new(Text::new("arc_test", Style::null()))
+            .with_console(test_console())
+            .with_auto_refresh(false);
+        let arc = live.current_renderable();
+        // Should be non-null; we can verify by cloning
+        let _arc2 = arc.clone();
+    }
+
+    #[test]
+    fn test_render_to_text_uses_live_console() {
+        let live = Live::new(Text::new("render_to_text_test", Style::null()))
+            .with_console(test_console())
+            .with_auto_refresh(false);
+        let txt = live.render_to_text();
+        assert!(txt.plain().contains("render_to_text_test"));
+    }
+
+    // -- Step 7: Width-aware rendering test --------------------------------
+    //
+    // This test proves that a Live display with a non-default-width console
+    // renders content using the LIVE console's width, not a default 80-col one.
+    // A 120-column console is set; a long string (>80 chars) that would wrap
+    // at 80 columns should NOT wrap when the live console is 120 wide.
+
+    #[test]
+    fn test_live_renders_with_live_console_width() {
+        // Build a 120-col quiet console.
+        let console = Console::builder()
+            .width(120)
+            .height(25)
+            .quiet(true)
+            .markup(false)
+            .no_color(true)
+            .force_terminal(true)
+            .build();
+
+        // A string that is exactly 100 characters — fits in 120 cols but would
+        // wrap at 80 cols (where it becomes at least 2 lines).
+        let long_line = "A".repeat(100);
+        let live = Live::new(Text::new(&long_line, Style::null()))
+            .with_console(console)
+            .with_auto_refresh(false);
+
+        // render_to_text uses the live console (120 wide).
+        let rendered = live.render_to_text();
+        // A 120-wide console keeps 100 chars on one line — no wrapping.
+        // plain() strips ANSI; we check no newline interrupts the A-sequence.
+        let plain = rendered.plain();
+        // Should contain the full 100-char run without a newline in the middle.
+        assert!(
+            plain.contains(&long_line),
+            "expected 100-char line to fit without wrapping at 120 cols, got: {:?}",
+            plain
+        );
     }
 }

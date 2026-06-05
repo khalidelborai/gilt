@@ -133,7 +133,7 @@ fn build_table(rng: &mut SimpleRng) -> Table {
 
 fn main() {
     let mut rng = SimpleRng(42);
-    let live = Live::from_renderable(&build_table(&mut rng))
+    let live = Live::from_renderable(build_table(&mut rng))
         .with_auto_refresh(false)
         .with_transient(true);
     let mut live = live;
@@ -141,7 +141,7 @@ fn main() {
 
     let start = Instant::now();
     while start.elapsed() < Duration::from_secs(10) {
-        live.set_renderable_widget(&build_table(&mut rng));
+        live.set_renderable_widget(build_table(&mut rng));
         thread::sleep(Duration::from_millis(500));
     }
     drop(live);

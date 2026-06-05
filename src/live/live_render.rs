@@ -3,6 +3,7 @@
 //! that can be refreshed in-place by emitting cursor movement control codes.
 
 use std::cell::Cell;
+use std::sync::Arc;
 
 use crate::console::{Console, ConsoleOptions, Renderable};
 use crate::segment::{ControlCode, ControlType, Segment};
@@ -23,8 +24,9 @@ pub enum VerticalOverflowMethod {
 /// A renderable wrapper that tracks the dimensions of its last render,
 /// enabling cursor-based in-place updates for live terminal displays.
 pub struct LiveRender {
-    /// The content to render.
-    pub renderable: Text,
+    /// The content to render — stored as a type-erased `Arc` so any
+    /// `Renderable + Send + Sync` can be held without boxing or flattening.
+    pub renderable: Arc<dyn Renderable + Send + Sync>,
     /// An optional style overlay applied when rendering.
     pub style: Style,
     /// How to handle vertical overflow.
@@ -38,8 +40,22 @@ pub struct LiveRender {
 impl LiveRender {
     /// Create a new `LiveRender` with the given renderable content.
     ///
+    /// Accepts any `Renderable + Send + Sync + 'static`.
     /// Defaults to a null style and `VerticalOverflowMethod::Ellipsis`.
-    pub fn new(renderable: Text) -> Self {
+    pub fn new(renderable: impl Renderable + Send + Sync + 'static) -> Self {
+        LiveRender {
+            renderable: Arc::new(renderable),
+            style: Style::null(),
+            vertical_overflow: VerticalOverflowMethod::Ellipsis,
+            shape: Cell::new(None),
+        }
+    }
+
+    /// Create a `LiveRender` from an already-`Arc`-wrapped renderable.
+    ///
+    /// Used internally by [`Live`] to avoid double-boxing when it already
+    /// holds an `Arc<dyn Renderable + Send + Sync>`.
+    pub fn new_arc(renderable: Arc<dyn Renderable + Send + Sync>) -> Self {
         LiveRender {
             renderable,
             style: Style::null(),
@@ -73,7 +89,7 @@ impl LiveRender {
     }
 
     /// Replace the renderable content.
-    pub fn set_renderable(&mut self, renderable: Text) {
+    pub fn set_renderable(&mut self, renderable: Arc<dyn Renderable + Send + Sync>) {
         self.renderable = renderable;
     }
 
@@ -126,14 +142,20 @@ impl LiveRender {
 
 impl Renderable for LiveRender {
     fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
-        // Render the inner content into lines.
+        // Render the inner content into lines via the live's own console,
+        // so width and theme are always the live console's values.
         let style_ref = if self.style.is_null() {
             None
         } else {
             Some(&self.style)
         };
-        let mut lines =
-            console.render_lines(&self.renderable, Some(options), style_ref, false, false);
+        let mut lines = console.render_lines(
+            self.renderable.as_ref(),
+            Some(options),
+            style_ref,
+            false,
+            false,
+        );
 
         // Check the shape and apply vertical overflow if needed.
         let (_, height) = Segment::get_shape(&lines);
@@ -202,10 +224,16 @@ mod tests {
     #[test]
     fn test_default_construction() {
         let lr = LiveRender::new(Text::new("hello", Style::null()));
-        assert_eq!(lr.renderable.plain(), "hello");
+        // Check pre-render invariants first (before shape is set).
         assert!(lr.style.is_null());
         assert_eq!(lr.vertical_overflow, VerticalOverflowMethod::Ellipsis);
         assert!(lr.shape.get().is_none());
+        // Now verify by rendering.
+        let console = Console::builder().width(80).markup(false).build();
+        let opts = console.options();
+        let segments = lr.gilt_console(&console, &opts);
+        let combined: String = segments.iter().map(|s| s.text.as_str()).collect();
+        assert!(combined.contains("hello"));
     }
 
     // -- Builder methods ----------------------------------------------------
@@ -246,8 +274,14 @@ mod tests {
     #[test]
     fn test_set_renderable() {
         let mut lr = LiveRender::new(Text::new("old", Style::null()));
-        lr.set_renderable(Text::new("new", Style::null()));
-        assert_eq!(lr.renderable.plain(), "new");
+        lr.set_renderable(Arc::new(Text::new("new", Style::null())));
+        // Verify by rendering
+        let console = Console::builder().width(80).markup(false).build();
+        let opts = console.options();
+        let segments = lr.gilt_console(&console, &opts);
+        let combined: String = segments.iter().map(|s| s.text.as_str()).collect();
+        assert!(combined.contains("new"));
+        assert!(!combined.contains("old"));
     }
 
     // -- Renderable trait ---------------------------------------------------
@@ -506,5 +540,18 @@ mod tests {
         assert!(combined.contains("L2"));
         assert!(combined.contains("L3"));
         assert!(!combined.contains("..."));
+    }
+
+    // -- new_arc constructor ------------------------------------------------
+
+    #[test]
+    fn test_new_arc_constructor() {
+        let arc: Arc<dyn Renderable + Send + Sync> = Arc::new(Text::new("via arc", Style::null()));
+        let lr = LiveRender::new_arc(arc);
+        let console = Console::builder().width(80).markup(false).build();
+        let opts = console.options();
+        let segments = lr.gilt_console(&console, &opts);
+        let combined: String = segments.iter().map(|s| s.text.as_str()).collect();
+        assert!(combined.contains("via arc"));
     }
 }

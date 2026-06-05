@@ -42,9 +42,9 @@ impl Console {
     /// let combined: String = segments.iter().map(|s| s.text.as_str()).collect();
     /// assert!(combined.contains("Render me"));
     /// ```
-    pub fn render(
+    pub fn render<R: Renderable + ?Sized>(
         &self,
-        renderable: &dyn Renderable,
+        renderable: &R,
         options: Option<&ConsoleOptions>,
     ) -> Vec<Segment> {
         let default_opts = self.options();
@@ -56,9 +56,9 @@ impl Console {
     ///
     /// When `options.height` is `Some(h)`, the result is truncated or padded
     /// with blank lines to exactly `h` rows (finding #14 parity with rich).
-    pub fn render_lines(
+    pub fn render_lines<R: Renderable + ?Sized>(
         &self,
-        renderable: &dyn Renderable,
+        renderable: &R,
         options: Option<&ConsoleOptions>,
         style: Option<&Style>,
         pad: bool,
@@ -158,15 +158,15 @@ impl Console {
     /// let output = console.end_capture();
     /// assert!(output.contains("Hello, world!"));
     /// ```
-    pub fn print(&mut self, renderable: &dyn Renderable) {
+    pub fn print<R: Renderable + ?Sized>(&mut self, renderable: &R) {
         self.print_styled(renderable, None, None, None, false, true, false);
     }
 
     /// Print a Renderable with full styling options.
     #[allow(clippy::too_many_arguments)]
-    pub fn print_styled(
+    pub fn print_styled<R: Renderable + ?Sized>(
         &mut self,
-        renderable: &dyn Renderable,
+        renderable: &R,
         style: Option<&str>,
         justify: Option<JustifyMethod>,
         overflow: Option<OverflowMethod>,
@@ -488,7 +488,7 @@ impl Console {
     /// assert_eq!(measurement.minimum, 5);  // longest word: "Hello" or "World"
     /// assert_eq!(measurement.maximum, 11); // full line: "Hello World"
     /// ```
-    pub fn measure(&self, renderable: &dyn Renderable) -> Measurement {
+    pub fn measure<R: Renderable + ?Sized>(&self, renderable: &R) -> Measurement {
         let opts = self.options();
         let segments = renderable.gilt_console(self, &opts);
         // Collect all text, split by newlines to find line widths

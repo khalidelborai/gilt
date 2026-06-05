@@ -11,7 +11,7 @@ impl Console {
     /// `Panel::from_renderable`, and the `Columns` widget render path to
     /// bridge non-Text renderables into Text-only consumers without each
     /// caller re-implementing the capture roundtrip.
-    pub fn render_widget_to_text(&mut self, renderable: &dyn Renderable) -> Text {
+    pub fn render_widget_to_text<R: Renderable + ?Sized>(&mut self, renderable: &R) -> Text {
         self.begin_capture();
         self.print(renderable);
         Text::from_ansi(&self.end_capture())

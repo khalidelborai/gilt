@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.5.2] - 2026-06-05
+
+### Changed
+
+- **`Live` now displays any `Renderable`, rendered against its own console each
+  frame.** Previously `Live` stored a flattened `Text`, and updating it with a
+  widget flattened that widget through a throwaway default console — so a live
+  `Markdown`/`Table`/`Tree`/`Panel` was laid out at the wrong width and ignored
+  the live console's theme. `Live` now holds an `Arc<dyn Renderable + Send +
+  Sync>` and re-renders it through the live console on every refresh, so width
+  and theme are always correct and the display is resize-responsive. This makes
+  `live.update_renderable(Markdown::new(md), true)` the faithful equivalent of
+  rich's `live.update(Markdown(...))` for streaming output. The lock-free
+  `ArcSwap` update path (no renderer contention) is preserved.
+
+  API (technically breaking): `Live::new` / `update_renderable` / `update` /
+  `set` / `run` / `set_renderable_widget` are now generic over
+  `impl Renderable + Send + Sync + 'static` (passing `Text` still works);
+  `Live::from_renderable` takes its renderable **by value** and stores it (was
+  `&R`, snapshot-only); `with_get_renderable`'s closure returns
+  `Arc<dyn Renderable + Send + Sync>`; added `current_renderable()` and
+  `render_to_text()`. The same applies to `LiveRender`. `Console::render`,
+  `render_lines`, `render_widget_to_text`, `measure`, `print`, and
+  `print_styled` are now generic over `R: Renderable + ?Sized` (source-compatible).
+
 ## [1.5.1] - 2026-06-05
 
 ### Added
