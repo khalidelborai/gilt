@@ -643,9 +643,8 @@ impl Renderable for Traceback {
                         let path = std::path::Path::new(&frame.filename);
                         if (path.is_absolute() || frame.filename.starts_with("./")) && path.exists()
                         {
-                            let file_contents = file_cache
-                                .entry(frame.filename.clone())
-                                .or_insert_with(|| {
+                            let file_contents =
+                                file_cache.entry(frame.filename.clone()).or_insert_with(|| {
                                     std::fs::read_to_string(path).unwrap_or_default()
                                 });
                             {
