@@ -122,7 +122,14 @@ pub struct ConsoleOptions {
     /// Text overflow strategy override, if any.
     pub overflow: Option<OverflowMethod>,
     /// Whether to disable text wrapping.
-    pub no_wrap: bool,
+    ///
+    /// Tri-state (rich parity):
+    /// - `None`        = inherit / wrap by default
+    /// - `Some(false)` = force-wrap (explicit wrap)
+    /// - `Some(true)`  = no-wrap (suppress wrapping)
+    ///
+    /// Only `Some(true)` suppresses wrapping; `None` and `Some(false)` both wrap.
+    pub no_wrap: Option<bool>,
     /// Whether to enable syntax highlighting, if set.
     pub highlight: Option<bool>,
     /// Whether to enable markup parsing, if set.
@@ -222,7 +229,9 @@ impl ConsoleOptions {
             opts.overflow = *o;
         }
         if let Some(nw) = updates.no_wrap {
-            opts.no_wrap = nw;
+            // `ConsoleOptionsUpdates.no_wrap` is `Option<bool>`; wrap it in
+            // `Some` so it becomes the tri-state value on ConsoleOptions.
+            opts.no_wrap = Some(nw);
         }
         if let Some(ref h) = updates.highlight {
             opts.highlight = *h;
@@ -259,7 +268,7 @@ impl Renderable for Text {
         if let Some(overflow) = &options.overflow {
             text.overflow = Some(*overflow);
         }
-        if options.no_wrap || options.overflow == Some(OverflowMethod::Ignore) {
+        if options.no_wrap == Some(true) || options.overflow == Some(OverflowMethod::Ignore) {
             text.render()
         } else {
             let tab_size = text.tab_size.unwrap_or(8);
@@ -613,7 +622,7 @@ impl Console {
             max_height: size.height,
             justify: None,
             overflow: None,
-            no_wrap: false,
+            no_wrap: None,
             highlight: Some(self.highlight_enabled),
             markup: Some(self.markup_enabled),
             height: None,

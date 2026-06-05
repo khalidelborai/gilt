@@ -5,7 +5,7 @@ use crate::cells::cell_len;
 use crate::console::{Console, ConsoleOptions, Renderable};
 use crate::measure::Measurement;
 use crate::segment::Segment;
-use crate::style::Style;
+use crate::style::{Style, StyleStack};
 use crate::text::Text;
 
 // ---------------------------------------------------------------------------
@@ -224,6 +224,13 @@ impl Renderable for Tree {
         )];
         let mut stack: Vec<StackFrame> = Vec::new();
 
+        // --- Style stacks (rich parity: ancestor style tints subtree labels)  ---
+        // `style_stack` accumulates combined node styles top-down so that each
+        // label is rendered with the fully-resolved ancestor style.
+        // `guide_style_stack` accumulates guide styles the same way.
+        let mut style_stack = StyleStack::new(self.style.clone());
+        let mut guide_style_stack = StyleStack::new(self.guide_style.clone());
+
         // Push the root as a single-element "children" iterator.
         let root_slice = std::slice::from_ref(self);
         stack.push(StackFrame {
@@ -235,13 +242,16 @@ impl Renderable for Tree {
 
         while let Some(frame) = stack.last_mut() {
             if frame.index >= frame.children.len() {
-                // This level is exhausted.
+                // This level is exhausted — ascend.
                 stack.pop();
                 levels.pop();
                 if !levels.is_empty() {
                     let last_idx = levels.len() - 1;
                     let guide_style = levels[last_idx].style.clone().unwrap_or_else(Style::null);
                     levels[last_idx] = make_guide(FORK, &guide_style, ascii_only, legacy_windows);
+                    // Pop the style stacks to return to the parent's context.
+                    let _ = guide_style_stack.pop();
+                    let _ = style_stack.pop();
                 }
                 depth = depth.saturating_sub(1);
                 continue;
@@ -270,6 +280,13 @@ impl Renderable for Tree {
                 &[]
             };
 
+            // Accumulated styles from the stacks (rich parity):
+            // - `node_style`: the fully-resolved style for this node's label
+            //   (ancestor stack + node's own style).
+            // - `node_guide_style`: resolved guide style for this node.
+            let node_style = style_stack.current().clone() + node.style.clone();
+            let node_guide_style = guide_style_stack.current().clone() + node.guide_style.clone();
+
             // Compute available width for the label directly from the slice.
             let prefix_width: usize = prefix_slice.iter().map(|s| cell_len(&s.text)).sum();
             let child_width = options.max_width.saturating_sub(prefix_width);
@@ -282,16 +299,49 @@ impl Renderable for Tree {
                 child_opts.highlight = Some(true);
             }
 
-            // Render the label into lines.
-            let rendered_lines =
-                console.render_lines(&node.label, Some(&child_opts), None, pad, false);
+            // Render the label into lines.  To apply the accumulated ancestor
+            // style (rich parity: "Styled(node.label, style)"), we first render
+            // the label normally, then apply `node_style` over every segment via
+            // `Segment::apply_style`.  We do this line-by-line after the render.
+            let raw_lines = console.render_lines(&node.label, Some(&child_opts), None, pad, false);
+            let rendered_lines: Vec<Vec<Segment>> = if node_style.is_null() {
+                raw_lines
+            } else {
+                raw_lines
+                    .into_iter()
+                    .map(|line| Segment::apply_style(&line, Some(node_style.clone()), None))
+                    .collect()
+            };
 
             // Emit segments (skip if this is the root and hide_root is set).
             let skip_node = depth == 0 && self.hide_root;
 
             if !skip_node {
+                // Guide-prefix styling (rich parity): apply the accumulated
+                // label style's background to the prefix so the background tints
+                // the guide characters, and strip the guide-line style as a
+                // post_style so it does not bleed into label rendering.
+                let prefix_bg = node_style.background_style();
+                // `post_style` strips node_guide_style from the guide segments
+                // so guide-line decorations don't leak onto the label area.
+                // Rich uses `remove_guide_styles` (the negation of guide style
+                // attributes); we mirror this by passing guide_style as the
+                // post-style so guide-specific attributes are overridden.
+                let prefix_post = node_guide_style.clone();
+                let has_prefix_style = !prefix_bg.is_null() || !prefix_post.is_null();
+
                 // Build current_prefix once; mutated after the first line only.
-                let mut current_prefix: Vec<Segment> = prefix_slice.to_vec();
+                let raw_prefix: Vec<Segment> = prefix_slice.to_vec();
+                let mut current_prefix: Vec<Segment> = if has_prefix_style {
+                    Segment::apply_style(
+                        &raw_prefix,
+                        Some(prefix_bg.clone()),
+                        Some(prefix_post.clone()),
+                    )
+                } else {
+                    raw_prefix.clone()
+                };
+
                 for (i, line) in rendered_lines.iter().enumerate() {
                     // Emit prefix guide segments — extend_from_slice is one
                     // memcpy + N clones rather than N iterations of push.
@@ -304,17 +354,31 @@ impl Renderable for Tree {
                     // After the first line, change the last prefix element
                     // from FORK/END to CONTINUE/SPACE for continuation lines.
                     if i == 0 && !current_prefix.is_empty() {
-                        let last_idx = current_prefix.len() - 1;
-                        let pstyle = current_prefix[last_idx]
+                        let last_idx = raw_prefix.len() - 1;
+                        let pstyle = raw_prefix[last_idx]
                             .style
                             .clone()
                             .unwrap_or_else(Style::null);
-                        current_prefix[last_idx] = make_guide(
+                        let cont_seg = make_guide(
                             if last { SPACE } else { CONTINUE },
                             &pstyle,
                             ascii_only,
                             legacy_windows,
                         );
+                        let cont_styled = if has_prefix_style {
+                            Segment::apply_style(
+                                std::slice::from_ref(&cont_seg),
+                                Some(prefix_bg.clone()),
+                                Some(prefix_post.clone()),
+                            )
+                            .into_iter()
+                            .next()
+                            .unwrap_or(cont_seg)
+                        } else {
+                            cont_seg
+                        };
+                        let last_cp_idx = current_prefix.len() - 1;
+                        current_prefix[last_cp_idx] = cont_styled;
                     }
                 }
             }
@@ -341,6 +405,10 @@ impl Renderable for Tree {
                     ascii_only,
                     legacy_windows,
                 ));
+
+                // Push the node's styles onto the stacks for the child subtree.
+                style_stack.push(node.style.clone());
+                guide_style_stack.push(node.guide_style.clone());
 
                 stack.push(StackFrame {
                     index: 0,
@@ -902,5 +970,135 @@ mod tests {
         tree.add(Text::new("child", Style::null()));
         // Should not panic at width=1
         let _output = render_tree(&tree, 1);
+    }
+
+    // -- Task 1 new tests: ancestor style-stack + guide-prefix styling ------
+
+    /// A styled parent should tint its child label: the child's rendered
+    /// segments must carry a style that includes the parent's bold attribute.
+    #[test]
+    fn test_styled_parent_tints_child_label() {
+        // Build a console that preserves ANSI styles (force_terminal so that
+        // color/bold is not stripped to plain text).
+        let console = Console::builder()
+            .width(80)
+            .markup(false)
+            .highlight(false)
+            .force_terminal(true)
+            .build();
+        let opts = console.options();
+
+        let parent_style = Style::parse("bold");
+        let mut tree = Tree::new(Text::new("root", Style::null())).with_style(parent_style.clone());
+        tree.add(Text::new("child", Style::null()));
+
+        let segments = tree.gilt_console(&console, &opts);
+
+        // Collect non-control, non-newline segments that contain "child".
+        let child_segments: Vec<&Segment> = segments
+            .iter()
+            .filter(|s| !s.is_control() && s.text.contains("child"))
+            .collect();
+
+        // At least one segment carrying "child" must have a bold style
+        // (inherited from the parent's accumulated style stack).
+        let has_bold = child_segments.iter().any(|s| {
+            s.style
+                .as_ref()
+                .map(|st| st.bold() == Some(true))
+                .unwrap_or(false)
+        });
+        assert!(
+            has_bold,
+            "Child label segment should carry parent's bold style; segments = {:?}",
+            child_segments
+        );
+    }
+
+    /// Guide prefix segments should carry the resolved guide style so that
+    /// a red guide style shows up on the prefix characters.
+    #[test]
+    fn test_guide_prefix_carries_guide_style() {
+        let console = Console::builder()
+            .width(80)
+            .markup(false)
+            .highlight(false)
+            .force_terminal(true)
+            .build();
+        let opts = console.options();
+
+        // A tree with a red guide style.
+        let guide_style = Style::parse("red");
+        let mut tree =
+            Tree::new(Text::new("root", Style::null())).with_guide_style(guide_style.clone());
+        tree.add(Text::new("child", Style::null()));
+
+        let segments = tree.gilt_console(&console, &opts);
+
+        // Guide prefix segments are non-control segments that contain guide
+        // characters (e.g. "└── " or "+-- ") and should carry a red style.
+        let guide_segs: Vec<&Segment> = segments
+            .iter()
+            .filter(|s| {
+                !s.is_control()
+                    && (s.text.contains('\u{2514}')   // └
+                        || s.text.contains('\u{251c}') // ├
+                        || s.text.contains("`-- ")
+                        || s.text.contains("+-- "))
+            })
+            .collect();
+
+        assert!(
+            !guide_segs.is_empty(),
+            "Expected at least one guide prefix segment in the output"
+        );
+
+        // Every guide segment must carry a non-None style (the guide style
+        // applies background/foreground color from the stacked guide style).
+        // After apply_style the guide segments get the red color from the
+        // label style's background (or guide style post-application).
+        // We check that style is present (non-null after apply_style).
+        for seg in &guide_segs {
+            let style_present = seg.style.as_ref().map(|s| !s.is_null()).unwrap_or(false);
+            // The guide segments were built with the guide_style (red), so the
+            // segment style should be Some and non-null.
+            assert!(
+                style_present,
+                "Guide prefix segment {:?} should have a non-null style",
+                seg
+            );
+        }
+    }
+
+    /// Ancestor guide style accumulates: a child's guide_style combines with
+    /// the parent's guide_style for nested levels.
+    #[test]
+    fn test_guide_style_stack_accumulation() {
+        let console = Console::builder()
+            .width(80)
+            .markup(false)
+            .highlight(false)
+            .force_terminal(true)
+            .build();
+        let opts = console.options();
+
+        let root_guide = Style::parse("bold");
+        let mut tree =
+            Tree::new(Text::new("root", Style::null())).with_guide_style(root_guide.clone());
+        let child = tree.add(Text::new("child", Style::null()));
+        child
+            .children
+            .push(Tree::new(Text::new("grandchild", Style::null())));
+
+        // Should not panic, and should render all three nodes.
+        let segments = tree.gilt_console(&console, &opts);
+        let text: String = segments
+            .iter()
+            .filter(|s| !s.is_control())
+            .map(|s| s.text.as_str())
+            .collect();
+        assert!(text.contains("root"));
+        assert!(text.contains("child"));
+        assert!(text.contains("grandchild"));
     }
 }

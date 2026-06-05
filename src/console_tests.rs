@@ -119,7 +119,8 @@ fn test_console_options_with_updates() {
     let updated = opts.with_updates(&updates);
     assert_eq!(updated.size.width, 60);
     assert_eq!(updated.max_width, 60);
-    assert!(updated.no_wrap);
+    // no_wrap is now Option<bool>; `Some(true)` from the update (tri-state).
+    assert_eq!(updated.no_wrap, Some(true));
     assert_eq!(updated.justify, Some(JustifyMethod::Center));
 }
 
@@ -900,7 +901,8 @@ fn test_console_options_default() {
     assert_eq!(opts.size.height, 40);
     assert_eq!(opts.max_width, 100);
     assert_eq!(opts.encoding.as_ref(), "utf-8");
-    assert!(!opts.no_wrap);
+    // no_wrap is now Option<bool>; None = inherit / wrap by default.
+    assert_eq!(opts.no_wrap, None);
     assert_eq!(opts.justify, None);
     assert_eq!(opts.overflow, None);
 }
@@ -1622,7 +1624,7 @@ fn make_default_options() -> ConsoleOptions {
         max_height: 25,
         justify: None,
         overflow: None,
-        no_wrap: false,
+        no_wrap: None,
         highlight: None,
         markup: None,
         height: None,

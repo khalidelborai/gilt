@@ -241,7 +241,7 @@ mod tests {
             max_height: 25,
             justify: None,
             overflow: None,
-            no_wrap: false,
+            no_wrap: None,
             highlight: None,
             markup: None,
             height: None,
