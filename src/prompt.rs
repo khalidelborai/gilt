@@ -335,8 +335,9 @@ impl Prompt {
             // Validate against choices
             if self.choices.is_some() {
                 if !self.check_choice(&value) {
-                    // Invalid choice — print error and loop
-                    eprintln!("Please select one of the available options");
+                    // Invalid choice — route error through the prompt's console.
+                    self.console
+                        .print_text("[bold red]Please select one of the available options[/]");
                     continue;
                 }
                 return self.resolve_choice(&value);
@@ -362,8 +363,8 @@ impl Prompt {
         if self.password {
             // Fall back to regular input when rpassword is unavailable.
             // WARNING: input will be visible on screen.
-            eprintln!(
-                "warning: gilt built without `interactive` feature; password input will be visible"
+            self.console.print_text(
+                "[bold yellow]warning:[/] gilt built without `interactive` feature; password input will be visible",
             );
         }
 
@@ -407,7 +408,9 @@ impl Prompt {
                     // Validate against choices
                     if self.choices.is_some() {
                         if !self.check_choice(&value) {
-                            eprintln!("Please select one of the available options");
+                            self.console.print_text(
+                                "[bold red]Please select one of the available options[/]",
+                            );
                             continue;
                         }
                         return self.resolve_choice(&value);
@@ -463,7 +466,8 @@ impl Prompt {
             // Validate against choices
             if self.choices.is_some() {
                 if !self.check_choice(&value) {
-                    eprintln!("Please select one of the available options");
+                    self.console
+                        .print_text("[bold red]Please select one of the available options[/]");
                     continue;
                 }
                 return self.resolve_choice(&value);
@@ -519,6 +523,9 @@ pub fn confirm_with_input_and_default<R: BufRead>(
     };
 
     let full_prompt = format!("{} {}: ", prompt, choices_display);
+    // Error messages are routed through a stderr console so they pick up
+    // gilt styling when stderr is a terminal.
+    let mut err_console = Console::stderr();
 
     loop {
         print!("{}", full_prompt);
@@ -543,13 +550,12 @@ pub fn confirm_with_input_and_default<R: BufRead>(
                 if let Some(d) = default {
                     return d;
                 }
-                // No default — show error and loop (routing through stderr for
-                // now; replacing with console.print once a Console is in scope)
-                eprintln!("Please enter Y or N");
+                // No default — show error and loop.
+                err_console.print_text("[bold red]Please enter Y or N[/]");
                 continue;
             }
             _ => {
-                eprintln!("Please enter Y or N");
+                err_console.print_text("[bold red]Please enter Y or N[/]");
                 continue;
             }
         }
@@ -563,6 +569,7 @@ pub fn ask_int(prompt: &str) -> i64 {
 
 /// Testable version of `ask_int()` that reads from a provided input source.
 pub fn ask_int_with_input<R: BufRead>(prompt: &str, input: &mut R) -> i64 {
+    let mut err_console = Console::stderr();
     loop {
         let prompt_text = Prompt::new(prompt).make_prompt();
         let prompt_str = prompt_text.plain().to_string();
@@ -572,12 +579,12 @@ pub fn ask_int_with_input<R: BufRead>(prompt: &str, input: &mut R) -> i64 {
         let mut line = String::new();
         match input.read_line(&mut line) {
             Ok(0) => {
-                eprintln!("Please enter a valid integer number");
+                err_console.print_text("[bold red]Please enter a valid integer number[/]");
                 continue;
             }
             Ok(_) => {}
             Err(_) => {
-                eprintln!("Please enter a valid integer number");
+                err_console.print_text("[bold red]Please enter a valid integer number[/]");
                 continue;
             }
         }
@@ -585,7 +592,7 @@ pub fn ask_int_with_input<R: BufRead>(prompt: &str, input: &mut R) -> i64 {
         match line.trim().parse::<i64>() {
             Ok(v) => return v,
             Err(_) => {
-                eprintln!("Please enter a valid integer number");
+                err_console.print_text("[bold red]Please enter a valid integer number[/]");
                 continue;
             }
         }
@@ -599,6 +606,7 @@ pub fn ask_float(prompt: &str) -> f64 {
 
 /// Testable version of `ask_float()` that reads from a provided input source.
 pub fn ask_float_with_input<R: BufRead>(prompt: &str, input: &mut R) -> f64 {
+    let mut err_console = Console::stderr();
     loop {
         let prompt_text = Prompt::new(prompt).make_prompt();
         let prompt_str = prompt_text.plain().to_string();
@@ -608,12 +616,12 @@ pub fn ask_float_with_input<R: BufRead>(prompt: &str, input: &mut R) -> f64 {
         let mut line = String::new();
         match input.read_line(&mut line) {
             Ok(0) => {
-                eprintln!("Please enter a valid number");
+                err_console.print_text("[bold red]Please enter a valid number[/]");
                 continue;
             }
             Ok(_) => {}
             Err(_) => {
-                eprintln!("Please enter a valid number");
+                err_console.print_text("[bold red]Please enter a valid number[/]");
                 continue;
             }
         }
@@ -621,7 +629,7 @@ pub fn ask_float_with_input<R: BufRead>(prompt: &str, input: &mut R) -> f64 {
         match line.trim().parse::<f64>() {
             Ok(v) => return v,
             Err(_) => {
-                eprintln!("Please enter a valid number");
+                err_console.print_text("[bold red]Please enter a valid number[/]");
                 continue;
             }
         }
@@ -829,7 +837,7 @@ impl Select {
             match self.parse_input(&line) {
                 Ok(index) => return Ok(index),
                 Err(msg) => {
-                    eprintln!("{}", msg);
+                    Console::stderr().print_text(&format!("[bold red]{}[/]", msg));
                     continue;
                 }
             }
@@ -1128,7 +1136,7 @@ impl MultiSelect {
             match self.parse_input(&line) {
                 Ok(indices) => return Ok(indices),
                 Err(msg) => {
-                    eprintln!("{}", msg);
+                    Console::stderr().print_text(&format!("[bold red]{}[/]", msg));
                     continue;
                 }
             }

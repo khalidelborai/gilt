@@ -57,6 +57,31 @@ pub fn detect_color_system_from(colorterm: Option<&str>, term: Option<&str>) -> 
 }
 
 // ---------------------------------------------------------------------------
+// Terminal detection helper
+// ---------------------------------------------------------------------------
+
+/// Detect whether stdout is connected to a terminal.
+///
+/// On native (non-wasm) targets this uses [`std::io::IsTerminal`] for an
+/// accurate answer even when stdout is piped. On wasm targets — where
+/// `IsTerminal` is not available — we fall back to checking that `TERM` is
+/// set and not `"dumb"`.
+fn detect_is_terminal() -> bool {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        use std::io::IsTerminal as _;
+        std::io::stdout().is_terminal()
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        matches!(
+            std::env::var("TERM").as_deref(),
+            Ok(t) if !t.is_empty() && t != "dumb"
+        )
+    }
+}
+
+// ---------------------------------------------------------------------------
 // ConsoleDimensions
 // ---------------------------------------------------------------------------
 
@@ -400,6 +425,44 @@ impl Console {
         ConsoleBuilder::default()
     }
 
+    /// Create a Console whose output goes to **stderr** with terminal state
+    /// detected from `stderr` itself (not `stdout`).
+    ///
+    /// This is the correct console to use for diagnostic output, prompts, and
+    /// error messages that should always be visible even when `stdout` is
+    /// redirected to a file or pipe.
+    ///
+    /// Terminal detection uses [`std::io::IsTerminal`] on `stderr` on native
+    /// targets; on wasm the `TERM` env-var fallback is used. When `stderr` is
+    /// a tty the color system is auto-detected; when it is piped the console
+    /// is plain (same policy as the stdout console).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    ///
+    /// let mut c = Console::stderr();
+    /// c.print_text("[bold red]error:[/] something went wrong");
+    /// ```
+    pub fn stderr() -> Self {
+        #[cfg(not(target_arch = "wasm32"))]
+        let is_tty = {
+            use std::io::IsTerminal as _;
+            std::io::stderr().is_terminal()
+        };
+        #[cfg(target_arch = "wasm32")]
+        let is_tty = matches!(
+            std::env::var("TERM").as_deref(),
+            Ok(t) if !t.is_empty() && t != "dumb"
+        );
+
+        ConsoleBuilder::default()
+            .force_terminal(is_tty)
+            .build()
+            .with_writer(std::io::stderr())
+    }
+
     /// Construct a `Console` from a fully-configured `ConsoleBuilder`.
     /// Called by `ConsoleBuilder::build`; lives here so `Console`'s
     /// private fields stay private to console.rs.
@@ -409,11 +472,16 @@ impl Console {
         //   2. color_system (string, e.g. "truecolor")
         //   3. no_color(true) explicitly set by caller
         //   4. Environment vars (NO_COLOR, FORCE_COLOR, CLICOLOR_FORCE, CLICOLOR)
-        //   5. Default: TrueColor
+        //   5. Non-terminal output (piped/redirected) → no color
+        //   6. Auto-detect from COLORTERM / TERM
         let has_explicit_cs = matches!(
             builder.color_system.as_deref(),
             Some("standard" | "256" | "truecolor" | "windows")
         );
+
+        // A "color forced on" condition: force_terminal(true) is an explicit
+        // signal that the caller wants terminal behaviour (ANSI output).
+        let force_terminal_on = builder.force_terminal == Some(true);
 
         let color_system = if let Some(cs) = builder.color_system_override {
             Some(cs)
@@ -430,10 +498,15 @@ impl Console {
         } else {
             match detect_color_env() {
                 ColorEnvOverride::NoColor => None,
+                // FORCE_COLOR / CLICOLOR_FORCE → keep color even when piped.
                 ColorEnvOverride::ForceColor => Some(ColorSystem::EightBit),
                 ColorEnvOverride::ForceColorTruecolor => Some(ColorSystem::TrueColor),
                 ColorEnvOverride::None => {
                     if builder.no_color {
+                        None
+                    } else if !force_terminal_on && !detect_is_terminal() {
+                        // Piped / redirected output: disable color unless the
+                        // caller explicitly forced terminal mode.
                         None
                     } else {
                         // P1 parity: use env-based detection instead of hard TrueColor default.
@@ -448,6 +521,10 @@ impl Console {
             }
         };
 
+        // Mirror the no_color flag: if color_system resolved to None due to
+        // non-terminal detection, also set no_color so render_buffer skips SGR.
+        let effective_no_color = builder.no_color || color_system.is_none();
+
         let theme = builder.theme.unwrap_or_else(|| Theme::new(None, true));
         let theme_stack = ThemeStack::new(theme);
 
@@ -461,7 +538,7 @@ impl Console {
             markup_enabled: builder.markup,
             highlight_enabled: builder.highlight,
             soft_wrap: builder.soft_wrap,
-            no_color: builder.no_color,
+            no_color: effective_no_color,
             quiet: builder.quiet,
             safe_box: builder.safe_box,
             legacy_windows: false,
@@ -568,7 +645,8 @@ impl Console {
     /// Resolution order:
     /// 1. Explicit `force_terminal` set on the builder
     /// 2. `TTY_COMPATIBLE=1`/`0` environment override
-    /// 3. `TERM` is set in the environment
+    /// 3. `std::io::IsTerminal` on stdout (native targets only)
+    /// 4. `TERM` is set and not `"dumb"` (wasm / fallback)
     pub fn is_terminal(&self) -> bool {
         if let Some(forced) = self.force_terminal {
             return forced;
@@ -578,7 +656,7 @@ impl Console {
             crate::color::color_env::TtyOverride::ForceNotTty => return false,
             crate::color::color_env::TtyOverride::None => {}
         }
-        std::env::var("TERM").is_ok()
+        detect_is_terminal()
     }
 
     /// Whether the console should treat the user as interactive (prompts,

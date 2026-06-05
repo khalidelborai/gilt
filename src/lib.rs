@@ -92,7 +92,7 @@
 //!
 //! ```rust
 //! # use gilt::console::Console;
-//! let mut console = Console::builder().width(60).record(true).build();
+//! let mut console = Console::builder().width(60).force_terminal(true).record(true).build();
 //! console.print_text("[green]Recorded[/green]");
 //! let html = console.export_html(None, true, true);
 //! assert!(html.contains("<span"));
