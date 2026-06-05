@@ -5,6 +5,61 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.6.0] - 2026-06-05
+
+A correctness + async + DX release: tty-aware color, a hardened async live
+surface, finished rich-parity items, and CI that won't let any of it rot.
+Informed by the feature roadmap in `.review/feature-roadmap-2026-06-05.md`.
+
+### Added
+
+- **tty-aware color.** `Console::is_terminal()` now uses `std::io::IsTerminal`
+  (native; `TERM` fallback on wasm), and color **auto-disables when output is
+  not a terminal** (piped/redirected) unless forced via
+  `FORCE_COLOR`/`CLICOLOR_FORCE`/`force_terminal(true)`. `NO_COLOR` and explicit
+  builder settings still win. New `Console::stderr()` constructor.
+- **Span-level metadata.** `Span` carries optional `meta` (`Arc<HashMap<…>>`);
+  markup `[@key=val]` / `[@flag]` tags now attach meta spans (previously
+  dropped); new `Text::apply_meta()`, `Text::on(url)` (OSC-8 link), and
+  `Text::get_meta_at()`.
+- **`Live::print_above(renderable)`** — print scrollback output above a running
+  live region without corrupting it.
+- **Live cleanup guards** — `Console::capture_guard()` / `screen_guard()` RAII so
+  capture/alternate-screen state can't leak under `?`/panic (`Console::is_capturing()`).
+- **Async live surface** (feature `async`): `LiveAsync` is now **cancel-safe**
+  (a synchronous `Drop` aborts the refresh task and restores the terminal even on
+  a dropped `stop()` future, a lost `tokio::select!` branch, or a panic);
+  `LiveAsync::new`/`update` are generic over any `Renderable`; new
+  `async_run(live, hz, fut)` and `Live::watch(rx, f)` (drive a live view from a
+  `tokio::sync::watch` channel).
+- **Live & streaming guide** at [`docs/live-and-streaming.md`](docs/live-and-streaming.md).
+
+### Changed
+
+- **`Tree`** threads accumulated ancestor style into labels (a styled parent
+  tints its subtree) and applies guide/background style to branch prefixes —
+  rich parity.
+- **`ConsoleOptions.no_wrap`** is now `Option<bool>` (`None` = inherit/wrap,
+  `Some(true)` = no-wrap); behavior unchanged for existing callers.
+
+### Performance
+
+- **Segment-level frame-skip**: a `Live` refresh that would produce byte-identical
+  output now performs zero terminal I/O.
+
+### Fixed
+
+- `tokio` `io-util` feature was missing, leaving the `async` `fs`
+  read/write-with-progress helpers uncompilable under some feature sets.
+- Prompt error/validation messages now render through the console instead of raw
+  `eprintln!`.
+
+### Internal
+
+- CI hardened: `cargo test --all-features` (now exercises the `async`/`http`
+  doctests + builds examples), `cargo clippy --all-features --all-targets
+  -D warnings`, and a `--no-default-features` job. Cleaned 30 test/example lints.
+
 ## [1.5.3] - 2026-06-05
 
 ### Added

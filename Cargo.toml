@@ -3,7 +3,7 @@ members = ["crates/gilt-derive"]
 
 [package]
 name = "gilt"
-version = "1.5.3"
+version = "1.6.0"
 edition = "2021"
 exclude = [".claude/", ".review/", "vlc.zip"]
 description = "Fast, beautiful terminal formatting for Rust — styles, tables, trees, syntax highlighting, progress bars, markdown."
