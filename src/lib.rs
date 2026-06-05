@@ -833,6 +833,19 @@ pub use style::{clear_style_cache, style_cache_size};
 // (which clash with runtime widget types) live ONLY at `gilt::derives::*`
 // — see the `derives` module below.
 
+/// Compile-time gilt markup validator.
+///
+/// Validates markup at compile time and expands to a [`text::Text`].
+/// See [`gilt_derive::text`] for full documentation.
+///
+/// ```rust
+/// # #[cfg(feature = "derive")] {
+/// use gilt::text;
+/// let t = text!("[bold red]Error:[/] file not found");
+/// # }
+/// ```
+#[cfg(feature = "derive")]
+pub use gilt_derive::text;
 #[cfg(feature = "derive")]
 pub use gilt_derive::Panel;
 #[cfg(feature = "derive")]

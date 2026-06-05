@@ -1,0 +1,5 @@
+error: closing tag `[/italic]` at byte offset 7 does not match any open tag (open stack: [bold])
+ --> tests/compile_fail/text_mismatched_close.rs:4:26
+  |
+4 |     let _t = gilt::text!("[bold]x[/italic]");
+  |                          ^^^^^^^^^^^^^^^^^^

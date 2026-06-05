@@ -1,0 +1,5 @@
+error: closing tag `[/]` at byte offset 3 with no open tag to close
+ --> tests/compile_fail/text_close_empty_stack.rs:4:26
+  |
+4 |     let _t = gilt::text!("foo[/]");
+  |                          ^^^^^^^^

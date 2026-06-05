@@ -73,6 +73,7 @@ mod renderable;
 mod rule;
 mod shared;
 mod table;
+mod text_macro;
 mod tree;
 
 use proc_macro::TokenStream;
@@ -186,6 +187,40 @@ pub fn derive_table(input: TokenStream) -> TokenStream {
         Ok(ts) => ts.into(),
         Err(e) => e.to_compile_error().into(),
     }
+}
+
+// ===========================================================================
+// text! function-like proc macro
+// ===========================================================================
+
+/// Validate gilt markup at compile time and expand to a `gilt::text::Text`.
+///
+/// Typos that `Text::from_markup` would silently accept (or panic on at
+/// runtime) become `cargo build` errors:
+///
+/// ```ignore
+/// use gilt::text;
+///
+/// // ✓ Compiles — markup is valid.
+/// let t = text!("[bold red]Error:[/] file not found");
+///
+/// // ✗ Compile error — unknown token "blod".
+/// // let bad = text!("[blod]text[/]");
+/// ```
+///
+/// # Limitations
+///
+/// Accepts only **string literals** — no format-string interpolation.
+/// For dynamic markup, use [`gilt::text::Text::from_markup`] directly.
+///
+/// # Note on unclosed tags
+///
+/// Following gilt's runtime behaviour, unclosed tags are **valid**: they apply
+/// to the remainder of the text.  The macro does **not** error on `"[bold]hi"`.
+#[proc_macro]
+pub fn text(input: TokenStream) -> TokenStream {
+    let lit = parse_macro_input!(input as syn::LitStr);
+    text_macro::text_macro_impl(lit).into()
 }
 
 // ---------------------------------------------------------------------------

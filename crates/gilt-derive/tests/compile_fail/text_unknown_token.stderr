@@ -1,0 +1,5 @@
+error: style tag `[blod]` at byte offset 0: unknown style token `blod` (expected a color name, `#rrggbb`, `color(N)`, `rgb(R,G,B)`, `on <color>`, `not <attr>`, `link <url>`, or an attribute like `bold`)
+ --> tests/compile_fail/text_unknown_token.rs:4:26
+  |
+4 |     let _t = gilt::text!("[blod]text[/]");
+  |                          ^^^^^^^^^^^^^^^
