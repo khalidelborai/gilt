@@ -3,7 +3,7 @@ members = ["crates/gilt-derive"]
 
 [package]
 name = "gilt"
-version = "1.5.0"
+version = "1.5.1"
 edition = "2021"
 exclude = [".claude/", ".review/", "vlc.zip"]
 description = "Fast, beautiful terminal formatting for Rust — styles, tables, trees, syntax highlighting, progress bars, markdown."
@@ -43,14 +43,18 @@ bytes = { version = "1", optional = true }
 compact_str = "0.8"
 lru = "0.12"
 arc-swap = "1"
+terminal_size = { version = "0.4", optional = true }
 
 [features]
-default = ["json", "markdown", "syntax", "interactive", "logging"]
+default = ["json", "markdown", "syntax", "interactive", "logging", "terminal-size"]
 json = ["dep:serde", "dep:serde_json"]
 markdown = ["dep:pulldown-cmark"]
 syntax = ["dep:syntect"]
 interactive = ["dep:rpassword"]
 logging = ["dep:log"]
+# Real terminal size detection via ioctl on native targets. Enabled by default.
+# Disable (e.g. `default-features = false`) for wasm / pure-env-detection builds.
+terminal-size = ["dep:terminal_size"]
 tracing = ["dep:tracing", "dep:tracing-subscriber"]
 derive = ["dep:gilt-derive"]
 miette = ["dep:miette"]

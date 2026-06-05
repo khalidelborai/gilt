@@ -77,9 +77,17 @@ cargo run --example derive_table --features derive
 
 ## WebAssembly
 
-gilt compiles for `wasm32-unknown-unknown` without modification — no
-`libc`, `crossterm`, or terminal-syscall dependencies. The intended
-browser path is record-mode + export:
+gilt compiles for `wasm32-unknown-unknown` with `--no-default-features` — no
+`libc`, `crossterm`, or terminal-syscall dependencies. Build with the
+browser-safe feature set (the default-on `terminal-size` and `interactive`
+features are native-only and excluded here):
+
+```toml
+gilt = { version = "1.5", default-features = false, features = ["json", "markdown", "syntax"] }
+```
+
+The intended browser path is record-mode + export — always set the width
+explicitly since there is no terminal to query:
 
 ```rust
 let mut console = Console::builder().width(80).record(true).build();
