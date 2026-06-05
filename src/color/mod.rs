@@ -510,11 +510,9 @@ pub fn parse_rgb_hex(hex: &str) -> Result<ColorTriplet, ColorParseError> {
 /// * `color2` - Second color
 /// * `cross_fade` - Blend factor (0.0 = color1, 1.0 = color2)
 pub fn blend_rgb(color1: ColorTriplet, color2: ColorTriplet, cross_fade: f64) -> ColorTriplet {
-    let r = (color1.red as f64 * (1.0 - cross_fade) + color2.red as f64 * cross_fade).round() as u8;
-    let g =
-        (color1.green as f64 * (1.0 - cross_fade) + color2.green as f64 * cross_fade).round() as u8;
-    let b =
-        (color1.blue as f64 * (1.0 - cross_fade) + color2.blue as f64 * cross_fade).round() as u8;
+    let r = (color1.red as f64 * (1.0 - cross_fade) + color2.red as f64 * cross_fade) as u8;
+    let g = (color1.green as f64 * (1.0 - cross_fade) + color2.green as f64 * cross_fade) as u8;
+    let b = (color1.blue as f64 * (1.0 - cross_fade) + color2.blue as f64 * cross_fade) as u8;
     ColorTriplet::new(r, g, b)
 }
 
@@ -1052,6 +1050,17 @@ mod tests {
         assert_eq!(result, ColorTriplet::new(20, 30, 40));
     }
 
+    /// Python rich uses `int()` (truncation, not rounding) for blend.
+    /// A 50% blend of black (0) and white (255) must yield 127 (truncated),
+    /// not 128 (rounded).
+    #[test]
+    fn test_blend_rgb_truncates_not_rounds() {
+        let black = ColorTriplet::new(0, 0, 0);
+        let white = ColorTriplet::new(255, 255, 255);
+        let result = blend_rgb(black, white, 0.5);
+        assert_eq!(result, ColorTriplet::new(127, 127, 127));
+    }
+
     #[test]
     fn test_blend_rgb_zero() {
         let result = blend_rgb(
@@ -1227,7 +1236,7 @@ use lru::LruCache;
 use std::num::NonZeroUsize;
 use std::sync::Mutex;
 
-/// Global LRU cache for parsed colors with capacity for 512 entries.
+/// Global LRU cache for parsed colors with capacity for 1024 entries.
 static COLOR_CACHE: Mutex<Option<LruCache<String, Color>>> = Mutex::new(None);
 
 /// Lazily initialize and return the cache guard.
@@ -1239,7 +1248,7 @@ fn get_color_cache() -> std::sync::MutexGuard<'static, Option<LruCache<String, C
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
     if cache.is_none() {
-        *cache = Some(LruCache::new(NonZeroUsize::new(512).unwrap()));
+        *cache = Some(LruCache::new(NonZeroUsize::new(1024).unwrap()));
     }
     cache
 }

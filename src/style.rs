@@ -199,22 +199,24 @@ impl Style {
     /// - Known attribute names with aliases
     /// - Anything else: try as foreground color
     pub fn parse_strict(definition: &str) -> Result<Self, StyleError> {
-        // Check cache first
+        // Normalise the cache key to lowercase so "BOLD" and "bold" share
+        // a single entry.
+        let key = definition.to_lowercase();
+
+        // Single lock scope: check cache, parse if missing, insert, drop.
         let mut cache = get_style_cache();
         if let Some(ref mut c) = *cache {
-            if let Some(style) = c.get(definition) {
+            if let Some(style) = c.get(key.as_str()) {
                 return Ok(style.clone());
             }
         }
-        drop(cache);
 
-        // Parse the style
+        // Parse (cache lock still held — recompute-and-insert is correct
+        // under contention; no invariant requires exactly-once parsing).
         let style = Self::parse_internal(definition)?;
 
-        // Insert into cache
-        let mut cache = get_style_cache();
         if let Some(ref mut c) = *cache {
-            c.put(definition.to_string(), style.clone());
+            c.put(key, style.clone());
         }
 
         Ok(style)
@@ -280,6 +282,16 @@ impl Style {
                             ));
                         }
                         style.link = Some(url.to_string());
+                    } else if let Some(ul_style) = parse_underline_style_name(&word) {
+                        // Underline style variant (from Display round-trip)
+                        style.underline_style = Some(ul_style);
+                    } else if word.starts_with("underline_color(") && word.ends_with(')') {
+                        // underline_color(<name>) token emitted by Display
+                        let inner = &word["underline_color(".len()..word.len() - 1];
+                        let color = Color::parse(inner).map_err(|e| {
+                            StyleError::InvalidSyntax(format!("invalid underline_color: {}", e))
+                        })?;
+                        style.underline_color = Some(color);
                     } else if let Some(bit) = parse_attribute_name(&word) {
                         // Try as attribute name
                         style.set_attribute(bit, Some(true));
@@ -476,6 +488,25 @@ impl Style {
             .fold(Style::null(), |acc, style| acc + style.clone())
     }
 
+    /// Alias for [`Style::combine`] matching Python rich's `Style.chain`.
+    ///
+    /// Applies each style left-to-right; later styles override earlier ones
+    /// for conflicting attributes.
+    pub fn chain(styles: &[Style]) -> Style {
+        Self::combine(styles)
+    }
+
+    /// Returns the canonical string form of this style.
+    ///
+    /// Equivalent to formatting and re-parsing: `Style::parse(&format!("{}", self))`.
+    /// Useful for normalising user-supplied style strings (config, CLI flags)
+    /// to a canonical representation.
+    ///
+    /// Mirrors Python rich's `Style.normalize(definition)`.
+    pub fn normalize(&self) -> String {
+        self.to_string()
+    }
+
     /// Like [`Style::combine`] but iterates over references — avoids the
     /// per-step `Style.clone()` that the by-value `Add<Style>` impl forces.
     ///
@@ -603,14 +634,15 @@ impl Style {
 
         // Wrap in hyperlink if present and the caller wants links emitted.
         //
-        // Emit `id=N;url` instead of bare `;url` so terminals that group
-        // multi-line links (iTerm2, Kitty, WezTerm) recognise the run as a
-        // single clickable target. The id is a process-monotonic counter and
-        // not guaranteed stable across renders; if you need a stable id,
-        // reuse the same Style across calls.
+        // Emit `id=N;url` so terminals that group multi-line links (iTerm2,
+        // Kitty, WezTerm) recognise runs as a single clickable target.
+        // The id is derived deterministically from the URL string via a
+        // FNV-1a 64-bit hash, so repeated `render()` calls on the same
+        // Style (or different Style instances with the same link) produce
+        // the same id — no mutable state or extra fields required.
         if emit_link {
             if let Some(url) = &self.link {
-                let id = next_link_id();
+                let id = link_id_for(url);
                 let mut linked = String::with_capacity(result.len() + url.len() + 32);
                 write!(
                     linked,
@@ -929,6 +961,18 @@ impl Add<Option<Style>> for Style {
     }
 }
 
+/// Parses an underline-style token (emitted by [`Display`]) to its variant.
+fn parse_underline_style_name(name: &str) -> Option<UnderlineStyle> {
+    match name {
+        "single" => Some(UnderlineStyle::Single),
+        "double" => Some(UnderlineStyle::Double),
+        "curly" => Some(UnderlineStyle::Curly),
+        "dotted" => Some(UnderlineStyle::Dotted),
+        "dashed" => Some(UnderlineStyle::Dashed),
+        _ => None,
+    }
+}
+
 /// Parses an attribute name to its bit mask.
 fn parse_attribute_name(name: &str) -> Option<u16> {
     match name {
@@ -997,14 +1041,29 @@ use std::sync::Mutex;
 
 /// Process-wide monotonic counter for OSC 8 `id=` parameters.
 ///
-/// Each call to [`next_link_id`] returns a fresh integer — used by
-/// [`Style::render`] when emitting hyperlinks so multi-line link runs are
-/// recognised as a single clickable target by terminals that group on `id=`.
+/// Retained for tests that assert monotonic behaviour; the render path now
+/// uses [`link_id_for`] instead.
 static LINK_ID_COUNTER: AtomicU64 = AtomicU64::new(1);
 
 /// Return a fresh OSC 8 link id, monotonically increasing for the process.
 pub(crate) fn next_link_id() -> u64 {
     LINK_ID_COUNTER.fetch_add(1, Ordering::Relaxed)
+}
+
+/// Derive a stable OSC 8 `id=` value from a URL string using FNV-1a 64-bit.
+///
+/// Using a hash of the URL means identical links on different Style instances
+/// produce the same id, and repeated `render()` calls on the same Style are
+/// idempotent — no mutable state or extra fields needed.
+fn link_id_for(url: &str) -> u64 {
+    const FNV_OFFSET: u64 = 14_695_981_039_346_656_037;
+    const FNV_PRIME: u64 = 1_099_511_628_211;
+    let mut hash = FNV_OFFSET;
+    for byte in url.bytes() {
+        hash ^= byte as u64;
+        hash = hash.wrapping_mul(FNV_PRIME);
+    }
+    hash
 }
 
 /// Global LRU cache for parsed styles with capacity for 256 entries.

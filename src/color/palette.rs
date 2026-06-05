@@ -37,7 +37,7 @@ impl Palette {
         let blue1 = color.blue as i32;
 
         let mut min_index = 0;
-        let mut min_distance = f64::MAX;
+        let mut min_distance = i32::MAX;
 
         for (index, &(r, g, b)) in self.colors.iter().enumerate() {
             let red2 = r as i32;
@@ -49,12 +49,12 @@ impl Palette {
             let green_diff = green1 - green2;
             let blue_diff = blue1 - blue2;
 
-            // Redmean weighted Euclidean distance squared. sqrt() is monotonic
-            // — comparing squared distances picks the same minimum without
-            // 256 sqrt() calls per match_color call.
-            let distance_sq = ((512 + red_mean) * red_diff * red_diff) as f64 / 256.0
-                + 4.0 * (green_diff * green_diff) as f64
-                + ((767 - red_mean) * blue_diff * blue_diff) as f64 / 256.0;
+            // Redmean weighted Euclidean distance (×256, integer-only).
+            // Equivalent to the f64 formula divided by 256; ordering is
+            // identical so the minimum is unchanged.
+            let distance_sq = (512 + red_mean) * red_diff * red_diff
+                + 1024 * green_diff * green_diff
+                + (767 - red_mean) * blue_diff * blue_diff;
 
             if distance_sq < min_distance {
                 min_distance = distance_sq;
