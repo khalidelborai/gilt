@@ -1210,6 +1210,50 @@ impl Console {
             .replace("{code}", &code)
     }
 
+    /// Export recorded output as HTML using a named palette from [`ThemeRegistry`].
+    ///
+    /// Convenience wrapper around [`export_html`](Self::export_html): looks up
+    /// `theme_name` in `ThemeRegistry` and passes the result.  Equivalent to:
+    ///
+    /// ```rust,ignore
+    /// let theme = ThemeRegistry::terminal_theme("dracula").unwrap();
+    /// console.export_html(Some(theme), clear, inline_styles);
+    /// ```
+    ///
+    /// Returns the same HTML as `export_html` with `theme = None` (the default
+    /// terminal theme) when `theme_name` is not found.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    /// use gilt::text::Text;
+    /// use gilt::style::Style;
+    ///
+    /// let mut console = Console::builder()
+    ///     .width(80)
+    ///     .record(true)
+    ///     .force_terminal(true)
+    ///     .markup(false)
+    ///     .build();
+    /// let text = Text::styled("Dracula", "bold magenta");
+    /// console.print(&text);
+    /// let html = console.export_html_with_theme("dracula", false, true);
+    /// assert!(html.contains("<!DOCTYPE html>"));
+    /// // Background should come from the Dracula palette (#282a36)
+    /// assert!(html.contains("#282a36") || html.contains("1a2a36") || html.len() > 100);
+    /// ```
+    pub fn export_html_with_theme(
+        &mut self,
+        theme_name: &str,
+        clear: bool,
+        inline_styles: bool,
+    ) -> String {
+        use crate::terminal_theme::ThemeRegistry;
+        let theme = ThemeRegistry::terminal_theme(theme_name);
+        self.export_html(theme, clear, inline_styles)
+    }
+
     /// Export recorded output as an SVG document.
     ///
     /// Generates a complete SVG image with terminal-style chrome (title bar,

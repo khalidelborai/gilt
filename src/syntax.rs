@@ -6,10 +6,11 @@
 
 use std::collections::HashSet;
 use std::path::Path;
+use std::sync::Arc;
 
 use std::sync::LazyLock;
 use syntect::easy::HighlightLines;
-use syntect::highlighting::{Style as SyntectStyle, ThemeSet};
+use syntect::highlighting::{Style as SyntectStyle, Theme as SyntectTheme, ThemeSet};
 use syntect::parsing::SyntaxSet;
 
 use crate::cells::cell_len;
@@ -134,6 +135,11 @@ pub struct Syntax {
     /// Style ranges to apply on top of syntax highlighting.
     /// Each entry is a (style, character_range) pair applied during rendering.
     pub style_ranges: Vec<(Style, std::ops::Range<usize>)>,
+    /// Optional syntect theme injected via [`with_syntect_theme`](Self::with_syntect_theme).
+    ///
+    /// When set, this theme is used instead of the `theme` name field for both
+    /// syntax highlighting and background-color derivation.
+    pub injected_theme: Option<Arc<SyntectTheme>>,
 }
 
 impl Syntax {
@@ -155,6 +161,7 @@ impl Syntax {
             code_width: None,
             dedent: false,
             style_ranges: Vec::new(),
+            injected_theme: None,
         }
     }
 
@@ -253,6 +260,62 @@ impl Syntax {
     pub fn with_padding(mut self, spec: PaddingSpec) -> Self {
         self.padding = unpack_padding(spec);
         self
+    }
+
+    /// Inject a [`syntect::highlighting::Theme`] to use for highlighting.
+    ///
+    /// When set, this theme is used instead of the string `theme` field for both
+    /// syntax token colouring and background-color derivation. The `theme` name
+    /// field is preserved but ignored during rendering.
+    ///
+    /// The theme is stored behind an [`Arc`] so cloning a `Syntax` value is
+    /// cheap even for large themes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::syntax::Syntax;
+    /// use syntect::highlighting::ThemeSet;
+    ///
+    /// let ts = ThemeSet::load_defaults();
+    /// let theme = ts.themes["base16-ocean.dark"].clone();
+    /// let syntax = Syntax::new("let x = 1;", "rs").with_syntect_theme(theme);
+    /// let s = format!("{}", syntax);
+    /// assert!(!s.is_empty());
+    /// ```
+    #[must_use]
+    pub fn with_syntect_theme(mut self, theme: SyntectTheme) -> Self {
+        self.injected_theme = Some(Arc::new(theme));
+        self
+    }
+
+    /// Load a `.tmTheme` file from disk and return a [`syntect::highlighting::Theme`].
+    ///
+    /// The returned theme can be passed to [`with_syntect_theme`](Self::with_syntect_theme).
+    ///
+    /// This function is not available on `wasm32` targets.
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`SyntaxError::IoError`] if the file cannot be read or parsed
+    /// by syntect.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # #[cfg(all(feature = "syntax", not(target_arch = "wasm32")))] {
+    /// use gilt::syntax::Syntax;
+    ///
+    /// let theme = Syntax::load_theme_from_file("/path/to/My.tmTheme").unwrap();
+    /// let syntax = Syntax::new("fn main() {}", "rs").with_syntect_theme(theme);
+    /// # }
+    /// ```
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn load_theme_from_file(
+        path: impl AsRef<std::path::Path>,
+    ) -> Result<SyntectTheme, SyntaxError> {
+        ThemeSet::get_theme(path.as_ref())
+            .map_err(|e| SyntaxError::IoError(std::io::Error::other(e.to_string())))
     }
 
     /// Add a style to apply over a flat character range of the code.
@@ -376,10 +439,21 @@ impl Syntax {
         (ends_on_nl, processed)
     }
 
+    /// Return the effective syntect theme: injected if set, otherwise from the name field.
+    fn effective_syntect_theme(&self) -> &SyntectTheme {
+        if let Some(ref injected) = self.injected_theme {
+            return injected.as_ref();
+        }
+        let ts = &*THEME_SET;
+        ts.themes
+            .get(&self.theme)
+            .or_else(|| ts.themes.values().next())
+            .expect("at least one theme must be available")
+    }
+
     /// Highlight the given code and return a `Text` with styled spans.
     fn highlight_code(&self, code: &str) -> Text {
         let ss = &*SYNTAX_SET;
-        let ts = &*THEME_SET;
 
         // Find the syntax definition
         let syntax = ss
@@ -387,12 +461,8 @@ impl Syntax {
             .or_else(|| ss.find_syntax_by_extension(&self.lexer_name))
             .unwrap_or_else(|| ss.find_syntax_plain_text());
 
-        // Find the theme, fall back to the default
-        let theme = ts
-            .themes
-            .get(&self.theme)
-            .or_else(|| ts.themes.values().next())
-            .expect("at least one theme must be available");
+        // Find the theme via the unified helper
+        let theme = self.effective_syntect_theme();
 
         let mut h = HighlightLines::new(syntax, theme);
         let mut text = Text::new("", Style::null());
@@ -425,21 +495,17 @@ impl Syntax {
                 return Style::from_color(None, Some(color));
             }
         }
-        let ts = &*THEME_SET;
-        if let Some(theme) = ts.themes.get(&self.theme) {
-            let bg = theme
-                .settings
-                .background
-                .unwrap_or(syntect::highlighting::Color {
-                    r: 0,
-                    g: 0,
-                    b: 0,
-                    a: 255,
-                });
-            Style::from_color(None, Some(Color::from_rgb(bg.r, bg.g, bg.b)))
-        } else {
-            Style::null()
-        }
+        let theme = self.effective_syntect_theme();
+        let bg = theme
+            .settings
+            .background
+            .unwrap_or(syntect::highlighting::Color {
+                r: 0,
+                g: 0,
+                b: 0,
+                a: 255,
+            });
+        Style::from_color(None, Some(Color::from_rgb(bg.r, bg.g, bg.b)))
     }
 
     /// Return `(normal_style, highlighted_style)` for line number rendering.
@@ -448,57 +514,49 @@ impl Syntax {
     /// highlighted ones.  Falls back to a dim/bold style when the theme lacks
     /// an explicit foreground color.
     fn line_number_styles(&self) -> (Style, Style) {
-        let ts = &*THEME_SET;
-        if let Some(theme) = ts.themes.get(&self.theme) {
-            // Obtain bg and fg triplets from the theme settings.
-            let bg = theme
-                .settings
-                .background
-                .unwrap_or(syntect::highlighting::Color {
-                    r: 0,
-                    g: 0,
-                    b: 0,
-                    a: 255,
-                });
-            let fg = theme
-                .settings
-                .foreground
-                .unwrap_or(syntect::highlighting::Color {
-                    r: 255,
-                    g: 255,
-                    b: 255,
-                    a: 255,
-                });
-            let bg_t = ColorTriplet::new(bg.r, bg.g, bg.b);
-            let fg_t = ColorTriplet::new(fg.r, fg.g, fg.b);
+        let theme = self.effective_syntect_theme();
+        // Obtain bg and fg triplets from the theme settings.
+        let bg = theme
+            .settings
+            .background
+            .unwrap_or(syntect::highlighting::Color {
+                r: 0,
+                g: 0,
+                b: 0,
+                a: 255,
+            });
+        let fg = theme
+            .settings
+            .foreground
+            .unwrap_or(syntect::highlighting::Color {
+                r: 255,
+                g: 255,
+                b: 255,
+                a: 255,
+            });
+        let bg_t = ColorTriplet::new(bg.r, bg.g, bg.b);
+        let fg_t = ColorTriplet::new(fg.r, fg.g, fg.b);
 
-            let normal_t = blend_rgb(bg_t, fg_t, 0.3);
-            let highlight_t = blend_rgb(bg_t, fg_t, 0.9);
+        let normal_t = blend_rgb(bg_t, fg_t, 0.3);
+        let highlight_t = blend_rgb(bg_t, fg_t, 0.9);
 
-            let bg_style = self.get_background_style();
-            let normal_style = bg_style.clone()
-                + Style::from_color(
-                    Some(Color::from_rgb(normal_t.red, normal_t.green, normal_t.blue)),
-                    None,
-                );
-            let highlighted_style = bg_style
-                + Style::from_color(
-                    Some(Color::from_rgb(
-                        highlight_t.red,
-                        highlight_t.green,
-                        highlight_t.blue,
-                    )),
-                    None,
-                );
+        let bg_style = self.get_background_style();
+        let normal_style = bg_style.clone()
+            + Style::from_color(
+                Some(Color::from_rgb(normal_t.red, normal_t.green, normal_t.blue)),
+                None,
+            );
+        let highlighted_style = bg_style
+            + Style::from_color(
+                Some(Color::from_rgb(
+                    highlight_t.red,
+                    highlight_t.green,
+                    highlight_t.blue,
+                )),
+                None,
+            );
 
-            (normal_style, highlighted_style)
-        } else {
-            // Fallback: dim for normal, bold for highlighted.
-            let bg_style = self.get_background_style();
-            let dim_style = Style::parse("dim");
-            let bold_style = Style::parse("bold");
-            (bg_style.clone() + dim_style, bg_style + bold_style)
-        }
+        (normal_style, highlighted_style)
     }
 
     /// Build the rendered segments for this Syntax object.
@@ -1410,5 +1468,79 @@ mod tests {
         assert!(!s.is_empty());
         assert!(s.contains("fn"));
         assert!(s.contains("main"));
+    }
+
+    // -- with_syntect_theme / load_theme_from_file -------------------------
+
+    #[test]
+    fn test_with_syntect_theme_renders() {
+        use syntect::highlighting::ThemeSet;
+        let ts = ThemeSet::load_defaults();
+        let theme = ts.themes["base16-ocean.dark"].clone();
+        let syntax = Syntax::new("let x = 1;\n", "rs").with_syntect_theme(theme);
+        let segments = syntax.render_syntax(80);
+        assert!(
+            !segments.is_empty(),
+            "with_syntect_theme produced no output"
+        );
+    }
+
+    #[test]
+    fn test_with_syntect_theme_background_differs() {
+        use syntect::highlighting::ThemeSet;
+        let ts = ThemeSet::load_defaults();
+
+        // base16-ocean.dark and base16-mocha.dark have different backgrounds.
+        let ocean = ts.themes["base16-ocean.dark"].clone();
+        let mocha = ts.themes["base16-mocha.dark"].clone();
+
+        let ocean_bg = ocean
+            .settings
+            .background
+            .expect("ocean theme has background");
+        let mocha_bg = mocha
+            .settings
+            .background
+            .expect("mocha theme has background");
+
+        // Sanity: the two themes actually differ in background.
+        assert_ne!(
+            (ocean_bg.r, ocean_bg.g, ocean_bg.b),
+            (mocha_bg.r, mocha_bg.g, mocha_bg.b),
+            "test pre-condition: themes must have different backgrounds"
+        );
+
+        let syntax_ocean = Syntax::new("let x = 1;\n", "rs").with_syntect_theme(ocean);
+        let syntax_mocha = Syntax::new("let x = 1;\n", "rs").with_syntect_theme(mocha);
+
+        let bg_ocean = syntax_ocean.get_background_style();
+        let bg_mocha = syntax_mocha.get_background_style();
+
+        assert_ne!(
+            bg_ocean.bgcolor(),
+            bg_mocha.bgcolor(),
+            "injected themes should produce different backgrounds"
+        );
+    }
+
+    #[test]
+    fn test_with_syntect_theme_clone_is_cheap() {
+        use syntect::highlighting::ThemeSet;
+        let ts = ThemeSet::load_defaults();
+        let theme = ts.themes["base16-ocean.dark"].clone();
+        let s1 = Syntax::new("code", "rs").with_syntect_theme(theme);
+        // Clone via Arc is reference-counted, not a deep copy.
+        let s2 = s1.clone();
+        assert!(
+            s2.injected_theme.is_some(),
+            "cloned Syntax should retain injected theme"
+        );
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn test_load_theme_from_file_nonexistent() {
+        let result = Syntax::load_theme_from_file("/nonexistent/path/theme.tmTheme");
+        assert!(result.is_err());
     }
 }
