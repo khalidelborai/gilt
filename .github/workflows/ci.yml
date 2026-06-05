@@ -29,6 +29,28 @@ jobs:
       - name: Run doc tests
         run: cargo test --doc
 
+  test-all-features:
+    name: Test (all features)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Run tests (all features, including async/http doctests)
+        run: cargo test --all-features
+      - name: Build examples (all features)
+        run: cargo build --examples --all-features
+
+  test-no-default-features:
+    name: Test (no default features)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Run lib tests (no default features)
+        run: cargo test --no-default-features --lib
+
   clippy:
     name: Clippy
     runs-on: ubuntu-latest
@@ -42,6 +64,8 @@ jobs:
         run: cargo clippy -- -D warnings
       - name: Clippy (all features)
         run: cargo clippy --features "tracing derive miette eyre" -- -D warnings
+      - name: Clippy (all features, all targets)
+        run: cargo clippy --all-features --all-targets -- -D warnings
 
   fmt:
     name: Format

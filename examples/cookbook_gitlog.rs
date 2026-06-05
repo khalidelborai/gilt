@@ -175,7 +175,7 @@ fn main() {
         };
         let full_msg = format!("[{prefix_style}]{prefix}:[/{prefix_style}] {msg}");
         let msg_text = Text::from_markup(&full_msg)
-            .unwrap_or_else(|_| Text::styled_with(&format!("{prefix}: {msg}"), Style::null()));
+            .unwrap_or_else(|_| Text::styled_with(format!("{prefix}: {msg}"), Style::null()));
 
         // Author: bold
         let author_text = Text::styled(author, "bold");
@@ -186,7 +186,7 @@ fn main() {
         // Files: +N in green, -M in red
         let files_str = format!("[green]+{add}[/green] [red]-{del}[/red]");
         let files_text = Text::from_markup(&files_str)
-            .unwrap_or_else(|_| Text::styled_with(&format!("+{add} -{del}"), Style::null()));
+            .unwrap_or_else(|_| Text::styled_with(format!("+{add} -{del}"), Style::null()));
 
         table.add_row_text(&[
             hash_text,

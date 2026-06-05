@@ -585,7 +585,7 @@ mod tests {
     #[test]
     fn test_row_splitter_divide_equal() {
         let splitter = RowSplitter;
-        let children = vec![
+        let children = [
             Layout::new(None, None, None, None, Some(1), None),
             Layout::new(None, None, None, None, Some(1), None),
         ];
@@ -605,7 +605,7 @@ mod tests {
     #[test]
     fn test_row_splitter_divide_unequal() {
         let splitter = RowSplitter;
-        let children = vec![
+        let children = [
             Layout::new(None, None, None, None, Some(2), None),
             Layout::new(None, None, None, None, Some(1), None),
         ];
@@ -620,7 +620,7 @@ mod tests {
     #[test]
     fn test_row_splitter_divide_with_fixed_size() {
         let splitter = RowSplitter;
-        let children = vec![
+        let children = [
             Layout::new(None, None, Some(20), None, None, None),
             Layout::new(None, None, None, None, Some(1), None),
         ];
@@ -634,7 +634,7 @@ mod tests {
     #[test]
     fn test_row_splitter_divide_offsets() {
         let splitter = RowSplitter;
-        let children = vec![
+        let children = [
             Layout::new(None, None, Some(30), None, None, None),
             Layout::new(None, None, Some(50), None, None, None),
         ];
@@ -658,7 +658,7 @@ mod tests {
     #[test]
     fn test_column_splitter_divide_equal() {
         let splitter = ColumnSplitter;
-        let children = vec![
+        let children = [
             Layout::new(None, None, None, None, Some(1), None),
             Layout::new(None, None, None, None, Some(1), None),
         ];
@@ -674,7 +674,7 @@ mod tests {
     #[test]
     fn test_column_splitter_divide_unequal() {
         let splitter = ColumnSplitter;
-        let children = vec![
+        let children = [
             Layout::new(None, None, None, None, Some(3), None),
             Layout::new(None, None, None, None, Some(1), None),
         ];
@@ -689,7 +689,7 @@ mod tests {
     #[test]
     fn test_column_splitter_divide_with_fixed_size() {
         let splitter = ColumnSplitter;
-        let children = vec![
+        let children = [
             Layout::new(None, None, Some(5), None, None, None),
             Layout::new(None, None, None, None, Some(1), None),
         ];
@@ -703,7 +703,7 @@ mod tests {
     #[test]
     fn test_column_splitter_divide_offsets() {
         let splitter = ColumnSplitter;
-        let children = vec![
+        let children = [
             Layout::new(None, None, Some(10), None, None, None),
             Layout::new(None, None, Some(14), None, None, None),
         ];
@@ -1350,7 +1350,7 @@ mod tests {
     #[test]
     fn test_row_splitter_three_children() {
         let splitter = RowSplitter;
-        let children = vec![
+        let children = [
             Layout::new(None, None, None, None, Some(1), None),
             Layout::new(None, None, None, None, Some(1), None),
             Layout::new(None, None, None, None, Some(1), None),
@@ -1372,7 +1372,7 @@ mod tests {
     #[test]
     fn test_column_splitter_three_children() {
         let splitter = ColumnSplitter;
-        let children = vec![
+        let children = [
             Layout::new(None, None, None, None, Some(1), None),
             Layout::new(None, None, None, None, Some(1), None),
             Layout::new(None, None, None, None, Some(1), None),

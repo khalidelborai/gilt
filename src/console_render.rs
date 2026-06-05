@@ -182,7 +182,7 @@ impl Console {
             opts.overflow = Some(o);
         }
         if no_wrap {
-            opts.no_wrap = true;
+            opts.no_wrap = Some(true);
         }
 
         let mut segments = renderable.gilt_console(self, &opts);

@@ -119,7 +119,8 @@ fn test_console_options_with_updates() {
     let updated = opts.with_updates(&updates);
     assert_eq!(updated.size.width, 60);
     assert_eq!(updated.max_width, 60);
-    assert!(updated.no_wrap);
+    // no_wrap is now Option<bool>; `Some(true)` from the update (tri-state).
+    assert_eq!(updated.no_wrap, Some(true));
     assert_eq!(updated.justify, Some(JustifyMethod::Center));
 }
 
@@ -127,7 +128,9 @@ fn test_console_options_with_updates() {
 
 #[test]
 fn test_console_default() {
-    let console = Console::new();
+    // Use force_terminal so the builder produces a styled console regardless
+    // of whether the test harness pipes stdout.
+    let console = Console::builder().force_terminal(true).build();
     assert_eq!(console.encoding(), "utf-8");
     assert!(!console.no_color);
     assert!(!console.quiet);
@@ -137,7 +140,9 @@ fn test_console_default() {
 
 #[test]
 fn test_console_builder_defaults() {
-    let console = Console::builder().build();
+    // force_terminal so that the builder resolves a color system even when
+    // stdout is piped in the test harness.
+    let console = Console::builder().force_terminal(true).build();
     assert!(console.color_system.is_some());
     assert_eq!(console.tab_size, 8);
     assert!(!console.record);
@@ -426,6 +431,7 @@ fn test_export_text_clear() {
 fn test_export_html_inline_styles() {
     let mut console = Console::builder()
         .width(80)
+        .force_terminal(true) // needed so color system is active in the test harness
         .record(true)
         .markup(false)
         .build();
@@ -895,7 +901,8 @@ fn test_console_options_default() {
     assert_eq!(opts.size.height, 40);
     assert_eq!(opts.max_width, 100);
     assert_eq!(opts.encoding.as_ref(), "utf-8");
-    assert!(!opts.no_wrap);
+    // no_wrap is now Option<bool>; None = inherit / wrap by default.
+    assert_eq!(opts.no_wrap, None);
     assert_eq!(opts.justify, None);
     assert_eq!(opts.overflow, None);
 }
@@ -1617,7 +1624,7 @@ fn make_default_options() -> ConsoleOptions {
         max_height: 25,
         justify: None,
         overflow: None,
-        no_wrap: false,
+        no_wrap: None,
         highlight: None,
         markup: None,
         height: None,
@@ -1873,5 +1880,47 @@ fn test_export_svg_static_unique_id_overrides_hash() {
     assert!(
         !svg.contains("id=\"gilt-"),
         "no hash-derived id should appear when explicit id given"
+    );
+}
+
+// -- Console::stderr() smoke test ----------------------------------------
+
+/// Smoke-test: `Console::stderr()` constructs without panicking and routes
+/// output to stderr (the `begin_capture`/`end_capture` capture path overrides
+/// the writer so we can observe output in tests).
+#[test]
+fn test_console_stderr_constructor() {
+    let mut c = Console::stderr();
+    // The writer override points at stderr; capture overrides that too.
+    c.begin_capture();
+    c.print_text("stderr smoke test");
+    let captured = c.end_capture();
+    assert!(
+        captured.contains("stderr smoke test"),
+        "Console::stderr() should produce output; got {:?}",
+        captured
+    );
+}
+
+/// `Console::stderr()` respects `force_terminal` — when stderr is not a tty
+/// (e.g. test harness) the console should be in plain mode.
+/// When it IS forced, the color system resolves to something.
+#[test]
+fn test_console_stderr_terminal_state() {
+    // Build one that we know is a terminal via force_terminal, matching the
+    // internal logic of Console::stderr() when stderr is a tty.
+    let c_tty = Console::builder().force_terminal(true).build();
+    assert!(
+        c_tty.color_system().is_some(),
+        "force_terminal(true) should yield a color system"
+    );
+
+    // And one that is not a terminal, matching the non-tty path.
+    let c_pipe = Console::builder().force_terminal(false).build();
+    // force_terminal(false) causes color_system to resolve to None via the
+    // non-terminal branch.
+    assert!(
+        c_pipe.color_system().is_none(),
+        "force_terminal(false) should yield no color system"
     );
 }

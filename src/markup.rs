@@ -1,7 +1,9 @@
 //! gilt markup parser — parses `[bold red]text[/]` syntax into styled `Text`.
 //!
 
+use std::collections::HashMap;
 use std::fmt;
+use std::sync::Arc;
 
 use regex::Regex;
 use std::sync::LazyLock;
@@ -208,8 +210,19 @@ pub fn render(markup: &str, style: Style) -> Result<Text, MarkupError> {
                 if style_name.is_empty() {
                     // Implicit close `[/]` — pop the most recent tag.
                     if let Some((start, open_tag)) = style_stack.pop() {
-                        // Skip `@` event tags (no style to apply).
-                        if !open_tag.name.starts_with('@') {
+                        if open_tag.name.starts_with('@') {
+                            // Meta tag — build a meta span over the enclosed range.
+                            let end = text.len();
+                            if end > start {
+                                let meta_arc = parse_meta_tag(&open_tag);
+                                text.spans_mut().push(Span::with_meta(
+                                    start,
+                                    end,
+                                    Style::null(),
+                                    Some(meta_arc),
+                                ));
+                            }
+                        } else {
                             let tag_style = resolve_tag_style(&open_tag);
                             let end = text.len();
                             if end > start {
@@ -235,7 +248,18 @@ pub fn render(markup: &str, style: Style) -> Result<Text, MarkupError> {
 
                     if let Some(idx) = found {
                         let (start, open_tag) = style_stack.remove(idx);
-                        if !open_tag.name.starts_with('@') {
+                        if open_tag.name.starts_with('@') {
+                            let end = text.len();
+                            if end > start {
+                                let meta_arc = parse_meta_tag(&open_tag);
+                                text.spans_mut().push(Span::with_meta(
+                                    start,
+                                    end,
+                                    Style::null(),
+                                    Some(meta_arc),
+                                ));
+                            }
+                        } else {
                             let tag_style = resolve_tag_style(&open_tag);
                             let end = text.len();
                             if end > start {
@@ -265,10 +289,14 @@ pub fn render(markup: &str, style: Style) -> Result<Text, MarkupError> {
 
     // Close any remaining unclosed tags (unclosed tags are valid in gilt).
     for (start, open_tag) in style_stack.into_iter().rev() {
-        if !open_tag.name.starts_with('@') {
-            let tag_style = resolve_tag_style(&open_tag);
-            let end = text.len();
-            if end > start {
+        let end = text.len();
+        if end > start {
+            if open_tag.name.starts_with('@') {
+                let meta_arc = parse_meta_tag(&open_tag);
+                text.spans_mut()
+                    .push(Span::with_meta(start, end, Style::null(), Some(meta_arc)));
+            } else {
+                let tag_style = resolve_tag_style(&open_tag);
                 text.spans_mut().push(Span::new(start, end, tag_style));
             }
         }
@@ -278,6 +306,40 @@ pub fn render(markup: &str, style: Style) -> Result<Text, MarkupError> {
     text.spans_mut().sort_by_key(|s| s.start);
 
     Ok(text)
+}
+
+/// Parse an `@`-prefixed meta tag into a shared `HashMap<String, String>`.
+///
+/// The tag name (after stripping the leading `@`) is the key.  If the tag has a
+/// `parameters` value it becomes the value (surrounding quotes are stripped,
+/// whitespace is trimmed); otherwise the value is `"true"`.
+///
+/// Examples:
+/// - `[@key=value]`  → `{"key": "value"}`
+/// - `[@flag]`        → `{"flag": "true"}`
+/// - `[@label="hello world"]` → `{"label": "hello world"}`
+fn parse_meta_tag(tag: &Tag) -> Arc<HashMap<String, String>> {
+    // Strip the leading '@' from the tag name.
+    let key = tag.name.trim_start_matches('@').trim().to_string();
+
+    let raw_value = match &tag.parameters {
+        Some(v) => {
+            // Trim whitespace, then strip surrounding quotes (single or double).
+            let v = v.trim();
+            if (v.starts_with('"') && v.ends_with('"'))
+                || (v.starts_with('\'') && v.ends_with('\''))
+            {
+                v[1..v.len() - 1].to_string()
+            } else {
+                v.to_string()
+            }
+        }
+        None => "true".to_string(),
+    };
+
+    let mut map = HashMap::new();
+    map.insert(key, raw_value);
+    Arc::new(map)
 }
 
 /// Resolve a tag to a `Style`.
@@ -568,11 +630,18 @@ mod tests {
 
     #[test]
     fn test_render_at_event_tag() {
-        // Event tags starting with @ should be skipped (no style applied).
+        // `@`-prefixed tags are now meta tags: they produce a Span with metadata.
+        // Updated expectation: one meta span covering "hello", no style.
         let result = render("[@click]hello[/]", Style::null()).unwrap();
         assert_eq!(result.plain(), "hello");
-        // @click is an event tag, so no span is created.
-        assert_eq!(result.spans().len(), 0);
+        // One meta span is produced with null style and meta key "click" = "true".
+        assert_eq!(result.spans().len(), 1);
+        let span = &result.spans()[0];
+        assert_eq!(span.start, 0);
+        assert_eq!(span.end, 5);
+        assert!(span.style.is_null());
+        let meta = span.meta.as_ref().expect("meta span must have metadata");
+        assert_eq!(meta.get("click").map(|v| v.as_str()), Some("true"));
     }
 
     #[test]
@@ -638,6 +707,64 @@ mod tests {
         assert_eq!(result.plain(), "click");
         assert_eq!(result.spans().len(), 1);
         assert_eq!(result.spans()[0].style.link(), Some("https://example.com"));
+    }
+
+    // -- Meta tag tests -------------------------------------------------------
+
+    #[test]
+    fn test_render_meta_key_value() {
+        // `[@key=val]x[/]` — meta span covers "x", meta = {"key": "val"}.
+        let result = render("[@key=val]x[/]", Style::null()).unwrap();
+        assert_eq!(result.plain(), "x");
+        assert_eq!(result.spans().len(), 1);
+        let span = &result.spans()[0];
+        assert_eq!(span.start, 0);
+        assert_eq!(span.end, 1);
+        assert!(span.style.is_null(), "meta span must have null style");
+        let meta = span.meta.as_ref().expect("must have meta");
+        assert_eq!(meta.get("key").map(|v| v.as_str()), Some("val"));
+    }
+
+    #[test]
+    fn test_render_meta_bare_flag() {
+        // `[@flag]text[/]` — bare flag → value = "true".
+        let result = render("[@flag]text[/]", Style::null()).unwrap();
+        assert_eq!(result.plain(), "text");
+        assert_eq!(result.spans().len(), 1);
+        let meta = result.spans()[0].meta.as_ref().expect("must have meta");
+        assert_eq!(meta.get("flag").map(|v| v.as_str()), Some("true"));
+    }
+
+    #[test]
+    fn test_render_meta_quoted_value() {
+        // `[@label="hello world"]x[/]` — quoted value is unquoted.
+        let result = render(r#"[@label="hello world"]x[/]"#, Style::null()).unwrap();
+        assert_eq!(result.plain(), "x");
+        let meta = result.spans()[0].meta.as_ref().expect("must have meta");
+        assert_eq!(meta.get("label").map(|v| v.as_str()), Some("hello world"));
+    }
+
+    #[test]
+    fn test_render_meta_explicit_close() {
+        // `[@key=val]x[/@key]` — explicit close.
+        let result = render("[@mykey=42]text[/@mykey]", Style::null()).unwrap();
+        assert_eq!(result.plain(), "text");
+        assert_eq!(result.spans().len(), 1);
+        let meta = result.spans()[0].meta.as_ref().expect("must have meta");
+        assert_eq!(meta.get("mykey").map(|v| v.as_str()), Some("42"));
+    }
+
+    #[test]
+    fn test_render_meta_visible_text_only() {
+        // The plain text visible via `text.plain()` must contain only the content,
+        // not the tag syntax.
+        let result = render("before[@k=v]inside[/]after", Style::null()).unwrap();
+        assert_eq!(result.plain(), "beforeinsideafter");
+        // One meta span covering "inside" (chars 6..12).
+        let meta_spans: Vec<_> = result.spans().iter().filter(|s| s.meta.is_some()).collect();
+        assert_eq!(meta_spans.len(), 1);
+        assert_eq!(meta_spans[0].start, 6);
+        assert_eq!(meta_spans[0].end, 12);
     }
 
     // -- Finding #1: escaped-bracket no double-escape corruption --------------

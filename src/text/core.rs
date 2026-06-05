@@ -4,9 +4,11 @@
 //! along with supporting types `Span`, `Lines`, and related enums.
 
 use std::cmp::min;
+use std::collections::HashMap;
 use std::fmt;
 use std::ops::Add;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 
 use regex::Regex;
 
@@ -236,6 +238,11 @@ impl Text {
     }
 
     // -- Properties ---------------------------------------------------------
+
+    /// Return the base style of this text.
+    pub fn style(&self) -> &Style {
+        &self.style
+    }
 
     /// Return the plain (unstyled) text content.
     pub fn plain(&self) -> &str {
@@ -1428,6 +1435,62 @@ impl Text {
         style
     }
 
+    // -- Metadata -----------------------------------------------------------
+
+    /// Attach arbitrary key/value metadata to the character range `[start, end)`.
+    ///
+    /// Inserts a [`Span`] with [`Style::null()`] and the given `meta` map over
+    /// `[start.clamp(0, len), end.clamp(0, len))`.  If the clamped range is empty
+    /// the call is a no-op.
+    ///
+    /// This mirrors Python rich's `Text.apply_meta`.
+    pub fn apply_meta(&mut self, meta: HashMap<String, String>, start: usize, end: usize) {
+        let length = self.len();
+        let start = min(start, length);
+        let end = min(end, length);
+        if start >= end {
+            return;
+        }
+        self.spans.push(Span::with_meta(
+            start,
+            end,
+            Style::null(),
+            Some(Arc::new(meta)),
+        ));
+    }
+
+    /// Return a new `Text` whose base style has the given hyperlink URL set.
+    ///
+    /// The URL is stamped onto `self.style` via [`Style::with_link`] so that
+    /// the entire text renders as an OSC-8 hyperlink.
+    ///
+    /// # Note
+    ///
+    /// Python rich's `Text.on` attaches arbitrary event metadata/handlers.
+    /// In gilt (a terminal renderer) the meaningful effect of `on` is the
+    /// OSC-8 hyperlink; other event semantics are out of scope for the
+    /// terminal layer.
+    pub fn on(mut self, url: &str) -> Self {
+        self.style = self.style + Style::with_link(url);
+        self
+    }
+
+    /// Return the metadata map of the last (topmost) [`Span`] covering `offset`,
+    /// if any span with metadata covers that offset.
+    ///
+    /// "Topmost" means the span that appears last in the span list — consistent
+    /// with gilt's rendering model where later spans override earlier ones.
+    ///
+    /// Returns `None` if no meta span covers `offset`.
+    pub fn get_meta_at(&self, offset: usize) -> Option<&HashMap<String, String>> {
+        // Walk in reverse to find the last (topmost) meta span covering offset.
+        self.spans
+            .iter()
+            .rev()
+            .filter(|s| s.start <= offset && offset < s.end && s.meta.is_some())
+            .find_map(|s| s.meta.as_deref())
+    }
+
     /// Convert this `Text` back into a markup string.
     ///
     /// Produces a string that, when re-parsed via [`Text::from_markup`], yields
@@ -1736,6 +1799,80 @@ mod tests {
     }
 
     // -- get_style_at_offset_themed tests -----------------------------------
+
+    // -- apply_meta / get_meta_at tests ------------------------------------
+
+    #[test]
+    fn apply_meta_inserts_meta_span() {
+        let mut text = Text::new("hello world", Style::null());
+        let mut m = std::collections::HashMap::new();
+        m.insert("action".to_string(), "click".to_string());
+        text.apply_meta(m, 0, 5);
+        assert_eq!(text.spans().len(), 1);
+        let span = &text.spans()[0];
+        assert_eq!(span.start, 0);
+        assert_eq!(span.end, 5);
+        assert!(span.style.is_null());
+        let meta = span.meta.as_ref().expect("must have meta");
+        assert_eq!(meta.get("action").map(|v| v.as_str()), Some("click"));
+    }
+
+    #[test]
+    fn apply_meta_clamps_to_text_length() {
+        let mut text = Text::new("hi", Style::null()); // len = 2
+        let mut m = std::collections::HashMap::new();
+        m.insert("k".to_string(), "v".to_string());
+        // start=0, end=100 → clamped to 0..2
+        text.apply_meta(m, 0, 100);
+        assert_eq!(text.spans().len(), 1);
+        assert_eq!(text.spans()[0].end, 2);
+    }
+
+    #[test]
+    fn apply_meta_empty_range_is_noop() {
+        let mut text = Text::new("abc", Style::null());
+        let m = std::collections::HashMap::new();
+        text.apply_meta(m, 2, 2);
+        assert_eq!(text.spans().len(), 0);
+    }
+
+    #[test]
+    fn get_meta_at_returns_last_covering_span() {
+        let mut text = Text::new("abcde", Style::null());
+        let mut m1 = std::collections::HashMap::new();
+        m1.insert("layer".to_string(), "first".to_string());
+        let mut m2 = std::collections::HashMap::new();
+        m2.insert("layer".to_string(), "second".to_string());
+        text.apply_meta(m1, 0, 5);
+        text.apply_meta(m2, 0, 5);
+        // get_meta_at should return the last (topmost) span's meta.
+        let meta = text.get_meta_at(2).expect("must have meta at offset 2");
+        assert_eq!(meta.get("layer").map(|v| v.as_str()), Some("second"));
+    }
+
+    #[test]
+    fn get_meta_at_returns_none_for_uncovered_offset() {
+        let mut text = Text::new("hello world", Style::null());
+        let mut m = std::collections::HashMap::new();
+        m.insert("k".to_string(), "v".to_string());
+        text.apply_meta(m, 0, 5); // covers "hello"
+                                  // offset 6 ("w") is not covered
+        assert!(text.get_meta_at(6).is_none());
+    }
+
+    #[test]
+    fn on_sets_link_on_base_style() {
+        let text = Text::new("click me", Style::null()).on("https://example.com");
+        assert_eq!(text.style().link(), Some("https://example.com"));
+    }
+
+    #[test]
+    fn on_preserves_existing_style() {
+        let text = Text::new("click me", Style::parse("bold")).on("https://example.com");
+        // bold should still be present
+        assert_eq!(text.style().bold(), Some(true));
+        assert_eq!(text.style().link(), Some("https://example.com"));
+    }
 
     /// A Console with a theme entry "highlight" → bold red; a Text whose span
     /// carries the resolved highlight style should return bold red from

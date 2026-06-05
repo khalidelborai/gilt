@@ -266,6 +266,7 @@ mod tests {
     // -- 3. Inspect a struct -------------------------------------------------
 
     #[derive(Debug)]
+    #[allow(dead_code)]
     struct TestPoint {
         x: f64,
         y: f64,
