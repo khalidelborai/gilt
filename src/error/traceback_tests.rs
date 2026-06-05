@@ -264,7 +264,8 @@ fn test_default_values() {
     assert!(tb.width.is_none());
     assert_eq!(tb.extra_lines, 3);
     assert_eq!(tb.theme, "base16-ocean.dark");
-    assert!(tb.word_wrap);
+    // Finding #13: rich defaults word_wrap to false (was incorrectly true).
+    assert!(!tb.word_wrap);
     assert_eq!(tb.max_frames, 100);
 }
 
@@ -322,11 +323,11 @@ fn test_max_frames_limit() {
         ));
     }
 
-    // When rendering the content, only max_frames should be shown
+    // When rendering the content, only max_frames should be shown.
     let content = tb.render_content();
     let plain = content.plain().to_string();
-    // Should mention omitted frames
-    assert!(plain.contains("omitted"));
+    // Finding #17: wording changed from "omitted" to "hidden" to match rich.
+    assert!(plain.contains("hidden"));
 }
 
 #[test]
@@ -603,10 +604,23 @@ fn suppress_empty_passes_all_frames() {
 }
 
 #[test]
-fn suppress_path_matches_anywhere_in_filename() {
+fn suppress_path_prefix_match() {
+    // Finding #12: suppression now uses starts_with (prefix) to mirror rich.
+    // A prefix that actually matches the start of the filename is suppressed.
     let tb = tb_with_frames(&["/path/to/tokio-runtime/lib.rs", "/path/to/myapp/main.rs"])
-        .with_suppress(vec!["tokio-".to_string()]);
+        .with_suppress(vec!["/path/to/tokio-".to_string()]);
     let visible = tb.visible_frames();
     assert_eq!(visible.len(), 1);
     assert!(visible[0].filename.contains("myapp"));
+}
+
+#[test]
+fn suppress_path_non_prefix_not_suppressed() {
+    // Finding #12: a substring that is NOT a prefix does NOT suppress.
+    // "tokio-" does not start "/path/to/tokio-runtime/lib.rs", so no frame is hidden.
+    let tb = tb_with_frames(&["/path/to/tokio-runtime/lib.rs", "/path/to/myapp/main.rs"])
+        .with_suppress(vec!["tokio-".to_string()]);
+    let visible = tb.visible_frames();
+    // Neither filename starts with "tokio-", so both are visible.
+    assert_eq!(visible.len(), 2);
 }

@@ -267,6 +267,10 @@ impl CsvTable {
     }
 
     /// Return the measurement for this CSV table (delegated to the inner table).
+    ///
+    /// Note (finding #25): `to_table()` rebuilds the `Table` on each call.
+    /// Adding a `OnceCell`/`RwLock` cache would require interior mutability and
+    /// complicates `Clone`; left as-is for now (P3 perf, low-frequency path).
     pub fn measure(&self, console: &Console, options: &ConsoleOptions) -> Measurement {
         let table = self.to_table();
         table.measure(console, options)

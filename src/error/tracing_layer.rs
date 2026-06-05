@@ -184,18 +184,11 @@ impl GiltLayer {
     }
 
     /// Build the time column text (HH:MM:SS) in dim style.
+    ///
+    /// Finding #21: delegates to `crate::error::fmt_time_hms()` to eliminate
+    /// the duplicated UTC-time computation between `logging_handler` and here.
     fn render_time() -> Text {
-        let now = {
-            use std::time::{SystemTime, UNIX_EPOCH};
-            let dur = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default();
-            let total_secs = dur.as_secs();
-            let hours = (total_secs / 3600) % 24;
-            let minutes = (total_secs / 60) % 60;
-            let seconds = total_secs % 60;
-            format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
-        };
+        let now = crate::error::fmt_time_hms();
         let dim_style = Style::parse("dim");
         Text::styled_with(&now, dim_style)
     }

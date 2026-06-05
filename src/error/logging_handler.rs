@@ -10,6 +10,7 @@ use std::sync::Mutex;
 use crate::cells::cell_len;
 use crate::console::Console;
 use crate::error::traceback::Traceback;
+use crate::highlighter::{Highlighter, ReprHighlighter};
 use crate::markup;
 use crate::style::Style;
 use crate::text::Text;
@@ -69,7 +70,8 @@ impl RichHandler {
             show_path: true,
             markup: false,
             omit_repeated_times: true,
-            enable_link_path: false,
+            // Finding #15: rich defaults enable_link_path to true; was incorrectly false.
+            enable_link_path: true,
             gilt_tracebacks: false,
             keywords: DEFAULT_KEYWORDS.iter().map(|s| s.to_string()).collect(),
             level_styles: Self::default_level_styles(),
@@ -150,12 +152,18 @@ impl RichHandler {
     }
 
     /// Return the default level style map.
+    ///
+    /// Finding #16: aligned to `default_styles.rs` theme values (single source
+    /// of truth). Rich: error=bold red, warn=bold yellow, info=bold blue,
+    /// debug=bold green, trace=dim. Previously info/debug were swapped.
     fn default_level_styles() -> HashMap<log::Level, Style> {
         let mut m = HashMap::new();
         m.insert(log::Level::Error, Style::parse("bold red"));
         m.insert(log::Level::Warn, Style::parse("bold yellow"));
-        m.insert(log::Level::Info, Style::parse("bold green"));
-        m.insert(log::Level::Debug, Style::parse("bold blue"));
+        // logging.level.info  = blue  → bold blue
+        m.insert(log::Level::Info, Style::parse("bold blue"));
+        // logging.level.debug = green → bold green
+        m.insert(log::Level::Debug, Style::parse("bold green"));
         m.insert(log::Level::Trace, Style::parse("dim"));
         m
     }
@@ -179,6 +187,10 @@ impl RichHandler {
     }
 
     /// Build the message column, optionally parsing markup and highlighting keywords.
+    ///
+    /// Finding #14: apply `ReprHighlighter` to all log messages to match
+    /// Python's `RichHandler` behaviour (numbers, strings, booleans, etc. are
+    /// highlighted in repr-style).
     fn render_message(&self, record: &log::Record) -> Text {
         let msg = format!("{}", record.args());
         let mut text = if self.markup {
@@ -187,6 +199,9 @@ impl RichHandler {
         } else {
             Text::new(&msg, Style::null())
         };
+
+        // Apply ReprHighlighter to match Python's RichHandler (finding #14).
+        ReprHighlighter.highlight(&mut text);
 
         // Keyword highlighting
         if !self.keywords.is_empty() {
@@ -311,17 +326,13 @@ impl RichHandler {
         Text::styled_with(&now, dim_style)
     }
 
-    /// Return the current wall-clock time as `HH:MM:SS`.
+    /// Return the current UTC wall-clock time as `HH:MM:SS`.
+    ///
+    /// Delegates to `crate::error::fmt_time_hms()` — the shared helper
+    /// (finding #21) that eliminates the duplicate UTC-time code in
+    /// `logging_handler` and `tracing_layer`.
     fn current_time_str() -> String {
-        use std::time::{SystemTime, UNIX_EPOCH};
-        let dur = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default();
-        let total_secs = dur.as_secs();
-        let hours = (total_secs / 3600) % 24;
-        let minutes = (total_secs / 60) % 60;
-        let seconds = total_secs % 60;
-        format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
+        crate::error::fmt_time_hms()
     }
 }
 
@@ -382,6 +393,8 @@ mod tests {
         assert!(!handler.markup);
         assert!(!handler.gilt_tracebacks);
         assert!(!handler.keywords.is_empty());
+        // Finding #15: enable_link_path defaults to true (matches rich).
+        assert!(handler.enable_link_path);
     }
 
     #[test]
@@ -459,19 +472,21 @@ mod tests {
     }
 
     #[test]
-    fn test_info_style_is_bold_green() {
+    fn test_info_style_is_bold_blue() {
+        // Finding #16: info is bold blue (logging.level.info = blue); was incorrectly bold green.
         let styles = RichHandler::default_level_styles();
         let info_style = styles.get(&log::Level::Info).unwrap();
         assert_eq!(info_style.bold(), Some(true));
-        assert_eq!(info_style.color().unwrap().name(), "green");
+        assert_eq!(info_style.color().unwrap().name(), "blue");
     }
 
     #[test]
-    fn test_debug_style_is_bold_blue() {
+    fn test_debug_style_is_bold_green() {
+        // Finding #16: debug is bold green (logging.level.debug = green); was incorrectly bold blue.
         let styles = RichHandler::default_level_styles();
         let debug_style = styles.get(&log::Level::Debug).unwrap();
         assert_eq!(debug_style.bold(), Some(true));
-        assert_eq!(debug_style.color().unwrap().name(), "blue");
+        assert_eq!(debug_style.color().unwrap().name(), "green");
     }
 
     #[test]
@@ -878,8 +893,9 @@ mod tests {
             .level(log::Level::Info)
             .build();
         let text = handler.render_message(&record);
-        // No keywords to highlight, so no spans
-        assert!(text.spans().is_empty());
+        // Finding #14: ReprHighlighter runs on all messages, so spans may be
+        // present even with no keywords. Plain text content must still be correct.
+        assert_eq!(text.plain(), "GET /index.html 200");
     }
 
     // -- log::Log trait implementation ---------------------------------------

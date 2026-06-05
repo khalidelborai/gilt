@@ -136,9 +136,11 @@ impl Sparkline {
         }
 
         // Determine the effective data (resample if width differs).
-        let effective: Vec<f64> = match self.width {
-            Some(w) if w != self.data.len() => Self::resample(&self.data, w),
-            _ => self.data.clone(),
+        // Finding #26: use Cow to avoid cloning the Vec when no resampling is needed.
+        use std::borrow::Cow;
+        let effective: Cow<[f64]> = match self.width {
+            Some(w) if w != self.data.len() => Cow::Owned(Self::resample(&self.data, w)),
+            _ => Cow::Borrowed(&self.data),
         };
 
         if effective.is_empty() {

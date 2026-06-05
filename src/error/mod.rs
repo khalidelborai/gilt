@@ -4,6 +4,31 @@
 //! of the gilt library, mirroring the error hierarchy while leveraging
 //! Rust's type system for better error handling ergonomics.
 
+// ---------------------------------------------------------------------------
+// Shared time helper (finding #21)
+// ---------------------------------------------------------------------------
+
+/// Return the current UTC wall-clock time as an `HH:MM:SS` string.
+///
+/// This is a shared helper used by both [`logging_handler::RichHandler`] and
+/// [`tracing_layer::GiltLayer`] so the duplicated UTC-time computation lives
+/// in exactly one place.
+///
+/// Note: gilt deliberately shows UTC time rather than local time to avoid a
+/// dependency on `chrono` or `time`. This is a known divergence from Python
+/// rich (which uses `[%x %X]` local time) — see finding #18 for rationale.
+pub fn fmt_time_hms() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let dur = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default();
+    let total_secs = dur.as_secs();
+    let hours = (total_secs / 3600) % 24;
+    let minutes = (total_secs / 60) % 60;
+    let seconds = total_secs % 60;
+    format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
+}
+
 #[cfg(feature = "eyre")]
 pub mod eyre_handler;
 #[cfg(feature = "logging")]
