@@ -102,8 +102,8 @@ fn test_headings_have_appropriate_styles() {
     let output = render_markdown(&console, &md);
     // H1 and H2 get underlines (Rule characters)
     assert!(output.contains("Title"));
-    // The rule character should be present
-    assert!(output.contains('\u{2501}') || output.contains('-'));
+    // The rule character should be present (─ U+2500 light, rich parity; '-' for ascii)
+    assert!(output.contains('\u{2500}') || output.contains('-'));
 }
 
 #[test]
@@ -114,7 +114,8 @@ fn test_h1_has_rule_underline() {
     let text: String = segments.iter().map(|s| s.text.as_str()).collect();
     // Should contain the heading text and a rule line
     assert!(text.contains("Big Title"));
-    assert!(text.contains('\u{2501}'));
+    // Rule default is now ─ (U+2500, light) for rich parity
+    assert!(text.contains('\u{2500}'));
 }
 
 #[test]
@@ -124,7 +125,8 @@ fn test_h2_has_rule_underline() {
     let segments = render_segments(&console, &md);
     let text: String = segments.iter().map(|s| s.text.as_str()).collect();
     assert!(text.contains("Sub Title"));
-    assert!(text.contains('\u{2501}'));
+    // Rule default is now ─ (U+2500, light) for rich parity
+    assert!(text.contains('\u{2500}'));
 }
 
 // -- Bold text ----------------------------------------------------------
@@ -310,8 +312,8 @@ fn test_horizontal_rule() {
     let output = render_markdown(&console, &md);
     assert!(output.contains("Above"));
     assert!(output.contains("Below"));
-    // Should contain rule characters
-    assert!(output.contains('\u{2501}'));
+    // Should contain rule characters (─ U+2500 light, rich parity default)
+    assert!(output.contains('\u{2500}'));
 }
 
 // -- Mixed content ------------------------------------------------------

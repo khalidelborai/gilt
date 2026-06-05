@@ -1047,8 +1047,9 @@ fn test_rule_no_title_capture() {
     console.rule(None);
     let captured = console.end_capture();
 
-    // Should contain rule characters and end with newline
-    assert!(captured.contains('\u{2501}') || captured.contains('-'));
+    // Should contain rule characters and end with newline.
+    // Default char is now ─ (U+2500, light) for rich parity; allow '-' for ascii fallback.
+    assert!(captured.contains('\u{2500}') || captured.contains('-'));
     assert!(captured.ends_with('\n'));
 }
 

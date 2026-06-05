@@ -672,7 +672,8 @@ impl Table {
         let mut pr = pad_right;
 
         if self.collapse_padding && column_index > 0 {
-            pl = 0;
+            // rich: max(0, left - right) so shared gap = right only when left > right
+            pl = pl.saturating_sub(pr);
         }
 
         if !self.pad_edge {
@@ -688,6 +689,7 @@ impl Table {
     }
 
     /// Measure a column, returning its minimum and maximum width including padding.
+    #[allow(dead_code)]
     fn measure_column(
         &self,
         console: &Console,
@@ -831,10 +833,9 @@ impl Table {
                 let mut left = pad_left;
 
                 if self.collapse_padding && !first_column {
-                    // Mirror get_padding_width: zero the left padding for every
-                    // non-first column so the per-cell pad matches the width
-                    // reservation used by measure_column.
-                    left = 0;
+                    // Mirror get_padding_width: max(0, left - right) so shared gap
+                    // = right only when left > right (rich parity).
+                    left = left.saturating_sub(right);
                 }
 
                 if !self.pad_edge {
@@ -1023,6 +1024,8 @@ impl Table {
         let mut excess_width = total_width.saturating_sub(max_width);
 
         if wrapable.iter().any(|&w| w) {
+            // Pre-allocate ratios vec once; updated in each loop iteration.
+            let mut ratios: Vec<usize> = vec![0usize; widths.len()];
             while total_width > 0 && excess_width > 0 {
                 let max_column = widths
                     .iter()
@@ -1041,11 +1044,11 @@ impl Table {
 
                 let column_difference = max_column.saturating_sub(second_max_column);
 
-                let ratios: Vec<usize> = widths
-                    .iter()
-                    .zip(wrapable.iter())
-                    .map(|(&w, &allow)| if w == max_column && allow { 1 } else { 0 })
-                    .collect();
+                for (ratio, (&w, &allow)) in
+                    ratios.iter_mut().zip(widths.iter().zip(wrapable.iter()))
+                {
+                    *ratio = if w == max_column && allow { 1 } else { 0 };
+                }
 
                 if !ratios.iter().any(|&r| r > 0) || column_difference == 0 {
                     break;
@@ -1222,13 +1225,31 @@ impl Table {
                 });
 
                 let cell_combined_style = cell.style.clone() + row_style.clone();
-                let lines = console.render_lines(
+                let mut lines = console.render_lines(
                     &cell.renderable,
                     Some(&render_options),
                     Some(&cell_combined_style),
                     true,
                     false,
                 );
+
+                // Apply top/bottom cell padding (rich parity: emit blank lines).
+                let (pad_top, _pad_right, pad_bottom, _pad_left) = self.padding;
+                if pad_top > 0 || pad_bottom > 0 {
+                    let blank_line = vec![Segment::styled(
+                        &" ".repeat(width),
+                        cell_combined_style.clone(),
+                    )];
+                    let mut padded = Vec::with_capacity(pad_top + lines.len() + pad_bottom);
+                    for _ in 0..pad_top {
+                        padded.push(blank_line.clone());
+                    }
+                    padded.append(&mut lines);
+                    for _ in 0..pad_bottom {
+                        padded.push(blank_line.clone());
+                    }
+                    lines = padded;
+                }
 
                 max_height = max_height.max(lines.len());
                 rendered_cells.push(lines);
@@ -1317,7 +1338,8 @@ impl Table {
                 let right = &bsegs[seg_index].right;
                 let base_divider = &bsegs[seg_index].divider;
 
-                // If divider is whitespace, apply row background style
+                // Build the row divider once per row (outside the height loop)
+                // to avoid repeated re-construction inside O(height × cols).
                 let divider = if base_divider.text.trim().is_empty() {
                     let bg_style = row_style.background_style();
                     let combined =
@@ -1426,16 +1448,30 @@ impl Table {
         }
 
         let extra_width = self.extra_width();
-        let col_widths = self.calculate_column_widths(
-            console,
+        // Build cells once and reuse for both width calculation and measurement.
+        let column_cells: Vec<Vec<CellInfo>> = self
+            .columns
+            .iter()
+            .enumerate()
+            .map(|(i, col)| self.get_cells(console, i, col))
+            .collect();
+        let col_widths = self.calculate_column_widths_with_cells(
             &options.update_width(max_width.saturating_sub(extra_width)),
+            &column_cells,
         );
         let total_max: usize = col_widths.iter().sum::<usize>();
 
         let measurements: Vec<Measurement> = self
             .columns
             .iter()
-            .map(|col| self.measure_column(console, &options.update_width(total_max), col))
+            .enumerate()
+            .map(|(i, col)| {
+                self.measure_column_with_cells(
+                    &options.update_width(total_max),
+                    col,
+                    &column_cells[i],
+                )
+            })
             .collect();
 
         let minimum_width: usize =
@@ -1517,9 +1553,12 @@ mod padding_tests {
 
     #[test]
     fn padding_width_measure_and_render_paths_agree() {
-        // Regression for the divergence we just fixed: get_padding_width
-        // (measure path) and the per-cell padding loop in get_cells (render
-        // path) must compute identical totals or text gets truncated.
+        // Regression: get_padding_width (measure path) and the per-cell
+        // padding loop in get_cells (render path) must compute identical
+        // totals or text gets truncated.
+        //
+        // Both paths now use `left.saturating_sub(right)` for collapse_padding
+        // (rich parity: max(0, left - right)).
         let mut t = Table::new(&["a", "b", "c", "d"]);
         t.padding = (0, 2, 0, 3);
         t.collapse_padding = true;
@@ -1528,13 +1567,13 @@ mod padding_tests {
         let (_, pad_right, _, pad_left) = t.padding;
         let n = t.columns.len();
         for col_idx in 0..n {
-            // Replicate the get_cells render-time logic for non-shape padding
+            // Replicate the get_cells render-time logic (rich parity)
             let first = col_idx == 0;
             let last = col_idx + 1 == n;
             let mut left = pad_left;
             let mut right = pad_right;
             if t.collapse_padding && !first {
-                left = 0;
+                left = left.saturating_sub(right); // rich: max(0, left - right)
             }
             if !t.pad_edge {
                 if first {
