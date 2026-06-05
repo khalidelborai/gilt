@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.5.1] - 2026-06-05
+
+### Added
+
+- **`terminal-size` feature (default-on, native only).** `Console::detect_terminal_size()`
+  now queries the real terminal dimensions via `ioctl` (using the `terminal_size`
+  crate) instead of being pinned to 80 columns when `COLUMNS` is not exported —
+  which is the common case, since most shells do not pass `COLUMNS` to child
+  processes. Resolution order is `COLUMNS`/`LINES` env vars → `ioctl` query →
+  `80x25` fallback, so tests, CI, and piped/redirected output stay deterministic.
+  The feature is excluded from `--no-default-features` (and therefore the wasm
+  build), keeping those paths free of terminal syscalls; pass an explicit
+  `Console::builder().width(..)` there.
+
 ## [1.5.0] - 2026-06-05
 
 A correctness + parity + performance pass driven by a full multi-agent

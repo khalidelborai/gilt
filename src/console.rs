@@ -608,16 +608,32 @@ impl Console {
 
     // -- Terminal detection -------------------------------------------------
 
-    /// Detect the terminal size from environment variables, falling back to 80x25.
+    /// Detect the terminal size.
+    ///
+    /// Resolution order (each dimension independently):
+    /// 1. `COLUMNS` / `LINES` environment variables — these win, so tests, CI,
+    ///    and explicit overrides remain deterministic.
+    /// 2. The real terminal dimensions via an `ioctl`, when the `terminal-size`
+    ///    feature is enabled (it is by default) on a non-wasm target and a
+    ///    standard stream is connected to a terminal.
+    /// 3. Fallback `80 x 25` (used when piped/redirected or on wasm).
+    ///
+    /// Most shells do not export `COLUMNS` to child processes, so before this
+    /// the width was effectively pinned to `80`; the `ioctl` query fixes that
+    /// for native builds while keeping wasm and `default-features = false`
+    /// builds free of terminal syscalls.
     pub fn detect_terminal_size() -> (usize, usize) {
-        let width = std::env::var("COLUMNS")
+        let env_width = std::env::var("COLUMNS")
             .ok()
-            .and_then(|v| v.parse::<usize>().ok())
-            .unwrap_or(80);
-        let height = std::env::var("LINES")
+            .and_then(|v| v.parse::<usize>().ok());
+        let env_height = std::env::var("LINES")
             .ok()
-            .and_then(|v| v.parse::<usize>().ok())
-            .unwrap_or(25);
+            .and_then(|v| v.parse::<usize>().ok());
+
+        let (query_width, query_height) = query_terminal_size();
+
+        let width = env_width.or(query_width).unwrap_or(80);
+        let height = env_height.or(query_height).unwrap_or(25);
         (width, height)
     }
 
@@ -1233,6 +1249,30 @@ impl Default for Console {
 #[path = "console_export.rs"]
 mod console_export;
 use console_export::*;
+
+// ---------------------------------------------------------------------------
+// Terminal size query (feature-gated, native only)
+// ---------------------------------------------------------------------------
+
+/// Query the real terminal dimensions via `ioctl` (`terminal-size` feature,
+/// native targets). Returns `(None, None)` when not connected to a terminal.
+#[cfg(all(feature = "terminal-size", not(target_arch = "wasm32")))]
+fn query_terminal_size() -> (Option<usize>, Option<usize>) {
+    match terminal_size::terminal_size() {
+        Some((terminal_size::Width(w), terminal_size::Height(h))) => {
+            (Some(w as usize), Some(h as usize))
+        }
+        None => (None, None),
+    }
+}
+
+/// Fallback when the `terminal-size` feature is off or on wasm: env vars and
+/// the `80x25` default are the only sources (no terminal syscalls).
+#[cfg(not(all(feature = "terminal-size", not(target_arch = "wasm32"))))]
+fn query_terminal_size() -> (Option<usize>, Option<usize>) {
+    (None, None)
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------

@@ -559,6 +559,7 @@
 //! | `syntax` | Yes | `syntect` | Syntax highlighting via [`Syntax`](syntax::Syntax) |
 //! | `interactive` | Yes | `rpassword` | Password prompts and selection menus |
 //! | `logging` | Yes | `log` | Logging handler |
+//! | `terminal-size` | Yes | `terminal_size` | Real terminal width/height via `ioctl` (native only; excluded from wasm/no-default builds) |
 //! | `tracing` | No | `tracing`, `tracing-subscriber` | `GiltLayer` subscriber |
 //! | `derive` | No | `gilt-derive` | 7 proc-macro derives |
 //! | `miette` | No | `miette` | `GiltMietteHandler` |
