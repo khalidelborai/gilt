@@ -46,6 +46,10 @@ struct SharedState {
     live_render: LiveRender,
     get_renderable: Option<Box<dyn Fn() -> Arc<dyn Renderable + Send + Sync> + Send>>,
     screen: bool,
+    /// Frame-skip cache (Task 2): segments from the previous normal-mode
+    /// render. When the new render produces the same bytes, we skip all
+    /// tty I/O and leave the shape and cursor position unchanged.
+    last_segments: Option<Vec<Segment>>,
 }
 
 // ---------------------------------------------------------------------------
@@ -128,6 +132,7 @@ impl Live {
             live_render,
             get_renderable: None,
             screen: false,
+            last_segments: None,
         }));
 
         Live {
@@ -442,9 +447,20 @@ impl Live {
             s.live_render.vertical_overflow = vertical_overflow;
             let opts = s.console.options();
             let render_segments = s.live_render.gilt_console(&s.console, &opts);
+
+            // ── Task 2: frame-skip ─────────────────────────────────────────
+            // If the new segments are byte-identical to the last render, skip
+            // all tty I/O. Skipping also leaves cursor position and shape
+            // unchanged, which is correct: the terminal already shows the
+            // right content and `position_cursor` still knows the height.
+            if s.last_segments.as_deref() == Some(render_segments.as_slice()) {
+                return;
+            }
+
             let position_segments = s.live_render.position_cursor();
             emit_control_segments(&mut s.console, &position_segments);
             s.console.write_segments(&render_segments);
+            s.last_segments = Some(render_segments);
         }
     }
 
@@ -505,6 +521,68 @@ impl Live {
     /// Equivalent to `self.set(renderable)`.
     pub fn set_renderable_widget<R: Renderable + Send + Sync + 'static>(&self, renderable: R) {
         self.set(renderable);
+    }
+
+    /// Print non-live content *above* the live region without corrupting it.
+    ///
+    /// The live region is erased (cursor moved up, lines cleared), the
+    /// `above` renderable is printed with a trailing newline so it scrolls
+    /// into the scrollback, and then the live region is immediately
+    /// re-rendered below it.
+    ///
+    /// In alt-screen (`screen`) mode this is a no-op because the alternate
+    /// screen has no scrollback: emitting content above the live region would
+    /// overwrite arbitrary terminal cells.
+    ///
+    /// # Locking
+    /// Acquires `SharedState` in a single brief critical section — the same
+    /// pattern as Phase 2 of [`do_refresh`](Self::do_refresh). The lock-free
+    /// `ArcSwap` update path in [`update_renderable`](Self::update_renderable)
+    /// is unchanged.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use gilt::live::Live;
+    /// use gilt::text::Text;
+    /// use gilt::style::Style;
+    ///
+    /// let mut live = Live::new(Text::new("progress…", Style::null()));
+    /// live.start();
+    /// live.print_above(Text::new("Step 1 done", Style::null()));
+    /// live.stop();
+    /// ```
+    pub fn print_above(&self, above: impl Renderable + Send + Sync + 'static) {
+        let current = self.renderable.load().0.clone();
+
+        let mut s = self.state.lock().unwrap();
+
+        // In alt-screen mode there is no scrollback: silently skip.
+        if s.screen {
+            return;
+        }
+
+        // Phase A: erase the live region by restoring the cursor to its
+        // pre-render position.
+        let restore = s.live_render.restore_cursor();
+        emit_control_segments(&mut s.console, &restore);
+
+        // Phase B: print the above content and a trailing newline so it
+        // scrolls into the scrollback buffer.
+        s.console.print(&above);
+        s.console.write_segments(&[Segment::line()]);
+
+        // Phase C: re-render the live region so it appears below the new
+        // content. We need to go through the full LiveRender path to update
+        // `shape` correctly, but we don't use `do_refresh` to avoid a second
+        // mutex acquisition (we already hold the lock).
+        s.live_render.set_renderable(current);
+        let opts = s.console.options();
+        let render_segments = s.live_render.gilt_console(&s.console, &opts);
+        s.console.write_segments(&render_segments);
+        // Invalidate the frame-skip cache — the cursor repositioning from
+        // Phase A means the next `do_refresh` must always re-emit.
+        s.last_segments = None;
     }
 
     /// Construct + start in one call. `Drop` calls [`stop`](Self::stop)
@@ -1182,6 +1260,149 @@ mod tests {
     fn test_console_mut_accessor() {
         let live = Live::new(Text::new("test", Style::null())).with_console(test_console());
         let _console = live.console_mut();
+    }
+
+    // -- Task 1: print_above ------------------------------------------------
+
+    /// `print_above` in screen mode is a no-op — no panic, no output.
+    #[test]
+    fn print_above_screen_mode_is_noop() {
+        let mut live = Live::new(Text::new("live", Style::null()))
+            .with_console(test_console())
+            .with_screen(true)
+            .with_auto_refresh(false);
+        live.start();
+        live.print_above(Text::new("above", Style::null())); // must not panic
+        live.stop();
+    }
+
+    /// `print_above` in normal mode: both the above-content and the live
+    /// region appear in the captured output, and the live region is re-drawn.
+    #[test]
+    fn print_above_emits_content_and_redraws_live_region() {
+        let console = Console::builder()
+            .width(80)
+            .height(25)
+            .quiet(false)
+            .markup(false)
+            .no_color(true)
+            .force_terminal(true)
+            .build();
+
+        let mut live = Live::new(Text::new("live_content", Style::null()))
+            .with_console(console)
+            .with_auto_refresh(false);
+
+        live.state.lock().unwrap().console.begin_capture();
+
+        live.start();
+        // Render once so live_render has a known shape.
+        live.refresh();
+        // Now print something above.
+        live.print_above(Text::new("above_content", Style::null()));
+        live.stop();
+
+        let captured = live.state.lock().unwrap().console.end_capture();
+
+        // Both pieces of content must be present.
+        assert!(
+            captured.contains("above_content"),
+            "above content missing; got: {:?}",
+            captured
+        );
+        assert!(
+            captured.contains("live_content"),
+            "live content missing after print_above; got: {:?}",
+            captured
+        );
+    }
+
+    // -- Task 2: frame-skip -------------------------------------------------
+
+    /// Two refreshes with identical content must perform I/O only once.
+    /// We verify by checking that the captured buffer doesn't grow on the
+    /// second identical refresh.
+    #[test]
+    fn frame_skip_identical_refreshes_skip_second_write() {
+        let console = Console::builder()
+            .width(80)
+            .height(25)
+            .quiet(false)
+            .markup(false)
+            .no_color(true)
+            .force_terminal(true)
+            .build();
+
+        let mut live = Live::new(Text::new("same_content", Style::null()))
+            .with_console(console)
+            .with_auto_refresh(false);
+
+        live.state.lock().unwrap().console.begin_capture();
+        live.start();
+
+        // First refresh: should write content.
+        live.refresh();
+        let after_first = live.state.lock().unwrap().console.end_capture();
+
+        // Begin a fresh capture for the second refresh.
+        live.state.lock().unwrap().console.begin_capture();
+
+        // Second refresh with the SAME content: frame-skip should prevent I/O.
+        live.refresh();
+        let after_second = live.state.lock().unwrap().console.end_capture();
+
+        live.stop();
+
+        // The first refresh must have produced some output.
+        assert!(
+            !after_first.is_empty(),
+            "first refresh should produce output"
+        );
+
+        // The second identical refresh must produce NO output (skipped).
+        assert!(
+            after_second.is_empty(),
+            "second identical refresh should be skipped (no I/O), got: {:?}",
+            after_second
+        );
+    }
+
+    /// After a content change the frame-skip cache is invalidated and the
+    /// next refresh IS emitted.
+    #[test]
+    fn frame_skip_different_content_is_emitted() {
+        let console = Console::builder()
+            .width(80)
+            .height(25)
+            .quiet(false)
+            .markup(false)
+            .no_color(true)
+            .force_terminal(true)
+            .build();
+
+        let mut live = Live::new(Text::new("first", Style::null()))
+            .with_console(console)
+            .with_auto_refresh(false);
+
+        live.start();
+
+        // Establish a baseline.
+        live.refresh();
+
+        live.state.lock().unwrap().console.begin_capture();
+
+        // Change content and refresh — must emit.
+        live.update_renderable(Text::new("second", Style::null()), false);
+        live.refresh();
+
+        let captured = live.state.lock().unwrap().console.end_capture();
+        live.stop();
+
+        assert!(
+            captured.contains("second"),
+            "changed content should have been emitted, got: {:?}",
+            captured
+        );
     }
 
     // -- from_renderable (now takes owned R) --------------------------------

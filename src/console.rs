@@ -313,6 +313,7 @@ pub use console_builder::ConsoleBuilder;
 // a separate impl block.
 #[path = "console_capture.rs"]
 mod console_capture;
+pub use console_capture::{CaptureGuard, ScreenGuard};
 
 // Render path (render/print/log/rule/line/inspect/print_json/print_error/
 // print_exception/write_segments/buffer ops) moved to console_render.rs in
