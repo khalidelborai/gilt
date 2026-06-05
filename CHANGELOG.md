@@ -5,16 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.5.0] - 2026-06-05
 
 A correctness + parity + performance pass driven by a full multi-agent
 audit against the Python `rich` reference (see
 `.review/ultracode-review-2026-06-05.md` and
 `.review/ultracode-fixes-2026-06-05.md`). ~95 confirmed findings fixed
-across every subsystem. Contains **breaking API changes** — warrants a
-major version bump.
+across every subsystem.
 
-### Breaking
+> **Note:** this release contains API changes that are technically breaking
+> (listed below). They are shipped under a minor version; pin `gilt = "=1.4.1"`
+> if you depend on the old `Layout`/`ConsoleOptions`/`Prompt` signatures or the
+> previous `Traceback`/`RichHandler`/`Rule` defaults.
+
+### Changed (API — technically breaking)
 
 - `ConsoleOptions.encoding`: `String` → `Cow<'static, str>`.
 - `Layout.renderable`: `Option<String>` → `Option<Arc<dyn Renderable + Send + Sync>>`;
