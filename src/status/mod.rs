@@ -17,11 +17,22 @@ pub mod spinner;
 pub mod spinners;
 pub mod toast;
 
+use std::sync::{Arc, Mutex};
+use std::time::SystemTime;
+
 use crate::console::Console;
 use crate::live::{ConsoleRef, Live};
 use crate::status::spinner::{Spinner, SpinnerError};
 use crate::style::Style;
 use crate::text::Text;
+
+/// Return the current time as seconds since the UNIX epoch (used for spinner animation).
+fn current_time_secs() -> f64 {
+    SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .map(|d| d.as_secs_f64())
+        .unwrap_or(0.0)
+}
 
 // ---------------------------------------------------------------------------
 // StatusError
@@ -122,7 +133,9 @@ impl<'a> StatusUpdate<'a> {
                 .with_text(Text::new(&self.status.status_text, Style::null()))
                 .with_style(self.status.spinner_style.clone())
                 .with_speed(self.status.speed);
-            self.status.spinner = spinner;
+            self.status.spinner = spinner.clone();
+            // Push into shared state so the refresh callback picks it up.
+            *self.status._shared_spinner.lock().unwrap() = spinner;
 
             // Push the new renderable to the live display.
             let text = render_spinner_snapshot(&self.status.spinner);
@@ -134,6 +147,11 @@ impl<'a> StatusUpdate<'a> {
                 Some(self.status.spinner_style.clone()),
                 Some(self.status.speed),
             );
+            // Push the updated spinner into the shared state.
+            *self.status._shared_spinner.lock().unwrap() = self.status.spinner.clone();
+            // Push a snapshot so the visible text updates immediately.
+            let text = render_spinner_snapshot(&self.status.spinner);
+            self.status.live.update_renderable(text, false);
         }
 
         Ok(())
@@ -175,8 +193,12 @@ pub struct Status {
     pub spinner_style: Style,
     /// The speed multiplier for the spinner.
     pub speed: f64,
-    /// The spinner animation.
+    /// The spinner animation (a snapshot copy; the live spinner is in `_shared_spinner`).
     spinner: Spinner,
+    /// The shared spinner behind the refresh callback.  The callback captures a
+    /// clone of this `Arc`; `set()` and `update()` push new state here so the
+    /// next tick picks up changes.
+    _shared_spinner: Arc<Mutex<Spinner>>,
     /// The live display that handles in-place terminal rendering.
     live: Live,
 }
@@ -201,14 +223,19 @@ impl Status {
     /// - Spinner: `"dots"`
     /// - Speed: `1.0`
     /// - Refresh per second: `12.5`
-    /// - Spinner style: `Style::null()` (no special styling)
+    /// - Spinner style: resolved from the `"status.spinner"` theme key;
+    ///   falls back to `Style::null()` if the key is absent.
     ///
     /// # Panics
     ///
     /// Panics if the default spinner `"dots"` is not found in the spinner
     /// registry (this should never happen).
     pub fn new(status: &str) -> Self {
-        Self::try_new(status, "dots", Style::null(), 1.0, 12.5)
+        // Resolve "status.spinner" from the default console theme.
+        let spinner_style = crate::console::Console::new()
+            .get_style("status.spinner")
+            .unwrap_or_else(|_| Style::null());
+        Self::try_new(status, "dots", spinner_style, 1.0, 12.5)
             .expect("default spinner 'dots' must exist")
     }
 
@@ -226,16 +253,33 @@ impl Status {
             .with_style(spinner_style.clone())
             .with_speed(speed);
 
+        // Share the spinner behind an Arc<Mutex> so the `get_renderable`
+        // callback (called from the refresh thread) can read it concurrently
+        // with `set()` / `update()` calls on the main thread.
+        let shared_spinner = Arc::new(Mutex::new(spinner.clone()));
+        let spinner_for_callback = Arc::clone(&shared_spinner);
+
+        // Each refresh tick renders the spinner at *current* elapsed time so
+        // the animation actually advances.  `start_time` is captured once in
+        // the closure so frame calculation stays deterministic.
+        let start = current_time_secs();
         let renderable_text = render_spinner_snapshot(&spinner);
         let live = Live::new(renderable_text)
             .with_refresh_per_second(refresh_per_second)
-            .with_transient(true);
+            .with_transient(true)
+            .with_get_renderable(move || {
+                let elapsed = current_time_secs() - start;
+                let mut sp = spinner_for_callback.lock().unwrap();
+                sp.render(elapsed)
+            });
 
+        let spinner_snapshot = shared_spinner.lock().unwrap().clone();
         Ok(Status {
             status_text: status.to_string(),
             spinner_style,
             speed,
-            spinner,
+            spinner: spinner_snapshot,
+            _shared_spinner: shared_spinner,
             live,
         })
     }
@@ -250,7 +294,10 @@ impl Status {
             .with_text(Text::new(&self.status_text, Style::null()))
             .with_style(self.spinner_style.clone())
             .with_speed(self.speed);
-        self.spinner = spinner;
+        self.spinner = spinner.clone();
+        // Push the new spinner into the shared state so the refresh callback
+        // picks it up on the next tick.
+        *self._shared_spinner.lock().unwrap() = spinner;
         let text = render_spinner_snapshot(&self.spinner);
         self.live.update_renderable(text, false);
         Ok(self)
@@ -260,8 +307,10 @@ impl Status {
     #[must_use]
     pub fn with_spinner_style(mut self, style: Style) -> Self {
         self.spinner_style = style.clone();
-        self.spinner =
+        let new_spinner =
             std::mem::replace(&mut self.spinner, Spinner::new("dots").unwrap()).with_style(style);
+        self.spinner = new_spinner.clone();
+        *self._shared_spinner.lock().unwrap() = new_spinner;
         self
     }
 
@@ -269,8 +318,10 @@ impl Status {
     #[must_use]
     pub fn with_speed(mut self, speed: f64) -> Self {
         self.speed = speed;
-        self.spinner =
+        let new_spinner =
             std::mem::replace(&mut self.spinner, Spinner::new("dots").unwrap()).with_speed(speed);
+        self.spinner = new_spinner.clone();
+        *self._shared_spinner.lock().unwrap() = new_spinner;
         self
     }
 
@@ -278,21 +329,36 @@ impl Status {
     #[must_use]
     pub fn with_console(mut self, console: Console) -> Self {
         // Rebuild live with the new console, preserving other settings.
+        // Re-wire the get_renderable callback so the new Live animates.
+        let spinner_for_callback = Arc::clone(&self._shared_spinner);
+        let start = current_time_secs();
         let renderable_text = render_spinner_snapshot(&self.spinner);
         self.live = Live::new(renderable_text)
             .with_console(console)
             .with_refresh_per_second(self.live.refresh_per_second)
-            .with_transient(self.live.transient);
+            .with_transient(self.live.transient)
+            .with_get_renderable(move || {
+                let elapsed = current_time_secs() - start;
+                let mut sp = spinner_for_callback.lock().unwrap();
+                sp.render(elapsed)
+            });
         self
     }
 
     /// Builder method: set the refresh rate (refreshes per second).
     #[must_use]
     pub fn with_refresh_per_second(mut self, rate: f64) -> Self {
+        let spinner_for_callback = Arc::clone(&self._shared_spinner);
+        let start = current_time_secs();
         let renderable_text = render_spinner_snapshot(&self.spinner);
         self.live = Live::new(renderable_text)
             .with_refresh_per_second(rate)
-            .with_transient(self.live.transient);
+            .with_transient(self.live.transient)
+            .with_get_renderable(move || {
+                let elapsed = current_time_secs() - start;
+                let mut sp = spinner_for_callback.lock().unwrap();
+                sp.render(elapsed)
+            });
         self
     }
 
@@ -329,6 +395,13 @@ impl Status {
             Some(self.spinner_style.clone()),
             Some(self.speed),
         );
+        // Push the updated spinner into the shared state so the refresh
+        // callback picks up the new text on the next tick.
+        *self._shared_spinner.lock().unwrap() = self.spinner.clone();
+        // Also push a snapshot immediately so the change is visible even
+        // if auto-refresh is disabled.
+        let snapshot = render_spinner_snapshot(&self.spinner);
+        self.live.update_renderable(snapshot, false);
     }
 
     /// Construct + start in one call. `Drop` calls [`stop`](Self::stop)
@@ -382,7 +455,13 @@ mod tests {
     fn test_default_construction() {
         let status = Status::new("Loading...");
         assert_eq!(status.status_text, "Loading...");
-        assert!(status.spinner_style.is_null());
+        // spinner_style is now resolved from the "status.spinner" theme key;
+        // it may be non-null when the default theme defines it.
+        // We just verify the style is the same as what the theme returns.
+        let expected_style = crate::console::Console::new()
+            .get_style("status.spinner")
+            .unwrap_or_else(|_| Style::null());
+        assert_eq!(status.spinner_style, expected_style);
         assert_eq!(status.speed, 1.0);
         assert!(!status.is_started());
     }

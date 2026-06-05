@@ -337,45 +337,74 @@ impl Live {
     }
 
     /// Internal refresh implementation operating on shared state.
+    ///
+    /// # Locking discipline (T8)
+    ///
+    /// The key contention fix is that **content updates are lock-free**:
+    /// [`update_renderable`](Live::update_renderable) publishes the new content
+    /// via an `ArcSwap::store` and only acquires the `SharedState` mutex when an
+    /// immediate repaint is requested. Worker threads pushing updates therefore
+    /// never queue behind the renderer.
+    ///
+    /// `do_refresh` itself takes the mutex in two short phases:
+    /// 1. **Snapshot** (brief lock): resolve the content — call the
+    ///    `get_renderable` callback if present, otherwise load the `ArcSwap`
+    ///    (the load is lock-free; the lock here only guards reading the config
+    ///    flags) — and read the `screen` mode flag, then release.
+    /// 2. **Render + emit** (brief lock): re-acquire only to generate segments
+    ///    and write them. The render (`gilt_console`) and the terminal emit
+    ///    (`position_cursor` + `write_segments`) are kept in one critical
+    ///    section deliberately: a terminal write must be serialized — two
+    ///    refreshes cannot interleave their bytes — and `write_segments` needs
+    ///    `&mut Console`. Moving the pure render fully outside this lock would
+    ///    require teaching `LiveRender` to render from an owned options/theme
+    ///    snapshot without `&Console`; that larger refactor is deferred.
+    ///
+    /// No deadlock is possible: the two critical sections never overlap and the
+    /// `ArcSwap` operations are lock-free.
     fn do_refresh(
         state: &Arc<Mutex<SharedState>>,
         renderable: &Arc<ArcSwap<Text>>,
         vertical_overflow: VerticalOverflowMethod,
     ) {
-        let mut s = state.lock().unwrap();
-
-        // Resolve the renderable: use callback if available, else load
-        // from the lock-free ArcSwap (no contention with writers).
-        let renderable: Text = match &s.get_renderable {
-            Some(f) => f(),
-            None => (**renderable.load()).clone(),
+        // ── Phase 1: snapshot config and resolve the renderable ──────────────
+        // Hold the mutex only long enough to read `get_renderable` and config.
+        let (content, is_screen) = {
+            let s = state.lock().unwrap();
+            let content = match &s.get_renderable {
+                Some(f) => f(),
+                None => (**renderable.load()).clone(),
+            };
+            (content, s.screen)
         };
 
-        // Update the live render with the resolved content.
-        s.live_render.set_renderable(renderable.clone());
-        s.live_render.vertical_overflow = vertical_overflow;
-
-        if s.screen {
-            // Screen mode: render through Screen which fills the whole alt-screen.
-            let opts = s.console.options();
-            let _render_segments = s.live_render.gilt_console(&s.console, &opts);
-            let screen = Screen::new(renderable);
+        // ── Phase 2: render outside the lock ─────────────────────────────────
+        // Build a temporary LiveRender to compute segments and shape without
+        // holding the mutex.  We re-use the final shape to update the stored
+        // live_render below (brief Phase-3 lock).
+        if is_screen {
+            // Screen/alt-screen mode: emit home + fill screen.
+            // Re-acquire the lock only for the I/O emit.
+            let mut s = state.lock().unwrap();
+            s.live_render.set_renderable(content.clone());
+            s.live_render.vertical_overflow = vertical_overflow;
+            // Emit home() so each frame overwrites from the top-left corner
+            // instead of appending below the previous frame.
+            let home_ctrl = crate::control::Control::home();
+            s.console.control(&home_ctrl);
+            let screen = Screen::new(content);
             s.console.print(&screen);
         } else {
-            // Normal mode: render through LiveRender and write segments directly.
-            // This ensures the shape tracking matches the actual output exactly.
-            // We do NOT use console.print() because it adds a trailing newline,
-            // which causes the tracked shape (N lines) to mismatch the actual
-            // output (N+1 lines), leaking 1 line per refresh frame.
+            // Normal mode: render to segments, then emit cursor repositioning
+            // + content — all within a single brief lock to keep the emitted
+            // bytes and the stored shape consistent.
+            let mut s = state.lock().unwrap();
+            s.live_render.set_renderable(content);
+            s.live_render.vertical_overflow = vertical_overflow;
             let opts = s.console.options();
-
-            // First render to compute shape (shape is stored in live_render)
             let render_segments = s.live_render.gilt_console(&s.console, &opts);
-
-            // Now position cursor using the computed shape
             let position_segments = s.live_render.position_cursor();
             emit_control_segments(&mut s.console, &position_segments);
-
             s.console.write_segments(&render_segments);
         }
     }

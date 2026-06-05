@@ -147,8 +147,13 @@ impl Renderable for LiveRender {
                 VerticalOverflowMethod::Ellipsis => {
                     let ellipsis_lines = if max_height > 0 { max_height - 1 } else { 0 };
                     lines.truncate(ellipsis_lines);
-                    // Build an ellipsis text line.
-                    let mut overflow_text = Text::new("...", Style::null());
+                    // Build an ellipsis text line using the "live.ellipsis" theme
+                    // style, matching rich's behaviour.  Fall back to null if the
+                    // theme key is absent (e.g. in tests without a theme).
+                    let ellipsis_style = console
+                        .get_style("live.ellipsis")
+                        .unwrap_or_else(|_| Style::null());
+                    let mut overflow_text = Text::new("...", ellipsis_style);
                     overflow_text.overflow = Some(OverflowMethod::Crop);
                     overflow_text.justify = Some(JustifyMethod::Center);
                     overflow_text.end = String::new();

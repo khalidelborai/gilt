@@ -362,6 +362,13 @@ impl Progress {
                 changed = true;
             }
             if let Some(t) = total {
+                // When the total changes the existing speed samples become
+                // meaningless (they measured progress towards a different
+                // goal).  Clear both the sliding window and the history.
+                if task.total != Some(t) {
+                    task.samples.clear();
+                    task.progress.clear();
+                }
                 task.total = Some(t);
                 changed = true;
             }
@@ -378,8 +385,9 @@ impl Progress {
                 changed = true;
             }
 
-            // Record a sample for speed estimation.
-            if task.started() && !task.finished() {
+            // Record a speed sample only when something actually changed —
+            // recording on no-op calls would corrupt the speed estimate.
+            if changed && task.started() && !task.finished() {
                 task.record_sample(now, self.speed_estimate_period);
             }
 
@@ -546,6 +554,10 @@ impl Progress {
     /// [`remove_task`](Self::remove_task) or [`stop_task`](Self::stop_task)
     /// explicitly if you want it gone before [`stop`](Self::stop)).
     ///
+    /// The returned `ProgressReader<'_, File>` borrows `self` mutably for
+    /// its entire lifetime, so no other `&mut Progress` methods may be called
+    /// while the reader is live — the same constraint as [`track`](Self::track).
+    ///
     /// # Errors
     ///
     /// Returns [`std::io::Error`] if the file cannot be opened or its length
@@ -564,20 +576,16 @@ impl Progress {
         &mut self,
         path: impl AsRef<std::path::Path>,
         description: &str,
-    ) -> io::Result<ProgressReader<std::fs::File>> {
+    ) -> io::Result<ProgressReader<'_, std::fs::File>> {
         let file = std::fs::File::open(path)?;
         let len = file.metadata()?.len();
         let task_id = self.add_task(description, Some(len as f64));
-        // SAFETY: Progress outlives the returned ProgressReader because the
-        // reader is always used within the same scope as `self`. The closure
-        // only calls `advance`, which takes `&mut self` — callers must not
-        // call any other `&mut self` method while the reader is alive (the
-        // same constraint as the existing `track` API with ProgressTracker).
-        let progress_ptr = self as *mut Progress;
+        // Sound: the callback captures `&mut *self` (a re-borrow) with the
+        // explicit `'_` lifetime that ties the returned ProgressReader to
+        // this `&mut self` borrow.  The borrow checker therefore prevents any
+        // concurrent `&mut Progress` use while the reader is alive.
         Ok(ProgressReader::new(file, move |n| {
-            // SAFETY: see above.
-            let progress = unsafe { &mut *progress_ptr };
-            progress.advance(task_id, n as f64);
+            self.advance(task_id, n as f64);
         }))
     }
 
@@ -586,6 +594,9 @@ impl Progress {
     ///
     /// Uses `SeekFrom::End(0)` to determine the stream length, then rewinds
     /// to the current beginning before wrapping.
+    ///
+    /// The returned `ProgressReader<'_, R>` borrows `self` mutably for
+    /// its entire lifetime — same constraint as [`open_file`](Self::open_file).
     ///
     /// # Errors
     ///
@@ -607,21 +618,13 @@ impl Progress {
         &mut self,
         mut reader: R,
         description: &str,
-    ) -> io::Result<ProgressReader<R>> {
+    ) -> io::Result<ProgressReader<'_, R>> {
         let len = reader.seek(SeekFrom::End(0))?;
         reader.seek(SeekFrom::Start(0))?;
         let task_id = self.add_task(description, Some(len as f64));
-        // We need a raw pointer to self so that the closure can call advance.
-        // SAFETY: Progress outlives the returned ProgressReader because the
-        // reader is always used within the same scope as `self`. The closure
-        // only calls `advance`, which takes `&mut self` — callers must not
-        // call any other `&mut self` method while the reader is alive (the
-        // same constraint as the existing `track` API with ProgressTracker).
-        let progress_ptr = self as *mut Progress;
+        // Sound: same lifetime-borrow approach as `open_file`.
         Ok(ProgressReader::new(reader, move |n| {
-            // SAFETY: see above.
-            let progress = unsafe { &mut *progress_ptr };
-            progress.advance(task_id, n as f64);
+            self.advance(task_id, n as f64);
         }))
     }
 
@@ -694,21 +697,13 @@ impl Progress {
             col.no_wrap = true;
         }
 
-        // Add a row for each visible task.
+        // Add a row for each visible task, preserving column styling.
         for task in &self.tasks {
             if !task.visible {
                 continue;
             }
-            let cells: Vec<String> = self
-                .columns
-                .iter()
-                .map(|col| {
-                    let text = col.render(task);
-                    text.plain().to_string()
-                })
-                .collect();
-            let cell_refs: Vec<&str> = cells.iter().map(|s| s.as_str()).collect();
-            table.add_row(&cell_refs);
+            let cells: Vec<Text> = self.columns.iter().map(|col| col.render(task)).collect();
+            table.add_row_text(&cells);
         }
 
         table
@@ -1002,6 +997,13 @@ impl<I> Drop for ProgressIter<I> {
 /// with the number of bytes read on each call to [`read`](Read::read). The
 /// callback is typically a closure that calls [`Progress::advance`].
 ///
+/// # Lifetime
+///
+/// The lifetime parameter `'p` ties this reader to the `Progress` borrow that
+/// backs it (when created via [`Progress::open_file`] or
+/// [`Progress::wrap_file`]).  For standalone use with a `'static` callback
+/// simply omit the lifetime or use `ProgressReader<'static, R>`.
+///
 /// # Examples
 ///
 /// ```
@@ -1021,18 +1023,18 @@ impl<I> Drop for ProgressIter<I> {
 /// reader.read(&mut buf).unwrap();
 /// assert_eq!(bytes_seen.load(Ordering::Relaxed), 256);
 /// ```
-pub struct ProgressReader<R> {
+pub struct ProgressReader<'p, R> {
     inner: R,
-    callback: Box<dyn FnMut(usize)>,
+    callback: Box<dyn FnMut(usize) + 'p>,
     total_read: usize,
 }
 
-impl<R> ProgressReader<R> {
+impl<'p, R> ProgressReader<'p, R> {
     /// Wrap a reader with a progress callback.
     ///
     /// The `callback` is invoked after every successful read with the
     /// number of bytes that were read.
-    pub fn new(inner: R, callback: impl FnMut(usize) + 'static) -> Self {
+    pub fn new(inner: R, callback: impl FnMut(usize) + 'p) -> Self {
         ProgressReader {
             inner,
             callback: Box::new(callback),
@@ -1051,7 +1053,7 @@ impl<R> ProgressReader<R> {
     }
 }
 
-impl<R: Read> Read for ProgressReader<R> {
+impl<R: Read> Read for ProgressReader<'_, R> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let n = self.inner.read(buf)?;
         self.total_read += n;
@@ -1082,7 +1084,12 @@ mod tests {
         std::fs::write(&path, content).unwrap();
 
         let mut progress = make_progress();
-        let _reader = progress.open_file(&path, "Reading").unwrap();
+        // Drop the reader immediately after creating it; we only care about
+        // the task metadata.  The borrow-based API requires the reader to be
+        // dropped before `progress` is accessed again.
+        {
+            let _reader = progress.open_file(&path, "Reading").unwrap();
+        }
 
         let tasks = progress.tasks();
         assert_eq!(tasks.len(), 1);
@@ -1102,17 +1109,22 @@ mod tests {
         std::fs::write(&path, content).unwrap();
 
         let mut progress = make_progress();
-        let mut reader = progress.open_file(&path, "Reading").unwrap();
 
-        let mut buf = Vec::new();
-        reader.read_to_end(&mut buf).unwrap();
+        // Read all bytes through the progress reader, then drop it so we can
+        // inspect `progress` again (the borrow-based API requires this).
+        let total_read = {
+            let mut reader = progress.open_file(&path, "Reading").unwrap();
+            let mut buf = Vec::new();
+            reader.read_to_end(&mut buf).unwrap();
+            reader.total_read()
+        };
 
         assert_eq!(
-            reader.total_read(),
+            total_read,
             content.len(),
             "ProgressReader.total_read should equal bytes read"
         );
-        // The task's completed counter is advanced via the raw-pointer closure.
+        // The task's completed counter is advanced through the borrow closure.
         let task = &progress.tasks()[0];
         assert_eq!(
             task.completed,
@@ -1138,7 +1150,10 @@ mod tests {
         let cursor = Cursor::new(content.to_vec());
 
         let mut progress = make_progress();
-        let _reader = progress.wrap_file(cursor, "Processing").unwrap();
+        // Drop the reader before inspecting `progress`.
+        {
+            let _reader = progress.wrap_file(cursor, "Processing").unwrap();
+        }
 
         let tasks = progress.tasks();
         assert_eq!(tasks.len(), 1);
@@ -1155,12 +1170,14 @@ mod tests {
         let cursor = Cursor::new(content.to_vec());
 
         let mut progress = make_progress();
-        let mut reader = progress.wrap_file(cursor, "Processing").unwrap();
+        let read_data: Vec<u8> = {
+            let mut reader = progress.wrap_file(cursor, "Processing").unwrap();
+            let mut buf = Vec::new();
+            reader.read_to_end(&mut buf).unwrap();
+            buf
+        };
 
-        let mut buf = Vec::new();
-        reader.read_to_end(&mut buf).unwrap();
-
-        assert_eq!(buf, content);
+        assert_eq!(read_data.as_slice(), content as &[u8]);
         let task = &progress.tasks()[0];
         assert_eq!(
             task.completed,
