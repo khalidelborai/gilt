@@ -4,6 +4,7 @@
 //! line numbers, themes, word wrap, and padding. Uses `syntect` for syntax
 //! highlighting (analogous to the use of Pygments).
 
+use std::collections::HashSet;
 use std::path::Path;
 
 use std::sync::LazyLock;
@@ -12,6 +13,8 @@ use syntect::highlighting::{Style as SyntectStyle, ThemeSet};
 use syntect::parsing::SyntaxSet;
 
 use crate::cells::cell_len;
+use crate::color::blend_rgb;
+use crate::color::color_triplet::ColorTriplet;
 use crate::color::Color;
 use crate::console::{Console, ConsoleOptions, Renderable};
 use crate::measure::Measurement;
@@ -118,7 +121,8 @@ pub struct Syntax {
     /// `(t, h, b)` → `(t, h, b, h)`, `(t, r, b, l)` → as-is.
     pub padding: (usize, usize, usize, usize),
     /// Line numbers to highlight with a special background.
-    pub highlight_lines: Vec<usize>,
+    /// Stored as a `HashSet` for O(1) lookup per rendered line.
+    pub highlight_lines: HashSet<usize>,
     /// Optional override for background color (CSS hex like "#282c34").
     pub background_color: Option<String>,
     /// Whether to show indent guides.
@@ -145,7 +149,7 @@ impl Syntax {
             word_wrap: false,
             tab_size: 4,
             padding: (0, 0, 0, 0),
-            highlight_lines: Vec::new(),
+            highlight_lines: HashSet::new(),
             background_color: None,
             indent_guides: false,
             code_width: None,
@@ -206,9 +210,12 @@ impl Syntax {
     }
 
     /// Set which line numbers to highlight.
+    ///
+    /// Accepts any iterator or `Vec`; lines are stored in a `HashSet` for O(1)
+    /// per-line lookup during rendering.
     #[must_use]
-    pub fn with_highlight_lines(mut self, lines: Vec<usize>) -> Self {
-        self.highlight_lines = lines;
+    pub fn with_highlight_lines(mut self, lines: impl IntoIterator<Item = usize>) -> Self {
+        self.highlight_lines = lines.into_iter().collect();
         self
     }
 
@@ -233,7 +240,22 @@ impl Syntax {
         self
     }
 
-    /// Add a style to apply over a character range of the code.
+    /// Set padding from a [`PaddingSpec`] shorthand, expanding to the full
+    /// `(top, right, bottom, left)` tuple stored in `self.padding`.
+    ///
+    /// ```
+    /// # use gilt::syntax::{Syntax, PaddingSpec};
+    /// let s = Syntax::new("fn main() {}", "rs")
+    ///     .with_padding(PaddingSpec::VertHoriz(1, 2));
+    /// assert_eq!(s.padding, (1, 2, 1, 2));
+    /// ```
+    #[must_use]
+    pub fn with_padding(mut self, spec: PaddingSpec) -> Self {
+        self.padding = unpack_padding(spec);
+        self
+    }
+
+    /// Add a style to apply over a flat character range of the code.
     ///
     /// The range is in terms of character offsets into the original code string
     /// (after dedent, if enabled). Multiple ranges may overlap; they are applied
@@ -242,15 +264,70 @@ impl Syntax {
         self.style_ranges.push((style, range));
     }
 
+    /// Add a style to apply over a `(line, col)` range of the code.
+    ///
+    /// Both `start` and `end` are `(line, col)` pairs where line is 1-based and
+    /// col is 0-based character offset within the line.  The pair is converted
+    /// to a flat character offset and delegated to [`stylize_range`].
+    ///
+    /// Matches the `start=(line, col), end=(line, col)` form used by Python rich.
+    ///
+    /// [`stylize_range`]: Self::stylize_range
+    pub fn stylize_range_linecol(
+        &mut self,
+        style: Style,
+        start: (usize, usize),
+        end: (usize, usize),
+    ) {
+        let flat_start = self.linecol_to_offset(start);
+        let flat_end = self.linecol_to_offset(end);
+        if flat_start <= flat_end {
+            self.stylize_range(style, flat_start..flat_end);
+        }
+    }
+
+    /// Convert a 1-based `(line, col)` pair to a flat character offset into
+    /// the code string.  Lines are terminated by `\n`.
+    fn linecol_to_offset(&self, (line, col): (usize, usize)) -> usize {
+        let mut offset = 0usize;
+        let mut current_line = 1usize;
+        for ch in self.code.chars() {
+            if current_line == line {
+                // col is a char-count offset within the line.
+                // Use char_indices to avoid a manual counter variable.
+                let line_slice = &self.code[offset..];
+                for (ci, (byte_off, inner_ch)) in line_slice.char_indices().enumerate() {
+                    if ci == col {
+                        return offset + byte_off;
+                    }
+                    if inner_ch == '\n' {
+                        break;
+                    }
+                }
+                // col past end of line or line ends without reaching col → clamp.
+                return offset + line_slice.find('\n').unwrap_or(line_slice.len());
+            }
+            if ch == '\n' {
+                current_line += 1;
+            }
+            offset += ch.len_utf8();
+        }
+        offset // line past end → clamp to EOF
+    }
+
     // -- Internal helpers ---------------------------------------------------
 
     /// Get the width of the line numbers column (0 if line numbers disabled).
+    ///
+    /// Uses the exclusive-end line number (`start_line + line_count`) for the
+    /// digit count, matching rich's `len(str(start_line + line_count)) + 2`.
     fn numbers_column_width(&self) -> usize {
         if !self.line_numbers {
             return 0;
         }
-        let last_line = self.start_line + self.code.lines().count().saturating_sub(1);
-        let digits = format!("{}", last_line).len();
+        let line_count = self.code.lines().count();
+        let exclusive_end = self.start_line + line_count;
+        let digits = format!("{}", exclusive_end).len();
         digits + NUMBERS_COLUMN_DEFAULT_PADDING
     }
 
@@ -266,21 +343,26 @@ impl Syntax {
         processed = processed.replace('\t', &tab_replacement);
 
         // Dedent: strip common leading whitespace from all non-empty lines.
+        // min_indent is measured in Unicode *characters* (not bytes) so that
+        // non-ASCII leading whitespace (e.g. U+3000 IDEOGRAPHIC SPACE) does not
+        // cause a byte-boundary slice panic.
         if self.dedent {
             let min_indent = processed
                 .lines()
                 .filter(|line| !line.trim().is_empty())
-                .map(|line| line.len() - line.trim_start().len())
+                .map(|line| line.chars().take_while(|c| c.is_whitespace()).count())
                 .min()
                 .unwrap_or(0);
             if min_indent > 0 {
                 processed = processed
                     .lines()
                     .map(|line| {
-                        if line.len() >= min_indent {
-                            &line[min_indent..]
-                        } else {
-                            line
+                        // Compute byte offset of the min_indent-th character safely.
+                        match line.char_indices().nth(min_indent) {
+                            Some((byte_idx, _)) => &line[byte_idx..],
+                            // Line is shorter than min_indent chars (e.g. empty
+                            // lines that passed the non-empty filter).
+                            None => line,
                         }
                     })
                     .collect::<Vec<_>>()
@@ -315,9 +397,11 @@ impl Syntax {
         let mut h = HighlightLines::new(syntax, theme);
         let mut text = Text::new("", Style::null());
 
-        for line in code.lines() {
-            let line_with_nl = format!("{}\n", line);
-            match h.highlight_line(&line_with_nl, ss) {
+        // `process_code` guarantees `code` ends with `\n`, so
+        // `split_inclusive('\n')` yields lines that already include the
+        // trailing newline — no per-line format! allocation needed.
+        for line_with_nl in code.split_inclusive('\n') {
+            match h.highlight_line(line_with_nl, ss) {
                 Ok(ranges) => {
                     for (style, token) in ranges {
                         let gilt_style = syntect_to_gilt_style(style);
@@ -326,7 +410,7 @@ impl Syntax {
                 }
                 Err(_) => {
                     // Fallback: append unstyled
-                    text.append_str(&line_with_nl, None);
+                    text.append_str(line_with_nl, None);
                 }
             }
         }
@@ -358,10 +442,76 @@ impl Syntax {
         }
     }
 
+    /// Return `(normal_style, highlighted_style)` for line number rendering.
+    ///
+    /// Follows rich: blend bg→fg at 0.3 for normal numbers and 0.9 for
+    /// highlighted ones.  Falls back to a dim/bold style when the theme lacks
+    /// an explicit foreground color.
+    fn line_number_styles(&self) -> (Style, Style) {
+        let ts = &*THEME_SET;
+        if let Some(theme) = ts.themes.get(&self.theme) {
+            // Obtain bg and fg triplets from the theme settings.
+            let bg = theme
+                .settings
+                .background
+                .unwrap_or(syntect::highlighting::Color {
+                    r: 0,
+                    g: 0,
+                    b: 0,
+                    a: 255,
+                });
+            let fg = theme
+                .settings
+                .foreground
+                .unwrap_or(syntect::highlighting::Color {
+                    r: 255,
+                    g: 255,
+                    b: 255,
+                    a: 255,
+                });
+            let bg_t = ColorTriplet::new(bg.r, bg.g, bg.b);
+            let fg_t = ColorTriplet::new(fg.r, fg.g, fg.b);
+
+            let normal_t = blend_rgb(bg_t, fg_t, 0.3);
+            let highlight_t = blend_rgb(bg_t, fg_t, 0.9);
+
+            let bg_style = self.get_background_style();
+            let normal_style = bg_style.clone()
+                + Style::from_color(
+                    Some(Color::from_rgb(normal_t.red, normal_t.green, normal_t.blue)),
+                    None,
+                );
+            let highlighted_style = bg_style
+                + Style::from_color(
+                    Some(Color::from_rgb(
+                        highlight_t.red,
+                        highlight_t.green,
+                        highlight_t.blue,
+                    )),
+                    None,
+                );
+
+            (normal_style, highlighted_style)
+        } else {
+            // Fallback: dim for normal, bold for highlighted.
+            let bg_style = self.get_background_style();
+            let dim_style = Style::parse("dim");
+            let bold_style = Style::parse("bold");
+            (bg_style.clone() + dim_style, bg_style + bold_style)
+        }
+    }
+
     /// Build the rendered segments for this Syntax object.
     fn render_syntax(&self, max_width: usize) -> Vec<Segment> {
         let (ends_on_nl, processed_code) = self.process_code();
         let mut text = self.highlight_code(&processed_code);
+
+        // Apply indent guides before line splitting (Finding #6).
+        if self.indent_guides {
+            // Use a dim comment-style guide character to match rich behaviour.
+            let guide_style = Style::parse("dim");
+            text = text.with_indent_guides(Some(self.tab_size), '│', guide_style);
+        }
 
         // Apply user-defined style ranges on top of syntax highlighting.
         for (style, range) in &self.style_ranges {
@@ -386,6 +536,10 @@ impl Syntax {
 
         let background_style = self.get_background_style();
 
+        // Build blended line-number colors (Finding #8).
+        // Rich blends bg→fg at 0.3 for normal numbers and ~0.9 for highlighted.
+        let (number_style, highlighted_number_style) = self.line_number_styles();
+
         // Split text into lines
         let lines = text.split("\n", true, true);
         let all_lines: Vec<&crate::text::Text> = lines.iter().collect();
@@ -406,13 +560,19 @@ impl Syntax {
 
         let mut segments: Vec<Segment> = Vec::new();
 
+        // Horizontal padding (padding.1 = right, padding.3 = left).
+        let left_pad = self.padding.3;
+        let right_pad = self.padding.1;
+        let left_str: String = " ".repeat(left_pad);
+        let right_str: String = " ".repeat(right_pad);
+
         // Top padding (padding.0 == top in 4-tuple)
         for _ in 0..self.padding.0 {
             if self.line_numbers {
                 let pad = " ".repeat(numbers_column_width + 1);
                 segments.push(Segment::styled(&pad, background_style.clone()));
             }
-            let line_pad = " ".repeat(code_width);
+            let line_pad = " ".repeat(left_pad + code_width + right_pad);
             segments.push(Segment::styled(&line_pad, background_style.clone()));
             segments.push(Segment::line());
         }
@@ -432,33 +592,18 @@ impl Syntax {
                         None,
                     );
                     segments.push(Segment::styled("> ", pointer_style));
-                    segments.push(Segment::styled(&num_str, background_style.clone()));
+                    // Use the strongly-blended (0.9) color for highlighted line numbers.
+                    segments.push(Segment::styled(&num_str, highlighted_number_style.clone()));
                 } else {
-                    let dim_style = Style::new(
-                        None,
-                        None,
-                        None,
-                        Some(true),
-                        None,
-                        None,
-                        None,
-                        None,
-                        None,
-                        None,
-                        None,
-                        None,
-                        None,
-                        None,
-                        None,
-                        None,
-                    )
-                    .unwrap_or_else(|_| Style::null());
+                    // Use the dimly-blended (0.3) color for normal line numbers.
                     segments.push(Segment::styled("  ", background_style.clone()));
-                    segments.push(Segment::styled(
-                        &num_str,
-                        background_style.clone() + dim_style,
-                    ));
+                    segments.push(Segment::styled(&num_str, number_style.clone()));
                 }
+            }
+
+            // Left padding for the code area.
+            if left_pad > 0 {
+                segments.push(Segment::styled(&left_str, background_style.clone()));
             }
 
             // Render the line content
@@ -474,6 +619,9 @@ impl Syntax {
                         let gutter_pad = " ".repeat(numbers_column_width + 1);
                         segments.push(Segment::styled(&gutter_pad, background_style.clone()));
                     }
+                    if wi > 0 && left_pad > 0 {
+                        segments.push(Segment::styled(&left_str, background_style.clone()));
+                    }
                     let rendered = wline.render();
                     for seg in &rendered {
                         if seg.text == "\n" {
@@ -487,6 +635,10 @@ impl Syntax {
                     if wline_len < code_width {
                         let pad = " ".repeat(code_width - wline_len);
                         segments.push(Segment::styled(&pad, background_style.clone()));
+                    }
+                    // Right padding for the code area.
+                    if right_pad > 0 {
+                        segments.push(Segment::styled(&right_str, background_style.clone()));
                     }
                     segments.push(Segment::line());
                 }
@@ -505,6 +657,10 @@ impl Syntax {
                     let pad = " ".repeat(code_width - line_cell_len);
                     segments.push(Segment::styled(&pad, background_style.clone()));
                 }
+                // Right padding for the code area.
+                if right_pad > 0 {
+                    segments.push(Segment::styled(&right_str, background_style.clone()));
+                }
                 segments.push(Segment::line());
             }
         }
@@ -515,7 +671,7 @@ impl Syntax {
                 let pad = " ".repeat(numbers_column_width + 1);
                 segments.push(Segment::styled(&pad, background_style.clone()));
             }
-            let line_pad = " ".repeat(code_width);
+            let line_pad = " ".repeat(left_pad + code_width + right_pad);
             segments.push(Segment::styled(&line_pad, background_style.clone()));
             segments.push(Segment::line());
         }
@@ -524,6 +680,9 @@ impl Syntax {
     }
 
     /// Measure the width required to render this Syntax.
+    ///
+    /// Respects `line_range` when set — only visible lines contribute to the
+    /// maximum width, matching what `render_syntax` actually outputs.
     pub fn measure(&self) -> Measurement {
         let numbers_width = self.numbers_column_width();
         if let Some(cw) = self.code_width {
@@ -531,7 +690,19 @@ impl Syntax {
             return Measurement::new(numbers_width, total);
         }
         let (_, processed) = self.process_code();
-        let max_line_width = processed.lines().map(cell_len).max().unwrap_or(0);
+        let all_lines: Vec<&str> = processed.lines().collect();
+        let visible: &[&str] = if let Some((start, end)) = self.line_range {
+            let offset = start.saturating_sub(1);
+            let end_idx = end.min(all_lines.len());
+            if offset >= all_lines.len() {
+                &[]
+            } else {
+                &all_lines[offset..end_idx]
+            }
+        } else {
+            &all_lines
+        };
+        let max_line_width = visible.iter().map(|l| cell_len(l)).max().unwrap_or(0);
         let total = numbers_width + max_line_width + if self.line_numbers { 1 } else { 0 };
         Measurement::new(numbers_width, total)
     }
@@ -548,10 +719,30 @@ impl Renderable for Syntax {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// Convert a syntect Style to a gilt Style (foreground color only).
+/// Convert a syntect `Style` to a gilt `Style`.
+///
+/// Maps foreground color and the syntect `FontStyle` bold / italic / underline
+/// bits to their gilt equivalents.  Background color from syntect themes is
+/// intentionally ignored here; the Syntax renderer applies its own background
+/// via `get_background_style`.
 fn syntect_to_gilt_style(style: SyntectStyle) -> Style {
+    use syntect::highlighting::FontStyle;
+
     let fg = style.foreground;
-    Style::from_color(Some(Color::from_rgb(fg.r, fg.g, fg.b)), None)
+    let mut gilt = Style::from_color(Some(Color::from_rgb(fg.r, fg.g, fg.b)), None);
+
+    let fs = style.font_style;
+    if fs.contains(FontStyle::BOLD) {
+        gilt.set_bold(Some(true));
+    }
+    if fs.contains(FontStyle::ITALIC) {
+        gilt.set_italic(Some(true));
+    }
+    if fs.contains(FontStyle::UNDERLINE) {
+        gilt.set_underline(Some(true));
+    }
+
+    gilt
 }
 
 /// Guess the lexer name from a file path extension.
@@ -794,7 +985,10 @@ mod tests {
         assert_eq!(syntax.line_range, Some((1, 10)));
         assert!(syntax.word_wrap);
         assert_eq!(syntax.tab_size, 2);
-        assert_eq!(syntax.highlight_lines, vec![1, 2, 3]);
+        assert_eq!(
+            syntax.highlight_lines,
+            [1, 2, 3].iter().copied().collect::<HashSet<_>>()
+        );
         assert!(syntax.indent_guides);
         assert_eq!(syntax.code_width, Some(60));
         assert!(syntax.dedent);
