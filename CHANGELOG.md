@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.5.3] - 2026-06-05
+
+### Added
+
+- Live-rendering examples showcasing v1.5.2's any-`Renderable` `Live`:
+  - `examples/live_markdown.rs` — stream a Markdown document token-by-token
+    (the LLM-streaming pattern), reflowing at terminal width each frame.
+  - `examples/live_tree.rs` — a build/deploy pipeline as a `Tree` that fills
+    in as steps run.
+  - `examples/live_status_panel.rs` — a framed `Panel` installer whose body
+    updates in place.
+
 ## [1.5.2] - 2026-06-05
 
 ### Changed
