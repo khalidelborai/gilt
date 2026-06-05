@@ -263,8 +263,10 @@ impl Renderable for Columns {
         let mut column_count = renderables.len();
 
         if let Some(fixed_w) = self.width {
-            // Fixed width mode: calculate column count from width
-            column_count = max_width / (fixed_w + width_padding);
+            // Fixed width mode: calculate column count from width.
+            // Guard against div-by-zero when both fixed_w and width_padding are 0.
+            let divisor = (fixed_w + width_padding).max(1);
+            column_count = max_width / divisor;
             if column_count == 0 {
                 column_count = 1;
             }
@@ -355,25 +357,24 @@ impl Renderable for Columns {
             }
         }
 
-        // Build rows
+        // Build rows — use add_row_text to preserve styling (P1 parity, finding #16).
         for start in (0..final_renderables.len()).step_by(column_count) {
             let end = (start + column_count).min(final_renderables.len());
-            let mut row_strings: Vec<String> = Vec::new();
+            let mut row_texts: Vec<crate::text::Text> = Vec::new();
 
             for item in &final_renderables[start..end] {
                 match item {
-                    Some(text) => row_strings.push(text.plain().to_string()),
-                    None => row_strings.push(String::new()),
+                    Some(text) => row_texts.push(text.clone()),
+                    None => row_texts.push(crate::text::Text::new("", crate::style::Style::null())),
                 }
             }
 
             // Handle right_to_left by reversing the row
             if self.right_to_left {
-                row_strings.reverse();
+                row_texts.reverse();
             }
 
-            let row: Vec<&str> = row_strings.iter().map(|s| s.as_str()).collect();
-            table.add_row(&row);
+            table.add_row_text(&row_texts);
         }
 
         // Render the table

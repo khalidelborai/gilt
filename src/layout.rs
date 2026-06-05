@@ -4,6 +4,7 @@
 //! fixed sizing via [`ratio_resolve`].
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use crate::console::{Console, ConsoleOptions, Renderable};
 use crate::ratio::{ratio_resolve, Edge};
@@ -22,7 +23,21 @@ pub trait Splitter {
     fn name(&self) -> &str;
 
     /// Divide `region` among `children`, returning `(child_index, child_region)` pairs.
-    fn divide(&self, children: &[Layout], region: Region) -> Vec<(usize, Region)>;
+    /// Divide `region` among `children` (passed by reference to avoid cloning).
+    fn divide(&self, children: &[&Layout], region: Region) -> Vec<(usize, Region)>;
+}
+
+// Allow ratio_resolve to work on slices of Layout references (finding #13).
+impl Edge for &Layout {
+    fn size(&self) -> Option<usize> {
+        self.size
+    }
+    fn ratio(&self) -> usize {
+        self.ratio
+    }
+    fn minimum_size(&self) -> usize {
+        self.minimum_size
+    }
 }
 
 /// Splits a region horizontally — children placed side by side.
@@ -35,7 +50,7 @@ impl Splitter for RowSplitter {
         "row"
     }
 
-    fn divide(&self, children: &[Layout], region: Region) -> Vec<(usize, Region)> {
+    fn divide(&self, children: &[&Layout], region: Region) -> Vec<(usize, Region)> {
         let widths = ratio_resolve(region.width, children);
         let mut offset: usize = 0;
         let mut result = Vec::with_capacity(children.len());
@@ -65,7 +80,7 @@ impl Splitter for ColumnSplitter {
         "column"
     }
 
-    fn divide(&self, children: &[Layout], region: Region) -> Vec<(usize, Region)> {
+    fn divide(&self, children: &[&Layout], region: Region) -> Vec<(usize, Region)> {
         let heights = ratio_resolve(region.height, children);
         let mut offset: usize = 0;
         let mut result = Vec::with_capacity(children.len());
@@ -123,11 +138,17 @@ impl SplitterType {
 /// A renderable that divides a fixed-height area into rows or columns.
 ///
 /// Layouts can be nested to create complex terminal UIs. Each layout can
-/// either hold renderable content (a `String`) or be split into children.
-#[derive(Debug, Clone)]
+/// hold any [`Renderable`] content (stored as `Arc<dyn Renderable + Send + Sync>`)
+/// or be split into children (P1 parity, finding #8).
+///
+/// Because `Arc` is `Clone`, `Layout` itself remains `Clone`.
+#[derive(Clone)]
 pub struct Layout {
-    /// Renderable text content, or `None` for a placeholder.
-    pub renderable: Option<String>,
+    /// Renderable content, or `None` for a placeholder.
+    ///
+    /// Use [`update`](Self::update) for a string shortcut or
+    /// [`update_renderable`](Self::update_renderable) for an arbitrary widget.
+    pub renderable: Option<Arc<dyn Renderable + Send + Sync>>,
     /// Optional identifier for this layout.
     pub name: Option<String>,
     /// Fixed size (width for row children, height for column children), or `None` for flexible.
@@ -144,6 +165,25 @@ pub struct Layout {
     pub children: Vec<Layout>,
 }
 
+// Manual Debug: Arc<dyn Renderable> doesn't implement Debug; skip the field.
+impl std::fmt::Debug for Layout {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Layout")
+            .field(
+                "renderable",
+                &self.renderable.as_ref().map(|_| "<renderable>"),
+            )
+            .field("name", &self.name)
+            .field("size", &self.size)
+            .field("minimum_size", &self.minimum_size)
+            .field("ratio", &self.ratio)
+            .field("visible", &self.visible)
+            .field("splitter", &self.splitter)
+            .field("children", &self.children)
+            .finish()
+    }
+}
+
 impl Edge for Layout {
     fn size(&self) -> Option<usize> {
         self.size
@@ -157,7 +197,11 @@ impl Edge for Layout {
 }
 
 impl Layout {
-    /// Create a new layout.
+    /// Create a new layout with an optional string content.
+    ///
+    /// The string (if any) is wrapped in a [`Text`] and stored as an `Arc`.
+    /// For arbitrary renderables use [`update_renderable`](Self::update_renderable)
+    /// or [`with_renderable`](Self::with_renderable) (P1 parity, finding #8).
     pub fn new(
         renderable: Option<String>,
         name: Option<String>,
@@ -166,8 +210,10 @@ impl Layout {
         ratio: Option<usize>,
         visible: Option<bool>,
     ) -> Self {
+        let content: Option<Arc<dyn Renderable + Send + Sync>> = renderable
+            .map(|s| Arc::new(Text::new(&s, Style::null())) as Arc<dyn Renderable + Send + Sync>);
         Layout {
-            renderable,
+            renderable: content,
             name,
             size,
             minimum_size: minimum_size.unwrap_or(1),
@@ -184,24 +230,31 @@ impl Layout {
     }
 
     /// Replace children with the given layouts and set the splitter type.
-    pub fn split(&mut self, layouts: Vec<Layout>, splitter: SplitterType) {
+    ///
+    /// Accepts any [`IntoIterator`] whose items implement [`Into<Layout>`]
+    /// (P3, finding #11): e.g. `vec![…]`, arrays, or iterators.
+    pub fn split(
+        &mut self,
+        layouts: impl IntoIterator<Item = impl Into<Layout>>,
+        splitter: SplitterType,
+    ) {
         self.splitter = splitter;
-        self.children = layouts;
+        self.children = layouts.into_iter().map(Into::into).collect();
     }
 
     /// Split horizontally (children side by side).
-    pub fn split_row(&mut self, layouts: Vec<Layout>) {
+    pub fn split_row(&mut self, layouts: impl IntoIterator<Item = impl Into<Layout>>) {
         self.split(layouts, SplitterType::Row);
     }
 
     /// Split vertically (children stacked).
-    pub fn split_column(&mut self, layouts: Vec<Layout>) {
+    pub fn split_column(&mut self, layouts: impl IntoIterator<Item = impl Into<Layout>>) {
         self.split(layouts, SplitterType::Column);
     }
 
     /// Add layouts to the existing children.
-    pub fn add_split(&mut self, layouts: Vec<Layout>) {
-        self.children.extend(layouts);
+    pub fn add_split(&mut self, layouts: impl IntoIterator<Item = impl Into<Layout>>) {
+        self.children.extend(layouts.into_iter().map(Into::into));
     }
 
     /// Remove all children (reset to unsplit state).
@@ -209,9 +262,30 @@ impl Layout {
         self.children.clear();
     }
 
-    /// Update the renderable content.
-    pub fn update(&mut self, renderable: String) {
+    /// Update the renderable content with a plain string (convenience wrapper).
+    ///
+    /// For arbitrary renderables use [`update_renderable`](Self::update_renderable).
+    pub fn update(&mut self, content: String) {
+        self.renderable =
+            Some(Arc::new(Text::new(&content, Style::null())) as Arc<dyn Renderable + Send + Sync>);
+    }
+
+    /// Set an arbitrary renderable as the pane content (P1 parity, finding #8).
+    pub fn update_renderable(&mut self, renderable: impl Renderable + Send + Sync + 'static) {
+        self.renderable = Some(Arc::new(renderable) as Arc<dyn Renderable + Send + Sync>);
+    }
+
+    /// Set an arbitrary renderable via `Arc` directly (allows sharing the same
+    /// widget across panes without cloning the underlying data).
+    pub fn update_renderable_arc(&mut self, renderable: Arc<dyn Renderable + Send + Sync>) {
         self.renderable = Some(renderable);
+    }
+
+    /// Builder: set an arbitrary renderable (P1 parity, finding #8).
+    #[must_use]
+    pub fn with_renderable(mut self, renderable: impl Renderable + Send + Sync + 'static) -> Self {
+        self.update_renderable(renderable);
+        self
     }
 
     /// Recursively find a layout by name (immutable).
@@ -245,14 +319,35 @@ impl Layout {
         self.children.iter().filter(|c| c.visible).collect()
     }
 
+    /// Look up a child by name; panics with a clear message if not found.
+    ///
+    /// Equivalent to Python rich's `__getitem__` (P3, finding #12).
+    /// Named `by_name` rather than `index` to avoid confusion with
+    /// [`std::ops::Index`].
+    pub fn by_name(&self, name: &str) -> &Layout {
+        self.get(name)
+            .unwrap_or_else(|| panic!("Layout: no child named {:?}", name))
+    }
+
+    /// Look up a child by name (mutable); panics with a clear message if not found.
+    pub fn by_name_mut(&mut self, name: &str) -> &mut Layout {
+        self.get_mut(name)
+            .unwrap_or_else(|| panic!("Layout: no child named {:?}", name))
+    }
+
     /// The effective renderable: if this layout has children, it acts as a
     /// container (returns `None`); otherwise returns the stored renderable.
-    pub fn effective_renderable(&self) -> Option<&str> {
+    pub fn effective_renderable(&self) -> Option<&(dyn Renderable + Send + Sync)> {
         if self.children.is_empty() {
             self.renderable.as_deref()
         } else {
             None
         }
+    }
+
+    /// Returns `true` if this layout has any renderable content set.
+    pub fn has_renderable(&self) -> bool {
+        self.renderable.is_some()
     }
 
     /// Build a map from leaf layouts to their regions.
@@ -265,12 +360,13 @@ impl Layout {
 
         while let Some((layout, region)) = stack.pop() {
             layout_regions.push((layout, region));
+            // P2 perf (finding #13) + P3 perf (finding #14): compute
+            // visible_children once, pass as &[&Layout] to splitter (no clone).
             let visible = layout.visible_children();
             if !visible.is_empty() {
                 let splitter = layout.splitter.make_splitter();
-                // Build a temporary vec of visible children for the splitter
-                let visible_layouts: Vec<Layout> = visible.iter().map(|c| (*c).clone()).collect();
-                let divisions = splitter.divide(&visible_layouts, region);
+                // Pass references directly — no clone needed (finding #13).
+                let divisions = splitter.divide(&visible, region);
                 // Map the child indices back to the actual child references
                 for (child_idx, child_region) in divisions {
                     let child_ref = visible[child_idx];
@@ -302,16 +398,18 @@ impl Layout {
         let mut unnamed_counter = 0usize;
 
         for (layout, region) in &region_map {
-            // Only render leaf layouts (no visible children)
-            if !layout.visible_children().is_empty() {
+            // Only render leaf layouts (no visible children).
+            // P3 perf (finding #14): avoid allocating a Vec; use any() instead.
+            if layout.children.iter().any(|c| c.visible) {
                 continue;
             }
 
             let child_opts = options.update_dimensions(region.width, region.height);
 
             let lines = if let Some(content) = &layout.renderable {
-                let text = Text::new(content, Style::null());
-                console.render_lines(&text, Some(&child_opts), None, true, false)
+                // P1 parity (finding #8): render the stored Renderable directly —
+                // this can be any widget, not just a plain string.
+                console.render_lines(content.as_ref(), Some(&child_opts), None, true, false)
             } else {
                 // Placeholder: render a space-filled region
                 let placeholder = placeholder_text(layout, region.width, region.height);
@@ -335,6 +433,41 @@ impl Layout {
 
         render_map
     }
+
+    /// Re-render a single named pane and return its segments (P2, finding #9).
+    ///
+    /// This is analogous to rich's `refresh_screen`: it locates the named pane
+    /// within the layout, computes its region, renders only that pane, and
+    /// returns its flattened segments.  Returns `None` if no pane with the
+    /// given name exists or if the pane has no allocated region.
+    pub fn refresh_screen(
+        &self,
+        console: &Console,
+        options: &ConsoleOptions,
+        name: &str,
+    ) -> Option<Vec<Segment>> {
+        let render_width = options.max_width;
+        let render_height = options.height.unwrap_or(options.size.height);
+        // Re-use make_region_map; it is cheap (no rendering).
+        let region_map = self.make_region_map(render_width, render_height);
+
+        for (layout, region) in &region_map {
+            let is_leaf = !layout.children.iter().any(|c| c.visible);
+            if layout.name.as_deref() == Some(name) && is_leaf {
+                let child_opts = options.update_dimensions(region.width, region.height);
+                let lines = if let Some(content) = &layout.renderable {
+                    console.render_lines(content.as_ref(), Some(&child_opts), None, true, false)
+                } else {
+                    let placeholder = placeholder_text(layout, region.width, region.height);
+                    console.render_lines(&placeholder, Some(&child_opts), None, true, false)
+                };
+                let lines =
+                    Segment::set_shape(&lines, region.width, Some(region.height), None, false);
+                return Some(lines.into_iter().flatten().collect());
+            }
+        }
+        None
+    }
 }
 
 impl Renderable for Layout {
@@ -356,7 +489,9 @@ impl Renderable for Layout {
         let mut layout_lines: Vec<Vec<Segment>> = vec![Vec::new(); height];
 
         for (region, lines) in &entries {
-            let y = region.y as usize;
+            // P2 correctness (finding #10): a negative y would silently wrap to
+            // a huge usize and cause an OOB access; clamp it to 0.
+            let y = usize::try_from(region.y).unwrap_or(0);
             let region_height = region.height;
             for (row_offset, line) in lines.iter().enumerate() {
                 let target_row = y + row_offset;
@@ -381,6 +516,26 @@ impl Renderable for Layout {
         }
 
         segments
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Into<Layout> conversions (P3, finding #11)
+// ---------------------------------------------------------------------------
+
+/// A `String` converts to a leaf Layout with that string as its content.
+impl From<String> for Layout {
+    fn from(s: String) -> Self {
+        let mut layout = Layout::default_layout();
+        layout.update(s);
+        layout
+    }
+}
+
+/// A `&str` converts to a leaf Layout with that string as its content.
+impl From<&str> for Layout {
+    fn from(s: &str) -> Self {
+        Layout::from(s.to_string())
     }
 }
 
@@ -434,8 +589,9 @@ mod tests {
             Layout::new(None, None, None, None, Some(1), None),
             Layout::new(None, None, None, None, Some(1), None),
         ];
+        let refs: Vec<&Layout> = children.iter().collect();
         let region = Region::new(0, 0, 80, 24);
-        let result = splitter.divide(&children, region);
+        let result = splitter.divide(&refs, region);
         assert_eq!(result.len(), 2);
         assert_eq!(result[0].0, 0);
         assert_eq!(result[1].0, 1);
@@ -453,8 +609,9 @@ mod tests {
             Layout::new(None, None, None, None, Some(2), None),
             Layout::new(None, None, None, None, Some(1), None),
         ];
+        let refs: Vec<&Layout> = children.iter().collect();
         let region = Region::new(0, 0, 90, 24);
-        let result = splitter.divide(&children, region);
+        let result = splitter.divide(&refs, region);
         // 2:1 ratio of 90 => 60, 30
         assert_eq!(result[0].1.width, 60);
         assert_eq!(result[1].1.width, 30);
@@ -467,8 +624,9 @@ mod tests {
             Layout::new(None, None, Some(20), None, None, None),
             Layout::new(None, None, None, None, Some(1), None),
         ];
+        let refs: Vec<&Layout> = children.iter().collect();
         let region = Region::new(0, 0, 80, 24);
-        let result = splitter.divide(&children, region);
+        let result = splitter.divide(&refs, region);
         assert_eq!(result[0].1.width, 20);
         assert_eq!(result[1].1.width, 60);
     }
@@ -480,8 +638,9 @@ mod tests {
             Layout::new(None, None, Some(30), None, None, None),
             Layout::new(None, None, Some(50), None, None, None),
         ];
+        let refs: Vec<&Layout> = children.iter().collect();
         let region = Region::new(5, 10, 80, 24);
-        let result = splitter.divide(&children, region);
+        let result = splitter.divide(&refs, region);
         assert_eq!(result[0].1.x, 5);
         assert_eq!(result[0].1.y, 10);
         assert_eq!(result[1].1.x, 35); // 5 + 30
@@ -503,8 +662,9 @@ mod tests {
             Layout::new(None, None, None, None, Some(1), None),
             Layout::new(None, None, None, None, Some(1), None),
         ];
+        let refs: Vec<&Layout> = children.iter().collect();
         let region = Region::new(0, 0, 80, 24);
-        let result = splitter.divide(&children, region);
+        let result = splitter.divide(&refs, region);
         assert_eq!(result.len(), 2);
         assert_eq!(result[0].1.height + result[1].1.height, 24);
         assert_eq!(result[0].1.width, 80);
@@ -518,8 +678,9 @@ mod tests {
             Layout::new(None, None, None, None, Some(3), None),
             Layout::new(None, None, None, None, Some(1), None),
         ];
+        let refs: Vec<&Layout> = children.iter().collect();
         let region = Region::new(0, 0, 80, 40);
-        let result = splitter.divide(&children, region);
+        let result = splitter.divide(&refs, region);
         // 3:1 ratio of 40 => 30, 10
         assert_eq!(result[0].1.height, 30);
         assert_eq!(result[1].1.height, 10);
@@ -532,8 +693,9 @@ mod tests {
             Layout::new(None, None, Some(5), None, None, None),
             Layout::new(None, None, None, None, Some(1), None),
         ];
+        let refs: Vec<&Layout> = children.iter().collect();
         let region = Region::new(0, 0, 80, 24);
-        let result = splitter.divide(&children, region);
+        let result = splitter.divide(&refs, region);
         assert_eq!(result[0].1.height, 5);
         assert_eq!(result[1].1.height, 19);
     }
@@ -545,8 +707,9 @@ mod tests {
             Layout::new(None, None, Some(10), None, None, None),
             Layout::new(None, None, Some(14), None, None, None),
         ];
+        let refs: Vec<&Layout> = children.iter().collect();
         let region = Region::new(5, 10, 80, 24);
-        let result = splitter.divide(&children, region);
+        let result = splitter.divide(&refs, region);
         assert_eq!(result[0].1.x, 5);
         assert_eq!(result[0].1.y, 10);
         assert_eq!(result[1].1.x, 5);
@@ -594,7 +757,9 @@ mod tests {
             Some(3),
             Some(false),
         );
-        assert_eq!(layout.renderable.as_deref(), Some("hello"));
+        // renderable is now Arc<dyn Renderable> — check presence only.
+        // Old: assert_eq!(layout.renderable.as_deref(), Some("hello"));
+        assert!(layout.has_renderable(), "renderable should be set");
         assert_eq!(layout.name.as_deref(), Some("main"));
         assert_eq!(layout.size, Some(20));
         assert_eq!(layout.minimum_size, 5);
@@ -707,9 +872,14 @@ mod tests {
     #[test]
     fn test_update() {
         let mut layout = Layout::default_layout();
-        assert!(layout.renderable.is_none());
+        assert!(!layout.has_renderable());
         layout.update("new content".to_string());
-        assert_eq!(layout.renderable.as_deref(), Some("new content"));
+        // renderable is now Arc<dyn Renderable> — check presence only.
+        // Old: assert_eq!(layout.renderable.as_deref(), Some("new content"));
+        assert!(
+            layout.has_renderable(),
+            "renderable should be set after update"
+        );
     }
 
     // -- get / get_mut -------------------------------------------------------
@@ -760,9 +930,11 @@ mod tests {
         let found = layout.get_mut("child").unwrap();
         found.update("updated".to_string());
 
-        assert_eq!(
-            layout.get("child").unwrap().renderable.as_deref(),
-            Some("updated")
+        // renderable is now Arc<dyn Renderable> — check presence only.
+        // Old: assert_eq!(layout.get("child").unwrap().renderable.as_deref(), Some("updated"));
+        assert!(
+            layout.get("child").unwrap().has_renderable(),
+            "child renderable should be set after update"
         );
     }
 
@@ -803,7 +975,12 @@ mod tests {
     #[test]
     fn test_effective_renderable_leaf() {
         let layout = Layout::new(Some("content".to_string()), None, None, None, None, None);
-        assert_eq!(layout.effective_renderable(), Some("content"));
+        // effective_renderable() now returns Option<&dyn Renderable + Send + Sync>.
+        // Old: assert_eq!(layout.effective_renderable(), Some("content"));
+        assert!(
+            layout.effective_renderable().is_some(),
+            "leaf with content should return Some"
+        );
     }
 
     #[test]
@@ -1157,7 +1334,9 @@ mod tests {
 
         let cloned = layout.clone();
         assert_eq!(cloned.name, layout.name);
-        assert_eq!(cloned.renderable, layout.renderable);
+        // Arc<dyn Renderable> doesn't implement PartialEq; check presence instead.
+        // Old: assert_eq!(cloned.renderable, layout.renderable);
+        assert_eq!(cloned.has_renderable(), layout.has_renderable());
         assert_eq!(cloned.size, layout.size);
         assert_eq!(cloned.minimum_size, layout.minimum_size);
         assert_eq!(cloned.ratio, layout.ratio);
@@ -1176,8 +1355,9 @@ mod tests {
             Layout::new(None, None, None, None, Some(1), None),
             Layout::new(None, None, None, None, Some(1), None),
         ];
+        let refs: Vec<&Layout> = children.iter().collect();
         let region = Region::new(0, 0, 90, 24);
-        let result = splitter.divide(&children, region);
+        let result = splitter.divide(&refs, region);
         assert_eq!(result.len(), 3);
         let total_width: usize = result.iter().map(|(_, r)| r.width).sum();
         assert!(total_width <= 90);
@@ -1197,8 +1377,9 @@ mod tests {
             Layout::new(None, None, None, None, Some(1), None),
             Layout::new(None, None, None, None, Some(1), None),
         ];
+        let refs: Vec<&Layout> = children.iter().collect();
         let region = Region::new(0, 0, 80, 30);
-        let result = splitter.divide(&children, region);
+        let result = splitter.divide(&refs, region);
         assert_eq!(result.len(), 3);
         let total_height: usize = result.iter().map(|(_, r)| r.height).sum();
         assert_eq!(total_height, 30);
