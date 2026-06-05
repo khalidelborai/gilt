@@ -5,6 +5,87 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+A correctness + parity + performance pass driven by a full multi-agent
+audit against the Python `rich` reference (see
+`.review/ultracode-review-2026-06-05.md` and
+`.review/ultracode-fixes-2026-06-05.md`). ~95 confirmed findings fixed
+across every subsystem. Contains **breaking API changes** — warrants a
+major version bump.
+
+### Breaking
+
+- `ConsoleOptions.encoding`: `String` → `Cow<'static, str>`.
+- `Layout.renderable`: `Option<String>` → `Option<Arc<dyn Renderable + Send + Sync>>`;
+  panes can now hold any renderable. `effective_renderable()` returns
+  `Option<&dyn Renderable>`. New: `update_renderable`, `with_renderable`,
+  `refresh_screen`, `by_name`, `From<&str>/From<String>`.
+- `Splitter::divide` takes `&[&Layout]` (was `&[Layout]`).
+- `Syntax.highlight_lines`: `Vec<usize>` → `HashSet<usize>`.
+- `Pretty::rebuild_json` gains a `max_width` parameter.
+- `Prompt::ask*` take `&mut self`.
+- `ProgressReader<R>` → `ProgressReader<'p, R>` (now sound — `unsafe` removed).
+- Default changes: `Traceback::word_wrap` now `false`, `RichHandler::enable_link_path`
+  now `true`, `Rule` default line is light `─`, log level colors realigned to rich.
+
+### Added
+
+- `Style::chain` and `Style::normalize`; parser accepts `underline_style`/
+  `underline_color(...)` tokens (Display↔parse round-trip).
+- `Panel::safe_box` + `with_safe_box`; `Tree::highlight` + `with_highlight`.
+- `Syntax::with_padding`, `Syntax::stylize_range_linecol`.
+- `Pretty::max_depth` + `with_max_depth`.
+- `Prompt::confirm_with_default` / `confirm_with_input_and_default`.
+- `console::detect_color_system_from`; `error::fmt_time_hms`.
+
+### Fixed (parity with rich)
+
+- Color: `blend_rgb` truncates (not rounds). Cells: `DEL` is 0-width;
+  `chop_cells` is grapheme-aware. Text: column-aligned tab stops; `wrap`
+  honors `overflow=Fold`; `append_text` keeps the base style; `highlight_words`
+  drops non-rich `\b` anchors; `align` truncates before padding; whitespace
+  `measure` returns `min=max_text_width`.
+- Console: color-system detection honors `COLORTERM`/`TERM`; `control()` is
+  silent on dumb terminals; HTML/SVG export emit hyperlinks; `SVG_EXPORT_THEME`
+  restored to 8 normal + 8 bright.
+- Table: collapsed padding `max(0, left−right)`; top/bottom cell padding emitted.
+  Panel: `measure()` accounts for title + longest line; honors box substitution
+  (ascii). Box: substitutes to ASCII. Rule: light default. Tree: independent
+  min/max measure. Columns: preserve cell styling; no div-by-zero.
+- Markup: no double-escape corruption; `:emoji:` shortcodes. Syntax: indent
+  guides, padding, RGB line numbers, FontStyle bits, line/col `stylize_range`.
+  Markdown: corrected hyperlink logic, styled blockquotes, syntax-highlighted
+  code blocks, SIMPLE table box, `▌` quote border, image `🌆`, list indent.
+- Live/Status: Status spinner animates and `set()` updates the display.
+  Traceback: `max_frames=0` shows all frames; `suppress_paths` keeps the frame
+  header (prefix match); source frames keep syntax colors. Logging: messages
+  pass through `ReprHighlighter`.
+
+### Fixed (correctness)
+
+- `Syntax` no longer panics dedenting multi-byte leading whitespace.
+- `Columns` no longer panics on `width=0 && padding=0`.
+- `markup::render` no longer corrupts literal `\[`.
+- `Console::synchronized` restores terminal sync state on panic (RAII guard).
+- `ProgressReader` is memory-safe (lifetime-tied; all `unsafe` removed).
+- `Layout` guards negative region coordinates; `ratio_resolve` is overflow-safe.
+
+### Performance
+
+- Live: content updates are lock-free (`ArcSwap`) — worker threads no longer
+  stall on the renderer (T8). `Segment::divide` avoids a full slice clone (M-5);
+  hot loops get capacity hints. `ConsoleOptions` no longer allocates `"utf-8"`
+  per call (T7). `BarColumn` caches its `Console` (T5). Style/color parse caches
+  enlarged; integer palette matching. JSON highlighter byte→char index built
+  once. Traceback caches source files per render and hoists per-frame styles.
+  `diff`/`json`/`sparkline`/`gradient` shed redundant clones (`Cow`).
+
+### Internal
+
+- Repaired 7 bit-rotted `async`/`http` doctests (only run under
+  `--all-features`, which CI does not exercise).
+
 ## [1.4.1] - 2026-05-06
 
 Patch release. Fixes a Unicode-spec-vs-terminal-reality divergence
