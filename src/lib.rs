@@ -13,7 +13,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! gilt = "1.6"
+//! gilt = "1.7"
 //! ```
 //!
 //! Then use the [`prelude`] for convenient access to common types:
@@ -537,7 +537,7 @@
 //! Enable in `Cargo.toml`:
 //!
 //! ```toml
-//! gilt = { version = "1.6", features = ["derive"] }
+//! gilt = { version = "1.7", features = ["derive"] }
 //! ```
 //!
 //! ## `gilt::derives` namespace
@@ -557,6 +557,7 @@
 //! | `json` | Yes | `serde`, `serde_json` | JSON pretty-printing via [`Json`](json::Json) |
 //! | `markdown` | Yes | `pulldown-cmark` | Terminal Markdown via [`Markdown`](markdown::Markdown) |
 //! | `syntax` | Yes | `syntect` | Syntax highlighting via [`Syntax`](syntax::Syntax) |
+//! | `syntax-theme-file` | No | `syntect/plist-load` | `Syntax::load_theme_from_file` (.tmTheme; native; pulls `plist`/`time`) |
 //! | `interactive` | Yes | `rpassword` | Password prompts and selection menus |
 //! | `logging` | Yes | `log` | Logging handler |
 //! | `terminal-size` | Yes | `terminal_size` | Real terminal width/height via `ioctl` (native only; excluded from wasm/no-default builds) |
@@ -571,7 +572,7 @@
 //! For a minimal build with no heavy dependencies:
 //!
 //! ```toml
-//! gilt = { version = "1.6", default-features = false }
+//! gilt = { version = "1.7", default-features = false }
 //! ```
 //!
 //! # Integrations
@@ -833,6 +834,19 @@ pub use style::{clear_style_cache, style_cache_size};
 // (which clash with runtime widget types) live ONLY at `gilt::derives::*`
 // — see the `derives` module below.
 
+/// Compile-time gilt markup validator.
+///
+/// Validates markup at compile time and expands to a [`text::Text`].
+/// See [`gilt_derive::text`] for full documentation.
+///
+/// ```rust
+/// # #[cfg(feature = "derive")] {
+/// use gilt::text;
+/// let t = text!("[bold red]Error:[/] file not found");
+/// # }
+/// ```
+#[cfg(feature = "derive")]
+pub use gilt_derive::text;
 #[cfg(feature = "derive")]
 pub use gilt_derive::Panel;
 #[cfg(feature = "derive")]

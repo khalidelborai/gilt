@@ -1924,3 +1924,288 @@ fn test_console_stderr_terminal_state() {
         "force_terminal(false) should yield no color system"
     );
 }
+
+// -- Console::notify (OSC 9 desktop notification) ---------------------------
+
+/// `Console::notify` with a title routes through control() and produces the
+/// OSC 9 sequence. Use a recording console + export_text(styles=true) to
+/// capture the raw escape sequences.
+#[test]
+fn test_console_notify_with_title() {
+    // record=true so we can inspect raw escape bytes via export_text(styles=true).
+    // force_terminal(true) ensures is_dumb_terminal() check passes and the
+    // control segment is written (is_dumb_terminal uses TERM env var, not
+    // force_terminal, so we also rely on TERM not being "dumb" in CI).
+    let mut c = Console::builder()
+        .force_terminal(true)
+        .no_color(true)
+        .record(true)
+        .build();
+    c.notify("Build", "Done");
+    let output = c.export_text(false, true);
+    assert!(
+        output.contains("\x1b]9;"),
+        "notify should emit OSC 9 sequence; got {:?}",
+        output
+    );
+    assert!(
+        output.contains("Build: Done"),
+        "notify should include the message; got {:?}",
+        output
+    );
+}
+
+#[test]
+fn test_console_notify_empty_title() {
+    let mut c = Console::builder()
+        .force_terminal(true)
+        .no_color(true)
+        .record(true)
+        .build();
+    c.notify("", "just body");
+    let output = c.export_text(false, true);
+    assert!(
+        output.contains("\x1b]9;"),
+        "notify with empty title should still emit OSC 9; got {:?}",
+        output
+    );
+    assert!(
+        output.contains("just body"),
+        "should include body; got {:?}",
+        output
+    );
+}
+
+// -- Console::set_taskbar_progress (OSC 9;4) --------------------------------
+
+#[test]
+fn test_console_set_taskbar_progress_normal() {
+    use crate::segment::TaskbarState;
+    let mut c = Console::builder()
+        .force_terminal(true)
+        .no_color(true)
+        .record(true)
+        .build();
+    c.set_taskbar_progress(TaskbarState::Normal, 55);
+    let output = c.export_text(false, true);
+    assert!(
+        output.contains("\x1b]9;4;1;"),
+        "should emit OSC 9;4;state=1 for Normal; got {:?}",
+        output
+    );
+    assert!(
+        output.contains("55"),
+        "should include percent 55; got {:?}",
+        output
+    );
+}
+
+#[test]
+fn test_console_set_taskbar_progress_remove() {
+    use crate::segment::TaskbarState;
+    let mut c = Console::builder()
+        .force_terminal(true)
+        .no_color(true)
+        .record(true)
+        .build();
+    c.set_taskbar_progress(TaskbarState::Remove, 0);
+    let output = c.export_text(false, true);
+    assert!(
+        output.contains("\x1b]9;4;0;"),
+        "should emit state=0 for Remove; got {:?}",
+        output
+    );
+}
+
+// -- ConsoleBuilder::log_path / Console::log caller path -------------------
+
+#[test]
+fn test_log_path_false_no_path_in_output() {
+    let mut c = Console::builder()
+        .width(120)
+        .no_color(true)
+        .markup(false)
+        .log_path(false)
+        .build();
+    c.begin_capture();
+    c.log("hello world");
+    let output = c.end_capture();
+    assert!(output.contains("hello world"), "should include message");
+    // With log_path off, no file:line annotation should appear.
+    // The caller file for this test is "console_tests.rs"; check it's absent.
+    assert!(
+        !output.contains("console_tests.rs"),
+        "log_path=false should not include file name; got {:?}",
+        output
+    );
+}
+
+#[test]
+fn test_log_path_true_includes_file_name() {
+    let mut c = Console::builder()
+        .width(120)
+        .no_color(true)
+        .markup(false)
+        .log_path(true)
+        .build();
+    c.begin_capture();
+    c.log("some message");
+    let output = c.end_capture();
+    assert!(output.contains("some message"), "should include message");
+    // With log_path on, the short caller file name should appear.
+    // This test is in console_tests.rs, so "console_tests.rs" should show up.
+    assert!(
+        output.contains("console_tests.rs"),
+        "log_path=true should include caller file name; got {:?}",
+        output
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Task 1: HtmlExportOptions tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_export_html_opts_copy_button_injects_button_and_script() {
+    use crate::export_format::HtmlExportOptions;
+    use crate::style::Style;
+    use crate::text::Text;
+
+    let mut console = Console::builder()
+        .width(80)
+        .record(true)
+        .markup(false)
+        .build();
+    console.print(&Text::new("hello", Style::null()));
+
+    let opts = HtmlExportOptions::default().copy_button(true);
+    let html = console.export_html_opts(None, &opts);
+    assert!(html.contains("<button"), "expected <button> in HTML");
+    assert!(html.contains("gilt-copy-btn"), "expected copy button id");
+    assert!(html.contains("<script"), "expected <script> tag");
+}
+
+#[test]
+fn test_export_html_opts_dark_mode_injects_dark_css() {
+    use crate::export_format::HtmlExportOptions;
+    use crate::style::Style;
+    use crate::text::Text;
+
+    let mut console = Console::builder()
+        .width(80)
+        .record(true)
+        .markup(false)
+        .build();
+    console.print(&Text::new("dark test", Style::null()));
+
+    let opts = HtmlExportOptions::default().dark_mode(true);
+    let html = console.export_html_opts(None, &opts);
+    assert!(
+        html.contains("prefers-color-scheme"),
+        "expected dark-mode @media query"
+    );
+}
+
+#[test]
+fn test_export_html_opts_font_url_referenced_in_output() {
+    use crate::export_format::HtmlExportOptions;
+    use crate::style::Style;
+    use crate::text::Text;
+
+    let mut console = Console::builder()
+        .width(80)
+        .record(true)
+        .markup(false)
+        .build();
+    console.print(&Text::new("font test", Style::null()));
+
+    let opts = HtmlExportOptions::default()
+        .font_url("https://example.com/my-font.woff2")
+        .font_family("MyFont");
+    let html = console.export_html_opts(None, &opts);
+    assert!(
+        html.contains("https://example.com/my-font.woff2"),
+        "font URL should appear in output"
+    );
+}
+
+#[test]
+fn test_export_html_opts_defaults_match_export_html() {
+    use crate::export_format::HtmlExportOptions;
+    use crate::style::Style;
+    use crate::text::Text;
+
+    let mut c1 = Console::builder()
+        .width(80)
+        .record(true)
+        .markup(false)
+        .build();
+    let mut c2 = Console::builder()
+        .width(80)
+        .record(true)
+        .markup(false)
+        .build();
+
+    c1.print(&Text::new("shared", Style::null()));
+    c2.print(&Text::new("shared", Style::null()));
+
+    let via_opts = c1.export_html_opts(None, &HtmlExportOptions::default());
+    let via_direct = c2.export_html(None, false, false);
+    assert_eq!(via_opts, via_direct);
+}
+
+// ---------------------------------------------------------------------------
+// Task 2: FontEmbedding SVG tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_export_svg_opts_base64_font_embedding() {
+    use crate::export_format::{FontEmbedding, SvgExportOptions};
+    use crate::style::Style;
+    use crate::text::Text;
+
+    let mut console = Console::builder()
+        .width(40)
+        .record(true)
+        .no_color(true)
+        .markup(false)
+        .build();
+    console.print(&Text::new("SVG embed", Style::null()));
+
+    let font_bytes = b"FAKE_FONT_DATA".to_vec();
+    let opts = SvgExportOptions::default()
+        .title("Embed Test")
+        .font_embedding(FontEmbedding::Base64(font_bytes.clone()));
+    let svg = console.export_svg_opts(None, &opts);
+
+    assert!(svg.contains("<svg"), "should contain <svg");
+    assert!(svg.contains("data:font/"), "should contain data: URL");
+    // The base64 of b"FAKE_FONT_DATA" must appear
+    assert!(
+        svg.contains("RkFLRV9GT05UX0RBVEE="),
+        "base64 of FAKE_FONT_DATA should appear in SVG"
+    );
+}
+
+#[test]
+fn test_export_svg_opts_none_embedding_no_data_url() {
+    use crate::export_format::{FontEmbedding, SvgExportOptions};
+    use crate::style::Style;
+    use crate::text::Text;
+
+    let mut console = Console::builder()
+        .width(40)
+        .record(true)
+        .no_color(true)
+        .markup(false)
+        .build();
+    console.print(&Text::new("SVG no embed", Style::null()));
+
+    let opts = SvgExportOptions::default()
+        .title("No Embed")
+        .font_embedding(FontEmbedding::None);
+    let svg = console.export_svg_opts(None, &opts);
+
+    assert!(svg.contains("<svg"), "should contain <svg");
+    assert!(!svg.contains("data:font/"), "should NOT contain data: URL");
+}

@@ -340,9 +340,21 @@ impl Console {
         segments.push(Segment::text(" "));
         segments.extend(body.gilt_console(self, &opts));
 
-        // Append caller path when log_path is configured (PARTIAL: currently
-        // always shown; a future `log_path` flag on Console will make it opt-in).
-        let _ = caller_path; // suppress unused-variable warning (opt-in in future)
+        // Append caller path when log_path is enabled on this console.
+        if self.log_path {
+            // Right-align the path suffix by appending it as a dim segment
+            // after a space, mirroring rich's right-aligned dim path display.
+            let path_style = self
+                .get_style("log.path")
+                .unwrap_or_else(|_| Style::parse("dim"));
+            // Remove the trailing newline from the body segments so we can
+            // append the path before re-adding it.
+            segments.retain(|s| s.text != "\n");
+            segments.push(Segment::text(" "));
+            segments.push(Segment::styled(&caller_path, path_style));
+        } else {
+            let _ = caller_path; // suppress unused-variable warning
+        }
 
         // Ensure trailing newline
         if let Some(last) = segments.last() {

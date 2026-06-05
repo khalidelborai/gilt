@@ -59,6 +59,40 @@ pub enum ControlType {
     ///
     /// **gilt extension** — not present in Python rich's `ControlType` enum.
     RequestClipboard = 20,
+    /// Send a desktop notification via OSC 9: `ESC ] 9 ; <message> BEL`.
+    ///
+    /// Supported by ConEmu, Windows Terminal, and some other terminals.
+    ///
+    /// **gilt extension** — not present in Python rich's `ControlType` enum.
+    DesktopNotification = 21,
+    /// Set the taskbar progress indicator via OSC 9;4: ConEmu / Windows Terminal.
+    ///
+    /// Format: `ESC ] 9 ; 4 ; <state> ; <progress> BEL`
+    /// where state ∈ {0=remove, 1=normal, 2=error, 3=indeterminate, 4=paused}
+    /// and progress is 0–100.
+    ///
+    /// **gilt extension** — not present in Python rich's `ControlType` enum.
+    SetTaskbarProgress = 22,
+}
+
+/// Taskbar progress state for [`ControlType::SetTaskbarProgress`] (OSC 9;4).
+///
+/// Maps to the integer state codes defined by ConEmu / Windows Terminal:
+/// 0 = remove, 1 = normal, 2 = error, 3 = indeterminate, 4 = paused.
+///
+/// **gilt extension**
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TaskbarState {
+    /// Remove / hide the taskbar progress indicator (state 0).
+    Remove = 0,
+    /// Normal progress (state 1).
+    Normal = 1,
+    /// Error state (state 2).
+    Error = 2,
+    /// Indeterminate / busy (state 3).
+    Indeterminate = 3,
+    /// Paused (state 4).
+    Paused = 4,
 }
 
 /// Terminal control code with optional parameters.

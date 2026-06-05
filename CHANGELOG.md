@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.7.0] - 2026-06-05
+
+Rust-native differentiators + parity completions, led by a compile-time markup
+macro. From the feature roadmap (`.review/feature-roadmap-2026-06-05.md`).
+
+### Added
+
+- **Compile-time `text!` macro** (feature `derive`) — `text!("[bold red]x[/]")`
+  validates gilt markup at `cargo build` and expands to a `Text`. Unclosed
+  brackets, mismatched/unclosed tags, and unknown style tokens are now compile
+  errors. The validator mirrors `Style::parse` / `Color::parse` exactly, so any
+  markup `Text::from_markup` accepts also compiles (guarded by an
+  anti-false-positive suite + trybuild compile-fail tests). Impossible in Python
+  rich.
+- **Terminal escapes** — `Console::notify(title, body)` (OSC 9 desktop
+  notification); `Console::set_taskbar_progress(state, pct)` + `TaskbarState`
+  (OSC 9;4, ConEmu/Windows Terminal) with an opt-in `Progress::with_taskbar`;
+  `ConsoleBuilder::log_path(bool)` to show the caller location in `log()`.
+- **Theming** — `ThemeRegistry` with 5 built-in palettes (Dracula, Nord,
+  Gruvbox, Monokai Pro, Solarized Dark) + `Console::export_html_with_theme(name)`;
+  `serde` `Serialize`/`Deserialize` for `Color`/`Style`/`Theme` (feature `json`);
+  `Syntax::with_syntect_theme()`, and `Syntax::load_theme_from_file()` (opt-in
+  `syntax-theme-file` feature, native — kept out of default to stay dep-light).
+- **Traceback `show_locals`** — now rendered: `Frame::with_local(s)` carry
+  user-supplied name/value pairs shown via the scope renderer when enabled.
+- **Markdown GFM task-lists** — `- [x]` / `- [ ]` render as ☑ / ☐.
+- **Gradient progress bars** — `BarColumn::with_gradient(start, end)` fills the
+  completed bar with a per-cell truecolor gradient.
+- **`Pretty::from_serde<T: Serialize>`** (feature `json`).
+- **Export builders** — `HtmlExportOptions` (`export_html_opts`): copy button,
+  dark-mode CSS, custom font/`font_url`; `SvgExportOptions` with
+  `FontEmbedding::Base64` for self-contained offline SVG.
+- **Typed styling** — `Style::fg`/`bg`/`with_underline_color` and
+  `Stylize::fg_color`/`bg_color`/`underline_color` take a typed `Color`.
+- **Typed prompts** — `Prompt::with_converter` → `TypedPrompt<T>` (parse + retry
+  loop for any type).
+
 ## [1.6.0] - 2026-06-05
 
 A correctness + async + DX release: tty-aware color, a hardened async live

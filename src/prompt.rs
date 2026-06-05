@@ -378,6 +378,32 @@ impl Prompt {
         self.ask_with_input(&mut handle)
     }
 
+    /// Attach a typed converter function to this `Prompt`, producing a
+    /// [`TypedPrompt<T, F>`] that loops until the converter succeeds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::prompt::Prompt;
+    /// use std::io::Cursor;
+    ///
+    /// let mut tp = Prompt::new("Enter a u16")
+    ///     .with_converter(|s: &str| s.parse::<u16>().map_err(|e| e.to_string()));
+    /// let mut input = Cursor::new(b"abc\n42\n" as &[u8]);
+    /// let value = tp.ask_with_input(&mut input).unwrap();
+    /// assert_eq!(value, 42u16);
+    /// ```
+    pub fn with_converter<T, F>(self, converter: F) -> TypedPrompt<T, F>
+    where
+        F: Fn(&str) -> Result<T, String>,
+    {
+        TypedPrompt {
+            prompt: self,
+            converter,
+            _phantom: std::marker::PhantomData,
+        }
+    }
+
     /// Readline-based input loop with tab-completion.
     #[cfg(feature = "readline")]
     fn ask_readline(&mut self) -> String {
@@ -633,6 +659,116 @@ pub fn ask_float_with_input<R: BufRead>(prompt: &str, input: &mut R) -> f64 {
                 continue;
             }
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// TypedPrompt
+// ---------------------------------------------------------------------------
+
+/// A [`Prompt`] paired with a converter function that maps `&str -> Result<T, String>`.
+///
+/// Created via [`Prompt::with_converter`]. The prompt loops until the converter
+/// succeeds, showing the error message on each bad attempt.
+///
+/// # Examples
+///
+/// ```
+/// use gilt::prompt::Prompt;
+/// use std::io::Cursor;
+///
+/// // Parse a u16, re-prompting on invalid input
+/// let mut tp = Prompt::new("Port number")
+///     .with_converter(|s: &str| s.parse::<u16>().map_err(|e| e.to_string()));
+///
+/// let mut input = Cursor::new(b"not_a_number\n8080\n" as &[u8]);
+/// let port = tp.ask_with_input(&mut input).unwrap();
+/// assert_eq!(port, 8080u16);
+/// ```
+pub struct TypedPrompt<T, F>
+where
+    F: Fn(&str) -> Result<T, String>,
+{
+    prompt: Prompt,
+    converter: F,
+    _phantom: std::marker::PhantomData<T>,
+}
+
+impl<T, F> TypedPrompt<T, F>
+where
+    F: Fn(&str) -> Result<T, String>,
+{
+    /// Read a line from `input`, convert it, loop on errors.
+    ///
+    /// Returns `Ok(T)` on success. Returns `Err` only on unexpected I/O errors
+    /// at EOF when there is no default (consistent with the underlying
+    /// `Prompt::ask_with_input` EOF handling).
+    pub fn ask_with_input<R: BufRead>(&mut self, input: &mut R) -> io::Result<T> {
+        let prompt_text = self.prompt.make_prompt();
+        let ansi_prompt: String = {
+            self.prompt.console.begin_capture();
+            self.prompt.console.print(&prompt_text);
+            let captured = self.prompt.console.end_capture();
+            captured.strip_suffix('\n').unwrap_or(&captured).to_string()
+        };
+
+        let mut err_console = Console::stderr();
+
+        loop {
+            print!("{}", ansi_prompt);
+            let _ = io::stdout().flush();
+
+            let mut line = String::new();
+            match input.read_line(&mut line) {
+                Ok(0) => {
+                    // EOF — if there is a default, try converting it
+                    if let Some(ref default) = self.prompt.default {
+                        match (self.converter)(default) {
+                            Ok(v) => return Ok(v),
+                            Err(msg) => {
+                                err_console.print_text(&format!("[bold red]{}[/]", msg));
+                                return Err(io::Error::new(io::ErrorKind::UnexpectedEof, msg));
+                            }
+                        }
+                    }
+                    return Err(io::Error::new(
+                        io::ErrorKind::UnexpectedEof,
+                        "unexpected EOF",
+                    ));
+                }
+                Ok(_) => {}
+                Err(e) => return Err(e),
+            }
+
+            let trimmed = line.trim_end_matches(['\n', '\r']);
+
+            // Empty input: use default if available
+            let value = if trimmed.trim().is_empty() {
+                if let Some(ref default) = self.prompt.default {
+                    default.as_str()
+                } else {
+                    trimmed
+                }
+            } else {
+                trimmed
+            };
+
+            match (self.converter)(value) {
+                Ok(v) => return Ok(v),
+                Err(msg) => {
+                    err_console.print_text(&format!("[bold red]{}[/]", msg));
+                    // loop again
+                }
+            }
+        }
+    }
+
+    /// Read from stdin. Convenience wrapper around
+    /// [`ask_with_input`](Self::ask_with_input).
+    pub fn ask(&mut self) -> io::Result<T> {
+        let stdin = io::stdin();
+        let mut handle = stdin.lock();
+        self.ask_with_input(&mut handle)
     }
 }
 

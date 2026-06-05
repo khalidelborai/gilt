@@ -487,6 +487,59 @@ impl fmt::Display for Color {
     }
 }
 
+// ---------------------------------------------------------------------------
+// serde Serialize / Deserialize for Color (gated on `json` feature)
+// ---------------------------------------------------------------------------
+//
+// `Color` serializes as its canonical string form (e.g. `"red"`, `"#ff8800"`,
+// `"color(123)"`, `"default"`) and deserializes by calling `Color::parse`.
+// A custom impl is needed because the enum variants have no stable 1-to-1
+// mapping with serde's derive (EightBit and Standard both serialize as the
+// same string form and must not be conflated).
+
+#[cfg(feature = "json")]
+mod color_serde {
+    use super::Color;
+    use serde::de::{self, Visitor};
+    use serde::{Deserializer, Serializer};
+    use std::fmt;
+
+    pub fn serialize<S: Serializer>(color: &Color, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(&color.name())
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Color, D::Error> {
+        struct ColorVisitor;
+        impl<'de> Visitor<'de> for ColorVisitor {
+            type Value = Color;
+            fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                write!(
+                    f,
+                    "a color string like \"red\", \"#ff8800\", or \"color(42)\""
+                )
+            }
+            fn visit_str<E: de::Error>(self, v: &str) -> Result<Color, E> {
+                Color::parse(v).map_err(|e| de::Error::custom(e.to_string()))
+            }
+        }
+        d.deserialize_str(ColorVisitor)
+    }
+}
+
+#[cfg(feature = "json")]
+impl serde::Serialize for Color {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        color_serde::serialize(self, s)
+    }
+}
+
+#[cfg(feature = "json")]
+impl<'de> serde::Deserialize<'de> for Color {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        color_serde::deserialize(d)
+    }
+}
+
 /// Parses a 6-character hex string into an RGB triplet.
 pub fn parse_rgb_hex(hex: &str) -> Result<ColorTriplet, ColorParseError> {
     if hex.len() != 6 {

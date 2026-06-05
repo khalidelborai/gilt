@@ -997,3 +997,108 @@ fn test_infer_type_name_empty() {
 fn test_infer_type_name_struct() {
     assert_eq!(super::infer_type_name("Foo {\n    x: 42\n}"), "struct");
 }
+
+// -- Task 4: Pretty::from_serde -----------------------------------------------
+
+#[cfg(feature = "json")]
+mod from_serde_tests {
+    use super::super::Pretty;
+    use serde::Serialize;
+
+    #[derive(Serialize)]
+    struct Point {
+        x: f64,
+        y: f64,
+    }
+
+    #[derive(Serialize)]
+    struct Nested {
+        name: String,
+        tags: Vec<String>,
+        value: i32,
+    }
+
+    fn render_pretty(pretty: &Pretty) -> String {
+        use crate::console::Console;
+        let mut console = Console::builder()
+            .width(80)
+            .force_terminal(true)
+            .no_color(true)
+            .markup(false)
+            .build();
+        console.begin_capture();
+        console.print(pretty);
+        console.end_capture()
+    }
+
+    #[test]
+    fn test_from_serde_produces_ok() {
+        let p = Point { x: 1.0, y: 2.5 };
+        assert!(Pretty::from_serde(&p).is_ok());
+    }
+
+    #[test]
+    fn test_from_serde_renders_fields() {
+        let p = Point { x: 3.0, y: 4.0 };
+        let pretty = Pretty::from_serde(&p).unwrap();
+        let output = render_pretty(&pretty);
+        assert!(
+            output.contains('x') || output.contains("3"),
+            "output: {output}"
+        );
+        assert!(
+            output.contains('y') || output.contains("4"),
+            "output: {output}"
+        );
+    }
+
+    #[test]
+    fn test_from_serde_matches_from_json() {
+        let p = Point { x: 1.5, y: 2.5 };
+
+        // Serialize to Value first, then use from_json to get the reference.
+        let value = serde_json::to_value(&p).unwrap();
+        let from_json = Pretty::from_json(&value);
+        let from_serde = Pretty::from_serde(&p).unwrap();
+
+        // Both should produce the same plain text (same formatting path).
+        assert_eq!(
+            from_json.text.plain(),
+            from_serde.text.plain(),
+            "from_serde should produce identical text to from_json"
+        );
+    }
+
+    #[test]
+    fn test_from_serde_nested_struct() {
+        let nested = Nested {
+            name: "example".to_string(),
+            tags: vec!["alpha".to_string(), "beta".to_string()],
+            value: 42,
+        };
+        let pretty = Pretty::from_serde(&nested).unwrap();
+        let output = render_pretty(&pretty);
+        assert!(output.contains("example"), "output: {output}");
+        assert!(output.contains("alpha"), "output: {output}");
+        assert!(output.contains("42"), "output: {output}");
+    }
+
+    #[test]
+    fn test_from_serde_simple_value() {
+        let val: u32 = 99;
+        let pretty = Pretty::from_serde(&val).unwrap();
+        let output = render_pretty(&pretty);
+        assert!(output.contains("99"), "output: {output}");
+    }
+
+    #[test]
+    fn test_from_serde_vec() {
+        let items = vec![1u8, 2, 3];
+        let pretty = Pretty::from_serde(&items).unwrap();
+        let output = render_pretty(&pretty);
+        assert!(
+            output.contains('1') && output.contains('2') && output.contains('3'),
+            "output: {output}"
+        );
+    }
+}

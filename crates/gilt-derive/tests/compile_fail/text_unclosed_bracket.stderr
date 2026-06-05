@@ -1,0 +1,5 @@
+error: unclosed `[` at byte offset 0: no matching `]` found
+ --> tests/compile_fail/text_unclosed_bracket.rs:4:26
+  |
+4 |     let _t = gilt::text!("[bold");
+  |                          ^^^^^^^

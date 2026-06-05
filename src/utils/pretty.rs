@@ -99,6 +99,37 @@ impl Pretty {
         }
     }
 
+    /// Create a `Pretty` from any value implementing [`serde::Serialize`].
+    ///
+    /// Serializes `value` to a [`serde_json::Value`] and delegates to
+    /// [`from_json`](Self::from_json), inheriting all its formatting and
+    /// highlighting behaviour.
+    ///
+    /// Returns `Err` if serialization fails (e.g. the type contains a
+    /// non-string map key that `serde_json` cannot serialize).
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # #[cfg(feature = "json")] {
+    /// use gilt::utils::pretty::Pretty;
+    /// use serde::Serialize;
+    ///
+    /// #[derive(Serialize)]
+    /// struct Point { x: f64, y: f64 }
+    ///
+    /// let p = Point { x: 1.0, y: 2.5 };
+    /// let pretty = Pretty::from_serde(&p).unwrap();
+    /// let rendered = format!("{}", pretty);
+    /// assert!(rendered.contains("1.0") || rendered.contains("1"));
+    /// # }
+    /// ```
+    #[cfg(feature = "json")]
+    pub fn from_serde<T: serde::Serialize>(value: &T) -> Result<Self, serde_json::Error> {
+        let json_value = serde_json::to_value(value)?;
+        Ok(Self::from_json(&json_value))
+    }
+
     /// Create a `Pretty` from a [`serde_json::Value`].
     ///
     /// Formats the JSON with `serde_json::to_string_pretty` and applies

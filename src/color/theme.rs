@@ -163,6 +163,54 @@ impl Theme {
     }
 }
 
+// ---------------------------------------------------------------------------
+// serde Serialize / Deserialize for Theme (gated on `json` feature)
+// ---------------------------------------------------------------------------
+//
+// Theme serializes as a JSON object mapping style names to style strings,
+// e.g. `{"bold": "bold", "warning": "bold red"}`. Deserialization builds
+// a non-inheriting Theme from the map; callers that want inheritance must
+// apply it after deserialization.
+
+#[cfg(feature = "json")]
+impl serde::Serialize for Theme {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeMap;
+        let mut map = s.serialize_map(Some(self.styles.len()))?;
+        // Sort for deterministic output.
+        let mut entries: Vec<(&String, &Style)> = self.styles.iter().collect();
+        entries.sort_by_key(|(k, _)| *k);
+        for (name, style) in entries {
+            map.serialize_entry(name, &style.to_string())?;
+        }
+        map.end()
+    }
+}
+
+#[cfg(feature = "json")]
+impl<'de> serde::Deserialize<'de> for Theme {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        use serde::de::{MapAccess, Visitor};
+        struct ThemeVisitor;
+        impl<'de> Visitor<'de> for ThemeVisitor {
+            type Value = Theme;
+            fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "a map of style name strings to style definition strings")
+            }
+            fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Theme, A::Error> {
+                let mut styles = HashMap::new();
+                while let Some((name, value)) = map.next_entry::<String, String>()? {
+                    let style = Style::parse_strict(&value)
+                        .map_err(|e| serde::de::Error::custom(e.to_string()))?;
+                    styles.insert(name, style);
+                }
+                Ok(Theme::new(Some(styles), false))
+            }
+        }
+        d.deserialize_map(ThemeVisitor)
+    }
+}
+
 /// Error returned when parsing a theme from a string fails.
 #[derive(Debug)]
 pub enum ThemeFromStrError {
@@ -673,5 +721,92 @@ progress.elapsed = cyan
         let theme = Theme::from_str(content, false).unwrap();
         assert!(theme.get("bar.back").is_some());
         assert!(theme.get("progress.elapsed").is_some());
+    }
+
+    // ---- serde round-trip tests (json feature) ----------------------------
+
+    #[cfg(feature = "json")]
+    #[test]
+    fn test_color_json_round_trip() {
+        use crate::color::Color;
+
+        // Named color
+        let c = Color::parse("red").unwrap();
+        let json = serde_json::to_string(&c).unwrap();
+        let back: Color = serde_json::from_str(&json).unwrap();
+        assert_eq!(c, back, "red round-trip");
+
+        // Hex / truecolor
+        let c2 = Color::parse("#ff8800").unwrap();
+        let json2 = serde_json::to_string(&c2).unwrap();
+        let back2: Color = serde_json::from_str(&json2).unwrap();
+        assert_eq!(c2, back2, "#ff8800 round-trip");
+
+        // 8-bit color(123)
+        let c3 = Color::parse("color(123)").unwrap();
+        let json3 = serde_json::to_string(&c3).unwrap();
+        let back3: Color = serde_json::from_str(&json3).unwrap();
+        assert_eq!(c3, back3, "color(123) round-trip");
+
+        // Default
+        let c4 = Color::default_color();
+        let json4 = serde_json::to_string(&c4).unwrap();
+        let back4: Color = serde_json::from_str(&json4).unwrap();
+        assert_eq!(c4, back4, "default round-trip");
+    }
+
+    #[cfg(feature = "json")]
+    #[test]
+    fn test_style_json_round_trip() {
+        use crate::style::Style;
+
+        let cases = [
+            "bold red",
+            "dim italic on blue",
+            "none",
+            "bold red on #282a36",
+        ];
+        for case in &cases {
+            let style = Style::parse(case);
+            let json = serde_json::to_string(&style).unwrap();
+            let back: Style = serde_json::from_str(&json).unwrap();
+            assert_eq!(style, back, "style '{}' did not round-trip", case);
+        }
+    }
+
+    #[cfg(feature = "json")]
+    #[test]
+    fn test_theme_json_round_trip() {
+        let mut custom = HashMap::new();
+        custom.insert("info".to_string(), Style::parse("dim cyan"));
+        custom.insert("warning".to_string(), Style::parse("bold yellow"));
+        custom.insert("danger".to_string(), Style::parse("bold red"));
+        let original = Theme::new(Some(custom), false);
+
+        let json = serde_json::to_string(&original).unwrap();
+        let back: Theme = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(original.styles.len(), back.styles.len());
+        for (name, style) in &original.styles {
+            assert_eq!(
+                back.get(name).unwrap(),
+                style,
+                "style '{}' did not round-trip",
+                name
+            );
+        }
+    }
+
+    #[cfg(feature = "json")]
+    #[test]
+    fn test_theme_json_serializes_as_map() {
+        let mut custom = HashMap::new();
+        custom.insert("alert".to_string(), Style::parse("bold red"));
+        let theme = Theme::new(Some(custom), false);
+        let json = serde_json::to_string(&theme).unwrap();
+        // Must be a JSON object
+        assert!(json.starts_with('{'));
+        assert!(json.contains("\"alert\""));
+        assert!(json.contains("bold red") || json.contains("red bold"));
     }
 }

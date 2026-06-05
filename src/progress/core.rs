@@ -6,7 +6,7 @@ use crate::console::{Console, ConsoleOptions, Renderable};
 use crate::live::Live;
 use crate::progress::columns::{BarColumn, TaskProgressColumn, TextColumn, TimeRemainingColumn};
 use crate::progress::task::{current_time_secs, Task, TaskId};
-use crate::segment::Segment;
+use crate::segment::{Segment, TaskbarState};
 use crate::style::Style;
 use crate::table::Table;
 use crate::text::Text;
@@ -231,6 +231,10 @@ pub struct Progress {
     disable: bool,
     /// Whether the table should expand to fill available width.
     expand: bool,
+    /// When `true`, emit OSC 9;4 taskbar progress updates on each refresh.
+    ///
+    /// Default: `false`. Enable with [`Progress::with_taskbar`].
+    taskbar: bool,
 }
 
 impl Progress {
@@ -247,6 +251,7 @@ impl Progress {
             get_time: Box::new(current_time_secs),
             disable: false,
             expand: false,
+            taskbar: false,
         }
     }
 
@@ -309,6 +314,29 @@ impl Progress {
     #[must_use]
     pub fn with_expand(mut self, expand: bool) -> Self {
         self.expand = expand;
+        self
+    }
+
+    /// Enable or disable OSC 9;4 taskbar progress updates (builder pattern).
+    ///
+    /// When enabled, `Progress` emits ConEmu/Windows Terminal taskbar progress
+    /// (Normal with overall percent) on each refresh, and removes it on stop.
+    /// Default: `false`.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use gilt::progress::Progress;
+    ///
+    /// let mut progress = Progress::new(Progress::default_columns())
+    ///     .with_taskbar(true);
+    /// progress.start();
+    /// progress.add_task("demo", Some(100.0));
+    /// progress.stop();
+    /// ```
+    #[must_use]
+    pub fn with_taskbar(mut self, enabled: bool) -> Self {
+        self.taskbar = enabled;
         self
     }
 
@@ -628,6 +656,41 @@ impl Progress {
         }))
     }
 
+    // -- Taskbar helpers ----------------------------------------------------
+
+    /// Compute the overall progress percentage across all visible tasks.
+    ///
+    /// Returns `None` if no tasks have a known total.  Otherwise returns the
+    /// ratio of total completed to total work across all visible tasks,
+    /// clamped to 0–100.
+    fn overall_percent(&self) -> Option<u8> {
+        let (mut total_completed, mut total_work) = (0.0f64, 0.0f64);
+        let mut has_total = false;
+        for task in &self.tasks {
+            if !task.visible {
+                continue;
+            }
+            if let Some(t) = task.total {
+                total_work += t;
+                total_completed += task.completed.min(t);
+                has_total = true;
+            }
+        }
+        if !has_total || total_work <= 0.0 {
+            return None;
+        }
+        let pct = ((total_completed / total_work) * 100.0).clamp(0.0, 100.0) as u8;
+        Some(pct)
+    }
+
+    /// Emit a taskbar progress update when `taskbar` is enabled.
+    fn emit_taskbar_progress(&mut self, state: TaskbarState, percent: u8) {
+        if !self.taskbar {
+            return;
+        }
+        self.live.console_mut().set_taskbar_progress(state, percent);
+    }
+
     // -- Display lifecycle --------------------------------------------------
 
     /// Start the live display.
@@ -639,10 +702,15 @@ impl Progress {
     }
 
     /// Stop the live display.
+    ///
+    /// When `with_taskbar(true)` was set, emits the Remove taskbar state
+    /// before stopping the live display.
     pub fn stop(&mut self) {
         if self.disable {
             return;
         }
+        // Emit taskbar Remove before the live display clears.
+        self.emit_taskbar_progress(TaskbarState::Remove, 0);
         self.live.stop();
     }
 
@@ -655,12 +723,20 @@ impl Progress {
     /// auto-refresh thread paints at the configured rate (default 10 Hz).
     /// Tight `advance()` loops therefore generate at most one paint per
     /// refresh-tick interval rather than one per call.
+    ///
+    /// When `with_taskbar(true)` is set, also emits a Normal taskbar
+    /// progress update with the overall completion percentage.
     pub fn refresh(&mut self) {
         if self.disable {
             return;
         }
         let table_text = self.render_tasks_text();
         self.live.update_renderable(table_text, true);
+        // Emit taskbar progress update if enabled.
+        if self.taskbar {
+            let pct = self.overall_percent().unwrap_or(0);
+            self.emit_taskbar_progress(TaskbarState::Normal, pct);
+        }
     }
 
     /// Re-render the task table and store it on the live display, but do
@@ -1069,6 +1145,7 @@ impl<R: Read> Read for ProgressReader<'_, R> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::console::Console;
     use std::io::{Cursor, Read};
 
     fn make_progress() -> Progress {
@@ -1183,6 +1260,63 @@ mod tests {
             task.completed,
             content.len() as f64,
             "task.completed should equal bytes read"
+        );
+    }
+
+    // -- with_taskbar tests -------------------------------------------------
+
+    /// `Progress::with_taskbar` builder sets the flag and the overall_percent
+    /// helper returns the correct proportion when tasks have a known total.
+    #[test]
+    fn test_progress_overall_percent_basic() {
+        let mut p = make_progress();
+        let t = p.add_task("demo", Some(100.0));
+        p.update(t, Some(50.0), None, None, None, None);
+        let pct = p.overall_percent();
+        assert_eq!(pct, Some(50), "50/100 should give 50%");
+    }
+
+    #[test]
+    fn test_progress_overall_percent_no_total() {
+        let mut p = make_progress();
+        p.add_task("indeterminate", None);
+        assert_eq!(
+            p.overall_percent(),
+            None,
+            "task with no total should give None"
+        );
+    }
+
+    /// `with_taskbar(true)` builder method sets the flag and the Normal state
+    /// OSC sequence is produced via the underlying console when the taskbar is
+    /// enabled and `refresh()` is called.
+    ///
+    /// We verify by wiring a recording console and inspecting raw escape bytes.
+    #[test]
+    fn test_progress_with_taskbar_emits_normal() {
+        // Build a recording console so we can inspect what is emitted.
+        let recording_console = Console::builder()
+            .force_terminal(true)
+            .no_color(true)
+            .record(true)
+            .build();
+
+        let mut p = Progress::new(Progress::default_columns())
+            .with_disable(false) // enable rendering
+            .with_taskbar(true)
+            .with_console(recording_console)
+            .with_auto_refresh(false); // manual refresh only
+
+        let t = p.add_task("demo", Some(100.0));
+        p.update(t, Some(50.0), None, None, None, None);
+        // refresh() should emit Normal state + 50%.
+        p.refresh();
+
+        let output = p.live.console_mut().export_text(false, true);
+        assert!(
+            output.contains("\x1b]9;4;1;"),
+            "taskbar normal state should appear in output; got {:?}",
+            output
         );
     }
 }

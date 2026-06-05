@@ -678,3 +678,75 @@ fn inline_code_between_text_in_table_cell_preserves_order() {
         post_pos
     );
 }
+
+// -- Task 2: GFM Task-list rendering ----------------------------------------
+
+/// Task-list markdown is enabled via `ENABLE_TASKLISTS`.  pulldown-cmark
+/// emits `Event::TaskListMarker(checked)` events which we render as ☑/☐.
+#[test]
+fn test_task_list_checked_item_renders_checked_box() {
+    let console = make_console(80);
+    let md = Markdown::new("- [x] done");
+    let output = render_markdown(&console, &md);
+    assert!(
+        output.contains('\u{2611}'),
+        "expected ☑ (U+2611) for checked item; got: {:?}",
+        output
+    );
+    assert!(
+        output.contains("done"),
+        "expected 'done' text; got: {:?}",
+        output
+    );
+}
+
+#[test]
+fn test_task_list_unchecked_item_renders_unchecked_box() {
+    let console = make_console(80);
+    let md = Markdown::new("- [ ] todo");
+    let output = render_markdown(&console, &md);
+    assert!(
+        output.contains('\u{2610}'),
+        "expected ☐ (U+2610) for unchecked item; got: {:?}",
+        output
+    );
+    assert!(
+        output.contains("todo"),
+        "expected 'todo' text; got: {:?}",
+        output
+    );
+}
+
+#[test]
+fn test_task_list_mixed_items() {
+    let console = make_console(80);
+    let md = Markdown::new("- [x] done\n- [ ] todo");
+    let output = render_markdown(&console, &md);
+    assert!(
+        output.contains('\u{2611}'),
+        "expected ☑ in mixed list; got: {:?}",
+        output
+    );
+    assert!(
+        output.contains('\u{2610}'),
+        "expected ☐ in mixed list; got: {:?}",
+        output
+    );
+    assert!(output.contains("done"));
+    assert!(output.contains("todo"));
+}
+
+#[test]
+fn test_task_list_checked_comes_before_unchecked() {
+    let console = make_console(80);
+    let md = Markdown::new("- [x] first\n- [ ] second");
+    let output = render_markdown(&console, &md);
+    let checked_pos = output.find('\u{2611}').expect("☑ not found");
+    let unchecked_pos = output.find('\u{2610}').expect("☐ not found");
+    assert!(
+        checked_pos < unchecked_pos,
+        "☑ should precede ☐; checked={}, unchecked={}",
+        checked_pos,
+        unchecked_pos
+    );
+}

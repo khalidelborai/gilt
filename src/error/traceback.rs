@@ -15,6 +15,7 @@ use crate::style::Style;
 #[cfg(feature = "syntax")]
 use crate::syntax::Syntax;
 use crate::text::{Text, TextPart};
+use crate::utils::scope::Scope;
 
 // ---------------------------------------------------------------------------
 // Frame
@@ -31,6 +32,11 @@ pub struct Frame {
     pub name: String,
     /// The source line at the error location, if available.
     pub source_line: Option<String>,
+    /// Local variable name-value pairs for this frame.
+    ///
+    /// These are supplied by the caller (no runtime introspection) and rendered
+    /// beneath the source context when `Traceback::show_locals` is `true`.
+    pub locals: Vec<(String, String)>,
 }
 
 impl Frame {
@@ -41,6 +47,7 @@ impl Frame {
             lineno,
             name: name.to_string(),
             source_line: None,
+            locals: Vec::new(),
         }
     }
 
@@ -48,6 +55,20 @@ impl Frame {
     #[must_use]
     pub fn with_source_line(mut self, line: &str) -> Self {
         self.source_line = Some(line.to_string());
+        self
+    }
+
+    /// Set the locals for this frame (replaces any existing locals).
+    #[must_use]
+    pub fn with_locals(mut self, locals: Vec<(String, String)>) -> Self {
+        self.locals = locals;
+        self
+    }
+
+    /// Add a single local variable name-value pair to this frame.
+    #[must_use]
+    pub fn with_local(mut self, name: &str, value: &str) -> Self {
+        self.locals.push((name.to_string(), value.to_string()));
         self
     }
 
@@ -459,6 +480,23 @@ impl Traceback {
                 }
             }
 
+            // Locals — rendered only when show_locals is true and the frame carries
+            // at least one local variable pair.
+            if self.show_locals && !frame.locals.is_empty() {
+                let scope_pairs: Vec<(&str, &str)> = frame
+                    .locals
+                    .iter()
+                    .map(|(k, v)| (k.as_str(), v.as_str()))
+                    .collect();
+                let scope = Scope::from_pairs(&scope_pairs).title("locals");
+                // Render scope to plain text and fold it into the content.
+                let scope_text = format!("{:80}", scope);
+                if !scope_text.is_empty() {
+                    parts.push(TextPart::Raw(scope_text));
+                    parts.push(TextPart::Raw("\n".to_string()));
+                }
+            }
+
             // Add a blank line between frames (except after the last one)
             if pos + 1 < indices.len() {
                 parts.push(TextPart::Raw("\n".to_string()));
@@ -709,6 +747,28 @@ impl Renderable for Traceback {
                         let trimmed = source.trim();
                         if !trimmed.is_empty() {
                             content_parts.push(TextPart::Raw(format!("    {}\n", trimmed)));
+                        }
+                    }
+                }
+
+                // Locals — rendered when show_locals is true and the frame has locals.
+                if self.show_locals && !frame.locals.is_empty() {
+                    let scope_pairs: Vec<(&str, &str)> = frame
+                        .locals
+                        .iter()
+                        .map(|(k, v)| (k.as_str(), v.as_str()))
+                        .collect();
+                    let scope = Scope::from_pairs(&scope_pairs).title("locals");
+                    let scope_segments = scope.gilt_console(console, options);
+                    for seg in &scope_segments {
+                        match seg.style() {
+                            Some(s) if !s.is_null() => {
+                                content_parts
+                                    .push(TextPart::Styled(seg.text.to_string(), s.clone()));
+                            }
+                            _ => {
+                                content_parts.push(TextPart::Raw(seg.text.to_string()));
+                            }
                         }
                     }
                 }

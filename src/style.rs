@@ -225,7 +225,7 @@ impl Style {
     /// Internal parsing logic without caching.
     fn parse_internal(definition: &str) -> Result<Self, StyleError> {
         let definition = definition.trim();
-        if definition.is_empty() {
+        if definition.is_empty() || definition.eq_ignore_ascii_case("none") {
             return Ok(Style::null());
         }
 
@@ -680,6 +680,59 @@ impl Style {
             && self.underline_style.is_none()
     }
 
+    // -- Typed builder methods (Task 3) ------------------------------------
+
+    /// Set the foreground color from a typed [`Color`] value (builder-style).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::style::Style;
+    /// use gilt::color::Color;
+    ///
+    /// let s = Style::null().fg(Color::from_rgb(255, 0, 0));
+    /// assert!(s.color().is_some());
+    /// ```
+    #[must_use]
+    pub fn fg(mut self, color: Color) -> Self {
+        self.color = Some(color);
+        self
+    }
+
+    /// Set the background color from a typed [`Color`] value (builder-style).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::style::Style;
+    /// use gilt::color::Color;
+    ///
+    /// let s = Style::null().bg(Color::from_rgb(0, 0, 255));
+    /// assert!(s.bgcolor().is_some());
+    /// ```
+    #[must_use]
+    pub fn bg(mut self, color: Color) -> Self {
+        self.bgcolor = Some(color);
+        self
+    }
+
+    /// Set the underline color from a typed [`Color`] value (builder-style).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::style::Style;
+    /// use gilt::color::Color;
+    ///
+    /// let s = Style::null().with_underline_color(Color::from_rgb(0, 255, 0));
+    /// assert!(s.underline_color().is_some());
+    /// ```
+    #[must_use]
+    pub fn with_underline_color(mut self, color: Color) -> Self {
+        self.underline_color = Some(color);
+        self
+    }
+
     /// Returns a copy of this style without colors.
     pub fn without_color(&self) -> Style {
         Style {
@@ -1097,6 +1150,40 @@ pub fn style_cache_size() -> usize {
         cache.as_ref().map(|c| c.len()).unwrap_or(0)
     } else {
         0
+    }
+}
+
+// ---------------------------------------------------------------------------
+// serde Serialize / Deserialize for Style (gated on `json` feature)
+// ---------------------------------------------------------------------------
+//
+// `Style` serializes as its canonical `Display` string (e.g. `"bold red"`,
+// `"on blue"`, `"none"`) and deserializes via `Style::parse_strict`.
+// A custom impl is used because the bit-packed internal representation has
+// no meaningful automatic serde mapping.
+
+#[cfg(feature = "json")]
+impl serde::Serialize for Style {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(&self.to_string())
+    }
+}
+
+#[cfg(feature = "json")]
+impl<'de> serde::Deserialize<'de> for Style {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        use serde::de::{self, Visitor};
+        struct StyleVisitor;
+        impl<'de> Visitor<'de> for StyleVisitor {
+            type Value = Style;
+            fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "a style string like \"bold red\" or \"italic on blue\"")
+            }
+            fn visit_str<E: de::Error>(self, v: &str) -> Result<Style, E> {
+                Style::parse_strict(v).map_err(|e| de::Error::custom(e.to_string()))
+            }
+        }
+        d.deserialize_str(StyleVisitor)
     }
 }
 
