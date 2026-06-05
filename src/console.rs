@@ -15,8 +15,46 @@ use crate::style_interner::StyleInterner;
 use crate::terminal_theme::{TerminalTheme, DEFAULT_TERMINAL_THEME, SVG_EXPORT_THEME};
 use crate::text::{JustifyMethod, OverflowMethod, Text};
 use crate::theme::{Theme, ThemeStack};
+use std::borrow::Cow;
 use std::fmt::Write as _;
 use std::sync::{Arc, Mutex};
+
+// ---------------------------------------------------------------------------
+// Color-system auto-detection helper (P1 parity, finding #1)
+// ---------------------------------------------------------------------------
+
+/// Detect the color system from `COLORTERM` and `TERM` environment values,
+/// following rich's detection order:
+///
+/// 1. `COLORTERM` contains `truecolor` or `24bit` → `TrueColor`
+/// 2. `TERM` ends with `256color` → `EightBit`
+/// 3. `TERM` is set (and not `dumb`) → `Standard`
+/// 4. Otherwise → `TrueColor` (caller-level fallback; no-TTY callers use `None`)
+///
+/// This is a pure helper that takes string slices so it can be unit-tested
+/// without mutating the process environment.
+pub fn detect_color_system_from(colorterm: Option<&str>, term: Option<&str>) -> ColorSystem {
+    // Step 1: COLORTERM truecolor / 24bit
+    if let Some(ct) = colorterm {
+        let ct_lower = ct.to_lowercase();
+        if ct_lower.contains("truecolor") || ct_lower.contains("24bit") {
+            return ColorSystem::TrueColor;
+        }
+    }
+    // Step 2: TERM ends with 256color
+    if let Some(t) = term {
+        if t.ends_with("256color") {
+            return ColorSystem::EightBit;
+        }
+        // Step 3: TERM is set and not dumb
+        if !t.is_empty() && t != "dumb" {
+            return ColorSystem::Standard;
+        }
+    }
+    // Step 4: no meaningful terminal signal → fall back to TrueColor
+    // (the caller decides whether to use None for no-TTY situations)
+    ColorSystem::TrueColor
+}
 
 // ---------------------------------------------------------------------------
 // ConsoleDimensions
@@ -48,8 +86,10 @@ pub struct ConsoleOptions {
     pub max_width: usize,
     /// Whether the output target is an interactive terminal.
     pub is_terminal: bool,
-    /// Character encoding (always `"utf-8"` in Rust).
-    pub encoding: String,
+    /// Character encoding (always `"utf-8"` in Rust; `Cow` avoids allocation
+    /// per `options()` call while still letting tests set non-utf encodings
+    /// for `ascii_only()` checks — finding #6).
+    pub encoding: Cow<'static, str>,
     /// Maximum height in rows for renderable output.
     pub max_height: usize,
     /// Text justification override, if any.
@@ -103,10 +143,14 @@ impl ConsoleOptions {
     }
 
     /// Return a new `ConsoleOptions` with the width replaced.
+    ///
+    /// `min_width` is clamped so it never exceeds the new width (finding #3).
     pub fn update_width(&self, width: usize) -> Self {
         let mut opts = self.clone();
         opts.size.width = width;
         opts.max_width = width;
+        // P1 parity: min_width must not exceed the new width.
+        opts.min_width = opts.min_width.min(width);
         opts
     }
 
@@ -392,7 +436,13 @@ impl Console {
                     if builder.no_color {
                         None
                     } else {
-                        Some(ColorSystem::TrueColor)
+                        // P1 parity: use env-based detection instead of hard TrueColor default.
+                        let colorterm = std::env::var("COLORTERM").ok();
+                        let term = std::env::var("TERM").ok();
+                        Some(detect_color_system_from(
+                            colorterm.as_deref(),
+                            term.as_deref(),
+                        ))
                     }
                 }
             }
@@ -482,7 +532,7 @@ impl Console {
             min_width: 1,
             max_width: size.width,
             is_terminal: self.is_terminal(),
-            encoding: "utf-8".to_string(),
+            encoding: Cow::Borrowed("utf-8"),
             max_height: size.height,
             justify: None,
             overflow: None,
@@ -609,8 +659,12 @@ impl Console {
     // -- Control ------------------------------------------------------------
 
     /// Send a terminal control sequence.
+    ///
+    /// No-ops on dumb terminals (`TERM=dumb` or non-terminal output), because
+    /// escape sequences would appear as raw text on those targets (parity with
+    /// Python rich's dumb-terminal guard, finding #2).
     pub fn control(&mut self, ctrl: &Control) {
-        if !self.quiet {
+        if !self.quiet && !self.is_dumb_terminal() {
             self.write_segments(std::slice::from_ref(&ctrl.segment));
         }
     }
@@ -675,14 +729,40 @@ impl Console {
     ///
     /// Emits the DEC Mode 2026 begin sequence, runs the closure, then emits
     /// the end sequence. If the closure panics the end sequence is still sent
-    /// (best-effort) via a drop guard.
+    /// (panic-safe) via a RAII drop guard (finding #4).
     pub fn synchronized<F, R>(&mut self, f: F) -> R
     where
         F: FnOnce(&mut Console) -> R,
     {
         self.begin_synchronized();
+        // RAII guard: writes the end-sync segment when dropped, whether the
+        // closure returns normally or unwinds.
+        struct SyncGuard {
+            /// The DEC 2026 end-sync escape sequence to write on drop.
+            segment: crate::segment::Segment,
+            /// True once we have already emitted end-sync (normal path).
+            done: bool,
+        }
+        impl Drop for SyncGuard {
+            fn drop(&mut self) {
+                // If `done` is false we are being dropped due to a panic — we
+                // cannot access the Console here, so we write the escape
+                // sequence directly to stderr as a best-effort recovery.
+                if !self.done {
+                    use std::io::Write as _;
+                    let _ = std::io::stderr().write_all(self.segment.text.as_bytes());
+                }
+            }
+        }
+        let end_seg = crate::control::Control::end_sync().segment.clone();
+        let mut guard = SyncGuard {
+            segment: end_seg,
+            done: false,
+        };
         let result = f(self);
+        // Normal path: emit end-sync through the Console and mark guard done.
         self.end_synchronized();
+        guard.done = true;
         result
     }
 
@@ -918,37 +998,56 @@ impl Console {
         inline_styles: bool,
     ) -> String {
         let theme = theme.unwrap_or(&DEFAULT_TERMINAL_THEME);
-        let buffer = self.record_buffer.clone();
+        // Finding #9: iterate by reference; only copy out when clear is needed.
+        let buffer_ref: &[Segment];
+        let taken: Vec<Segment>;
         if clear {
-            self.record_buffer.clear();
+            taken = std::mem::take(&mut self.record_buffer);
+            buffer_ref = &taken;
+        } else {
+            buffer_ref = &self.record_buffer;
         }
+
+        // Finding #8: merge adjacent same-style segments before HTML iteration.
+        let simplified = Segment::simplify(buffer_ref);
 
         let mut code = String::new();
         let mut stylesheet = String::new();
         let mut style_cache: Vec<(Style, String)> = Vec::new();
 
-        for segment in &buffer {
+        for segment in &simplified {
             if segment.is_control() {
                 continue;
             }
             let escaped = html_escape(&segment.text);
 
             if let Some(style) = segment.style() {
-                if style.is_null() {
+                // Finding #7: wrap the text in <a href> when the style has a link.
+                let link_url = style.link().map(|s| s.to_string());
+
+                if style.is_null() && link_url.is_none() {
                     code.push_str(&escaped);
                     continue;
                 }
 
                 let css = style.get_html_style(Some(theme));
+                let inner: String;
                 if css.is_empty() {
-                    code.push_str(&escaped);
+                    inner = escaped.into_owned();
                 } else if inline_styles {
-                    write!(code, "<span style=\"{}\">{}</span>", css, escaped).unwrap();
+                    inner = format!("<span style=\"{}\">{}</span>", css, escaped);
                 } else {
                     // Use class-based styles
                     let class_name =
                         find_or_insert_class(&mut style_cache, &mut stylesheet, style, &css);
-                    write!(code, "<span class=\"{}\">{}</span>", class_name, escaped).unwrap();
+                    inner = format!("<span class=\"{}\">{}</span>", class_name, escaped);
+                }
+
+                // Wrap in <a href> if there is a link (finding #7).
+                if let Some(url) = link_url {
+                    write!(code, "<a href=\"{}\">{}</a>", html_escape(&url), inner).unwrap();
+                } else {
+                    code.push_str(&inner);
                 }
             } else {
                 code.push_str(&escaped);
@@ -998,35 +1097,57 @@ impl Console {
         font_aspect_ratio: f64,
     ) -> String {
         let theme = theme.unwrap_or(&SVG_EXPORT_THEME);
-        let unique_id = unique_id.unwrap_or("gilt");
-        let buffer = self.record_buffer.clone();
+
+        // Finding #9: avoid cloning the whole buffer.
+        let buffer_ref: &[Segment];
+        let taken: Vec<Segment>;
         if clear {
-            self.record_buffer.clear();
+            taken = std::mem::take(&mut self.record_buffer);
+            buffer_ref = &taken;
+        } else {
+            buffer_ref = &self.record_buffer;
         }
 
-        // Split into lines
-        let text_lines: Vec<Vec<&Segment>> = {
-            let mut lines: Vec<Vec<&Segment>> = Vec::new();
-            let mut current: Vec<&Segment> = Vec::new();
-            for seg in &buffer {
+        // Finding #11: derive a unique id from FNV-1a hash of segment text + title
+        // when the caller leaves unique_id as None.
+        let derived_id: String;
+        let unique_id: &str = if let Some(id) = unique_id {
+            id
+        } else {
+            let mut hash: u64 = 14695981039346656037u64; // FNV-1a offset basis
+            for seg in buffer_ref {
+                for byte in seg.text.as_bytes() {
+                    hash = hash.wrapping_mul(1099511628211) ^ (*byte as u64);
+                }
+            }
+            for byte in title.as_bytes() {
+                hash = hash.wrapping_mul(1099511628211) ^ (*byte as u64);
+            }
+            derived_id = format!("gilt-{:016x}", hash);
+            &derived_id
+        };
+
+        // Finding #10: split multi-newline segments into per-line owned Segments.
+        let text_lines: Vec<Vec<Segment>> = {
+            let mut lines: Vec<Vec<Segment>> = Vec::new();
+            let mut current: Vec<Segment> = Vec::new();
+            for seg in buffer_ref {
                 if seg.is_control() {
                     continue;
                 }
                 if seg.text.contains('\n') {
-                    // Push text before newline, start a new line
                     let parts: Vec<&str> = seg.text.split('\n').collect();
                     for (i, part) in parts.iter().enumerate() {
                         if !part.is_empty() {
-                            // Create a temporary reference - we need owned segments for this
-                            // Just use the original segment for non-split content
-                            current.push(seg);
+                            // Create an owned sub-segment carrying the original style.
+                            current.push(Segment::new(part, seg.style().cloned(), None));
                         }
                         if i + 1 < parts.len() {
                             lines.push(std::mem::take(&mut current));
                         }
                     }
                 } else {
-                    current.push(seg);
+                    current.push(seg.clone());
                 }
             }
             if !current.is_empty() {
@@ -1061,9 +1182,9 @@ impl Console {
         // Build the chrome (window decorations)
         let chrome = build_svg_chrome(terminal_width, terminal_height, theme, title, unique_id);
 
-        // Build the text matrix
+        // Build the text matrix (pass buffer_ref so build_svg_text doesn't need the split lines)
         let (matrix, backgrounds, styles, lines_defs) = build_svg_text(
-            &buffer,
+            buffer_ref,
             theme,
             unique_id,
             char_width,

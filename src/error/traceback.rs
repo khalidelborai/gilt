@@ -128,7 +128,8 @@ impl Traceback {
             width: None,
             extra_lines: 3,
             theme: "base16-ocean.dark".to_string(),
-            word_wrap: true,
+            // Finding #13: rich defaults word_wrap to false; was incorrectly true.
+            word_wrap: false,
             max_frames: 100,
             suppress_paths: Vec::new(),
         }
@@ -288,6 +289,9 @@ impl Traceback {
     ///
     /// The filter is applied first; `max_frames` truncation is left to the
     /// individual renderers so they can decide how to split the window.
+    ///
+    /// Finding #12: suppression uses prefix `starts_with` to mirror rich
+    /// behaviour (rich uses `str.startswith`).
     #[cfg(test)]
     fn visible_frames(&self) -> Vec<&Frame> {
         if self.suppress_paths.is_empty() {
@@ -299,7 +303,7 @@ impl Traceback {
                 !self
                     .suppress_paths
                     .iter()
-                    .any(|p| f.filename.contains(p.as_str()))
+                    .any(|p| f.filename.starts_with(p.as_str()))
             })
             .collect()
     }
@@ -396,10 +400,15 @@ impl Traceback {
             return Text::assemble(&parts, Style::null());
         }
 
-        // Determine how many frames to show
+        // Determine how many frames to show.
+        // Finding #10: max_frames == 0 disables truncation (shows all frames).
         let frame_count = visible.len();
-        let show_count = frame_count.min(self.max_frames);
-        let truncated = frame_count > self.max_frames;
+        let truncated = self.max_frames > 0 && frame_count > self.max_frames;
+        let show_count = if truncated {
+            self.max_frames
+        } else {
+            frame_count
+        };
 
         // Collect frame indices to display
         let indices: Vec<usize> = if truncated {
@@ -414,11 +423,12 @@ impl Traceback {
         let mut inserted_ellipsis = false;
 
         for (pos, &frame_idx) in indices.iter().enumerate() {
-            // Insert the ellipsis marker at the split point
+            // Insert the ellipsis marker at the split point.
+            // Finding #17: wording changed to "... N frames hidden ..." to match rich.
             if truncated && !inserted_ellipsis && frame_idx >= self.max_frames / 2 {
                 inserted_ellipsis = true;
                 let omitted = frame_count - show_count;
-                let msg = format!("\n  ... {} frames omitted ...\n", omitted);
+                let msg = format!("\n  ... {} frames hidden ...\n", omitted);
                 parts.push(TextPart::Styled(msg, Style::parse("dim italic")));
             }
 
@@ -471,6 +481,7 @@ impl std::fmt::Display for Traceback {
             writeln!(f, "{}", self.title)?;
         }
         // Honour suppress_paths so plain Display matches Renderable behaviour.
+        // Finding #12: use starts_with (prefix match) to mirror rich behaviour.
         let suppressed: Vec<&Frame> = if self.suppress_paths.is_empty() {
             self.frames.iter().collect()
         } else {
@@ -480,7 +491,7 @@ impl std::fmt::Display for Traceback {
                     !self
                         .suppress_paths
                         .iter()
-                        .any(|p| fr.filename.contains(p.as_str()))
+                        .any(|p| fr.filename.starts_with(p.as_str()))
                 })
                 .collect()
         };
@@ -508,6 +519,15 @@ impl std::fmt::Display for Traceback {
 // Renderable
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Per-render style statics (finding #20: hoist Style::parse out of per-frame loop)
+// ---------------------------------------------------------------------------
+
+static FRAME_FILE_STYLE: LazyLock<Style> = LazyLock::new(|| Style::parse("green"));
+static FRAME_FUNC_STYLE: LazyLock<Style> = LazyLock::new(|| Style::parse("magenta"));
+static FRAME_DIM_STYLE: LazyLock<Style> = LazyLock::new(|| Style::parse("dim italic"));
+static FRAME_BOLD_STYLE: LazyLock<Style> = LazyLock::new(|| Style::parse("bold"));
+
 impl Renderable for Traceback {
     fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         #[cfg(feature = "syntax")]
@@ -516,7 +536,8 @@ impl Renderable for Traceback {
         // Build the inner content
         let mut content_parts: Vec<TextPart> = Vec::new();
 
-        // Apply suppress filter (5C: with_suppress) before counting & truncating.
+        // Apply suppress filter before counting & truncating.
+        // Finding #12: use starts_with (prefix match) to mirror rich behaviour.
         let visible_frames: Vec<&Frame> = if self.suppress_paths.is_empty() {
             self.frames.iter().collect()
         } else {
@@ -526,7 +547,7 @@ impl Renderable for Traceback {
                     !self
                         .suppress_paths
                         .iter()
-                        .any(|p| f.filename.contains(p.as_str()))
+                        .any(|p| f.filename.starts_with(p.as_str()))
                 })
                 .collect()
         };
@@ -539,15 +560,20 @@ impl Renderable for Traceback {
                 n,
                 if n == 1 { "" } else { "s" }
             );
-            content_parts.push(TextPart::Styled(msg, Style::parse("dim italic")));
+            content_parts.push(TextPart::Styled(msg, FRAME_DIM_STYLE.clone()));
             let content = Text::assemble(&content_parts, Style::null());
             let panel = Panel::new(content).with_title(self.title.clone());
             return panel.gilt_console(console, options);
         }
 
         let frame_count = visible_frames.len();
-        let show_count = frame_count.min(self.max_frames);
-        let truncated = frame_count > self.max_frames;
+        // Finding #10: max_frames == 0 disables truncation (show all frames).
+        let truncated = self.max_frames > 0 && frame_count > self.max_frames;
+        let show_count = if truncated {
+            self.max_frames
+        } else {
+            frame_count
+        };
 
         let frames_to_show: Vec<&Frame> = if truncated {
             let half = self.max_frames / 2;
@@ -565,15 +591,22 @@ impl Renderable for Traceback {
             actual_show + 1
         };
 
+        // Finding #21: cache source files so a path referenced by multiple
+        // frames (recursion, repeated module) is read at most once per render.
+        #[cfg(feature = "syntax")]
+        let mut file_cache: std::collections::HashMap<String, String> =
+            std::collections::HashMap::new();
+
         for (i, frame) in frames_to_show.iter().enumerate() {
-            // Insert ellipsis marker at the halfway point for truncated traces
+            // Insert ellipsis marker at the halfway point for truncated traces.
+            // Finding #17: wording changed to "... N frames hidden ..." to match rich.
             if truncated && i == half_mark {
                 let omitted = frame_count - show_count;
-                let msg = format!("\n... {} frames omitted ...\n\n", omitted);
-                content_parts.push(TextPart::Styled(msg, Style::parse("dim italic")));
+                let msg = format!("\n... {} frames hidden ...\n\n", omitted);
+                content_parts.push(TextPart::Styled(msg, FRAME_DIM_STYLE.clone()));
             }
 
-            // File location line
+            // File location line — always shown (finding #11: header always emitted).
             let location = match frame.lineno {
                 Some(n) => format!("{}:{}", frame.filename, n),
                 None => frame.filename.clone(),
@@ -581,74 +614,102 @@ impl Renderable for Traceback {
 
             content_parts.push(TextPart::Styled(
                 format!("File \"{}\"", location),
-                Style::parse("green"),
+                FRAME_FILE_STYLE.clone(),
             ));
             content_parts.push(TextPart::Styled(
                 format!(", in {}", frame.name),
-                Style::parse("magenta"),
+                FRAME_FUNC_STYLE.clone(),
             ));
             content_parts.push(TextPart::Raw("\n".to_string()));
 
-            // Source context: try to read the file and show context lines
-            #[allow(unused_mut)]
-            let mut showed_syntax = false;
+            // Finding #11: for suppressed paths, emit the header (above) but
+            // skip the source snippet block (below). The frame header is already
+            // pushed unconditionally; we only skip source for suppressed paths.
+            let is_suppressed = !self.suppress_paths.is_empty()
+                && self
+                    .suppress_paths
+                    .iter()
+                    .any(|p| frame.filename.starts_with(p.as_str()));
 
-            #[cfg(feature = "syntax")]
-            if let Some(lineno) = frame.lineno {
-                if lineno > 0 {
-                    let path = std::path::Path::new(&frame.filename);
-                    if (path.is_absolute() || frame.filename.starts_with("./")) && path.exists() {
-                        if let Ok(file_contents) = std::fs::read_to_string(path) {
-                            let total_lines = file_contents.lines().count();
-                            if lineno <= total_lines {
-                                let start = lineno.saturating_sub(self.extra_lines).max(1);
-                                let end = (lineno + self.extra_lines).min(total_lines);
+            if !is_suppressed {
+                // Source context: try to read the file and show context lines.
+                // Finding #9: carry seg.style so highlighted source is colored.
+                #[allow(unused_mut)]
+                let mut showed_syntax = false;
 
-                                let context: String = file_contents
-                                    .lines()
-                                    .enumerate()
-                                    .filter(|(i, _)| {
-                                        let n = i + 1;
-                                        n >= start && n <= end
-                                    })
-                                    .map(|(_, line)| line)
-                                    .collect::<Vec<_>>()
-                                    .join("\n");
+                #[cfg(feature = "syntax")]
+                if let Some(lineno) = frame.lineno {
+                    if lineno > 0 {
+                        let path = std::path::Path::new(&frame.filename);
+                        if (path.is_absolute() || frame.filename.starts_with("./")) && path.exists()
+                        {
+                            let file_contents =
+                                file_cache.entry(frame.filename.clone()).or_insert_with(|| {
+                                    std::fs::read_to_string(path).unwrap_or_default()
+                                });
+                            {
+                                let total_lines = file_contents.lines().count();
+                                if lineno <= total_lines {
+                                    let start = lineno.saturating_sub(self.extra_lines).max(1);
+                                    let end = (lineno + self.extra_lines).min(total_lines);
 
-                                // Determine language from file extension
-                                let ext =
-                                    path.extension().and_then(|e| e.to_str()).unwrap_or("txt");
+                                    let context: String = file_contents
+                                        .lines()
+                                        .enumerate()
+                                        .filter(|(idx, _)| {
+                                            let n = idx + 1;
+                                            n >= start && n <= end
+                                        })
+                                        .map(|(_, l)| l)
+                                        .collect::<Vec<_>>()
+                                        .join("\n");
 
-                                let syntax = Syntax::new(&context, ext)
-                                    .with_theme(&self.theme)
-                                    .with_line_numbers(true)
-                                    .with_start_line(start)
-                                    .with_highlight_lines(vec![lineno])
-                                    .with_word_wrap(self.word_wrap);
+                                    let ext =
+                                        path.extension().and_then(|e| e.to_str()).unwrap_or("txt");
 
-                                let syntax_segments = syntax.gilt_console(
-                                    console,
-                                    &options.update_width(panel_width.saturating_sub(4)),
-                                );
-                                if !syntax_segments.is_empty() {
-                                    // Collect syntax output as a styled text block
-                                    for seg in &syntax_segments {
-                                        content_parts.push(TextPart::Raw(seg.text.to_string()));
+                                    let syntax = Syntax::new(&context, ext)
+                                        .with_theme(&self.theme)
+                                        .with_line_numbers(true)
+                                        .with_start_line(start)
+                                        .with_highlight_lines(vec![lineno])
+                                        .with_word_wrap(self.word_wrap);
+
+                                    let syntax_segments = syntax.gilt_console(
+                                        console,
+                                        &options.update_width(panel_width.saturating_sub(4)),
+                                    );
+                                    if !syntax_segments.is_empty() {
+                                        // Finding #9: carry seg.style alongside text so
+                                        // syntax-highlighted output is colored correctly.
+                                        for seg in &syntax_segments {
+                                            match seg.style() {
+                                                Some(s) if !s.is_null() => {
+                                                    content_parts.push(TextPart::Styled(
+                                                        seg.text.to_string(),
+                                                        s.clone(),
+                                                    ));
+                                                }
+                                                _ => {
+                                                    content_parts
+                                                        .push(TextPart::Raw(seg.text.to_string()));
+                                                }
+                                            }
+                                        }
+                                        showed_syntax = true;
                                     }
-                                    showed_syntax = true;
                                 }
                             }
                         }
                     }
                 }
-            }
 
-            // Fallback: show the single source line if we didn't render syntax
-            if !showed_syntax {
-                if let Some(ref source) = frame.source_line {
-                    let trimmed = source.trim();
-                    if !trimmed.is_empty() {
-                        content_parts.push(TextPart::Raw(format!("    {}\n", trimmed)));
+                // Fallback: show the single source line if we didn't render syntax
+                if !showed_syntax {
+                    if let Some(ref source) = frame.source_line {
+                        let trimmed = source.trim();
+                        if !trimmed.is_empty() {
+                            content_parts.push(TextPart::Raw(format!("    {}\n", trimmed)));
+                        }
                     }
                 }
             }
@@ -662,7 +723,10 @@ impl Renderable for Traceback {
         // Error message at the bottom
         if !self.message.is_empty() {
             content_parts.push(TextPart::Raw("\n".to_string()));
-            content_parts.push(TextPart::Styled(self.message.clone(), Style::parse("bold")));
+            content_parts.push(TextPart::Styled(
+                self.message.clone(),
+                FRAME_BOLD_STYLE.clone(),
+            ));
         }
 
         let content_text = Text::assemble(&content_parts, Style::null());

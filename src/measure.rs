@@ -27,9 +27,10 @@ impl Measurement {
     /// Normalize the measurement so that minimum is never greater than maximum.
     pub fn normalize(&self) -> Measurement {
         let min = self.minimum.min(self.maximum);
+        let max = self.minimum.max(self.maximum);
         Measurement {
             minimum: min,
-            maximum: self.maximum.max(min),
+            maximum: max,
         }
     }
 
@@ -122,9 +123,16 @@ mod tests {
 
     #[test]
     fn test_normalize() {
+        // When minimum > maximum, normalize swaps so minimum = smaller, maximum = larger.
+        // The larger value (100) must be preserved as the new maximum.
         assert_eq!(
             Measurement::new(100, 50).normalize(),
-            Measurement::new(50, 50)
+            Measurement::new(50, 100)
+        );
+        // When already normalized, no change.
+        assert_eq!(
+            Measurement::new(10, 50).normalize(),
+            Measurement::new(10, 50)
         );
     }
 

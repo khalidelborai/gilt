@@ -8,7 +8,7 @@ use std::io::Cursor;
 
 #[test]
 fn test_simple_prompt_returns_input() {
-    let p = Prompt::new("Enter name");
+    let mut p = Prompt::new("Enter name");
     let mut input = Cursor::new(b"Alice\n" as &[u8]);
     let result = p.ask_with_input(&mut input);
     assert_eq!(result, "Alice");
@@ -18,7 +18,7 @@ fn test_simple_prompt_returns_input() {
 
 #[test]
 fn test_prompt_with_default_empty_returns_default() {
-    let p = Prompt::new("Enter name").with_default("Bob");
+    let mut p = Prompt::new("Enter name").with_default("Bob");
     let mut input = Cursor::new(b"\n" as &[u8]);
     let result = p.ask_with_input(&mut input);
     assert_eq!(result, "Bob");
@@ -26,7 +26,7 @@ fn test_prompt_with_default_empty_returns_default() {
 
 #[test]
 fn test_prompt_with_default_non_empty_returns_input() {
-    let p = Prompt::new("Enter name").with_default("Bob");
+    let mut p = Prompt::new("Enter name").with_default("Bob");
     let mut input = Cursor::new(b"Charlie\n" as &[u8]);
     let result = p.ask_with_input(&mut input);
     assert_eq!(result, "Charlie");
@@ -36,7 +36,7 @@ fn test_prompt_with_default_non_empty_returns_input() {
 
 #[test]
 fn test_prompt_with_choices_valid() {
-    let p = Prompt::new("Pick fruit").with_choices(vec![
+    let mut p = Prompt::new("Pick fruit").with_choices(vec![
         "apple".into(),
         "orange".into(),
         "pear".into(),
@@ -50,7 +50,7 @@ fn test_prompt_with_choices_valid() {
 
 #[test]
 fn test_prompt_with_choices_invalid_then_valid() {
-    let p = Prompt::new("Pick fruit").with_choices(vec![
+    let mut p = Prompt::new("Pick fruit").with_choices(vec![
         "apple".into(),
         "orange".into(),
         "pear".into(),
@@ -65,7 +65,7 @@ fn test_prompt_with_choices_invalid_then_valid() {
 
 #[test]
 fn test_case_insensitive_choices() {
-    let p = Prompt::new("Pick")
+    let mut p = Prompt::new("Pick")
         .with_choices(vec!["Apple".into(), "Orange".into()])
         .with_case_sensitive(false);
     let mut input = Cursor::new(b"apple\n" as &[u8]);
@@ -76,7 +76,7 @@ fn test_case_insensitive_choices() {
 
 #[test]
 fn test_case_sensitive_choices_reject_wrong_case() {
-    let p = Prompt::new("Pick")
+    let mut p = Prompt::new("Pick")
         .with_choices(vec!["Apple".into(), "Orange".into()])
         .with_case_sensitive(true);
     // "apple" is wrong case; then "Apple" is correct
@@ -302,7 +302,7 @@ fn test_prompt_suffix() {
 
 #[test]
 fn test_default_on_eof() {
-    let p = Prompt::new("Enter").with_default("fallback");
+    let mut p = Prompt::new("Enter").with_default("fallback");
     let mut input = Cursor::new(b"" as &[u8]); // EOF immediately
     let result = p.ask_with_input(&mut input);
     assert_eq!(result, "fallback");
@@ -312,7 +312,7 @@ fn test_default_on_eof() {
 
 #[test]
 fn test_no_default_empty_returns_empty() {
-    let p = Prompt::new("Enter");
+    let mut p = Prompt::new("Enter");
     let mut input = Cursor::new(b"\n" as &[u8]);
     let result = p.ask_with_input(&mut input);
     assert_eq!(result, "");
@@ -338,7 +338,7 @@ fn test_prompt_text_choices_and_default() {
 
 #[test]
 fn test_choices_default_on_empty() {
-    let p = Prompt::new("Pick")
+    let mut p = Prompt::new("Pick")
         .with_choices(vec!["a".into(), "b".into()])
         .with_default("a");
     let mut input = Cursor::new(b"\n" as &[u8]);
@@ -394,7 +394,7 @@ fn test_invalid_response_debug() {
 fn test_password_ask_with_input_reads_normally() {
     // ask_with_input always reads from the BufRead regardless of password flag.
     // This verifies the password flag doesn't break BufRead-based input.
-    let p = Prompt::new("Password").with_password(true);
+    let mut p = Prompt::new("Password").with_password(true);
     let mut input = Cursor::new(b"secret123\n" as &[u8]);
     let result = p.ask_with_input(&mut input);
     assert_eq!(result, "secret123");
@@ -402,7 +402,7 @@ fn test_password_ask_with_input_reads_normally() {
 
 #[test]
 fn test_password_with_default_on_empty() {
-    let p = Prompt::new("Password")
+    let mut p = Prompt::new("Password")
         .with_password(true)
         .with_default("default_pass");
     let mut input = Cursor::new(b"\n" as &[u8]);
@@ -412,7 +412,7 @@ fn test_password_with_default_on_empty() {
 
 #[test]
 fn test_password_with_default_on_eof() {
-    let p = Prompt::new("Password")
+    let mut p = Prompt::new("Password")
         .with_password(true)
         .with_default("fallback");
     let mut input = Cursor::new(b"" as &[u8]);

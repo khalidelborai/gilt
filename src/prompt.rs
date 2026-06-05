@@ -199,25 +199,35 @@ impl Prompt {
     /// Build the prompt `Text` including choices and default annotations.
     ///
     /// Format: `"prompt [choice1/choice2/...] (default): "`
+    ///
+    /// Choices are styled with the `prompt.choices` theme style (magenta bold).
+    /// The default annotation is styled with the `prompt.default` theme style
+    /// (cyan bold). Both map to the canonical Python rich theme names.
     pub fn make_prompt(&self) -> Text {
+        // Hoist style construction here so callers that pre-build the prompt
+        // Text before a retry loop only parse styles once.
+        use std::sync::LazyLock;
+        static CHOICES_STYLE: LazyLock<Style> = LazyLock::new(|| Style::parse("magenta bold"));
+        static DEFAULT_STYLE: LazyLock<Style> = LazyLock::new(|| Style::parse("cyan bold"));
+
         let mut prompt = self.prompt_text.clone();
         prompt.end = String::new();
 
         if self.show_choices {
             if let Some(ref choices) = self.choices {
                 let choices_str = format!("[{}]", choices.join("/"));
-                let choices_style = Style::parse("magenta bold");
+                // "prompt.choices" theme name — magenta bold
                 prompt.append_str(" ", None);
-                prompt.append_str(&choices_str, Some(choices_style));
+                prompt.append_str(&choices_str, Some(CHOICES_STYLE.clone()));
             }
         }
 
         if self.show_default {
             if let Some(ref default) = self.default {
                 let default_str = format!("({})", default);
-                let default_style = Style::parse("cyan bold");
+                // "prompt.default" theme name — cyan bold
                 prompt.append_str(" ", None);
-                prompt.append_str(&default_str, Some(default_style));
+                prompt.append_str(&default_str, Some(DEFAULT_STYLE.clone()));
             }
         }
 
@@ -268,11 +278,29 @@ impl Prompt {
     ///
     /// This method is the testable core of `ask()`. Tests can inject mock input
     /// via `std::io::Cursor`.
-    pub fn ask_with_input<R: BufRead>(&self, input: &mut R) -> String {
+    ///
+    /// Finding #1: the prompt is printed via the console's styled rendering
+    /// pipeline so markup styling is preserved. `&mut self` is required because
+    /// the console's `write_segments` method takes `&mut self`.
+    pub fn ask_with_input<R: BufRead>(&mut self, input: &mut R) -> String {
+        // Build the prompt Text once before the retry loop (finding #7).
+        let prompt = self.make_prompt();
+
+        // Render the styled prompt to ANSI bytes without a trailing newline
+        // (finding #1). We capture the console output then write it raw.
+        let ansi_prompt: String = {
+            self.console.begin_capture();
+            // Temporarily push the prompt as a renderable segment sequence.
+            // Use write_segments directly via begin_capture + end_capture trick:
+            // print via console but strip the auto-appended newline.
+            self.console.print(&prompt);
+            let captured = self.console.end_capture();
+            // Strip the trailing newline that Console::print always appends.
+            captured.strip_suffix('\n').unwrap_or(&captured).to_string()
+        };
+
         loop {
-            let prompt = self.make_prompt();
-            let prompt_str = prompt.plain().to_string();
-            print!("{}", prompt_str);
+            print!("{}", ansi_prompt);
             let _ = io::stdout().flush();
 
             let mut line = String::new();
@@ -293,7 +321,8 @@ impl Prompt {
                 }
             }
 
-            let trimmed = line.trim_end_matches('\n').trim_end_matches('\r');
+            // Fix #6: correct CRLF trim order — strip both \r and \n in any order.
+            let trimmed = line.trim_end_matches(['\n', '\r']);
             let value = trimmed.to_string();
 
             // Empty input: return default if available
@@ -324,7 +353,7 @@ impl Prompt {
     /// is not visible on screen. When the `readline` feature is enabled and
     /// [`completions`](Prompt::completions) is set, the prompt uses `rustyline`
     /// to provide interactive tab-completion.
-    pub fn ask(&self) -> String {
+    pub fn ask(&mut self) -> String {
         #[cfg(feature = "interactive")]
         if self.password {
             return self.ask_password();
@@ -350,7 +379,7 @@ impl Prompt {
 
     /// Readline-based input loop with tab-completion.
     #[cfg(feature = "readline")]
-    fn ask_readline(&self) -> String {
+    fn ask_readline(&mut self) -> String {
         let candidates = self.completions.clone().unwrap_or_default();
         let helper = ListCompleter { candidates };
         let config = rustyline::Config::builder()
@@ -365,10 +394,8 @@ impl Prompt {
 
             match editor.readline(&prompt_str) {
                 Ok(line) => {
-                    let value = line
-                        .trim_end_matches('\n')
-                        .trim_end_matches('\r')
-                        .to_string();
+                    // Fix #6: correct CRLF trim.
+                    let value = line.trim_end_matches(['\n', '\r']).to_string();
 
                     // Empty input: return default if available
                     if value.trim().is_empty() {
@@ -409,7 +436,7 @@ impl Prompt {
 
     /// Password input loop — reads without terminal echo using `rpassword`.
     #[cfg(feature = "interactive")]
-    fn ask_password(&self) -> String {
+    fn ask_password(&mut self) -> String {
         loop {
             let prompt = self.make_prompt();
             let prompt_str = prompt.plain().to_string();
@@ -456,33 +483,71 @@ impl Prompt {
 /// Returns `true` for "y"/"yes", `false` for "n"/"no" (case-insensitive).
 /// Loops until valid input is received.
 pub fn confirm(prompt: &str) -> bool {
-    confirm_with_input(prompt, &mut io::stdin().lock())
+    confirm_with_default(prompt, None)
+}
+
+/// Ask a yes/no confirmation question with an optional default.
+///
+/// When `default` is `Some(true)`, the choices are shown as `[Y/n]` and blank
+/// input returns `true`. When `Some(false)`, choices are `[y/N]` and blank
+/// input returns `false`. When `None`, choices are `[y/n]` and blank/EOF
+/// returns `false`.
+pub fn confirm_with_default(prompt: &str, default: Option<bool>) -> bool {
+    confirm_with_input_and_default(prompt, default, &mut io::stdin().lock())
 }
 
 /// Testable version of `confirm()` that reads from a provided input source.
+///
+/// Accepts `"y"`, `"yes"`, `"n"`, `"no"` (case-insensitive).
+/// When `default` is set, blank/EOF input returns the default; otherwise
+/// blank input prompts again.
 pub fn confirm_with_input<R: BufRead>(prompt: &str, input: &mut R) -> bool {
-    let p = Prompt::new(prompt)
-        .with_choices(vec!["y".into(), "n".into()])
-        .with_case_sensitive(false)
-        .with_show_choices(true);
+    confirm_with_input_and_default(prompt, None, input)
+}
+
+/// Testable version of `confirm_with_default()` that reads from a provided input source.
+pub fn confirm_with_input_and_default<R: BufRead>(
+    prompt: &str,
+    default: Option<bool>,
+    input: &mut R,
+) -> bool {
+    // Build the choice display: capitalize the default, rich-style [Y/n] / [y/N] / [y/n].
+    let choices_display = match default {
+        Some(true) => "[Y/n]",
+        Some(false) => "[y/N]",
+        None => "[y/n]",
+    };
+
+    let full_prompt = format!("{} {}: ", prompt, choices_display);
 
     loop {
-        let prompt_text = p.make_prompt();
-        let prompt_str = prompt_text.plain().to_string();
-        print!("{}", prompt_str);
+        print!("{}", full_prompt);
         let _ = io::stdout().flush();
 
         let mut line = String::new();
         match input.read_line(&mut line) {
-            Ok(0) => return false,
+            Ok(0) => {
+                // EOF: return default if set, otherwise false
+                return default.unwrap_or(false);
+            }
             Ok(_) => {}
-            Err(_) => return false,
+            Err(_) => return default.unwrap_or(false),
         }
 
         let value = line.trim().to_lowercase();
         match value.as_str() {
             "y" | "yes" => return true,
             "n" | "no" => return false,
+            "" => {
+                // Blank input: return default when set, else re-prompt
+                if let Some(d) = default {
+                    return d;
+                }
+                // No default — show error and loop (routing through stderr for
+                // now; replacing with console.print once a Console is in scope)
+                eprintln!("Please enter Y or N");
+                continue;
+            }
             _ => {
                 eprintln!("Please enter Y or N");
                 continue;
@@ -574,6 +639,10 @@ pub fn ask_float_with_input<R: BufRead>(prompt: &str, input: &mut R) -> f64 {
 /// A prompt that lets users select one option from a numbered list.
 ///
 /// Displays choices as a numbered list and asks the user to enter a number.
+///
+/// **Note (finding #8):** `Select` is a gilt extension with **no direct
+/// counterpart in Python `rich`**. Rich's `Prompt` accepts free-form choices;
+/// the numbered-list selection UI is a gilt addition.
 ///
 /// # Examples
 ///
@@ -792,6 +861,10 @@ impl Select {
 ///
 /// Displays choices as a numbered list and asks the user to enter
 /// comma-separated numbers. Also supports "all" to select everything.
+///
+/// **Note (finding #8):** `MultiSelect` is a gilt extension with **no direct
+/// counterpart in Python `rich`**. Rich's multi-selection UI is provided by
+/// external libraries; the numbered multi-select is a gilt addition.
 ///
 /// # Examples
 ///

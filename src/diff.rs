@@ -401,7 +401,11 @@ impl Diff {
 
     /// Render the diff in side-by-side format, returning segments.
     fn render_side_by_side(&self, max_width: usize) -> Vec<Segment> {
-        let ops = self.ops();
+        // Finding #23: split_lines / ops computed only once, shared for both
+        // line-number-width measurement and row rendering.
+        let old_lines = Self::split_lines(&self.old_text);
+        let new_lines = Self::split_lines(&self.new_text);
+        let ops = compute_diff(&old_lines, &new_lines);
 
         let delete_style = Style::parse("red");
         let insert_style = Style::parse("green");
@@ -416,9 +420,7 @@ impl Diff {
         // Minimal: 2 borders + separators overhead
         // We use a simpler layout with line numbers.
 
-        // Count old/new lines for number width
-        let old_lines = Self::split_lines(&self.old_text);
-        let new_lines = Self::split_lines(&self.new_text);
+        // Count old/new lines for number width (reuse the already-split slices).
         let old_num_width = if old_lines.is_empty() {
             1
         } else {

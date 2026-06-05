@@ -1,7 +1,6 @@
 //! Accordion widget -- collapsible content panels for organizing complex output.
 //!
 
-use crate::cells::cell_len;
 use crate::console::{Console, ConsoleOptions, Renderable};
 use crate::segment::Segment;
 use crate::style::Style;
@@ -499,10 +498,12 @@ impl Renderable for Accordion {
     fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         let mut segments = Vec::new();
 
-        // Calculate available width for content
+        // Calculate available width for content.
+        // Finding #22: formula was wrong (`icon_width.max(indent)` instead of
+        // `indent`). Content lives inside the indented region, so subtract only
+        // `self.indent` from the available width.
         let max_width = options.max_width;
-        let icon_width = cell_len(self.current_icon()) + 1; // icon + space
-        let content_width = max_width.saturating_sub(icon_width.max(self.indent));
+        let content_width = max_width.saturating_sub(self.indent);
 
         // Build header line: icon + space + title
         let icon = self.current_icon();

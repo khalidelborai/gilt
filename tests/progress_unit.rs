@@ -98,10 +98,9 @@ fn compact_time_remaining_column_format() {
     task.start_time = Some(0.0);
     task.finished_time = Some(10.0);
 
-    let col = TimeRemainingColumn {
-        compact: true,
-        elapsed_when_finished: false,
-    };
+    let col = TimeRemainingColumn::new()
+        .with_compact(true)
+        .with_elapsed_when_finished(false);
     let rendered = col.render(&task).plain().to_string();
     assert_eq!(rendered, "0:00", "finished task should render '0:00'");
 }

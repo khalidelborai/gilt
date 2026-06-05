@@ -2,10 +2,13 @@
 //!
 //! (a CommonMark-compliant markdown parser) instead of Python's `markdown_it`.
 
-use pulldown_cmark::{Alignment, Event, HeadingLevel, Options, Parser, Tag, TagEnd};
+use pulldown_cmark::{Alignment, CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag, TagEnd};
 
+#[cfg(not(feature = "syntax"))]
 use crate::box_chars::HEAVY;
+use crate::box_chars::SIMPLE;
 use crate::console::{Console, ConsoleOptions, Renderable};
+#[cfg(not(feature = "syntax"))]
 use crate::panel::Panel;
 use crate::rule::Rule;
 use crate::segment::Segment;
@@ -138,8 +141,9 @@ impl Renderable for Markdown {
         // Link URL tracking
         let mut link_url: Option<String> = None;
 
-        // Code block accumulator
+        // Code block accumulator and language tag
         let mut code_block_text: Option<String> = None;
+        let mut code_block_lang: Option<String> = None;
 
         // Table context
         let mut table_ctx: Option<TableContext> = None;
@@ -155,10 +159,10 @@ impl Renderable for Markdown {
         md_options.insert(Options::ENABLE_TABLES);
         md_options.insert(Options::ENABLE_STRIKETHROUGH);
 
+        // P3 perf: iterate the parser directly (no lookahead needed)
         let parser = Parser::new_ext(&self.markup, md_options);
-        let events: Vec<Event> = parser.collect();
 
-        for event in events {
+        for event in parser {
             match event {
                 // -- Headings -----------------------------------------------
                 Event::Start(Tag::Heading { .. }) => {
@@ -216,8 +220,16 @@ impl Renderable for Markdown {
                     if let Some(j) = self.justify {
                         text_buffer.justify = Some(j);
                     }
+                    // P2 parity: push paragraph style on entry
+                    let para_style = console
+                        .get_style("markdown.paragraph")
+                        .unwrap_or_else(|_| Style::null());
+                    style_stack.push(para_style);
                 }
                 Event::End(TagEnd::Paragraph) => {
+                    // P2 parity: pop paragraph style
+                    let _ = style_stack.pop();
+
                     if in_table_cell {
                         // Inside a table cell, preserve spans from text_buffer
                         // (using append_text, not plain(), to retain styling).
@@ -241,22 +253,30 @@ impl Renderable for Markdown {
                         let indent: String =
                             std::iter::repeat_n(' ', blockquote_depth.saturating_sub(1) * 4)
                                 .collect();
-                        let bq_prefix = format!("{}\u{2502} ", indent);
+                        // P2 parity: rich uses ▌ (U+258C left half block) not │ (U+2502)
+                        let bq_prefix = format!("{}\u{258C} ", indent);
 
-                        // Let Text wrap normally then split into lines
+                        // P1 parity: preserve inline styles by working per-segment.
+                        // Render the paragraph first, then split at newline segments
+                        // and prepend the blockquote prefix to each logical line,
+                        // keeping the styled segments intact.
                         let text_segs = text_buffer.gilt_console(console, &para_opts);
-                        let rendered_text: String =
-                            text_segs.iter().map(|s| s.text.as_str()).collect();
-
-                        for line in rendered_text.lines() {
-                            segments.push(Segment::styled(&bq_prefix, bq_style.clone()));
-                            segments.push(Segment::text(line));
-                            segments.push(Segment::line());
-                        }
-                        // If the text was empty, still emit one quote line
-                        if rendered_text.trim().is_empty() {
+                        if text_segs.is_empty()
+                            || text_segs.iter().all(|s| s.text.trim().is_empty())
+                        {
                             segments.push(Segment::styled(&bq_prefix, bq_style.clone()));
                             segments.push(Segment::line());
+                        } else {
+                            // Walk segs, emitting prefix at start-of-line
+                            segments.push(Segment::styled(&bq_prefix, bq_style.clone()));
+                            for seg in &text_segs {
+                                if seg.text == "\n" {
+                                    segments.push(Segment::line());
+                                    segments.push(Segment::styled(&bq_prefix, bq_style.clone()));
+                                } else {
+                                    segments.push(seg.clone());
+                                }
+                            }
                         }
                     } else {
                         let text_segs = text_buffer.gilt_console(console, &para_opts);
@@ -329,7 +349,10 @@ impl Renderable for Markdown {
                 }
                 Event::End(TagEnd::Link) => {
                     let _ = style_stack.pop();
-                    if self.hyperlinks {
+                    // P1 parity: rich shows URL inline as "(url)" when hyperlinks==false;
+                    // when hyperlinks==true, the link text itself is the clickable hyperlink
+                    // (no extra URL appended).
+                    if !self.hyperlinks {
                         if let Some(ref url) = link_url {
                             let url_style = console
                                 .get_style("markdown.link_url")
@@ -349,10 +372,13 @@ impl Renderable for Markdown {
                         .unwrap_or_else(|_| Style::parse("bright_blue"));
                     style_stack.push(link_style);
                     link_url = Some(dest_url.to_string());
+                    // P2 parity: prepend 🌆 emoji prefix for images
+                    text_buffer.append_str("\u{1F306} ", None);
                 }
                 Event::End(TagEnd::Image) => {
                     let _ = style_stack.pop();
-                    if self.hyperlinks {
+                    // P1 parity: same as links — show URL inline only when hyperlinks==false
+                    if !self.hyperlinks {
                         if let Some(ref url) = link_url {
                             let url_style = console
                                 .get_style("markdown.link_url")
@@ -366,14 +392,19 @@ impl Renderable for Markdown {
                 }
 
                 // -- Code blocks --------------------------------------------
-                Event::Start(Tag::CodeBlock(_kind)) => {
+                Event::Start(Tag::CodeBlock(kind)) => {
                     code_block_text = Some(String::new());
+                    // P1 parity: capture language tag for syntax highlighting
+                    code_block_lang = match kind {
+                        CodeBlockKind::Fenced(lang) if !lang.is_empty() => Some(lang.to_string()),
+                        _ => None,
+                    };
                 }
                 Event::End(TagEnd::CodeBlock) => {
                     if let Some(code_text) = code_block_text.take() {
-                        let code_style = console
-                            .get_style("markdown.code_block")
-                            .unwrap_or_else(|_| Style::parse("cyan on black"));
+                        let _lang = code_block_lang.take();
+                        #[cfg(feature = "syntax")]
+                        let lang = _lang;
 
                         if needs_newline {
                             segments.push(Segment::line());
@@ -381,15 +412,32 @@ impl Renderable for Markdown {
 
                         // Remove trailing newline from code text
                         let trimmed = code_text.trim_end_matches('\n');
-                        let code_content = Text::styled_with(trimmed, code_style.clone());
 
-                        // Wrap in a panel (like  does)
-                        let panel = Panel::new(code_content)
-                            .with_box_chars(&HEAVY)
-                            .with_style(code_style)
-                            .with_expand(true);
-                        let panel_segs = panel.gilt_console(console, options);
-                        segments.extend(panel_segs);
+                        // P1 parity: use Syntax renderable when feature is enabled and
+                        // language is known; fall back to plain Panel otherwise.
+                        #[cfg(feature = "syntax")]
+                        {
+                            let used_lang = lang.as_deref().unwrap_or("text");
+                            let syn = crate::syntax::Syntax::new(trimmed, used_lang)
+                                .with_theme(&self.code_theme)
+                                .with_word_wrap(true)
+                                .with_padding(crate::syntax::PaddingSpec::Uniform(1));
+                            let syn_segs = syn.gilt_console(console, options);
+                            segments.extend(syn_segs);
+                        }
+                        #[cfg(not(feature = "syntax"))]
+                        {
+                            let code_style = console
+                                .get_style("markdown.code_block")
+                                .unwrap_or_else(|_| Style::parse("cyan on black"));
+                            let code_content = Text::styled_with(trimmed, code_style.clone());
+                            let panel = Panel::new(code_content)
+                                .with_box_chars(&HEAVY)
+                                .with_style(code_style)
+                                .with_expand(true);
+                            let panel_segs = panel.gilt_console(console, options);
+                            segments.extend(panel_segs);
+                        }
 
                         needs_newline = true;
                     }
@@ -426,7 +474,18 @@ impl Renderable for Markdown {
                     }
 
                     let indent_level = list_stack.len().saturating_sub(1);
-                    let indent: String = std::iter::repeat_n(' ', indent_level * 4).collect();
+                    // P3 perf: use static slices for the most common indent levels
+                    // to avoid a per-item heap allocation.
+                    let indent_owned: String;
+                    let indent: &str = match indent_level {
+                        0 => "",
+                        1 => "    ",
+                        2 => "        ",
+                        _ => {
+                            indent_owned = std::iter::repeat_n(' ', indent_level * 4).collect();
+                            &indent_owned
+                        }
+                    };
 
                     if let Some(ctx) = list_stack.last_mut() {
                         if ctx.ordered {
@@ -440,17 +499,31 @@ impl Renderable for Markdown {
                             let bullet_style = console
                                 .get_style("markdown.item.bullet")
                                 .unwrap_or_else(|_| Style::parse("bold"));
-                            let prefix = format!("{}\u{2022} ", indent);
+                            // P3 parity: rich uses " • " (leading space, 3 cells)
+                            let prefix = format!("{} \u{2022} ", indent);
                             segments.push(Segment::styled(&prefix, bullet_style));
                         }
                     }
 
                     // Render item text
+                    // P2 parity: account for 3-cell " • " prefix in width calculation
                     let item_width =
                         width.saturating_sub((list_stack.len().saturating_sub(1)) * 4 + 3);
                     let item_opts = options.update_width(item_width);
                     let item_segs = text_buffer.gilt_console(console, &item_opts);
-                    segments.extend(item_segs);
+                    // P2 parity: prepend the item indent to continuation lines
+                    let cont_indent: String =
+                        std::iter::repeat_n(' ', indent_level * 4 + 3).collect();
+                    let mut first_line = true;
+                    for seg in item_segs {
+                        if !first_line && seg.text == "\n" {
+                            segments.push(seg);
+                            segments.push(Segment::text(&cont_indent));
+                            continue;
+                        }
+                        first_line = false;
+                        segments.push(seg);
+                    }
 
                     text_buffer = Text::new("", Style::null());
                     needs_newline = false;
@@ -637,6 +710,9 @@ impl Renderable for Markdown {
 fn render_table(console: &Console, options: &ConsoleOptions, ctx: &TableContext) -> Vec<Segment> {
     let headers: Vec<&str> = ctx.header_cells.iter().map(|s| s.as_str()).collect();
     let mut table = Table::new(&headers);
+
+    // P2 parity: rich uses box.SIMPLE (no outer border, header separator only)
+    table = table.with_box_chars(Some(&SIMPLE));
 
     // Apply alignment from markdown
     for (i, alignment) in ctx.alignments.iter().enumerate() {

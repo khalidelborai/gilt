@@ -70,9 +70,12 @@ pub fn ratio_resolve(total: usize, edges: &[impl Edge]) -> Vec<usize> {
         // Comparison: portion * edge.ratio <= edge.minimum_size
         // portion = remaining / total_ratio
         // So: remaining * edge.ratio <= edge.minimum_size * total_ratio
+        // Use saturating_mul to avoid overflow on 32-bit targets.
         let mut found_below_minimum = false;
         for &(index, edge) in &flexible {
-            if remaining * edge.ratio() <= edge.minimum_size() * total_ratio {
+            if remaining.saturating_mul(edge.ratio())
+                <= edge.minimum_size().saturating_mul(total_ratio)
+            {
                 sizes[index] = Some(edge.minimum_size());
                 found_below_minimum = true;
                 break;
@@ -95,7 +98,7 @@ pub fn ratio_resolve(total: usize, edges: &[impl Edge]) -> Vec<usize> {
 
             let mut remainder_num: usize = 0;
             for (index, edge) in flexible {
-                let numerator = remaining * edge.ratio() + remainder_num;
+                let numerator = remaining.saturating_mul(edge.ratio()) + remainder_num;
                 let size = numerator / total_ratio;
                 remainder_num = numerator % total_ratio;
                 sizes[index] = Some(size);
@@ -137,9 +140,9 @@ pub fn ratio_reduce(
         if ratio > 0 && total_ratio > 0 {
             // distributed = min(maximum, round(ratio * total_remaining / total_ratio))
             let distributed = {
-                let product = ratio * total_remaining;
+                let product = ratio.saturating_mul(total_remaining);
                 // Manual rounding: (product * 2 + total_ratio) / (2 * total_ratio)
-                let rounded = (product * 2 + total_ratio) / (2 * total_ratio);
+                let rounded = (product.saturating_mul(2) + total_ratio) / (2 * total_ratio);
                 rounded.min(maximum)
             };
             result.push(value.saturating_sub(distributed));
@@ -186,7 +189,7 @@ pub fn ratio_distribute(total: usize, ratios: &[usize], minimums: Option<&[usize
     for (&ratio, &minimum) in ratios.iter().zip(mins.iter()) {
         let distributed = if total_ratio > 0 {
             // ceil(ratio * total_remaining / total_ratio)
-            let product = ratio * total_remaining;
+            let product = ratio.saturating_mul(total_remaining);
             let ceiled = product.div_ceil(total_ratio);
             ceiled.max(minimum)
         } else {

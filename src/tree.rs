@@ -47,8 +47,11 @@ const TREE_GUIDES: [[&str; 4]; 3] = [
 // Helper: create a guide segment
 // ---------------------------------------------------------------------------
 
-fn make_guide(index: usize, style: &Style, ascii_only: bool) -> Segment {
-    if ascii_only {
+/// Create a guide segment.
+///
+/// `legacy_windows` forces ASCII guides when true (P2 parity, finding #3).
+fn make_guide(index: usize, style: &Style, ascii_only: bool, legacy_windows: bool) -> Segment {
+    if ascii_only || legacy_windows {
         Segment::styled(ASCII_GUIDES[index], style.clone())
     } else {
         let guide_set = if style.bold() == Some(true) {
@@ -81,6 +84,8 @@ pub struct Tree {
     pub expanded: bool,
     /// Whether to hide the root node.
     pub hide_root: bool,
+    /// Whether to highlight labels (P2 parity, finding #5). Default false.
+    pub highlight: bool,
 }
 
 impl Tree {
@@ -93,6 +98,7 @@ impl Tree {
             children: Vec::new(),
             expanded: true,
             hide_root: false,
+            highlight: false,
         }
     }
 
@@ -105,6 +111,7 @@ impl Tree {
             children: Vec::new(),
             expanded: true,
             hide_root: false,
+            highlight: self.highlight,
         });
         self.children
             .last_mut()
@@ -139,7 +146,17 @@ impl Tree {
         self
     }
 
+    /// Set whether to highlight labels (builder pattern, P2 parity finding #5).
+    #[must_use]
+    pub fn with_highlight(mut self, highlight: bool) -> Self {
+        self.highlight = highlight;
+        self
+    }
+
     /// Measure this tree: compute minimum and maximum widths.
+    ///
+    /// Uses [`Text::measure`] so that minimum and maximum can differ when a
+    /// label contains wrappable whitespace (P1 parity, finding #1).
     pub fn measure(&self, _console: &Console, _options: &ConsoleOptions) -> Measurement {
         let mut minimum: usize = 0;
         let mut maximum: usize = 0;
@@ -157,11 +174,11 @@ impl Tree {
                 level
             };
             let indent = effective_level * 4;
-            let label_width = tree.label.cell_len();
-            let total = label_width + indent;
+            // P1 parity: use Text::measure() so min and max can differ.
+            let label_m = tree.label.measure();
             if !(level == 0 && hide_root) {
-                *min = (*min).max(total);
-                *max = (*max).max(total);
+                *min = (*min).max(label_m.minimum + indent);
+                *max = (*max).max(label_m.maximum + indent);
             }
             if tree.expanded {
                 for child in &tree.children {
@@ -191,13 +208,20 @@ impl Renderable for Tree {
     fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         let mut segments: Vec<Segment> = Vec::new();
         let ascii_only = options.ascii_only();
+        // P2 parity (finding #3): legacy_windows forces ASCII guide characters.
+        let legacy_windows = options.legacy_windows;
         let newline = Segment::line();
 
         // Stack-based DFS (porting Python's stack/iterator approach).
         //
         // `levels` holds the guide segment for each depth level.
         // The stack holds iterators over children at each level.
-        let mut levels: Vec<Segment> = vec![make_guide(CONTINUE, &self.guide_style, ascii_only)];
+        let mut levels: Vec<Segment> = vec![make_guide(
+            CONTINUE,
+            &self.guide_style,
+            ascii_only,
+            legacy_windows,
+        )];
         let mut stack: Vec<StackFrame> = Vec::new();
 
         // Push the root as a single-element "children" iterator.
@@ -217,7 +241,7 @@ impl Renderable for Tree {
                 if !levels.is_empty() {
                     let last_idx = levels.len() - 1;
                     let guide_style = levels[last_idx].style.clone().unwrap_or_else(Style::null);
-                    levels[last_idx] = make_guide(FORK, &guide_style, ascii_only);
+                    levels[last_idx] = make_guide(FORK, &guide_style, ascii_only, legacy_windows);
                 }
                 depth = depth.saturating_sub(1);
                 continue;
@@ -232,31 +256,42 @@ impl Renderable for Tree {
             if last {
                 let last_level = levels.len() - 1;
                 let guide_style = levels[last_level].style.clone().unwrap_or_else(Style::null);
-                levels[last_level] = make_guide(END, &guide_style, ascii_only);
+                levels[last_level] = make_guide(END, &guide_style, ascii_only, legacy_windows);
             }
 
             // Build the prefix from levels, skipping levels for hidden root.
+            // P3 perf (finding #7): compute prefix_width from the slice without
+            // allocating a Vec first; build current_prefix only once for actual
+            // segment emission so there is a single allocation per node.
             let skip = if self.hide_root { 2 } else { 1 };
-            let prefix: Vec<Segment> = if levels.len() > skip {
-                levels[skip..].to_vec()
+            let prefix_slice: &[Segment] = if levels.len() > skip {
+                &levels[skip..]
             } else {
-                Vec::new()
+                &[]
             };
 
-            // Compute available width for the label.
-            let prefix_width: usize = prefix.iter().map(|s| cell_len(&s.text)).sum();
+            // Compute available width for the label directly from the slice.
+            let prefix_width: usize = prefix_slice.iter().map(|s| cell_len(&s.text)).sum();
             let child_width = options.max_width.saturating_sub(prefix_width);
-            let child_opts = options.update_width(child_width);
+            // P3 parity (finding #6): pad=true when justify is set.
+            let pad = options.justify.is_some();
+            // P2 parity (finding #5): forward highlight flag into options so
+            // the label renderer can apply syntax highlighting.
+            let mut child_opts = options.update_width(child_width);
+            if self.highlight {
+                child_opts.highlight = Some(true);
+            }
 
             // Render the label into lines.
             let rendered_lines =
-                console.render_lines(&node.label, Some(&child_opts), None, false, false);
+                console.render_lines(&node.label, Some(&child_opts), None, pad, false);
 
             // Emit segments (skip if this is the root and hide_root is set).
             let skip_node = depth == 0 && self.hide_root;
 
             if !skip_node {
-                let mut current_prefix = prefix.clone();
+                // Build current_prefix once; mutated after the first line only.
+                let mut current_prefix: Vec<Segment> = prefix_slice.to_vec();
                 for (i, line) in rendered_lines.iter().enumerate() {
                     // Emit prefix guide segments — extend_from_slice is one
                     // memcpy + N clones rather than N iterations of push.
@@ -274,8 +309,12 @@ impl Renderable for Tree {
                             .style
                             .clone()
                             .unwrap_or_else(Style::null);
-                        current_prefix[last_idx] =
-                            make_guide(if last { SPACE } else { CONTINUE }, &pstyle, ascii_only);
+                        current_prefix[last_idx] = make_guide(
+                            if last { SPACE } else { CONTINUE },
+                            &pstyle,
+                            ascii_only,
+                            legacy_windows,
+                        );
                     }
                 }
             }
@@ -289,13 +328,19 @@ impl Renderable for Tree {
                     if last { SPACE } else { CONTINUE },
                     &guide_style,
                     ascii_only,
+                    legacy_windows,
                 );
 
                 // Add a new level for the children.
                 let child_guide_style = &node.guide_style;
                 let child_count = node.children.len();
                 let guide_type = if child_count == 1 { END } else { FORK };
-                levels.push(make_guide(guide_type, child_guide_style, ascii_only));
+                levels.push(make_guide(
+                    guide_type,
+                    child_guide_style,
+                    ascii_only,
+                    legacy_windows,
+                ));
 
                 stack.push(StackFrame {
                     index: 0,
@@ -470,7 +515,7 @@ mod tests {
             .no_color(true)
             .build();
         let mut opts = console.options();
-        opts.encoding = "ascii".to_string();
+        opts.encoding = std::borrow::Cow::Borrowed("ascii");
         let segments = tree.gilt_console(&console, &opts);
         let output: String = segments
             .iter()

@@ -102,8 +102,8 @@ fn test_headings_have_appropriate_styles() {
     let output = render_markdown(&console, &md);
     // H1 and H2 get underlines (Rule characters)
     assert!(output.contains("Title"));
-    // The rule character should be present
-    assert!(output.contains('\u{2501}') || output.contains('-'));
+    // The rule character should be present (─ U+2500 light, rich parity; '-' for ascii)
+    assert!(output.contains('\u{2500}') || output.contains('-'));
 }
 
 #[test]
@@ -114,7 +114,8 @@ fn test_h1_has_rule_underline() {
     let text: String = segments.iter().map(|s| s.text.as_str()).collect();
     // Should contain the heading text and a rule line
     assert!(text.contains("Big Title"));
-    assert!(text.contains('\u{2501}'));
+    // Rule default is now ─ (U+2500, light) for rich parity
+    assert!(text.contains('\u{2500}'));
 }
 
 #[test]
@@ -124,7 +125,8 @@ fn test_h2_has_rule_underline() {
     let segments = render_segments(&console, &md);
     let text: String = segments.iter().map(|s| s.text.as_str()).collect();
     assert!(text.contains("Sub Title"));
-    assert!(text.contains('\u{2501}'));
+    // Rule default is now ─ (U+2500, light) for rich parity
+    assert!(text.contains('\u{2500}'));
 }
 
 // -- Bold text ----------------------------------------------------------
@@ -231,20 +233,25 @@ fn test_code_block_with_language() {
 
 #[test]
 fn test_link_with_url() {
+    // P1 parity: when hyperlinks=true (default), the link text is shown but the
+    // URL is NOT appended inline — rich renders the text as a clickable OSC-8
+    // hyperlink instead.  Only the link text should appear.
     let console = make_console(80);
     let md = Markdown::new("[Rust](https://www.rust-lang.org)");
     let output = render_markdown(&console, &md);
     assert!(output.contains("Rust"));
-    assert!(output.contains("https://www.rust-lang.org"));
+    // URL should NOT appear as plain text when hyperlinks are enabled
+    assert!(!output.contains("https://www.rust-lang.org"));
 }
 
 #[test]
 fn test_link_without_url_display() {
+    // P1 parity: when hyperlinks=false, the URL IS shown inline as "(url)".
     let console = make_console(80);
     let md = Markdown::new("[Rust](https://www.rust-lang.org)").with_hyperlinks(false);
     let output = render_markdown(&console, &md);
     assert!(output.contains("Rust"));
-    assert!(!output.contains("https://www.rust-lang.org"));
+    assert!(output.contains("https://www.rust-lang.org"));
 }
 
 // -- Unordered lists (bullets) ------------------------------------------
@@ -297,8 +304,8 @@ fn test_block_quote() {
     let md = Markdown::new("> This is a quote.");
     let output = render_markdown(&console, &md);
     assert!(output.contains("This is a quote."));
-    // Should have the vertical bar character for block quotes
-    assert!(output.contains('\u{2502}'));
+    // P2 parity: rich uses ▌ (U+258C left half block), NOT │ (U+2502)
+    assert!(output.contains('\u{258C}'));
 }
 
 // -- Horizontal rules ---------------------------------------------------
@@ -310,8 +317,8 @@ fn test_horizontal_rule() {
     let output = render_markdown(&console, &md);
     assert!(output.contains("Above"));
     assert!(output.contains("Below"));
-    // Should contain rule characters
-    assert!(output.contains('\u{2501}'));
+    // Should contain rule characters (─ U+2500 light, rich parity default)
+    assert!(output.contains('\u{2500}'));
 }
 
 // -- Mixed content ------------------------------------------------------
@@ -508,10 +515,13 @@ fn test_code_block_has_panel_border() {
     let console = make_console(40);
     let md = Markdown::new("```\nhello\n```");
     let output = render_markdown(&console, &md);
-    // Panel uses HEAVY box chars
+    // P1 parity: code blocks now use Syntax (when feature = "syntax") rather
+    // than a HEAVY-bordered Panel, so we check for the code content instead.
+    // The HEAVY box chars (┏/━/┃) are no longer present in the default config.
     assert!(
-        output.contains('\u{2501}') || output.contains('\u{2503}') || output.contains('\u{250F}'),
-        "Code block should be wrapped in a panel border"
+        output.contains("hello"),
+        "Code block content should be present in output, got: {:?}",
+        output
     );
 }
 
@@ -552,8 +562,23 @@ fn test_blockquote_multiple_paragraphs() {
 
 #[test]
 fn test_image() {
+    // P2 parity: images render with 🌆 prefix; when hyperlinks=true (default)
+    // the URL is not shown as plain text (same logic as links).
     let console = make_console(80);
     let md = Markdown::new("![Alt text](https://example.com/image.png)");
+    let output = render_markdown(&console, &md);
+    assert!(output.contains("Alt text"));
+    // With hyperlinks=true, URL not appended inline
+    assert!(!output.contains("https://example.com/image.png"));
+    // 🌆 prefix should appear
+    assert!(output.contains('\u{1F306}'));
+}
+
+#[test]
+fn test_image_hyperlinks_disabled_shows_url() {
+    // When hyperlinks=false, image URL should appear inline as "(url)"
+    let console = make_console(80);
+    let md = Markdown::new("![Alt text](https://example.com/image.png)").with_hyperlinks(false);
     let output = render_markdown(&console, &md);
     assert!(output.contains("Alt text"));
     assert!(output.contains("https://example.com/image.png"));

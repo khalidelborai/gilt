@@ -56,10 +56,12 @@ pub(crate) fn graphemes(text: &str) -> impl Iterator<Item = &str> {
 /// Flag emoji (regional indicators) and combining-mark sequences
 /// (`café`) are unaffected — both forms agree.
 pub fn cell_len(text: &str) -> usize {
-    // Fast path for pure ASCII (the common case in terminal output) — every
-    // ASCII byte is a single cell, so byte length equals cell length and we
-    // skip the Unicode width-table lookup entirely.
-    if text.is_ascii() {
+    // Fast path for pure printable ASCII — every byte in 0x20..=0x7E is a
+    // single cell, so byte length equals cell length and we skip the Unicode
+    // width-table lookup entirely.
+    // DEL (0x7F) and C0 controls are NOT printable so we cannot use the
+    // simple byte-length trick; fall through to per-codepoint sum.
+    if text.bytes().all(|b| (0x20..0x7f).contains(&b)) {
         return text.len();
     }
     // Per-codepoint sum (NOT text.width(), which is cluster-aware and
@@ -84,9 +86,15 @@ pub fn cell_len(text: &str) -> usize {
 /// assert_eq!(get_character_cell_size('💩'), 2);
 /// ```
 pub fn get_character_cell_size(c: char) -> usize {
-    // Fast path: printable ASCII = 1 cell; control chars (< 0x20) = 0.
+    // Fast path: printable ASCII (0x20..=0x7E) = 1 cell.
+    // DEL (0x7F) falls through to width() which returns 0.
+    // C0 control chars (< 0x20) return 0.
     if (c as u32) < 0x80 {
-        return if (c as u32) >= 0x20 { 1 } else { 0 };
+        return if (c as u32) >= 0x20 && c != '\x7f' {
+            1
+        } else {
+            0
+        };
     }
     c.width().unwrap_or(0)
 }
@@ -110,6 +118,28 @@ pub fn get_character_cell_size(c: char) -> usize {
 /// assert_eq!(set_cell_size("😽😽", 3), "😽 ");  // crop in middle of emoji → space
 /// ```
 pub fn set_cell_size(text: &str, total: usize) -> Cow<'_, str> {
+    // ASCII fast path: if every byte is a printable ASCII character (0x20..0x7F
+    // exclusive — i.e. no DEL, no control chars), then cell width == byte
+    // length and we can crop with a direct byte slice instead of the O(n)
+    // grapheme-cluster walk.
+    if text.bytes().all(|b| (0x20..0x7f).contains(&b)) {
+        let text_len = text.len(); // == cell length for printable ASCII
+        if text_len == total {
+            return Cow::Borrowed(text);
+        }
+        if text_len < total {
+            let mut result = String::with_capacity(total);
+            result.push_str(text);
+            result.extend(std::iter::repeat_n(' ', total - text_len));
+            return Cow::Owned(result);
+        }
+        if total == 0 {
+            return Cow::Borrowed("");
+        }
+        // Crop: &text[..total] is safe because all bytes are single-byte chars.
+        return Cow::Borrowed(&text[..total]);
+    }
+
     let current_len = cell_len(text);
 
     if current_len == total {
@@ -177,20 +207,20 @@ pub fn chop_cells(text: &str, width: usize) -> Vec<String> {
     let mut current_line = String::new();
     let mut current_width = 0;
 
-    for c in text.chars() {
-        let char_width = get_character_cell_size(c);
+    for cluster in UnicodeSegmentation::graphemes(text, true) {
+        let cluster_width = cell_len(cluster);
 
-        if current_width + char_width <= width {
-            current_line.push(c);
-            current_width += char_width;
+        if current_width + cluster_width <= width {
+            current_line.push_str(cluster);
+            current_width += cluster_width;
         } else {
             // Start a new line
             if !current_line.is_empty() {
                 lines.push(current_line);
                 current_line = String::new();
             }
-            current_line.push(c);
-            current_width = char_width;
+            current_line.push_str(cluster);
+            current_width = cluster_width;
         }
     }
 

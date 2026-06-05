@@ -140,18 +140,24 @@ impl Gradient {
     }
 
     /// Renders a single line of text into gradient-colored segments.
+    ///
+    /// Finding #27: avoid allocating a `Vec<char>` per line. Iterate
+    /// `chars().enumerate()` directly and count with `chars().count()` once.
     fn render_line(&self, line: &str, style: &Style) -> Vec<Segment> {
-        let chars: Vec<char> = line.chars().collect();
-        let total = chars.len();
+        let total = line.chars().count();
         if total == 0 {
             return Vec::new();
         }
 
         let mut segments = Vec::with_capacity(total);
-        for (i, ch) in chars.iter().enumerate() {
+        // Reuse a small String buffer to avoid a String allocation per char.
+        let mut buf = String::with_capacity(4);
+        for (i, ch) in line.chars().enumerate() {
             let fg = self.color_at(i, total);
             let char_style = Style::from_color(Some(fg), None) + style.clone();
-            segments.push(Segment::styled(&ch.to_string(), char_style));
+            buf.clear();
+            buf.push(ch);
+            segments.push(Segment::styled(&buf, char_style));
         }
         segments
     }

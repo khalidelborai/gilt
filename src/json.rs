@@ -175,11 +175,15 @@ fn sort_value(value: &Value) -> Value {
 }
 
 /// Format a `Value` as a JSON string respecting indent and sort_keys options.
+///
+/// Finding #24: use `Cow<'_, Value>` — borrow the value when `sort_keys` is
+/// `false` (the common path) and only clone/own it when sorting is needed.
 fn format_value(value: &Value, options: &JsonOptions) -> String {
-    let value = if options.sort_keys {
-        sort_value(value)
+    use std::borrow::Cow;
+    let value: Cow<'_, Value> = if options.sort_keys {
+        Cow::Owned(sort_value(value))
     } else {
-        value.clone()
+        Cow::Borrowed(value)
     };
 
     match options.indent {

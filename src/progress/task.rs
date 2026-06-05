@@ -55,8 +55,8 @@ pub struct Task {
     pub finished_speed: Option<f64>,
     /// Sliding window of samples for speed calculation.
     pub samples: VecDeque<ProgressSample>,
-    /// All recorded progress samples.
-    progress: Vec<ProgressSample>,
+    /// All recorded progress samples (bounded ring, max 1000 entries).
+    pub(crate) progress: Vec<ProgressSample>,
 }
 
 impl Task {
@@ -143,6 +143,9 @@ impl Task {
         Some(remaining / speed)
     }
 
+    /// Maximum number of historical samples to retain in the `progress` vec.
+    const MAX_PROGRESS_HISTORY: usize = 1000;
+
     /// Record a progress sample for speed estimation.
     ///
     /// Samples older than `speed_estimate_period` seconds are pruned
@@ -152,10 +155,25 @@ impl Task {
             timestamp,
             completed: self.completed,
         });
-        self.progress.push(ProgressSample {
-            timestamp,
-            completed: self.completed,
-        });
+
+        // Keep the full-history vec bounded to avoid unbounded memory growth
+        // on long-running tasks (rich uses a deque with maxlen=1000).
+        if self.progress.len() < Self::MAX_PROGRESS_HISTORY {
+            self.progress.push(ProgressSample {
+                timestamp,
+                completed: self.completed,
+            });
+        } else {
+            // Ring-buffer: overwrite the oldest entry by rotating once.
+            // For simplicity we just truncate and push, keeping the last
+            // MAX_PROGRESS_HISTORY-1 entries.
+            let keep_from = self.progress.len() - (Self::MAX_PROGRESS_HISTORY - 1);
+            self.progress.drain(0..keep_from);
+            self.progress.push(ProgressSample {
+                timestamp,
+                completed: self.completed,
+            });
+        }
 
         // Prune samples outside the estimation window.
         let cutoff = timestamp - speed_estimate_period;
@@ -174,7 +192,7 @@ impl Task {
 // ---------------------------------------------------------------------------
 
 /// Return the current time as seconds since the UNIX epoch.
-pub(crate) fn current_time_secs() -> f64 {
+pub fn current_time_secs() -> f64 {
     SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .map(|d| d.as_secs_f64())

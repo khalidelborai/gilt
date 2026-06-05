@@ -35,7 +35,7 @@
 //! ```rust,no_run
 //! use std::path::Path;
 //!
-//! # async fn example() -> reqwest::Result<()> {
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let bytes = gilt::http::download_with_progress(
 //!     "https://example.com/file.zip",
 //!     Path::new("file.zip"),
@@ -56,7 +56,7 @@
 //!     name: String,
 //! }
 //!
-//! # async fn example() -> reqwest::Result<()> {
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let data: Data = reqwest::Client::new()
 //!     .get("https://api.example.com/data.json")
 //!     .with_progress("Fetching data")
@@ -482,7 +482,7 @@ impl ProgressResponse {
     /// ```rust,no_run
     /// use gilt::http::RequestBuilderProgress;
     ///
-    /// # async fn example() -> reqwest::Result<()> {
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let response = reqwest::Client::new()
     ///     .get("https://api.example.com/data.json")
     ///     .with_progress("Fetching JSON")
@@ -526,7 +526,7 @@ impl ProgressResponse {
     ///     email: String,
     /// }
     ///
-    /// # async fn example() -> reqwest::Result<()> {
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let user: User = reqwest::Client::new()
     ///     .get("https://api.example.com/user/1")
     ///     .with_progress("Loading user")

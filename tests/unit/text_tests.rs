@@ -427,9 +427,29 @@ fn test_fit() {
 
 #[test]
 fn test_tabs_to_spaces() {
+    // Column-aligned tab expansion: "Hello" = 5 cells, tab_size=4.
+    // Next tab stop = 8, so tab emits 3 spaces (not a fixed 4).
+    // This matches Python rich's behaviour.
     let mut text = Text::new("Hello\tWorld", Style::null());
     text.expand_tabs(Some(4));
-    assert_eq!(text.plain(), "Hello    World");
+    assert_eq!(text.plain(), "Hello   World");
+}
+
+#[test]
+fn test_tabs_to_spaces_at_stop() {
+    // When the cursor is exactly at a tab stop the full tab_size is emitted.
+    // "foo\t" with tab_size=4: "foo"=3 cells, next stop=4, spaces=1.
+    let mut text = Text::new("foo\tbar", Style::null());
+    text.expand_tabs(Some(4));
+    assert_eq!(text.plain(), "foo bar");
+}
+
+#[test]
+fn test_tabs_to_spaces_column_zero() {
+    // Tab at column 0 emits a full tab_size of spaces.
+    let mut text = Text::new("\tHello", Style::null());
+    text.expand_tabs(Some(4));
+    assert_eq!(text.plain(), "    Hello");
 }
 
 // -- Strip control codes test -------------------------------------------

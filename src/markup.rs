@@ -9,6 +9,7 @@ use std::sync::LazyLock;
 use crate::error::MarkupError;
 use crate::style::Style;
 use crate::text::{Span, Text};
+use crate::utils::emoji_replace::emoji_replace;
 
 // ---------------------------------------------------------------------------
 // Tag
@@ -181,9 +182,10 @@ fn parse_tag_inner(inner: &str) -> Tag {
 ///
 /// Returns `MarkupError` if a closing tag does not match any open tag.
 pub fn render(markup: &str, style: Style) -> Result<Text, MarkupError> {
-    // Fast path: no markup at all.
+    // Fast path: no markup at all — only emoji replacement needed.
     if !markup.contains('[') {
-        return Ok(Text::new(markup, style));
+        let replaced = emoji_replace(markup, None);
+        return Ok(Text::new(replaced.as_ref(), style));
     }
 
     let mut text = Text::new("", style);
@@ -193,9 +195,11 @@ pub fn render(markup: &str, style: Style) -> Result<Text, MarkupError> {
 
     for (position, plain_text, tag) in &elements {
         if let Some(plain) = plain_text {
-            // Replace escaped opening brackets with literal `[`.
-            let unescaped = plain.replace("\\[", "[");
-            text.append_str(&unescaped, None);
+            // parse_markup has already fully handled escape sequences; plain text
+            // segments are ready to use as-is (no redundant re-escape needed).
+            // Apply emoji shortcode replacement (:name: → Unicode).
+            let with_emoji = emoji_replace(plain, None);
+            text.append_str(with_emoji.as_ref(), None);
         } else if let Some(tag) = tag {
             if tag.name.starts_with('/') {
                 // Closing tag.
@@ -222,9 +226,12 @@ pub fn render(markup: &str, style: Style) -> Result<Text, MarkupError> {
                     let normalized = style_name.to_lowercase();
                     let normalized = normalized.trim();
 
+                    // Opening tag names are already normalized (lowercased + trimmed)
+                    // when pushed onto the stack, so compare directly without
+                    // allocating a new String per iteration.
                     let found = style_stack
                         .iter()
-                        .rposition(|(_, t)| t.name.to_lowercase().trim() == normalized);
+                        .rposition(|(_, t)| t.name.as_str() == normalized);
 
                     if let Some(idx) = found {
                         let (start, open_tag) = style_stack.remove(idx);
@@ -631,5 +638,78 @@ mod tests {
         assert_eq!(result.plain(), "click");
         assert_eq!(result.spans().len(), 1);
         assert_eq!(result.spans()[0].style.link(), Some("https://example.com"));
+    }
+
+    // -- Finding #1: escaped-bracket no double-escape corruption --------------
+
+    /// `render("foo \\[bar]")` must yield plain `foo [bar]`, not corrupt it.
+    /// Previously the redundant `replace("\\[", "[")` on already-processed plain
+    /// text was a no-op for fully-matched sequences but would corrupt literal
+    /// backslash-bracket text that did NOT form a complete `[tag]` sequence.
+    #[test]
+    fn test_render_escaped_bracket_no_corruption() {
+        // r"\[bar]" is the 7-char string `\[bar]`.
+        // parse_markup sees 1 backslash → escaped tag → emits "[bar]" as plain text.
+        // render should produce the literal text "[bar]" without further mutation.
+        let result = render(r"\[bar]", Style::null()).unwrap();
+        assert_eq!(result.plain(), "[bar]");
+        assert_eq!(
+            result.spans().len(),
+            0,
+            "escaped tag must not produce a span"
+        );
+    }
+
+    /// When the input contains a backslash followed by a tag that IS processed,
+    /// the plain text before it must not be corrupted either.
+    #[test]
+    fn test_render_mixed_escaped_and_real_tag() {
+        // "foo \[bar] [bold]baz[/bold]" — first tag is escaped, second is real.
+        let result = render(r"foo \[bar] [bold]baz[/bold]", Style::null()).unwrap();
+        assert_eq!(result.plain(), "foo [bar] baz");
+        assert_eq!(result.spans().len(), 1);
+        assert_eq!(result.spans()[0].style, Style::parse("bold"));
+        // The bold span covers "baz", which is at byte offset 10..13.
+        assert_eq!(result.spans()[0].start, 10);
+        assert_eq!(result.spans()[0].end, 13);
+    }
+
+    // -- Finding #2: emoji replacement in both render paths -------------------
+
+    /// Fast path (no `[` in input): emoji shortcodes must be expanded.
+    #[test]
+    fn test_render_emoji_fast_path() {
+        let result = render("Hello :heart:!", Style::null()).unwrap();
+        // U+2764 is the heart emoji
+        assert!(
+            result.plain().contains('\u{2764}'),
+            "expected heart emoji in fast path, got {:?}",
+            result.plain()
+        );
+        assert!(!result.plain().contains(":heart:"));
+    }
+
+    /// Full parse path: emoji shortcodes in plain text segments must be expanded.
+    #[test]
+    fn test_render_emoji_full_path() {
+        let result = render("[bold]:smile:[/bold]", Style::null()).unwrap();
+        // :smile: should expand to its Unicode character; it must not remain as-is.
+        assert!(
+            !result.plain().contains(":smile:"),
+            "emoji shortcode must be expanded in full parse path, got {:?}",
+            result.plain()
+        );
+        // A span for bold should still exist.
+        assert_eq!(result.spans().len(), 1);
+        assert_eq!(result.spans()[0].style, Style::parse("bold"));
+    }
+
+    /// Emoji inside mixed markup and plain text.
+    #[test]
+    fn test_render_emoji_mixed_with_markup() {
+        let result = render(":heart: [bold]world[/bold]", Style::null()).unwrap();
+        assert!(result.plain().contains('\u{2764}'));
+        assert!(result.plain().contains("world"));
+        assert!(!result.plain().contains(":heart:"));
     }
 }

@@ -367,7 +367,7 @@ fn test_max_length_truncates_array() {
     let json: serde_json::Value = serde_json::from_str("[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]").unwrap();
     let pretty = Pretty::from_json(&json)
         .with_max_length(3)
-        .rebuild_json(&json);
+        .rebuild_json(&json, 80);
     let plain = pretty.text.plain().to_string();
     // Should contain the first 3 items
     assert!(plain.contains('1'), "should contain 1: {}", plain);
@@ -385,7 +385,7 @@ fn test_max_length_truncates_array() {
 #[test]
 fn test_max_length_none_shows_all() {
     let json: serde_json::Value = serde_json::from_str("[1, 2, 3, 4, 5]").unwrap();
-    let pretty = Pretty::from_json(&json).rebuild_json(&json);
+    let pretty = Pretty::from_json(&json).rebuild_json(&json, 80);
     let plain = pretty.text.plain().to_string();
     // All items should be present
     for i in 1..=5 {
@@ -411,7 +411,7 @@ fn test_max_length_truncates_object() {
         serde_json::from_str(r#"{"a": 1, "b": 2, "c": 3, "d": 4, "e": 5}"#).unwrap();
     let pretty = Pretty::from_json(&json)
         .with_max_length(2)
-        .rebuild_json(&json);
+        .rebuild_json(&json, 80);
     let plain = pretty.text.plain().to_string();
     // Should have truncation indicator for the remaining 3 items
     assert!(
@@ -432,7 +432,7 @@ fn test_max_string_truncates() {
     .unwrap();
     let pretty = Pretty::from_json(&json)
         .with_max_string(10)
-        .rebuild_json(&json);
+        .rebuild_json(&json, 80);
     let plain = pretty.text.plain().to_string();
     // The string value should be truncated
     assert!(
@@ -453,7 +453,7 @@ fn test_max_string_truncates() {
 fn test_max_string_none_shows_full() {
     let long_str = "This is a very long string that should not be truncated";
     let json: serde_json::Value = serde_json::json!({"message": long_str});
-    let pretty = Pretty::from_json(&json).rebuild_json(&json);
+    let pretty = Pretty::from_json(&json).rebuild_json(&json, 80);
     let plain = pretty.text.plain().to_string();
     assert!(
         plain.contains(long_str),
@@ -468,7 +468,7 @@ fn test_max_string_short_string_not_truncated() {
     let json: serde_json::Value = serde_json::json!({"name": "Alice"});
     let pretty = Pretty::from_json(&json)
         .with_max_string(100)
-        .rebuild_json(&json);
+        .rebuild_json(&json, 80);
     let plain = pretty.text.plain().to_string();
     assert!(
         plain.contains("Alice"),
@@ -491,7 +491,7 @@ fn test_expand_all_forces_expansion() {
     let json: serde_json::Value = serde_json::from_str("[1, 2]").unwrap();
     let pretty = Pretty::from_json(&json)
         .with_expand_all(true)
-        .rebuild_json(&json);
+        .rebuild_json(&json, 80);
     let plain = pretty.text.plain().to_string();
     // With expand_all, even a short array should be multi-line
     assert!(
@@ -515,7 +515,7 @@ fn test_expand_all_false_compact() {
     let json: serde_json::Value = serde_json::from_str("[1, 2]").unwrap();
     let pretty = Pretty::from_json(&json)
         .with_expand_all(false)
-        .rebuild_json(&json);
+        .rebuild_json(&json, 80);
     let plain = pretty.text.plain().to_string();
     // A short array without expand_all should be single-line
     assert!(
@@ -531,7 +531,7 @@ fn test_expand_all_object() {
     let json: serde_json::Value = serde_json::from_str(r#"{"a": 1}"#).unwrap();
     let pretty = Pretty::from_json(&json)
         .with_expand_all(true)
-        .rebuild_json(&json);
+        .rebuild_json(&json, 80);
     let plain = pretty.text.plain().to_string();
     assert!(
         plain.contains('\n'),
@@ -553,7 +553,7 @@ fn test_all_params_combined() {
         .with_max_length(3)
         .with_max_string(10)
         .with_expand_all(true)
-        .rebuild_json(&json);
+        .rebuild_json(&json, 80);
     let plain = pretty.text.plain().to_string();
 
     // expand_all: should be multi-line
@@ -586,7 +586,7 @@ fn test_max_length_with_nested_arrays() {
     let pretty = Pretty::from_json(&json)
         .with_max_length(2)
         .with_expand_all(true)
-        .rebuild_json(&json);
+        .rebuild_json(&json, 80);
     let plain = pretty.text.plain().to_string();
 
     // The nested array should also be truncated
@@ -624,30 +624,147 @@ fn test_rebuild_debug_max_string() {
     );
 }
 
-// -- Helper function unit tests -----------------------------------------
+// -- max_depth tests --------------------------------------------------------
 
 #[cfg(feature = "json")]
 #[test]
-fn test_truncate_string_within_limit() {
-    assert_eq!(truncate_string("hello", Some(10)), "hello");
+fn test_max_depth_hides_nested_object() {
+    // P2 parity: containers beyond max_depth render as placeholder
+    let json: serde_json::Value =
+        serde_json::from_str(r#"{"outer": {"inner": {"deep": 42}}}"#).unwrap();
+    let pretty = Pretty::from_json(&json)
+        .with_max_depth(1)
+        .rebuild_json(&json, 80);
+    let plain = pretty.text.plain().to_string();
+    // At depth>1 the object should be replaced with "{...}"
+    assert!(
+        plain.contains("{...}"),
+        "nested object beyond max_depth should render as {{...}}: {}",
+        plain
+    );
+    // The deep value should NOT be present
+    assert!(
+        !plain.contains("deep"),
+        "key inside nested object beyond max_depth should be hidden: {}",
+        plain
+    );
 }
 
 #[cfg(feature = "json")]
 #[test]
-fn test_truncate_string_at_limit() {
-    assert_eq!(truncate_string("hello", Some(5)), "hello");
+fn test_max_depth_hides_nested_array() {
+    let json: serde_json::Value = serde_json::from_str(r#"{"items": [1, 2, 3]}"#).unwrap();
+    let pretty = Pretty::from_json(&json)
+        .with_max_depth(0)
+        .rebuild_json(&json, 80);
+    let plain = pretty.text.plain().to_string();
+    assert!(
+        plain.contains("[...]"),
+        "nested array beyond max_depth should render as [...]: {}",
+        plain
+    );
 }
 
 #[cfg(feature = "json")]
 #[test]
-fn test_truncate_string_over_limit() {
-    assert_eq!(truncate_string("hello world", Some(5)), "hello+6");
+fn test_max_depth_none_shows_all() {
+    let json: serde_json::Value = serde_json::from_str(r#"{"a": {"b": {"c": 1}}}"#).unwrap();
+    let pretty = Pretty::from_json(&json).rebuild_json(&json, 80);
+    let plain = pretty.text.plain().to_string();
+    assert!(
+        plain.contains("c"),
+        "without max_depth all keys should be visible: {}",
+        plain
+    );
 }
 
 #[cfg(feature = "json")]
 #[test]
-fn test_truncate_string_none() {
-    assert_eq!(truncate_string("hello world", None), "hello world");
+fn test_with_max_depth_builder() {
+    let pretty = Pretty::from_json(&serde_json::Value::Null).with_max_depth(3);
+    assert_eq!(pretty.max_depth, Some(3));
+}
+
+// -- JSON string truncation tests (P1 parity: "kept"+N not "kept+N") --------
+
+#[cfg(feature = "json")]
+#[test]
+fn test_json_string_truncation_within_limit() {
+    // Short string: no truncation, no +N suffix
+    let v = serde_json::Value::String("hello".to_string());
+    let result = format_json_value(
+        &v,
+        0,
+        JsonFmtOpts {
+            indent_size: 2,
+            max_length: None,
+            max_string: Some(10),
+            expand_all: false,
+            max_depth: None,
+            max_width: 80,
+        },
+    );
+    assert_eq!(result, r#""hello""#);
+}
+
+#[cfg(feature = "json")]
+#[test]
+fn test_json_string_truncation_at_limit() {
+    // Exactly at limit: no truncation
+    let v = serde_json::Value::String("hello".to_string());
+    let result = format_json_value(
+        &v,
+        0,
+        JsonFmtOpts {
+            indent_size: 2,
+            max_length: None,
+            max_string: Some(5),
+            expand_all: false,
+            max_depth: None,
+            max_width: 80,
+        },
+    );
+    assert_eq!(result, r#""hello""#);
+}
+
+#[cfg(feature = "json")]
+#[test]
+fn test_json_string_truncation_over_limit() {
+    // P1 parity: +N appears OUTSIDE the closing quote: "hello"+6 not "hello+6"
+    let v = serde_json::Value::String("hello world".to_string());
+    let result = format_json_value(
+        &v,
+        0,
+        JsonFmtOpts {
+            indent_size: 2,
+            max_length: None,
+            max_string: Some(5),
+            expand_all: false,
+            max_depth: None,
+            max_width: 80,
+        },
+    );
+    assert_eq!(result, r#""hello"+6"#);
+}
+
+#[cfg(feature = "json")]
+#[test]
+fn test_json_string_truncation_none() {
+    // No max_string: full value, no +N
+    let v = serde_json::Value::String("hello world".to_string());
+    let result = format_json_value(
+        &v,
+        0,
+        JsonFmtOpts {
+            indent_size: 2,
+            max_length: None,
+            max_string: None,
+            expand_all: false,
+            max_depth: None,
+            max_width: 80,
+        },
+    );
+    assert_eq!(result, r#""hello world""#);
 }
 
 #[cfg(feature = "json")]
@@ -666,28 +783,84 @@ fn test_escape_json_string_quotes() {
 #[test]
 fn test_format_json_value_null() {
     let v = serde_json::Value::Null;
-    assert_eq!(format_json_value(&v, 0, 2, None, None, false), "null");
+    assert_eq!(
+        format_json_value(
+            &v,
+            0,
+            JsonFmtOpts {
+                indent_size: 2,
+                max_length: None,
+                max_string: None,
+                expand_all: false,
+                max_depth: None,
+                max_width: 80
+            }
+        ),
+        "null"
+    );
 }
 
 #[cfg(feature = "json")]
 #[test]
 fn test_format_json_value_bool() {
     let v = serde_json::Value::Bool(true);
-    assert_eq!(format_json_value(&v, 0, 2, None, None, false), "true");
+    assert_eq!(
+        format_json_value(
+            &v,
+            0,
+            JsonFmtOpts {
+                indent_size: 2,
+                max_length: None,
+                max_string: None,
+                expand_all: false,
+                max_depth: None,
+                max_width: 80
+            }
+        ),
+        "true"
+    );
 }
 
 #[cfg(feature = "json")]
 #[test]
 fn test_format_json_empty_array() {
     let v: serde_json::Value = serde_json::from_str("[]").unwrap();
-    assert_eq!(format_json_value(&v, 0, 2, None, None, false), "[]");
+    assert_eq!(
+        format_json_value(
+            &v,
+            0,
+            JsonFmtOpts {
+                indent_size: 2,
+                max_length: None,
+                max_string: None,
+                expand_all: false,
+                max_depth: None,
+                max_width: 80
+            }
+        ),
+        "[]"
+    );
 }
 
 #[cfg(feature = "json")]
 #[test]
 fn test_format_json_empty_object() {
     let v: serde_json::Value = serde_json::from_str("{}").unwrap();
-    assert_eq!(format_json_value(&v, 0, 2, None, None, false), "{}");
+    assert_eq!(
+        format_json_value(
+            &v,
+            0,
+            JsonFmtOpts {
+                indent_size: 2,
+                max_length: None,
+                max_string: None,
+                expand_all: false,
+                max_depth: None,
+                max_width: 80
+            }
+        ),
+        "{}"
+    );
 }
 
 #[test]

@@ -28,12 +28,15 @@ pub struct Rule {
 }
 
 impl Rule {
-    /// Create a new `Rule` with defaults: no title, "━" character,
+    /// Create a new `Rule` with defaults: no title, "─" character,
     /// `rule.line` style, newline end, center alignment.
+    ///
+    /// Note: rich defaults to `─` (U+2500, light horizontal). The previous
+    /// default was `━` (U+2501, heavy); updated for rich parity.
     pub fn new() -> Self {
         Rule {
             title: None,
-            characters: "\u{2501}".to_string(), // ━ (heavy horizontal)
+            characters: "\u{2500}".to_string(), // ─ (light horizontal, rich default)
             style: Style::null(),
             end: "\n".to_string(),
             align: HorizontalAlign::Center,
@@ -134,11 +137,11 @@ impl Renderable for Rule {
 
         match &self.title {
             None => {
-                // No title: just a full-width line
+                // No title: just a full-width line.
+                // Directly use set_cell_size on the rule string — no need to
+                // build an intermediate Text (overflow setting was unused there).
                 let line_text = rule_with_chars.rule_line(width);
-                let mut text = Text::new(&line_text, rule_style.clone());
-                text.overflow = Some(OverflowMethod::Crop);
-                let exact = set_cell_size(text.plain(), width);
+                let exact = set_cell_size(&line_text, width);
                 segments.push(Segment::styled(&exact, rule_style));
                 segments.push(Segment::new(&self.end, None, None));
             }
@@ -416,7 +419,7 @@ mod tests {
             .build();
         let rule = Rule::new();
         let mut opts = console.options();
-        opts.encoding = "ascii".to_string();
+        opts.encoding = std::borrow::Cow::Borrowed("ascii");
         let segments = rule.gilt_console(&console, &opts);
         let output = segments_to_text(&segments);
         let line = output.trim_end_matches('\n');

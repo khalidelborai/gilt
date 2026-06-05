@@ -51,6 +51,10 @@ impl Default for GiltMietteHandler {
 
 impl ReportHandler for GiltMietteHandler {
     fn debug(&self, error: &dyn Diagnostic, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Finding #19 (DECLINED): `f.width()` is misused as terminal width and
+        // always returns ~80. A real terminal-width query requires a syscall or
+        // new dep (forbidden). We keep a sensible fixed default of 80 and
+        // document the divergence. The `unwrap_or(80)` already encodes this.
         let width = f.width().unwrap_or(80);
         let mut console = Console::builder()
             .width(width)

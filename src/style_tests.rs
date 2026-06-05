@@ -872,6 +872,91 @@ fn test_underline_equality() {
     assert_ne!(s1, s3);
 }
 
+// -- Display↔parse round-trip tests for underline styles (Fix 7) --------
+
+#[test]
+fn test_underline_style_display_parse_roundtrip() {
+    for variant in &[
+        UnderlineStyle::Single,
+        UnderlineStyle::Double,
+        UnderlineStyle::Curly,
+        UnderlineStyle::Dotted,
+        UnderlineStyle::Dashed,
+    ] {
+        let mut original = Style::null();
+        original.set_underline_style(Some(*variant));
+        let display_str = original.to_string();
+        let parsed = Style::parse_strict(&display_str).expect("round-trip parse failed");
+        assert_eq!(
+            parsed.underline_style(),
+            Some(*variant),
+            "round-trip failed for {:?}: display='{}', parsed={:?}",
+            variant,
+            display_str,
+            parsed.underline_style()
+        );
+    }
+}
+
+#[test]
+fn test_underline_color_display_parse_roundtrip() {
+    let mut original = Style::null();
+    original.set_underline_color(Some(Color::parse("red").unwrap()));
+    let display_str = original.to_string();
+    let parsed = Style::parse_strict(&display_str).expect("round-trip parse failed");
+    assert_eq!(
+        parsed.underline_color().map(|c| c.name().into_owned()),
+        Some("red".to_string()),
+        "underline_color round-trip failed: display='{}'",
+        display_str,
+    );
+}
+
+// -- Style::chain and Style::normalize tests (Fix 8) --------------------
+
+#[test]
+fn test_chain_is_combine() {
+    let styles = vec![
+        Style::parse("red"),
+        Style::parse("bold"),
+        Style::parse("on blue"),
+    ];
+    let chained = Style::chain(&styles);
+    let combined = Style::combine(&styles);
+    assert_eq!(chained, combined);
+}
+
+#[test]
+fn test_chain_later_overrides_earlier() {
+    let styles = vec![Style::parse("red"), Style::parse("blue")];
+    let result = Style::chain(&styles);
+    assert_eq!(result.color().unwrap().name(), "blue");
+}
+
+#[test]
+fn test_normalize_null_is_none() {
+    let style = Style::null();
+    assert_eq!(style.normalize(), "none");
+}
+
+#[test]
+fn test_normalize_bold_red() {
+    let style = Style::parse("bold red");
+    let norm = style.normalize();
+    // The canonical form is the Display output; re-parsing must reproduce
+    // the same style.
+    let reparsed = Style::parse_strict(&norm).unwrap();
+    assert_eq!(style, reparsed);
+}
+
+#[test]
+fn test_normalize_roundtrips() {
+    let style = Style::parse("italic on black");
+    let norm = style.normalize();
+    let reparsed = Style::parse_strict(&norm).unwrap();
+    assert_eq!(style, reparsed);
+}
+
 #[test]
 fn test_public_setters() {
     let mut style = Style::null();

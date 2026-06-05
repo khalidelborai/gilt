@@ -48,6 +48,9 @@ pub struct Pretty {
     pub expand_all: bool,
     /// When `true`, prepend the type name (e.g. `"String"`, `"Object"`) to the output.
     pub type_annotation: bool,
+    /// Maximum nesting depth before rendering a placeholder (`{...}` / `[...]`).
+    /// `None` means no depth limit.
+    pub max_depth: Option<usize>,
 }
 
 impl Pretty {
@@ -70,6 +73,7 @@ impl Pretty {
             max_string: None,
             expand_all: false,
             type_annotation: false,
+            max_depth: None,
         }
     }
 
@@ -91,6 +95,7 @@ impl Pretty {
             max_string: None,
             expand_all: false,
             type_annotation: false,
+            max_depth: None,
         }
     }
 
@@ -114,6 +119,7 @@ impl Pretty {
             max_string: None,
             expand_all: false,
             type_annotation: false,
+            max_depth: None,
         }
     }
 
@@ -188,10 +194,21 @@ impl Pretty {
         self
     }
 
+    /// Set the maximum nesting depth before rendering a placeholder.
+    ///
+    /// When a container (array or object) is nested deeper than `max_depth`,
+    /// a placeholder (`{...}` for objects, `[...]` for arrays) is rendered
+    /// instead of expanding the contents. Matches rich's `max_depth` parameter.
+    #[must_use]
+    pub fn with_max_depth(mut self, max_depth: usize) -> Self {
+        self.max_depth = Some(max_depth);
+        self
+    }
+
     // -- Rebuild from JSON with parameters ----------------------------------
 
     /// Re-format the Pretty from a JSON value, applying `max_length`,
-    /// `max_string`, and `expand_all` parameters.
+    /// `max_string`, `expand_all`, and `max_depth` parameters.
     ///
     /// This is the primary way to use the new parameters with JSON data:
     /// ```ignore
@@ -199,19 +216,26 @@ impl Pretty {
     ///     .with_max_length(3)
     ///     .with_max_string(20)
     ///     .with_expand_all(true)
-    ///     .rebuild_json(&value);
+    ///     .with_max_depth(2)
+    ///     .rebuild_json(&value, 80);
     /// ```
+    ///
+    /// The `max_width` argument controls the cell-width threshold above which a
+    /// container is expanded to multi-line form.  Pass the render context's
+    /// `max_width` (e.g. `options.max_width`) for accurate results; use `80` as
+    /// a default when no context is available.
     #[cfg(feature = "json")]
     #[must_use]
-    pub fn rebuild_json(mut self, value: &serde_json::Value) -> Self {
-        let formatted = format_json_value(
-            value,
-            0,
-            self.indent_size,
-            self.max_length,
-            self.max_string,
-            self.expand_all,
-        );
+    pub fn rebuild_json(mut self, value: &serde_json::Value, max_width: usize) -> Self {
+        let opts = JsonFmtOpts {
+            indent_size: self.indent_size,
+            max_length: self.max_length,
+            max_string: self.max_string,
+            expand_all: self.expand_all,
+            max_depth: self.max_depth,
+            max_width,
+        };
+        let formatted = format_json_value(value, 0, opts);
         let hl = JSONHighlighter::new();
         self.text = hl.apply(&formatted);
         self
@@ -270,11 +294,13 @@ impl Renderable for Pretty {
 
         if self.type_annotation {
             let type_name = infer_type_name(self.text.plain());
-            let annotation_style = Style::parse("dim italic");
+            // P2 perf: parse once, reuse on every render
+            static ANNOTATION_STYLE: std::sync::LazyLock<Style> =
+                std::sync::LazyLock::new(|| Style::parse("dim italic"));
             use crate::text::TextPart;
             text = Text::assemble(
                 &[
-                    TextPart::Styled(format!("({}) ", type_name), annotation_style),
+                    TextPart::Styled(format!("({}) ", type_name), ANNOTATION_STYLE.clone()),
                     TextPart::Inner(text),
                 ],
                 Style::null(),
@@ -288,50 +314,80 @@ impl Renderable for Pretty {
 // JSON formatting with parameters
 // ---------------------------------------------------------------------------
 
-/// Format a JSON value as a pretty-printed string, respecting `max_length`,
-/// `max_string`, and `expand_all` parameters.
+/// Formatting options threaded through the recursive JSON formatter.
 #[cfg(feature = "json")]
-fn format_json_value(
-    value: &serde_json::Value,
-    depth: usize,
+#[derive(Clone, Copy)]
+struct JsonFmtOpts {
     indent_size: usize,
     max_length: Option<usize>,
     max_string: Option<usize>,
     expand_all: bool,
-) -> String {
+    max_depth: Option<usize>,
+    /// Terminal cell width used for expand/collapse threshold.
+    max_width: usize,
+}
+
+/// Format a JSON value as a pretty-printed string, respecting `max_length`,
+/// `max_string`, `expand_all`, `max_depth`, and `max_width` parameters.
+#[cfg(feature = "json")]
+fn format_json_value(value: &serde_json::Value, depth: usize, opts: JsonFmtOpts) -> String {
+    let JsonFmtOpts {
+        max_depth,
+        max_string,
+        ..
+    } = opts;
+    // P2 parity: when max_depth is exceeded, render placeholder instead of contents
+    if let Some(max_d) = max_depth {
+        if depth > max_d {
+            match value {
+                serde_json::Value::Array(_) => return "[...]".to_string(),
+                serde_json::Value::Object(_) => return "{...}".to_string(),
+                _ => {} // scalars render normally even at depth > max_d
+            }
+        }
+    }
+
     match value {
         serde_json::Value::Null => "null".to_string(),
         serde_json::Value::Bool(b) => b.to_string(),
         serde_json::Value::Number(n) => n.to_string(),
         serde_json::Value::String(s) => {
-            let truncated = truncate_string(s, max_string);
-            format!("\"{}\"", escape_json_string(&truncated))
+            // P1 parity: rich closes the quote BEFORE the +N indicator:
+            //   "kept"+N  not  "kept+N"
+            match max_string {
+                Some(max) if s.chars().count() > max => {
+                    let kept: String = s.chars().take(max).collect();
+                    let remaining = s.chars().count() - max;
+                    format!("\"{}\"+{}", escape_json_string(&kept), remaining)
+                }
+                _ => format!("\"{}\"", escape_json_string(s)),
+            }
         }
         serde_json::Value::Array(arr) => {
             if arr.is_empty() {
                 return "[]".to_string();
             }
-            format_json_array(arr, depth, indent_size, max_length, max_string, expand_all)
+            format_json_array(arr, depth, opts)
         }
         serde_json::Value::Object(obj) => {
             if obj.is_empty() {
                 return "{}".to_string();
             }
-            format_json_object(obj, depth, indent_size, max_length, max_string, expand_all)
+            format_json_object(obj, depth, opts)
         }
     }
 }
 
 /// Format a JSON array with optional truncation and forced expansion.
 #[cfg(feature = "json")]
-fn format_json_array(
-    arr: &[serde_json::Value],
-    depth: usize,
-    indent_size: usize,
-    max_length: Option<usize>,
-    max_string: Option<usize>,
-    expand_all: bool,
-) -> String {
+fn format_json_array(arr: &[serde_json::Value], depth: usize, opts: JsonFmtOpts) -> String {
+    let JsonFmtOpts {
+        indent_size,
+        max_length,
+        expand_all,
+        max_width,
+        ..
+    } = opts;
     let total = arr.len();
     let display_count = match max_length {
         Some(max) => max.min(total),
@@ -341,25 +397,18 @@ fn format_json_array(
 
     let items: Vec<String> = arr[..display_count]
         .iter()
-        .map(|v| {
-            format_json_value(
-                v,
-                depth + 1,
-                indent_size,
-                max_length,
-                max_string,
-                expand_all,
-            )
-        })
+        .map(|v| format_json_value(v, depth + 1, opts))
         .collect();
 
     let should_expand = if expand_all {
         true
     } else {
-        // Check if the compact representation would be too long (> 80 chars)
-        // or if any item contains newlines
-        let compact = items.join(", ");
-        compact.len() > 80 || items.iter().any(|s| s.contains('\n'))
+        // P2/P3 parity+perf: compare cell width (not raw byte count) against
+        // render context max_width (not a hardcoded 80).
+        // For ASCII JSON the byte length equals the cell width, so this is exact.
+        let compact_len: usize =
+            items.iter().map(|s| s.len()).sum::<usize>() + items.len().saturating_sub(1) * 2; // ", " separators
+        compact_len > max_width || items.iter().any(|s| s.contains('\n'))
     };
 
     if should_expand {
@@ -387,11 +436,15 @@ fn format_json_array(
 fn format_json_object(
     obj: &serde_json::Map<String, serde_json::Value>,
     depth: usize,
-    indent_size: usize,
-    max_length: Option<usize>,
-    max_string: Option<usize>,
-    expand_all: bool,
+    opts: JsonFmtOpts,
 ) -> String {
+    let JsonFmtOpts {
+        indent_size,
+        max_length,
+        expand_all,
+        max_width,
+        ..
+    } = opts;
     let entries: Vec<(&String, &serde_json::Value)> = obj.iter().collect();
     let total = entries.len();
     let display_count = match max_length {
@@ -404,14 +457,7 @@ fn format_json_object(
         .iter()
         .map(|(k, v)| {
             let key_str = format!("\"{}\"", escape_json_string(k));
-            let val_str = format_json_value(
-                v,
-                depth + 1,
-                indent_size,
-                max_length,
-                max_string,
-                expand_all,
-            );
+            let val_str = format_json_value(v, depth + 1, opts);
             format!("{}: {}", key_str, val_str)
         })
         .collect();
@@ -419,8 +465,10 @@ fn format_json_object(
     let should_expand = if expand_all {
         true
     } else {
-        let compact = items.join(", ");
-        compact.len() > 80 || items.iter().any(|s| s.contains('\n'))
+        // P2/P3 parity+perf: compare cell width against render context max_width
+        let compact_len: usize =
+            items.iter().map(|s| s.len()).sum::<usize>() + items.len().saturating_sub(1) * 2; // ", " separators
+        compact_len > max_width || items.iter().any(|s| s.contains('\n'))
     };
 
     if should_expand {
@@ -440,20 +488,6 @@ fn format_json_object(
             result.push_str(&format!(", ... +{} more", truncated_count));
         }
         format!("{{{}}}", result)
-    }
-}
-
-/// Truncate a string if it exceeds `max_string` characters.
-/// Appends `+N` to indicate hidden characters.
-#[cfg(feature = "json")]
-fn truncate_string(s: &str, max_string: Option<usize>) -> String {
-    match max_string {
-        Some(max) if s.chars().count() > max => {
-            let truncated: String = s.chars().take(max).collect();
-            let remaining = s.chars().count() - max;
-            format!("{}+{}", truncated, remaining)
-        }
-        _ => s.to_string(),
     }
 }
 
@@ -529,43 +563,48 @@ fn apply_debug_params(
 }
 
 /// Truncate quoted string literals in a Debug-formatted string.
+///
+/// P3 perf: uses `char_indices()` + a counter instead of materialising
+/// a full `Vec<char>` per call.
 fn truncate_debug_strings(s: &str, max_string: usize) -> String {
     let mut result = String::with_capacity(s.len());
-    let chars: Vec<char> = s.chars().collect();
-    let mut i = 0;
-    while i < chars.len() {
-        if chars[i] == '"' {
-            // Found start of a string literal -- collect its contents
+    let mut chars = s.char_indices().peekable();
+    while let Some((_, ch)) = chars.next() {
+        if ch == '"' {
+            // Found start of a string literal — collect content
             result.push('"');
-            i += 1;
             let mut content = String::new();
-            while i < chars.len() && chars[i] != '"' {
-                if chars[i] == '\\' && i + 1 < chars.len() {
-                    content.push(chars[i]);
-                    content.push(chars[i + 1]);
-                    i += 2;
-                } else {
-                    content.push(chars[i]);
-                    i += 1;
+            loop {
+                match chars.next() {
+                    None => break,
+                    Some((_, '"')) => {
+                        // Closing quote: truncate content if needed, then close
+                        let char_count = content.chars().count();
+                        if char_count > max_string {
+                            let kept: String = content.chars().take(max_string).collect();
+                            let remaining = char_count - max_string;
+                            result.push_str(&kept);
+                            result.push_str(&format!("+{}", remaining));
+                        } else {
+                            result.push_str(&content);
+                        }
+                        result.push('"');
+                        break;
+                    }
+                    Some((_, '\\')) => {
+                        // Escape sequence: consume the next char too
+                        content.push('\\');
+                        if let Some((_, escaped)) = chars.next() {
+                            content.push(escaped);
+                        }
+                    }
+                    Some((_, c)) => {
+                        content.push(c);
+                    }
                 }
             }
-            // Truncate the content if needed
-            let char_count = content.chars().count();
-            if char_count > max_string {
-                let truncated: String = content.chars().take(max_string).collect();
-                let remaining = char_count - max_string;
-                result.push_str(&truncated);
-                result.push_str(&format!("+{}", remaining));
-            } else {
-                result.push_str(&content);
-            }
-            if i < chars.len() {
-                result.push('"'); // closing quote
-                i += 1;
-            }
         } else {
-            result.push(chars[i]);
-            i += 1;
+            result.push(ch);
         }
     }
     result

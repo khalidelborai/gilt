@@ -67,6 +67,9 @@ pub struct Panel {
     pub padding: PaddingDimensions,
     /// If true, apply `ReprHighlighter` to the content before rendering.
     pub highlight: bool,
+    /// Override safe-box substitution. `None` inherits from the console;
+    /// `Some(true)` forces Unicode→ASCII substitution on legacy terminals.
+    pub safe_box: Option<bool>,
 }
 
 impl Panel {
@@ -103,6 +106,7 @@ impl Panel {
             height: None,
             padding: PaddingDimensions::Pair(0, 1),
             highlight: false,
+            safe_box: None,
         }
     }
 
@@ -205,15 +209,47 @@ impl Panel {
         self
     }
 
+    /// Override safe-box substitution.
+    ///
+    /// When `true`, non-ASCII box characters are substituted with their
+    /// ASCII equivalents when the console is in ascii-only mode (rich parity).
+    /// `None` (default) inherits the console setting.
+    #[must_use]
+    pub fn with_safe_box(mut self, safe_box: bool) -> Self {
+        self.safe_box = Some(safe_box);
+        self
+    }
+
     /// Measure the minimum and maximum width requirements.
+    ///
+    /// Uses the content's [`Measurement::maximum`] (longest line) rather than
+    /// `cell_len()` which sums all characters across all lines. Also accounts
+    /// for the title width so the panel is always wide enough to display its
+    /// title (rich parity).
     pub fn measure(&self, _console: &Console, _options: &ConsoleOptions) -> Measurement {
         let (_, right, _, left) = self.padding.unpack();
         let padding = left + right;
-        let content_width = self.content.cell_len();
         let w = if let Some(fixed) = self.width {
             fixed
         } else {
-            content_width + padding + 2
+            // Use the content's true maximum (longest line), not cell_len()
+            // which would sum every character across all lines.
+            let content_max = self.content.measure().maximum;
+            let mut w = content_max + padding + 2;
+
+            // Panel must be wide enough to display its title.
+            if let Some(ref title) = self.title {
+                let mut title_text = title.clone();
+                let plain = title_text.plain().replace('\n', " ");
+                title_text.set_plain(&plain);
+                title_text.expand_tabs(None);
+                title_text.pad(1, ' ');
+                // title needs: border(1) + fill(1) + title + fill(1) + border(1) = title + 4
+                let title_min = title_text.cell_len() + 4;
+                w = w.max(title_min);
+            }
+
+            w
         };
         Measurement::new(w, w)
     }
@@ -293,7 +329,14 @@ fn align_title_segments(
 
 impl Renderable for Panel {
     fn gilt_console(&self, _console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
-        let bx = self.box_chars;
+        // Apply box substitution (ascii_only / safe_box), matching rich behaviour.
+        let safe = self.safe_box.unwrap_or(true);
+        let ascii_only = options.ascii_only();
+        let bx = if ascii_only || safe {
+            self.box_chars.substitute(ascii_only)
+        } else {
+            self.box_chars
+        };
         let (pad_top, pad_right, pad_bottom, pad_left) = self.padding.unpack();
         let horizontal_padding = pad_left + pad_right;
 
@@ -423,25 +466,25 @@ impl Renderable for Panel {
         }
         segments.push(Segment::line());
 
-        // ── Top padding rows ──────────────────────────────────────────
+        // ── Shared border strings (hoisted out of all loops) ─────────
         let left_pad_str = " ".repeat(pad_left);
         let right_pad_str = " ".repeat(pad_right);
+        let mid_l_str = bx.mid_left.to_string();
+        let mid_r_str = bx.mid_right.to_string();
 
+        // ── Top padding rows ──────────────────────────────────────────
         for _ in 0..pad_top {
-            let mid_l = String::from(bx.mid_left);
-            segments.push(Segment::styled(&mid_l, self.border_style.clone()));
+            segments.push(Segment::styled(&mid_l_str, self.border_style.clone()));
             let blank = " ".repeat(child_width);
             segments.push(Segment::styled(&blank, self.style.clone()));
-            let mid_r = String::from(bx.mid_right);
-            segments.push(Segment::styled(&mid_r, self.border_style.clone()));
+            segments.push(Segment::styled(&mid_r_str, self.border_style.clone()));
             segments.push(Segment::line());
         }
 
         // ── Content rows ──────────────────────────────────────────────
         for line in &lines {
             // Left border
-            let mid_l = String::from(bx.mid_left);
-            segments.push(Segment::styled(&mid_l, self.border_style.clone()));
+            segments.push(Segment::styled(&mid_l_str, self.border_style.clone()));
 
             // Left padding
             if pad_left > 0 {
@@ -457,19 +500,16 @@ impl Renderable for Panel {
             }
 
             // Right border
-            let mid_r = String::from(bx.mid_right);
-            segments.push(Segment::styled(&mid_r, self.border_style.clone()));
+            segments.push(Segment::styled(&mid_r_str, self.border_style.clone()));
             segments.push(Segment::line());
         }
 
         // ── Bottom padding rows ───────────────────────────────────────
         for _ in 0..pad_bottom {
-            let mid_l = String::from(bx.mid_left);
-            segments.push(Segment::styled(&mid_l, self.border_style.clone()));
+            segments.push(Segment::styled(&mid_l_str, self.border_style.clone()));
             let blank = " ".repeat(child_width);
             segments.push(Segment::styled(&blank, self.style.clone()));
-            let mid_r = String::from(bx.mid_right);
-            segments.push(Segment::styled(&mid_r, self.border_style.clone()));
+            segments.push(Segment::styled(&mid_r_str, self.border_style.clone()));
             segments.push(Segment::line());
         }
 

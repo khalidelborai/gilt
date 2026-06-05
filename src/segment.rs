@@ -44,12 +44,20 @@ pub enum ControlType {
     /// Set the terminal window title via an OSC sequence.
     SetWindowTitle = 16,
     /// Begin synchronized output (DEC 2026).
+    ///
+    /// **gilt extension** — not present in Python rich's `ControlType` enum.
     BeginSync = 17,
     /// End synchronized output (DEC 2026).
+    ///
+    /// **gilt extension** — not present in Python rich's `ControlType` enum.
     EndSync = 18,
     /// Copy content to the system clipboard via OSC 52.
+    ///
+    /// **gilt extension** — not present in Python rich's `ControlType` enum.
     SetClipboard = 19,
     /// Request the current clipboard contents via OSC 52.
+    ///
+    /// **gilt extension** — not present in Python rich's `ControlType` enum.
     RequestClipboard = 20,
 }
 
@@ -372,8 +380,8 @@ impl Segment {
     /// assert_eq!(lines[1][0].text, "World");
     /// ```
     pub fn split_lines(segments: &[Segment]) -> Vec<Vec<Segment>> {
-        let mut lines = Vec::new();
-        let mut current_line = Vec::new();
+        let mut lines = Vec::with_capacity(segments.len());
+        let mut current_line = Vec::with_capacity(segments.len());
 
         for segment in segments {
             if segment.is_control() {
@@ -383,6 +391,7 @@ impl Segment {
 
                 for (i, part) in parts.iter().enumerate() {
                     if i > 0 {
+                        // Commit the completed line and start a fresh one.
                         lines.push(current_line);
                         current_line = Vec::new();
                     }
@@ -391,16 +400,15 @@ impl Segment {
                         current_line.push(Segment::new(part, segment.style.clone(), None));
                     }
                 }
-
-                // Handle trailing newline
-                if segment.text.ends_with('\n') && !parts.is_empty() {
-                    lines.push(current_line);
-                    current_line = Vec::new();
-                }
             }
         }
 
-        if !current_line.is_empty() || lines.is_empty() {
+        // Push the final partial line only when there is actual content to
+        // preserve — either the current line is non-empty, or at least one
+        // full line was already committed (meaning the input had content).
+        // This prevents a spurious empty line for empty input or input that
+        // consisted only of a trailing newline.
+        if !current_line.is_empty() || !lines.is_empty() {
             lines.push(current_line);
         }
 
@@ -657,48 +665,65 @@ impl Segment {
             return vec![vec![]; cuts.len()];
         }
 
-        let mut result = Vec::new();
-        let mut current_portion = Vec::new();
-        let mut cell_position = 0;
-        let mut cut_index = 0;
+        let mut result = Vec::with_capacity(cuts.len());
+        let mut current_portion = Vec::with_capacity(segments.len());
+        let mut cell_position = 0usize;
+        let mut cut_index = 0usize;
+        let mut seg_idx = 0usize;
+        // When a segment must be split at a cut boundary, the "after" half is
+        // stored here so we do not need to clone the entire input slice. Only
+        // this one owned Segment is ever allocated in the hot path.
+        let mut split_remainder: Option<Segment> = None;
 
-        // Track remaining segments to process
-        let mut remaining_segments: Vec<Segment> = segments.to_vec();
-        let mut seg_idx = 0;
-
-        while cut_index < cuts.len() && seg_idx < remaining_segments.len() {
+        while cut_index < cuts.len() {
             let cut = cuts[cut_index];
 
-            while seg_idx < remaining_segments.len() && cell_position < cut {
-                let segment = &remaining_segments[seg_idx];
+            loop {
+                // Prefer the remainder from the previous split, then index the
+                // original slice — neither requires cloning the whole input.
+                let seg: &Segment = if let Some(ref rem) = split_remainder {
+                    rem
+                } else if seg_idx < segments.len() {
+                    &segments[seg_idx]
+                } else {
+                    break;
+                };
 
-                if segment.is_control() {
-                    current_portion.push(segment.clone());
+                if cell_position >= cut {
+                    break;
+                }
+
+                if seg.is_control() {
+                    current_portion.push(seg.clone());
+                    split_remainder = None;
                     seg_idx += 1;
                     continue;
                 }
 
-                let segment_length = segment.cell_length();
+                let segment_length = seg.cell_length();
                 let segment_end = cell_position + segment_length;
 
                 if segment_end <= cut {
-                    // Entire segment fits in current portion
-                    current_portion.push(segment.clone());
+                    // Entire segment fits in current portion.
+                    current_portion.push(seg.clone());
                     cell_position = segment_end;
+                    split_remainder = None;
                     seg_idx += 1;
                 } else {
-                    // Need to split this segment
+                    // Need to split this segment at the cut boundary.
                     let offset = cut - cell_position;
-                    let (before, after) = segment.split_cells(offset);
+                    let (before, after) = seg.split_cells(offset);
 
                     if !before.is_empty() {
                         current_portion.push(before);
                     }
 
-                    // Replace current segment with the remainder
+                    // Store the "after" half; advance past split_remainder on
+                    // the next iteration.
                     if !after.is_empty() {
-                        remaining_segments[seg_idx] = after;
+                        split_remainder = Some(after);
                     } else {
+                        split_remainder = None;
                         seg_idx += 1;
                     }
 
@@ -708,7 +733,7 @@ impl Segment {
             }
 
             result.push(current_portion);
-            current_portion = Vec::new();
+            current_portion = Vec::with_capacity(segments.len().saturating_sub(seg_idx));
             cut_index += 1;
         }
 
@@ -802,8 +827,8 @@ impl Segment {
         pad: bool,
         include_new_lines: bool,
     ) -> Vec<Vec<Segment>> {
-        let mut result = Vec::new();
-        let mut line: Vec<Segment> = Vec::new();
+        let mut result = Vec::with_capacity(segments.len());
+        let mut line: Vec<Segment> = Vec::with_capacity(segments.len());
 
         for segment in segments {
             if segment.text.contains('\n') && segment.control.is_none() {
