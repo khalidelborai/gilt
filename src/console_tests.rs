@@ -1924,3 +1924,139 @@ fn test_console_stderr_terminal_state() {
         "force_terminal(false) should yield no color system"
     );
 }
+
+// -- Console::notify (OSC 9 desktop notification) ---------------------------
+
+/// `Console::notify` with a title routes through control() and produces the
+/// OSC 9 sequence. Use a recording console + export_text(styles=true) to
+/// capture the raw escape sequences.
+#[test]
+fn test_console_notify_with_title() {
+    // record=true so we can inspect raw escape bytes via export_text(styles=true).
+    // force_terminal(true) ensures is_dumb_terminal() check passes and the
+    // control segment is written (is_dumb_terminal uses TERM env var, not
+    // force_terminal, so we also rely on TERM not being "dumb" in CI).
+    let mut c = Console::builder()
+        .force_terminal(true)
+        .no_color(true)
+        .record(true)
+        .build();
+    c.notify("Build", "Done");
+    let output = c.export_text(false, true);
+    assert!(
+        output.contains("\x1b]9;"),
+        "notify should emit OSC 9 sequence; got {:?}",
+        output
+    );
+    assert!(
+        output.contains("Build: Done"),
+        "notify should include the message; got {:?}",
+        output
+    );
+}
+
+#[test]
+fn test_console_notify_empty_title() {
+    let mut c = Console::builder()
+        .force_terminal(true)
+        .no_color(true)
+        .record(true)
+        .build();
+    c.notify("", "just body");
+    let output = c.export_text(false, true);
+    assert!(
+        output.contains("\x1b]9;"),
+        "notify with empty title should still emit OSC 9; got {:?}",
+        output
+    );
+    assert!(
+        output.contains("just body"),
+        "should include body; got {:?}",
+        output
+    );
+}
+
+// -- Console::set_taskbar_progress (OSC 9;4) --------------------------------
+
+#[test]
+fn test_console_set_taskbar_progress_normal() {
+    use crate::segment::TaskbarState;
+    let mut c = Console::builder()
+        .force_terminal(true)
+        .no_color(true)
+        .record(true)
+        .build();
+    c.set_taskbar_progress(TaskbarState::Normal, 55);
+    let output = c.export_text(false, true);
+    assert!(
+        output.contains("\x1b]9;4;1;"),
+        "should emit OSC 9;4;state=1 for Normal; got {:?}",
+        output
+    );
+    assert!(
+        output.contains("55"),
+        "should include percent 55; got {:?}",
+        output
+    );
+}
+
+#[test]
+fn test_console_set_taskbar_progress_remove() {
+    use crate::segment::TaskbarState;
+    let mut c = Console::builder()
+        .force_terminal(true)
+        .no_color(true)
+        .record(true)
+        .build();
+    c.set_taskbar_progress(TaskbarState::Remove, 0);
+    let output = c.export_text(false, true);
+    assert!(
+        output.contains("\x1b]9;4;0;"),
+        "should emit state=0 for Remove; got {:?}",
+        output
+    );
+}
+
+// -- ConsoleBuilder::log_path / Console::log caller path -------------------
+
+#[test]
+fn test_log_path_false_no_path_in_output() {
+    let mut c = Console::builder()
+        .width(120)
+        .no_color(true)
+        .markup(false)
+        .log_path(false)
+        .build();
+    c.begin_capture();
+    c.log("hello world");
+    let output = c.end_capture();
+    assert!(output.contains("hello world"), "should include message");
+    // With log_path off, no file:line annotation should appear.
+    // The caller file for this test is "console_tests.rs"; check it's absent.
+    assert!(
+        !output.contains("console_tests.rs"),
+        "log_path=false should not include file name; got {:?}",
+        output
+    );
+}
+
+#[test]
+fn test_log_path_true_includes_file_name() {
+    let mut c = Console::builder()
+        .width(120)
+        .no_color(true)
+        .markup(false)
+        .log_path(true)
+        .build();
+    c.begin_capture();
+    c.log("some message");
+    let output = c.end_capture();
+    assert!(output.contains("some message"), "should include message");
+    // With log_path on, the short caller file name should appear.
+    // This test is in console_tests.rs, so "console_tests.rs" should show up.
+    assert!(
+        output.contains("console_tests.rs"),
+        "log_path=true should include caller file name; got {:?}",
+        output
+    );
+}

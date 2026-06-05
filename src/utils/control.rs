@@ -7,7 +7,7 @@
 use std::borrow::Cow;
 use std::fmt;
 
-use crate::segment::{ControlCode, ControlType, Segment};
+use crate::segment::{ControlCode, ControlType, Segment, TaskbarState};
 
 /// Base64 encoding alphabet (RFC 4648).
 const BASE64_CHARS: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -128,6 +128,9 @@ fn render_code(code: &ControlCode) -> String {
             ControlType::EndSync => "\x1b[?2026l".to_string(),
             ControlType::SetClipboard => String::new(),
             ControlType::RequestClipboard => "\x1b]52;c;?\x07".to_string(),
+            // Simple fallbacks for the parameterized OSC 9 types.
+            ControlType::DesktopNotification => String::new(),
+            ControlType::SetTaskbarProgress => String::new(),
         },
         ControlCode::WithParam(ct, n) => match ct {
             ControlType::CursorUp => format!("\x1b[{}A", n),
@@ -142,10 +145,15 @@ fn render_code(code: &ControlCode) -> String {
         ControlCode::WithParamStr(ct, s) => match ct {
             ControlType::SetWindowTitle => format!("\x1b]0;{}\x07", s),
             ControlType::SetClipboard => format!("\x1b]52;c;{}\x07", s),
+            // OSC 9 desktop notification: ESC ] 9 ; <message> BEL
+            ControlType::DesktopNotification => format!("\x1b]9;{}\x07", s),
             _ => render_code(&ControlCode::Simple(*ct)),
         },
         ControlCode::WithTwoParams(ct, x, y) => match ct {
             ControlType::CursorMoveTo => format!("\x1b[{};{}H", y + 1, x + 1), // 0-indexed to 1-indexed
+            // OSC 9;4 taskbar progress: ESC ] 9 ; 4 ; <state> ; <progress> BEL
+            // x = state (TaskbarState as i32), y = percent (0–100)
+            ControlType::SetTaskbarProgress => format!("\x1b]9;4;{};{}\x07", x, y),
             _ => render_code(&ControlCode::Simple(*ct)),
         },
     }
@@ -298,6 +306,56 @@ impl Control {
     /// Most terminals require explicit opt-in for clipboard reading.
     pub fn request_clipboard() -> Self {
         Self::new(vec![ControlCode::Simple(ControlType::RequestClipboard)])
+    }
+
+    /// Send a desktop notification via OSC 9.
+    ///
+    /// If `title` is non-empty, the message is `"{title}: {body}"`;
+    /// otherwise just `"{body}"` is sent. Supported by ConEmu, Windows
+    /// Terminal, and some other terminals.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::control::Control;
+    ///
+    /// let ctrl = Control::notify("Build", "Done");
+    /// assert!(ctrl.to_string().contains("\x1b]9;"));
+    /// assert!(ctrl.to_string().contains("Build: Done"));
+    /// ```
+    pub fn notify(title: &str, body: &str) -> Self {
+        let message = if title.is_empty() {
+            body.to_string()
+        } else {
+            format!("{}: {}", title, body)
+        };
+        Self::new(vec![ControlCode::WithParamStr(
+            ControlType::DesktopNotification,
+            message,
+        )])
+    }
+
+    /// Set the taskbar progress indicator via OSC 9;4 (ConEmu / Windows Terminal).
+    ///
+    /// `state` controls the visual style (normal, error, indeterminate, etc.),
+    /// and `percent` is clamped to 0–100.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::control::Control;
+    /// use gilt::segment::TaskbarState;
+    ///
+    /// let ctrl = Control::taskbar_progress(TaskbarState::Normal, 42);
+    /// assert!(ctrl.to_string().contains("\x1b]9;4;1;"));
+    /// ```
+    pub fn taskbar_progress(state: TaskbarState, percent: u8) -> Self {
+        let pct = percent.min(100) as i32;
+        Self::new(vec![ControlCode::WithTwoParams(
+            ControlType::SetTaskbarProgress,
+            state as i32,
+            pct,
+        )])
     }
 }
 
@@ -540,6 +598,94 @@ mod tests {
     #[test]
     fn test_request_clipboard_segment_is_control() {
         let ctrl = Control::request_clipboard();
+        assert!(ctrl.segment.is_control());
+    }
+
+    // -- Desktop notification (OSC 9) ---------------------------------------
+
+    #[test]
+    fn test_notify_with_title() {
+        let ctrl = Control::notify("Build", "Done");
+        let s = ctrl.to_string();
+        assert!(s.contains("\x1b]9;"), "should contain OSC 9 prefix");
+        assert!(s.contains("Build: Done"), "should contain title: body");
+    }
+
+    #[test]
+    fn test_notify_empty_title() {
+        let ctrl = Control::notify("", "Just a body");
+        let s = ctrl.to_string();
+        assert!(s.contains("\x1b]9;"), "should contain OSC 9 prefix");
+        assert!(s.contains("Just a body"), "should contain body only");
+        assert!(
+            !s.contains(": "),
+            "should not contain colon-separator when title is empty"
+        );
+    }
+
+    #[test]
+    fn test_notify_segment_is_control() {
+        let ctrl = Control::notify("T", "B");
+        assert!(ctrl.segment.is_control());
+    }
+
+    #[test]
+    fn test_notify_bel_terminated() {
+        let ctrl = Control::notify("X", "Y");
+        // OSC sequences must end with BEL (\x07)
+        assert!(
+            ctrl.to_string().ends_with('\x07'),
+            "should be BEL-terminated"
+        );
+    }
+
+    // -- Taskbar progress (OSC 9;4) -----------------------------------------
+
+    #[test]
+    fn test_taskbar_progress_normal() {
+        let ctrl = Control::taskbar_progress(TaskbarState::Normal, 42);
+        let s = ctrl.to_string();
+        assert!(
+            s.contains("\x1b]9;4;1;"),
+            "should contain OSC 9;4;state=1 prefix"
+        );
+        assert!(s.contains("42"), "should contain percent");
+    }
+
+    #[test]
+    fn test_taskbar_progress_remove() {
+        let ctrl = Control::taskbar_progress(TaskbarState::Remove, 0);
+        let s = ctrl.to_string();
+        assert!(s.contains("\x1b]9;4;0;"), "should contain state=0 (remove)");
+    }
+
+    #[test]
+    fn test_taskbar_progress_error() {
+        let ctrl = Control::taskbar_progress(TaskbarState::Error, 75);
+        let s = ctrl.to_string();
+        assert!(s.contains("\x1b]9;4;2;"), "should contain state=2 (error)");
+    }
+
+    #[test]
+    fn test_taskbar_progress_clamps_to_100() {
+        let ctrl = Control::taskbar_progress(TaskbarState::Normal, 200);
+        let s = ctrl.to_string();
+        // percent should be clamped to 100
+        assert!(s.contains(";100\x07"), "should clamp percent to 100");
+    }
+
+    #[test]
+    fn test_taskbar_progress_bel_terminated() {
+        let ctrl = Control::taskbar_progress(TaskbarState::Normal, 50);
+        assert!(
+            ctrl.to_string().ends_with('\x07'),
+            "should be BEL-terminated"
+        );
+    }
+
+    #[test]
+    fn test_taskbar_progress_segment_is_control() {
+        let ctrl = Control::taskbar_progress(TaskbarState::Paused, 0);
         assert!(ctrl.segment.is_control());
     }
 }

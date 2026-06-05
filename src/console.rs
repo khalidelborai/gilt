@@ -348,6 +348,8 @@ pub struct Console {
     safe_box: bool,
     legacy_windows: bool,
     base_style: Option<Style>,
+    /// When `true`, `Console::log` appends the caller's file:line to each log line.
+    log_path: bool,
 
     // Theme
     theme_stack: ThemeStack,
@@ -553,6 +555,7 @@ impl Console {
             safe_box: builder.safe_box,
             legacy_windows: false,
             base_style: None,
+            log_path: builder.log_path,
             theme_stack,
             buffer: Vec::new(),
             buffer_index: 0,
@@ -868,6 +871,45 @@ impl Console {
         self.end_synchronized();
         guard.done = true;
         result
+    }
+
+    // -- Desktop notification (OSC 9) ---------------------------------------
+
+    /// Send a desktop notification via OSC 9.
+    ///
+    /// If `title` is non-empty, the message is `"{title}: {body}"`;
+    /// otherwise just `body` is used. No-ops on dumb terminals.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    ///
+    /// let mut c = Console::builder().force_terminal(true).no_color(true).build();
+    /// c.notify("Build", "Done"); // no-op unless TERM != dumb
+    /// ```
+    pub fn notify(&mut self, title: &str, body: &str) {
+        self.control(&Control::notify(title, body));
+    }
+
+    // -- Taskbar progress (OSC 9;4) -----------------------------------------
+
+    /// Set the taskbar progress indicator via OSC 9;4 (ConEmu / Windows Terminal).
+    ///
+    /// `state` controls the indicator style and `percent` is clamped to 0–100.
+    /// No-ops on dumb terminals.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    /// use gilt::segment::TaskbarState;
+    ///
+    /// let mut c = Console::builder().force_terminal(true).no_color(true).build();
+    /// c.set_taskbar_progress(TaskbarState::Normal, 50);
+    /// ```
+    pub fn set_taskbar_progress(&mut self, state: crate::segment::TaskbarState, percent: u8) {
+        self.control(&Control::taskbar_progress(state, percent));
     }
 
     // -- Clipboard (OSC 52) -------------------------------------------------

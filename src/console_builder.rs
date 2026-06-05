@@ -23,6 +23,7 @@ pub struct ConsoleBuilder {
     pub(crate) quiet: bool,
     pub(crate) soft_wrap: bool,
     pub(crate) safe_box: bool,
+    pub(crate) log_path: bool,
 }
 
 impl Default for ConsoleBuilder {
@@ -43,6 +44,7 @@ impl Default for ConsoleBuilder {
             quiet: false,
             soft_wrap: false,
             safe_box: true,
+            log_path: false,
         }
     }
 }
@@ -136,6 +138,32 @@ impl ConsoleBuilder {
     /// Enable or disable safe box characters (ASCII fallback for non-UTF-8 terminals).
     pub fn safe_box(mut self, sb: bool) -> Self {
         self.safe_box = sb;
+        self
+    }
+
+    /// When `true`, `Console::log` appends the caller's file:line to each log line.
+    ///
+    /// Default: `false`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    ///
+    /// let mut c = Console::builder()
+    ///     .width(80)
+    ///     .no_color(true)
+    ///     .markup(false)
+    ///     .log_path(true)
+    ///     .build();
+    /// c.begin_capture();
+    /// c.log("hello");
+    /// let out = c.end_capture();
+    /// assert!(out.contains("hello"));
+    /// // The caller's file name appears when log_path is true.
+    /// ```
+    pub fn log_path(mut self, lp: bool) -> Self {
+        self.log_path = lp;
         self
     }
 
