@@ -591,6 +591,12 @@ impl Renderable for Traceback {
             actual_show + 1
         };
 
+        // Finding #21: cache source files so a path referenced by multiple
+        // frames (recursion, repeated module) is read at most once per render.
+        #[cfg(feature = "syntax")]
+        let mut file_cache: std::collections::HashMap<String, String> =
+            std::collections::HashMap::new();
+
         for (i, frame) in frames_to_show.iter().enumerate() {
             // Insert ellipsis marker at the halfway point for truncated traces.
             // Finding #17: wording changed to "... N frames hidden ..." to match rich.
@@ -637,7 +643,12 @@ impl Renderable for Traceback {
                         let path = std::path::Path::new(&frame.filename);
                         if (path.is_absolute() || frame.filename.starts_with("./")) && path.exists()
                         {
-                            if let Ok(file_contents) = std::fs::read_to_string(path) {
+                            let file_contents = file_cache
+                                .entry(frame.filename.clone())
+                                .or_insert_with(|| {
+                                    std::fs::read_to_string(path).unwrap_or_default()
+                                });
+                            {
                                 let total_lines = file_contents.lines().count();
                                 if lineno <= total_lines {
                                     let start = lineno.saturating_sub(self.extra_lines).max(1);
