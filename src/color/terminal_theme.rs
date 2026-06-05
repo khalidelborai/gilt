@@ -77,29 +77,36 @@ pub static DEFAULT_TERMINAL_THEME: LazyLock<TerminalTheme> = LazyLock::new(|| {
 });
 
 /// SVG export theme with neutral colors suitable for rendering.
+///
+/// Layout: 8 normal (ANSI 0-7) + 8 bright (ANSI 8-15).
+/// Finding #17: the previous definition had 9 normal entries, shifting all
+/// bright-color indices by one. The stray 9th entry (154,155,153) has been
+/// relocated as the first bright color (bright-black / ANSI 8).
 pub static SVG_EXPORT_THEME: LazyLock<TerminalTheme> = LazyLock::new(|| {
     TerminalTheme::new(
         (41, 41, 41),
         (197, 200, 198),
+        // Normal colors: ANSI 0-7
         vec![
-            (75, 78, 85),
-            (204, 85, 90),
-            (152, 168, 75),
-            (208, 179, 68),
-            (96, 138, 177),
-            (152, 114, 159),
-            (104, 160, 179),
-            (197, 200, 198),
-            (154, 155, 153),
+            (75, 78, 85),    // 0 black
+            (204, 85, 90),   // 1 red
+            (152, 168, 75),  // 2 green
+            (208, 179, 68),  // 3 yellow
+            (96, 138, 177),  // 4 blue
+            (152, 114, 159), // 5 magenta
+            (104, 160, 179), // 6 cyan
+            (197, 200, 198), // 7 white
         ],
+        // Bright colors: ANSI 8-15
         Some(vec![
-            (255, 38, 39),
-            (0, 130, 61),
-            (208, 132, 66),
-            (25, 132, 233),
-            (255, 44, 122),
-            (57, 130, 128),
-            (253, 253, 197),
+            (154, 155, 153), // 8  bright black (was the stray 9th normal entry)
+            (255, 38, 39),   // 9  bright red
+            (0, 130, 61),    // 10 bright green
+            (208, 132, 66),  // 11 bright yellow
+            (25, 132, 233),  // 12 bright blue
+            (255, 44, 122),  // 13 bright magenta
+            (57, 130, 128),  // 14 bright cyan
+            (253, 253, 197), // 15 bright white
         ]),
     )
 });
@@ -224,6 +231,43 @@ mod tests {
         assert_eq!(SVG_EXPORT_THEME.background_color.red, 41);
         assert_eq!(SVG_EXPORT_THEME.background_color.green, 41);
         assert_eq!(SVG_EXPORT_THEME.background_color.blue, 41);
+    }
+
+    /// Finding #17: SVG_EXPORT_THEME must have exactly 16 ANSI palette entries
+    /// (8 normal + 8 bright) so bright-color indices are correct.
+    #[test]
+    fn test_svg_export_theme_palette_is_16_entries() {
+        // Normal colors 0-7: index 7 should be (197,200,198) — the white entry.
+        let normal_white = SVG_EXPORT_THEME.ansi_colors.get(7);
+        assert_eq!(
+            (normal_white.red, normal_white.green, normal_white.blue),
+            (197, 200, 198),
+            "ANSI 7 (normal white) should be (197,200,198)"
+        );
+
+        // Bright colors 8-15: index 8 was the stray 9th entry (154,155,153).
+        let bright_black = SVG_EXPORT_THEME.ansi_colors.get(8);
+        assert_eq!(
+            (bright_black.red, bright_black.green, bright_black.blue),
+            (154, 155, 153),
+            "ANSI 8 (bright black) should be (154,155,153) — relocated from old index 8"
+        );
+
+        // ANSI 9 (bright red) should be (255,38,39).
+        let bright_red = SVG_EXPORT_THEME.ansi_colors.get(9);
+        assert_eq!(
+            (bright_red.red, bright_red.green, bright_red.blue),
+            (255, 38, 39),
+            "ANSI 9 (bright red) should be (255,38,39)"
+        );
+
+        // ANSI 15 (bright white) should be (253,253,197).
+        let bright_white = SVG_EXPORT_THEME.ansi_colors.get(15);
+        assert_eq!(
+            (bright_white.red, bright_white.green, bright_white.blue),
+            (253, 253, 197),
+            "ANSI 15 (bright white) should be (253,253,197)"
+        );
     }
 
     #[test]

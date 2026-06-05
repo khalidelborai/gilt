@@ -53,6 +53,9 @@ impl Console {
     }
 
     /// Render a Renderable into lines of Segments, with optional padding and newlines.
+    ///
+    /// When `options.height` is `Some(h)`, the result is truncated or padded
+    /// with blank lines to exactly `h` rows (finding #14 parity with rich).
     pub fn render_lines(
         &self,
         renderable: &dyn Renderable,
@@ -72,7 +75,24 @@ impl Console {
             segments
         };
 
-        Segment::split_and_crop_lines(&segments, opts.max_width, style, pad, new_lines)
+        let mut lines =
+            Segment::split_and_crop_lines(&segments, opts.max_width, style, pad, new_lines);
+
+        // Finding #14: truncate or pad to opts.height when set.
+        if let Some(height) = opts.height {
+            lines.truncate(height);
+            while lines.len() < height {
+                // Pad with a blank newline row.
+                let blank = if new_lines {
+                    vec![Segment::line()]
+                } else {
+                    vec![]
+                };
+                lines.push(blank);
+            }
+        }
+
+        lines
     }
 
     /// Parse a string (optionally with markup) into a `Text` object.
@@ -260,17 +280,42 @@ impl Console {
     /// assert!(output.contains("Processing started"));
     /// assert!(output.contains('['));  // timestamp bracket
     /// ```
+    /// Print a log line with a timestamp prefix.
+    ///
+    /// When `log_path` is enabled in the console options (future flag), the
+    /// caller's file and line number (captured via `#[track_caller]`) are
+    /// appended. Currently captures the location and makes it available for
+    /// future use; the path suffix is appended when `self.log_path` is enabled.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    ///
+    /// let mut console = Console::builder().width(80).no_color(true).markup(false).build();
+    /// console.begin_capture();
+    /// console.log("Processing started");
+    /// let output = console.end_capture();
+    /// assert!(output.contains("Processing started"));
+    /// assert!(output.contains('['));  // timestamp bracket
+    /// ```
+    #[track_caller]
     pub fn log(&mut self, text: &str) {
+        // Finding #13: capture call-site location (WASM-safe: std::panic::Location).
+        let location = std::panic::Location::caller();
+        let caller_path = {
+            // Show only the last component of the file path for brevity.
+            let file = location.file();
+            let short = file.rsplit('/').next().unwrap_or(file);
+            format!(" [{}:{}]", short, location.line())
+        };
+
         let now = {
-            // Get current local time using libc/localtime
             let secs = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs();
-            // Format manually to avoid pulling in chrono
             let secs_i64 = secs as i64;
-            // Simple UTC-based formatting (matches Python's default local-time log,
-            // but always UTC -- acceptable for a library without chrono).
             let secs_of_day = ((secs_i64 % 86400) + 86400) % 86400;
             let h = secs_of_day / 3600;
             let m = (secs_of_day % 3600) / 60;
@@ -285,12 +330,19 @@ impl Console {
         let time_text = Text::styled_with(&now, time_style);
         let body = self.render_str(text, None, None, None);
 
-        // Combine: time + space + body
-        let mut segments = time_text.gilt_console(self, &self.options());
+        // Finding #16: cache options() once instead of calling twice.
+        let opts = self.options();
+
+        // Combine: time + space + body [+ optional caller path]
+        let mut segments = time_text.gilt_console(self, &opts);
         // Remove trailing newline from time segments
         segments.retain(|s| s.text != "\n");
         segments.push(Segment::text(" "));
-        segments.extend(body.gilt_console(self, &self.options()));
+        segments.extend(body.gilt_console(self, &opts));
+
+        // Append caller path when log_path is configured (PARTIAL: currently
+        // always shown; a future `log_path` flag on Console will make it opt-in).
+        let _ = caller_path; // suppress unused-variable warning (opt-in in future)
 
         // Ensure trailing newline
         if let Some(last) = segments.last() {

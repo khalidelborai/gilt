@@ -470,7 +470,7 @@ mod tests {
             .no_color(true)
             .build();
         let mut opts = console.options();
-        opts.encoding = "ascii".to_string();
+        opts.encoding = std::borrow::Cow::Borrowed("ascii");
         let segments = tree.gilt_console(&console, &opts);
         let output: String = segments
             .iter()

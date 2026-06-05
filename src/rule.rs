@@ -416,7 +416,7 @@ mod tests {
             .build();
         let rule = Rule::new();
         let mut opts = console.options();
-        opts.encoding = "ascii".to_string();
+        opts.encoding = std::borrow::Cow::Borrowed("ascii");
         let segments = rule.gilt_console(&console, &opts);
         let output = segments_to_text(&segments);
         let line = output.trim_end_matches('\n');

@@ -235,7 +235,7 @@ mod tests {
             min_width: 1,
             max_width,
             is_terminal: false,
-            encoding: "utf-8".to_string(),
+            encoding: std::borrow::Cow::Borrowed("utf-8"),
             max_height: 25,
             justify: None,
             overflow: None,

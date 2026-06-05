@@ -59,7 +59,7 @@ impl Theme {
     /// ```
     pub fn config(&self) -> String {
         let mut entries: Vec<(&String, &Style)> = self.styles.iter().collect();
-        entries.sort_by_key(|(name, _)| name.as_str().to_string());
+        entries.sort_by_key(|(name, _)| *name);
 
         let mut result = String::from("[styles]\n");
         for (name, style) in entries {

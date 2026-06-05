@@ -54,14 +54,14 @@ fn test_console_options_ascii_only_utf8() {
 #[test]
 fn test_console_options_ascii_only_ascii() {
     let mut opts = make_default_options();
-    opts.encoding = "ascii".to_string();
+    opts.encoding = std::borrow::Cow::Borrowed("ascii");
     assert!(opts.ascii_only());
 }
 
 #[test]
 fn test_console_options_ascii_only_latin1() {
     let mut opts = make_default_options();
-    opts.encoding = "latin-1".to_string();
+    opts.encoding = std::borrow::Cow::Borrowed("latin-1");
     assert!(opts.ascii_only());
 }
 
@@ -71,7 +71,7 @@ fn test_console_options_copy() {
     let copy = opts.copy();
     assert_eq!(copy.size, opts.size);
     assert_eq!(copy.max_width, opts.max_width);
-    assert_eq!(copy.encoding, opts.encoding);
+    assert_eq!(copy.encoding.as_ref(), opts.encoding.as_ref());
 }
 
 #[test]
@@ -894,7 +894,7 @@ fn test_console_options_default() {
     assert_eq!(opts.size.width, 100);
     assert_eq!(opts.size.height, 40);
     assert_eq!(opts.max_width, 100);
-    assert_eq!(opts.encoding, "utf-8");
+    assert_eq!(opts.encoding.as_ref(), "utf-8");
     assert!(!opts.no_wrap);
     assert_eq!(opts.justify, None);
     assert_eq!(opts.overflow, None);
@@ -1612,7 +1612,7 @@ fn make_default_options() -> ConsoleOptions {
         min_width: 1,
         max_width: 80,
         is_terminal: false,
-        encoding: "utf-8".to_string(),
+        encoding: std::borrow::Cow::Borrowed("utf-8"),
         max_height: 25,
         justify: None,
         overflow: None,
@@ -1667,5 +1667,210 @@ fn with_writer_routes_output_to_buffer() {
         captured.contains("hello via writer"),
         "writer override should receive the printed text, got {:?}",
         captured
+    );
+}
+
+// -- Finding #1: color-system auto-detection helper ----------------------
+
+#[test]
+fn test_detect_color_system_from_truecolor() {
+    use crate::color::ColorSystem;
+    use crate::console::detect_color_system_from;
+    assert_eq!(
+        detect_color_system_from(Some("truecolor"), None),
+        ColorSystem::TrueColor
+    );
+    assert_eq!(
+        detect_color_system_from(Some("24bit"), None),
+        ColorSystem::TrueColor
+    );
+    // Case-insensitive
+    assert_eq!(
+        detect_color_system_from(Some("TRUECOLOR"), None),
+        ColorSystem::TrueColor
+    );
+}
+
+#[test]
+fn test_detect_color_system_from_256color() {
+    use crate::color::ColorSystem;
+    use crate::console::detect_color_system_from;
+    assert_eq!(
+        detect_color_system_from(None, Some("xterm-256color")),
+        ColorSystem::EightBit
+    );
+    assert_eq!(
+        detect_color_system_from(None, Some("screen-256color")),
+        ColorSystem::EightBit
+    );
+}
+
+#[test]
+fn test_detect_color_system_from_standard_term() {
+    use crate::color::ColorSystem;
+    use crate::console::detect_color_system_from;
+    // A non-dumb TERM with no COLORTERM/256color → Standard
+    assert_eq!(
+        detect_color_system_from(None, Some("xterm")),
+        ColorSystem::Standard
+    );
+}
+
+#[test]
+fn test_detect_color_system_from_dumb_falls_through() {
+    use crate::color::ColorSystem;
+    use crate::console::detect_color_system_from;
+    // dumb TERM → fallback to TrueColor (no meaningful signal)
+    assert_eq!(
+        detect_color_system_from(None, Some("dumb")),
+        ColorSystem::TrueColor
+    );
+    // No TERM either
+    assert_eq!(detect_color_system_from(None, None), ColorSystem::TrueColor);
+}
+
+#[test]
+fn test_detect_color_system_colorterm_wins_over_256color_term() {
+    use crate::color::ColorSystem;
+    use crate::console::detect_color_system_from;
+    // COLORTERM=truecolor overrides a 256color TERM
+    assert_eq!(
+        detect_color_system_from(Some("truecolor"), Some("xterm-256color")),
+        ColorSystem::TrueColor
+    );
+}
+
+// -- Finding #3: update_width min_width clamp ----------------------------
+
+#[test]
+fn test_update_width_clamps_min_width() {
+    let mut opts = make_default_options();
+    opts.min_width = 60; // set a large min_width
+    let updated = opts.update_width(40); // reduce to narrower width
+    assert_eq!(updated.max_width, 40);
+    assert_eq!(
+        updated.min_width, 40,
+        "min_width should be clamped to new width"
+    );
+}
+
+#[test]
+fn test_update_width_does_not_clamp_when_min_already_small() {
+    let opts = make_default_options(); // min_width=1
+    let updated = opts.update_width(40);
+    assert_eq!(
+        updated.min_width, 1,
+        "min_width stays 1 when already less than width"
+    );
+}
+
+// -- Finding #4: synchronized drop guard emits end-sync ------------------
+
+#[test]
+fn test_synchronized_guard_emits_end_sync_on_normal_return() {
+    let mut console = Console::new();
+    console.begin_capture();
+    console.synchronized(|c| {
+        c.print_text("test");
+    });
+    let output = console.end_capture();
+    assert!(output.starts_with("\x1b[?2026h"), "begin-sync at start");
+    assert!(
+        output.ends_with("\x1b[?2026l"),
+        "end-sync at end (guard emitted it)"
+    );
+}
+
+// -- Finding #7: HTML export emits <a href> for styled links -------------
+
+#[test]
+fn test_export_html_emits_anchor_for_link() {
+    let mut console = Console::builder()
+        .width(80)
+        .record(true)
+        .markup(false)
+        .build();
+    // Directly push a segment with a link-style into the record buffer.
+    console.record_buffer.push(crate::segment::Segment::styled(
+        "click me",
+        Style::with_link("https://example.com"),
+    ));
+    let html = console.export_html(None, false, true);
+    assert!(
+        html.contains("<a href=\"https://example.com\">"),
+        "should have anchor tag"
+    );
+    assert!(html.contains("click me"), "should have link text");
+}
+
+// -- Finding #11: SVG export derives unique id from content hash ---------
+
+/// Finding #11: SVG export derives a content-unique id from an FNV-1a hash
+/// when the caller passes `unique_id = None`.
+#[test]
+fn test_export_svg_derives_unique_id() {
+    let mut console1 = Console::builder()
+        .width(40)
+        .record(true)
+        .no_color(true)
+        .markup(false)
+        .build();
+    let mut console2 = Console::builder()
+        .width(40)
+        .record(true)
+        .no_color(true)
+        .markup(false)
+        .build();
+    console1.print_text("content alpha unique");
+    console2.print_text("content beta unique");
+    let svg1 = console1.export_svg("Title", None, false, None, 0.61);
+    let svg2 = console2.export_svg("Title", None, false, None, 0.61);
+    // Derived ids start with "gilt-" followed by 16 hex chars (e.g. "gilt-0123456789abcdef").
+    // Extract the first "id=\"gilt-" occurrence as the unique_id used in <defs>.
+    fn extract_clip_id(svg: &str) -> Option<&str> {
+        // The clip-path id is like: id="UNIQUEID-clip-terminal"
+        let marker = "id=\"";
+        let clip_suffix = "-clip-terminal\"";
+        let pos = svg.find(clip_suffix)?;
+        // Walk backwards from the clip suffix to find the opening quote.
+        let before = &svg[..pos];
+        let quote_pos = before.rfind(marker)? + marker.len();
+        Some(&svg[quote_pos..pos])
+    }
+    let id1 = extract_clip_id(&svg1).expect("svg1 should have a clip-path id");
+    let id2 = extract_clip_id(&svg2).expect("svg2 should have a clip-path id");
+    assert!(
+        id1.starts_with("gilt-"),
+        "id1 should start with gilt-: {id1}"
+    );
+    assert!(
+        id2.starts_with("gilt-"),
+        "id2 should start with gilt-: {id2}"
+    );
+    assert_ne!(
+        id1, id2,
+        "different content should yield different unique ids: {id1} vs {id2}"
+    );
+}
+
+#[test]
+fn test_export_svg_static_unique_id_overrides_hash() {
+    let mut console = Console::builder()
+        .width(40)
+        .record(true)
+        .no_color(true)
+        .markup(false)
+        .build();
+    console.print_text("hello");
+    let svg = console.export_svg("Title", None, false, Some("myid"), 0.61);
+    // The clip-path id should use the explicit id.
+    assert!(
+        svg.contains("id=\"myid-clip-terminal\""),
+        "should use the explicit unique_id in clip-path"
+    );
+    // No hash-derived gilt- prefixed unique_id should appear.
+    assert!(
+        !svg.contains("id=\"gilt-"),
+        "no hash-derived id should appear when explicit id given"
     );
 }
