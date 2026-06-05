@@ -307,6 +307,10 @@ impl Text {
 
     /// Measure the text, returning minimum (longest word) and maximum (longest line) widths.
     ///
+    /// For whitespace-only text (no non-whitespace words), the minimum equals
+    /// the maximum (matching Python rich's behaviour where the whole string
+    /// must fit on one line).
+    ///
     /// This is the Rust equivalent of Python's `Text.__gilt_measure__`.
     pub fn measure(&self) -> Measurement {
         let text = self.plain();
@@ -314,7 +318,11 @@ impl Text {
             return Measurement::new(0, 0);
         }
         let max_text_width = text.lines().map(cell_len).max().unwrap_or(0);
-        let min_text_width = text.split_whitespace().map(cell_len).max().unwrap_or(0);
+        let min_text_width = text
+            .split_whitespace()
+            .map(cell_len)
+            .max()
+            .unwrap_or(max_text_width);
         Measurement::new(min_text_width, max_text_width)
     }
 
@@ -386,12 +394,21 @@ impl Text {
     }
 
     /// Append another [`Text`] object, preserving its spans with adjusted offsets.
+    ///
+    /// When the appended text carries a non-null base `style`, that style is
+    /// promoted to a span covering the entire appended range, matching Python
+    /// rich's behaviour where `Text.style` acts as a base style layer.
     pub fn append_text(&mut self, text: &Text) -> &mut Self {
         let offset = self.len();
         let other_len = text.len();
         self.text.push_str(&text.text);
         self.invalidate_char_len();
         self.set_char_len(offset + other_len);
+        // Promote the appended text's base style as a span over the appended range.
+        if other_len > 0 && !text.style.is_null() {
+            self.spans
+                .push(Span::new(offset, offset + other_len, text.style.clone()));
+        }
         for span in &text.spans {
             self.spans.push(span.move_span(offset));
         }
@@ -808,10 +825,18 @@ impl Text {
         }
     }
 
-    /// Pad the text to `width` terminal cells using the given alignment and fill character.
+    /// Pad or truncate the text to exactly `width` terminal cells using the
+    /// given alignment and fill character.
     ///
-    /// If the text already meets or exceeds `width`, no padding is added.
+    /// Content wider than `width` is truncated first (fold/crop), then padding
+    /// is applied.  This matches Python rich's `Text.align` behaviour.
     pub fn align(&mut self, align: JustifyMethod, width: usize, character: char) {
+        // Truncate first so over-wide content does not escape the target width.
+        let text_width = self.cell_len();
+        if text_width > width {
+            self.truncate(width, Some(OverflowMethod::Fold), false);
+        }
+
         let text_width = self.cell_len();
         if text_width >= width {
             return;
@@ -927,66 +952,80 @@ impl Text {
         count
     }
 
-    /// Apply `style` to every occurrence of each word (matched at word boundaries).
+    /// Apply `style` to every occurrence of each word.
+    ///
+    /// Matches are plain substring matches (no word-boundary anchors), which
+    /// is consistent with Python rich's `highlight_words` behaviour — it also
+    /// matches inside larger words.
     ///
     /// Returns the total number of matches across all words.
     pub fn highlight_words(&mut self, words: &[&str], style: Style, case_sensitive: bool) -> usize {
-        let mut count = 0;
-        for word in words {
-            let escaped = regex::escape(word);
-            let pattern_str = if case_sensitive {
-                format!(r"\b{}\b", escaped)
-            } else {
-                format!(r"(?i)\b{}\b", escaped)
-            };
-            if let Ok(re) = Regex::new(&pattern_str) {
-                count += self.highlight_regex(&re, style.clone());
-            }
+        if words.is_empty() {
+            return 0;
         }
-        count
+        // Build a plain alternation: (?:word1|word2|...)
+        let escaped: Vec<String> = words.iter().map(|w| regex::escape(w)).collect();
+        let alternation = escaped.join("|");
+        let pattern_str = if case_sensitive {
+            format!(r"(?:{})", alternation)
+        } else {
+            format!(r"(?i)(?:{})", alternation)
+        };
+        if let Ok(re) = Regex::new(&pattern_str) {
+            self.highlight_regex(&re, style)
+        } else {
+            0
+        }
     }
 
     // -- Tab expansion ------------------------------------------------------
 
-    /// Replace tab characters with spaces, adjusting span positions accordingly.
+    /// Replace tab characters with spaces, advancing to the next tab stop.
+    ///
+    /// Each `\t` emits `tab_size - (cell_offset % tab_size)` spaces, where
+    /// `cell_offset` is the current column position (in terminal cells, so CJK
+    /// before a tab counts as 2).  This matches Python rich's behaviour.
     ///
     /// Uses the given `tab_size`, falling back to [`Text::tab_size`], then to 8.
     pub fn expand_tabs(&mut self, tab_size: Option<usize>) {
         let tab_size = tab_size.unwrap_or(self.tab_size.unwrap_or(8));
-        if !self.text.contains('\t') {
+        if tab_size == 0 || !self.text.contains('\t') {
             return;
         }
 
-        let old_text = self.text.clone();
-        let spaces: String = std::iter::repeat_n(' ', tab_size).collect();
-        let new_text = old_text.replace('\t', &spaces);
+        // Build (new_text, char_offset_map) in a single streaming pass.
+        // char_offset_map[old_char_idx] = new_char_idx (after expansion).
+        let old_len = self.text.chars().count();
+        let mut new_text = String::with_capacity(self.text.len() + 64);
+        let mut char_offset_map: Vec<usize> = Vec::with_capacity(old_len + 1);
+        let mut new_pos = 0usize; // char position in new_text
+        let mut cell_offset = 0usize; // current column (in terminal cells)
 
-        // Adjust spans: for each tab, chars shift by (tab_size - 1)
-        let old_chars: Vec<char> = old_text.chars().collect();
-        let mut char_offset_map: Vec<usize> = Vec::with_capacity(old_chars.len() + 1);
-        let mut new_pos = 0usize;
-        for &c in &old_chars {
+        for c in self.text.chars() {
             char_offset_map.push(new_pos);
             if c == '\t' {
-                new_pos += tab_size;
+                // Advance to the next tab stop.
+                let spaces = tab_size - (cell_offset % tab_size);
+                new_text.extend(std::iter::repeat_n(' ', spaces));
+                new_pos += spaces;
+                cell_offset += spaces;
             } else {
+                new_text.push(c);
+                let w = cell_len(c.encode_utf8(&mut [0u8; 4]));
                 new_pos += 1;
+                cell_offset += w;
+                // Reset cell_offset at newlines (a new visual line starts at column 0).
+                if c == '\n' {
+                    cell_offset = 0;
+                }
             }
         }
         char_offset_map.push(new_pos); // end sentinel
 
         let mut new_spans = Vec::new();
         for span in &self.spans {
-            let new_start = if span.start < char_offset_map.len() {
-                char_offset_map[span.start]
-            } else {
-                new_pos
-            };
-            let new_end = if span.end < char_offset_map.len() {
-                char_offset_map[span.end]
-            } else {
-                new_pos
-            };
+            let new_start = char_offset_map.get(span.start).copied().unwrap_or(new_pos);
+            let new_end = char_offset_map.get(span.end).copied().unwrap_or(new_pos);
             if new_start < new_end {
                 new_spans.push(Span::new(new_start, new_end, span.style.clone()));
             }
@@ -1068,25 +1107,21 @@ impl Text {
             if line.trim().is_empty() {
                 continue;
             }
-            let indent = line.len() - line.trim_start().len();
+            // Count code points (not bytes) so multibyte whitespace like
+            // U+3000 IDEOGRAPHIC SPACE is counted as one indent step.
+            let indent = line.chars().count() - line.trim_start().chars().count();
             if indent == 0 {
                 continue;
             }
-            // Only consider even indentation levels
-            if indent % 2 != 0 {
-                // Include odd indentation too, but prefer even
-                indent_gcd = gcd(indent_gcd, indent);
-            } else {
-                indent_gcd = gcd(indent_gcd, indent);
-            }
+            indent_gcd = gcd(indent_gcd, indent);
         }
         if indent_gcd == 0 {
-            // Fallback: check if any lines are indented
+            // Fallback: return the first non-zero indentation found.
             for line in self.text.lines() {
                 if line.trim().is_empty() {
                     continue;
                 }
-                let indent = line.len() - line.trim_start().len();
+                let indent = line.chars().count() - line.trim_start().chars().count();
                 if indent > 0 {
                     return indent;
                 }
@@ -1311,8 +1346,8 @@ impl Text {
                 }
                 all_lines.push(line);
             } else {
-                // 3. Wrap the line
-                let offsets = divide_line(line.plain(), width, true);
+                // 3. Wrap the line; fold only when overflow == Fold.
+                let offsets = divide_line(line.plain(), width, overflow == OverflowMethod::Fold);
                 if offsets.is_empty() {
                     all_lines.push(line);
                 } else {
