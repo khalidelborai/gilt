@@ -680,6 +680,59 @@ impl Style {
             && self.underline_style.is_none()
     }
 
+    // -- Typed builder methods (Task 3) ------------------------------------
+
+    /// Set the foreground color from a typed [`Color`] value (builder-style).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::style::Style;
+    /// use gilt::color::Color;
+    ///
+    /// let s = Style::null().fg(Color::from_rgb(255, 0, 0));
+    /// assert!(s.color().is_some());
+    /// ```
+    #[must_use]
+    pub fn fg(mut self, color: Color) -> Self {
+        self.color = Some(color);
+        self
+    }
+
+    /// Set the background color from a typed [`Color`] value (builder-style).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::style::Style;
+    /// use gilt::color::Color;
+    ///
+    /// let s = Style::null().bg(Color::from_rgb(0, 0, 255));
+    /// assert!(s.bgcolor().is_some());
+    /// ```
+    #[must_use]
+    pub fn bg(mut self, color: Color) -> Self {
+        self.bgcolor = Some(color);
+        self
+    }
+
+    /// Set the underline color from a typed [`Color`] value (builder-style).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::style::Style;
+    /// use gilt::color::Color;
+    ///
+    /// let s = Style::null().with_underline_color(Color::from_rgb(0, 255, 0));
+    /// assert!(s.underline_color().is_some());
+    /// ```
+    #[must_use]
+    pub fn with_underline_color(mut self, color: Color) -> Self {
+        self.underline_color = Some(color);
+        self
+    }
+
     /// Returns a copy of this style without colors.
     pub fn without_color(&self) -> Style {
         Style {

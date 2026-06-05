@@ -921,3 +921,57 @@ fn test_multiselect_invalid_number_in_list() {
     assert!(result.is_err());
     assert!(result.unwrap_err().message.contains("not a valid number"));
 }
+
+// ---------------------------------------------------------------------------
+// Task 4: TypedPrompt tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_typed_prompt_valid_input_first_try() {
+    let mut tp = Prompt::new("Enter u16")
+        .with_converter(|s: &str| s.parse::<u16>().map_err(|e| e.to_string()));
+    let mut input = Cursor::new(b"42\n" as &[u8]);
+    let v = tp.ask_with_input(&mut input).unwrap();
+    assert_eq!(v, 42u16);
+}
+
+#[test]
+fn test_typed_prompt_invalid_then_valid() {
+    // Feed "abc" (fails) then "42" (succeeds); should return 42
+    let mut tp = Prompt::new("Enter u16")
+        .with_converter(|s: &str| s.parse::<u16>().map_err(|e| e.to_string()));
+    let mut input = Cursor::new(b"abc\n42\n" as &[u8]);
+    let v = tp.ask_with_input(&mut input).unwrap();
+    assert_eq!(v, 42u16);
+}
+
+#[test]
+fn test_typed_prompt_eof_no_default_returns_error() {
+    let mut tp = Prompt::new("Enter u16")
+        .with_converter(|s: &str| s.parse::<u16>().map_err(|e| e.to_string()));
+    let mut input = Cursor::new(b"" as &[u8]); // immediate EOF
+    let result = tp.ask_with_input(&mut input);
+    assert!(result.is_err(), "EOF with no default should be Err");
+}
+
+#[test]
+fn test_typed_prompt_multiple_retries_then_valid() {
+    let mut tp = Prompt::new("Enter u16")
+        .with_converter(|s: &str| s.parse::<u16>().map_err(|e| e.to_string()));
+    let mut input = Cursor::new(b"bad\nworse\n7\n" as &[u8]);
+    let v = tp.ask_with_input(&mut input).unwrap();
+    assert_eq!(v, 7u16);
+}
+
+#[test]
+fn test_typed_prompt_custom_converter() {
+    // A converter that only accepts "yes" or "no"
+    let mut tp = Prompt::new("yes or no").with_converter(|s: &str| match s.trim() {
+        "yes" => Ok(true),
+        "no" => Ok(false),
+        other => Err(format!("'{}' is not 'yes' or 'no'", other)),
+    });
+    let mut input = Cursor::new(b"maybe\nyes\n" as &[u8]);
+    let v = tp.ask_with_input(&mut input).unwrap();
+    assert!(v);
+}

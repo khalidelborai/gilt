@@ -280,6 +280,57 @@ pub trait Stylize: Sized {
         self.styled(bg_style(color))
     }
 
+    /// Set the foreground to a typed [`Color`] value.
+    ///
+    /// Use this when you already have a `Color` instance (e.g. from
+    /// [`Color::from_rgb`]) and want to avoid a round-trip through the string
+    /// parser.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::styled_str::Stylize;
+    /// use gilt::color::Color;
+    ///
+    /// let styled = "hello".fg_color(Color::from_rgb(255, 128, 0));
+    /// assert!(styled.style.color().is_some());
+    /// ```
+    fn fg_color(self, color: Color) -> StyledStr {
+        self.styled(Style::from_color(Some(color), None))
+    }
+
+    /// Set the background to a typed [`Color`] value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::styled_str::Stylize;
+    /// use gilt::color::Color;
+    ///
+    /// let styled = "hello".bg_color(Color::from_rgb(0, 0, 128));
+    /// assert!(styled.style.bgcolor().is_some());
+    /// ```
+    fn bg_color(self, color: Color) -> StyledStr {
+        self.styled(Style::from_color(None, Some(color)))
+    }
+
+    /// Set the underline color to a typed [`Color`] value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::styled_str::Stylize;
+    /// use gilt::color::Color;
+    ///
+    /// let styled = "hello".underline_color(Color::from_rgb(0, 255, 0));
+    /// assert!(styled.style.underline_color().is_some());
+    /// ```
+    fn underline_color(self, color: Color) -> StyledStr {
+        let mut style = Style::null();
+        style.set_underline_color(Some(color));
+        self.styled(style)
+    }
+
     /// Apply a hyperlink.
     fn link(self, url: &str) -> StyledStr {
         self.styled(Style::with_link(url))
@@ -559,6 +610,37 @@ mod tests {
     #[test]
     fn test_fg_and_bg_arbitrary() {
         let s = "hex".fg("#ff0000").bg("#00ff00");
+        assert!(s.style.color().is_some());
+        assert!(s.style.bgcolor().is_some());
+    }
+
+    // Task 3 typed Color methods on Stylize
+    #[test]
+    fn test_fg_color_typed() {
+        let color = Color::from_rgb(1, 2, 3);
+        let s = "test".fg_color(color);
+        assert!(s.style.color().is_some());
+    }
+
+    #[test]
+    fn test_bg_color_typed() {
+        let color = Color::from_rgb(10, 20, 30);
+        let s = "test".bg_color(color);
+        assert!(s.style.bgcolor().is_some());
+    }
+
+    #[test]
+    fn test_underline_color_typed() {
+        let color = Color::from_rgb(0, 255, 0);
+        let s = "test".underline_color(color);
+        assert!(s.style.underline_color().is_some());
+    }
+
+    #[test]
+    fn test_fg_color_and_bg_color_chain() {
+        let s = "test"
+            .fg_color(Color::from_rgb(255, 0, 0))
+            .bg_color(Color::from_rgb(0, 0, 255));
         assert!(s.style.color().is_some());
         assert!(s.style.bgcolor().is_some());
     }

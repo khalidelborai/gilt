@@ -978,3 +978,49 @@ fn test_public_setters() {
     assert_eq!(style.conceal(), Some(true));
     assert_eq!(style.strike(), Some(true));
 }
+
+// ---------------------------------------------------------------------------
+// Task 3: typed Style builder methods
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_style_fg_sets_foreground() {
+    use crate::color::Color;
+    let color = Color::from_rgb(1, 2, 3);
+    let s = Style::null().fg(color);
+    assert!(s.color().is_some());
+    assert_eq!(
+        s.color().unwrap().get_truecolor(None, true),
+        color.get_truecolor(None, true)
+    );
+}
+
+#[test]
+fn test_style_bg_sets_background() {
+    use crate::color::Color;
+    let color = Color::from_rgb(10, 20, 30);
+    let s = Style::null().bg(color);
+    assert!(s.bgcolor().is_some());
+    assert_eq!(
+        s.bgcolor().unwrap().get_truecolor(None, false),
+        color.get_truecolor(None, false)
+    );
+}
+
+#[test]
+fn test_style_with_underline_color() {
+    use crate::color::Color;
+    let color = Color::from_rgb(0, 255, 0);
+    let s = Style::null().with_underline_color(color);
+    assert!(s.underline_color().is_some());
+}
+
+#[test]
+fn test_style_fg_bg_chain() {
+    use crate::color::Color;
+    let s = Style::null()
+        .fg(Color::from_rgb(255, 0, 0))
+        .bg(Color::from_rgb(0, 0, 255));
+    assert!(s.color().is_some());
+    assert!(s.bgcolor().is_some());
+}

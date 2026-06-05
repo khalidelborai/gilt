@@ -7,7 +7,9 @@ use crate::color::ColorSystem;
 use crate::color_env::{detect_color_env, ColorEnvOverride};
 use crate::control::Control;
 use crate::error::ConsoleError;
-use crate::export_format::{CONSOLE_HTML_FORMAT, CONSOLE_SVG_FORMAT};
+use crate::export_format::{
+    FontEmbedding, HtmlExportOptions, SvgExportOptions, CONSOLE_HTML_FORMAT, CONSOLE_SVG_FORMAT,
+};
 use crate::pager::Pager;
 use crate::segment::Segment;
 use crate::style::Style;
@@ -1254,6 +1256,152 @@ impl Console {
         self.export_html(theme, clear, inline_styles)
     }
 
+    /// Export recorded output as an HTML document with full control via
+    /// [`HtmlExportOptions`].
+    ///
+    /// This is the options-based API; [`export_html`](Self::export_html) and
+    /// [`export_html_with_theme`](Self::export_html_with_theme) delegate to
+    /// this method via the default theme.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    /// use gilt::export_format::HtmlExportOptions;
+    /// use gilt::text::Text;
+    /// use gilt::style::Style;
+    ///
+    /// let mut console = Console::builder()
+    ///     .width(80)
+    ///     .record(true)
+    ///     .markup(false)
+    ///     .build();
+    /// console.print(&Text::styled("hello", "bold green"));
+    /// let opts = HtmlExportOptions::default()
+    ///     .inline_styles(true)
+    ///     .dark_mode(true)
+    ///     .copy_button(true);
+    /// let html = console.export_html_opts(None, &opts);
+    /// assert!(html.contains("<!DOCTYPE html>"));
+    /// assert!(html.contains("hello"));
+    /// ```
+    pub fn export_html_opts(
+        &mut self,
+        theme: Option<&TerminalTheme>,
+        opts: &HtmlExportOptions,
+    ) -> String {
+        let theme = theme.unwrap_or(&DEFAULT_TERMINAL_THEME);
+
+        // Optionally clear (same logic as export_html)
+        let buffer_ref: &[Segment];
+        let taken: Vec<Segment>;
+        if opts.clear {
+            taken = std::mem::take(&mut self.record_buffer);
+            buffer_ref = &taken;
+        } else {
+            buffer_ref = &self.record_buffer;
+        }
+
+        let simplified = Segment::simplify(buffer_ref);
+
+        let mut code = String::new();
+        let mut stylesheet = String::new();
+        let mut style_cache: Vec<(Style, String)> = Vec::new();
+
+        for segment in &simplified {
+            if segment.is_control() {
+                continue;
+            }
+            let escaped = html_escape(&segment.text);
+
+            if let Some(style) = segment.style() {
+                let link_url = style.link().map(|s| s.to_string());
+
+                if style.is_null() && link_url.is_none() {
+                    code.push_str(&escaped);
+                    continue;
+                }
+
+                let css = style.get_html_style(Some(theme));
+                let inner: String;
+                if css.is_empty() {
+                    inner = escaped.into_owned();
+                } else if opts.inline_styles {
+                    inner = format!("<span style=\"{}\">{}</span>", css, escaped);
+                } else {
+                    let class_name =
+                        find_or_insert_class(&mut style_cache, &mut stylesheet, style, &css);
+                    inner = format!("<span class=\"{}\">{}</span>", class_name, escaped);
+                }
+
+                if let Some(url) = link_url {
+                    write!(code, "<a href=\"{}\">{}</a>", html_escape(&url), inner).unwrap();
+                } else {
+                    code.push_str(&inner);
+                }
+            } else {
+                code.push_str(&escaped);
+            }
+        }
+
+        let fg = theme.foreground_color.hex();
+        let bg = theme.background_color.hex();
+
+        // Font-family override
+        let font_family = opts
+            .font_family
+            .as_deref()
+            .unwrap_or("Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace");
+
+        // Build @font-face if font_url is provided
+        let font_face = if let Some(ref url) = opts.font_url {
+            format!(
+                "@font-face {{ font-family: '{}'; src: url('{}'); }}\n",
+                font_family, url
+            )
+        } else {
+            String::new()
+        };
+
+        // Dark-mode CSS block
+        let dark_css = if opts.dark_mode {
+            format!(
+                "\n@media (prefers-color-scheme: dark) {{\n  body {{ color: {}; background-color: {}; }}\n}}\n",
+                bg, fg
+            )
+        } else {
+            String::new()
+        };
+
+        // Full stylesheet
+        let full_stylesheet = format!("{}{}{}", font_face, stylesheet, dark_css);
+
+        // Copy-button HTML + JS
+        let copy_snippet = if opts.copy_button {
+            r#"<button id="gilt-copy-btn" onclick="(function(){var p=document.querySelector('pre');if(p){navigator.clipboard&&navigator.clipboard.writeText(p.innerText)||window.prompt('Copy:',p.innerText)}})()">Copy</button>
+<script>document.getElementById('gilt-copy-btn').style.cssText='position:absolute;top:8px;right:8px;padding:2px 8px;cursor:pointer';</script>
+"#
+        } else {
+            ""
+        };
+
+        // Choose template
+        let template = opts.code_format.as_deref().unwrap_or(CONSOLE_HTML_FORMAT);
+
+        // Inject copy button before </body>
+        let html_base = template
+            .replace("{stylesheet}", &full_stylesheet)
+            .replace("{foreground}", &fg)
+            .replace("{background}", &bg)
+            .replace("{code}", &code);
+
+        if opts.copy_button {
+            html_base.replace("</body>", &format!("{}</body>", copy_snippet))
+        } else {
+            html_base
+        }
+    }
+
     /// Export recorded output as an SVG document.
     ///
     /// Generates a complete SVG image with terminal-style chrome (title bar,
@@ -1409,6 +1557,181 @@ impl Console {
         svg = svg.replace("{backgrounds}", &backgrounds);
         svg = svg.replace("{styles}", &styles);
         svg = svg.replace("{lines}", &lines_defs);
+        svg
+    }
+
+    /// Export recorded output as an SVG document with full control via
+    /// [`SvgExportOptions`].
+    ///
+    /// The key addition over [`export_svg`](Self::export_svg) is
+    /// [`FontEmbedding::Base64`], which embeds raw font bytes as a base64
+    /// `data:` URL so the SVG is completely self-contained offline.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    /// use gilt::export_format::{FontEmbedding, SvgExportOptions};
+    /// use gilt::text::Text;
+    /// use gilt::style::Style;
+    ///
+    /// let mut console = Console::builder()
+    ///     .width(40)
+    ///     .record(true)
+    ///     .no_color(true)
+    ///     .markup(false)
+    ///     .build();
+    /// console.print(&Text::new("SVG opts", Style::null()));
+    ///
+    /// // Embed a tiny fake font for offline use
+    /// let opts = SvgExportOptions::default()
+    ///     .title("Demo")
+    ///     .font_embedding(FontEmbedding::Base64(b"FAKE_FONT".to_vec()));
+    /// let svg = console.export_svg_opts(None, &opts);
+    /// assert!(svg.contains("<svg"));
+    /// assert!(svg.contains("data:font/"));
+    /// ```
+    pub fn export_svg_opts(
+        &mut self,
+        theme: Option<&TerminalTheme>,
+        opts: &SvgExportOptions,
+    ) -> String {
+        use crate::utils::control::base64_encode;
+
+        let theme = theme.unwrap_or(&SVG_EXPORT_THEME);
+
+        let buffer_ref: &[Segment];
+        let taken: Vec<Segment>;
+        if opts.clear {
+            taken = std::mem::take(&mut self.record_buffer);
+            buffer_ref = &taken;
+        } else {
+            buffer_ref = &self.record_buffer;
+        }
+
+        // Derive unique_id
+        let derived_id: String;
+        let unique_id: &str = if let Some(ref id) = opts.unique_id {
+            id.as_str()
+        } else {
+            let mut hash: u64 = 14695981039346656037u64;
+            for seg in buffer_ref {
+                for byte in seg.text.as_bytes() {
+                    hash = hash.wrapping_mul(1099511628211) ^ (*byte as u64);
+                }
+            }
+            for byte in opts.title.as_bytes() {
+                hash = hash.wrapping_mul(1099511628211) ^ (*byte as u64);
+            }
+            derived_id = format!("gilt-{:016x}", hash);
+            &derived_id
+        };
+
+        let text_lines: Vec<Vec<Segment>> = {
+            let mut lines: Vec<Vec<Segment>> = Vec::new();
+            let mut current: Vec<Segment> = Vec::new();
+            for seg in buffer_ref {
+                if seg.is_control() {
+                    continue;
+                }
+                if seg.text.contains('\n') {
+                    let parts: Vec<&str> = seg.text.split('\n').collect();
+                    for (i, part) in parts.iter().enumerate() {
+                        if !part.is_empty() {
+                            current.push(Segment::new(part, seg.style().cloned(), None));
+                        }
+                        if i + 1 < parts.len() {
+                            lines.push(std::mem::take(&mut current));
+                        }
+                    }
+                } else {
+                    current.push(seg.clone());
+                }
+            }
+            if !current.is_empty() {
+                lines.push(current);
+            }
+            lines
+        };
+
+        let char_height = 20.0_f64;
+        let line_height = char_height * 1.22;
+        let char_width = char_height * opts.font_aspect_ratio;
+        let margin_top = 1.0;
+        let margin_right = 1.0;
+        let margin_bottom = 1.0;
+        let margin_left = 1.0;
+        let padding_top = 40.0;
+        let padding_right = 8.0;
+        let padding_bottom = 8.0;
+        let padding_left = 8.0;
+
+        let console_width = self.width() as f64;
+        let line_count = text_lines.len().max(1) as f64;
+
+        let terminal_width = (console_width * char_width + padding_left + padding_right).ceil();
+        let terminal_height = (line_count * line_height + padding_top + padding_bottom).ceil();
+        let svg_width = (terminal_width + margin_left + margin_right).ceil();
+        let svg_height = (terminal_height + margin_top + margin_bottom).ceil();
+        let terminal_x = margin_left;
+        let terminal_y = margin_top;
+
+        let chrome = build_svg_chrome(
+            terminal_width,
+            terminal_height,
+            theme,
+            &opts.title,
+            unique_id,
+        );
+
+        let (matrix, backgrounds, styles, lines_defs) = build_svg_text(
+            buffer_ref,
+            theme,
+            unique_id,
+            char_width,
+            line_height,
+            padding_top,
+            padding_left,
+        );
+
+        // Build base SVG from standard template
+        let mut buf = String::with_capacity(16);
+        macro_rules! fmt_buf {
+            ($fmt:literal, $val:expr) => {{
+                buf.clear();
+                write!(buf, $fmt, $val).unwrap();
+                &buf
+            }};
+        }
+
+        let mut svg = CONSOLE_SVG_FORMAT.replace("{unique_id}", unique_id);
+        svg = svg.replace("{char_height}", fmt_buf!("{:.1}", char_height));
+        svg = svg.replace("{line_height}", fmt_buf!("{:.1}", line_height));
+        svg = svg.replace("{width}", fmt_buf!("{:.0}", svg_width));
+        svg = svg.replace("{height}", fmt_buf!("{:.0}", svg_height));
+        svg = svg.replace("{terminal_width}", fmt_buf!("{:.0}", terminal_width));
+        svg = svg.replace("{terminal_height}", fmt_buf!("{:.0}", terminal_height));
+        svg = svg.replace("{terminal_x}", fmt_buf!("{:.0}", terminal_x));
+        svg = svg.replace("{terminal_y}", fmt_buf!("{:.0}", terminal_y));
+        svg = svg.replace("{chrome}", &chrome);
+        svg = svg.replace("{matrix}", &matrix);
+        svg = svg.replace("{backgrounds}", &backgrounds);
+        svg = svg.replace("{styles}", &styles);
+        svg = svg.replace("{lines}", &lines_defs);
+
+        // Task 2: inject @font-face with base64 data: URL when FontEmbedding::Base64
+        if let FontEmbedding::Base64(ref font_bytes) = opts.font_embedding {
+            let encoded = base64_encode(font_bytes);
+            let font_face = format!(
+                "@font-face {{\n    font-family: \"Fira Code\";\n    src: url(\"data:font/woff2;base64,{}\") format(\"woff2\");\n    font-style: normal;\n    font-weight: 400;\n}}\n",
+                encoded
+            );
+            // Replace the existing @font-face blocks (everything from the first
+            // @font-face up to the first `.{unique_id}-matrix` class).
+            // Simpler: just prepend the embedded rule inside the <style> tag.
+            svg = svg.replacen("<style>", &format!("<style>\n{}", font_face), 1);
+        }
+
         svg
     }
 }

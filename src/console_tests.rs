@@ -2060,3 +2060,152 @@ fn test_log_path_true_includes_file_name() {
         output
     );
 }
+
+// ---------------------------------------------------------------------------
+// Task 1: HtmlExportOptions tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_export_html_opts_copy_button_injects_button_and_script() {
+    use crate::export_format::HtmlExportOptions;
+    use crate::style::Style;
+    use crate::text::Text;
+
+    let mut console = Console::builder()
+        .width(80)
+        .record(true)
+        .markup(false)
+        .build();
+    console.print(&Text::new("hello", Style::null()));
+
+    let opts = HtmlExportOptions::default().copy_button(true);
+    let html = console.export_html_opts(None, &opts);
+    assert!(html.contains("<button"), "expected <button> in HTML");
+    assert!(html.contains("gilt-copy-btn"), "expected copy button id");
+    assert!(html.contains("<script"), "expected <script> tag");
+}
+
+#[test]
+fn test_export_html_opts_dark_mode_injects_dark_css() {
+    use crate::export_format::HtmlExportOptions;
+    use crate::style::Style;
+    use crate::text::Text;
+
+    let mut console = Console::builder()
+        .width(80)
+        .record(true)
+        .markup(false)
+        .build();
+    console.print(&Text::new("dark test", Style::null()));
+
+    let opts = HtmlExportOptions::default().dark_mode(true);
+    let html = console.export_html_opts(None, &opts);
+    assert!(
+        html.contains("prefers-color-scheme"),
+        "expected dark-mode @media query"
+    );
+}
+
+#[test]
+fn test_export_html_opts_font_url_referenced_in_output() {
+    use crate::export_format::HtmlExportOptions;
+    use crate::style::Style;
+    use crate::text::Text;
+
+    let mut console = Console::builder()
+        .width(80)
+        .record(true)
+        .markup(false)
+        .build();
+    console.print(&Text::new("font test", Style::null()));
+
+    let opts = HtmlExportOptions::default()
+        .font_url("https://example.com/my-font.woff2")
+        .font_family("MyFont");
+    let html = console.export_html_opts(None, &opts);
+    assert!(
+        html.contains("https://example.com/my-font.woff2"),
+        "font URL should appear in output"
+    );
+}
+
+#[test]
+fn test_export_html_opts_defaults_match_export_html() {
+    use crate::export_format::HtmlExportOptions;
+    use crate::style::Style;
+    use crate::text::Text;
+
+    let mut c1 = Console::builder()
+        .width(80)
+        .record(true)
+        .markup(false)
+        .build();
+    let mut c2 = Console::builder()
+        .width(80)
+        .record(true)
+        .markup(false)
+        .build();
+
+    c1.print(&Text::new("shared", Style::null()));
+    c2.print(&Text::new("shared", Style::null()));
+
+    let via_opts = c1.export_html_opts(None, &HtmlExportOptions::default());
+    let via_direct = c2.export_html(None, false, false);
+    assert_eq!(via_opts, via_direct);
+}
+
+// ---------------------------------------------------------------------------
+// Task 2: FontEmbedding SVG tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_export_svg_opts_base64_font_embedding() {
+    use crate::export_format::{FontEmbedding, SvgExportOptions};
+    use crate::style::Style;
+    use crate::text::Text;
+
+    let mut console = Console::builder()
+        .width(40)
+        .record(true)
+        .no_color(true)
+        .markup(false)
+        .build();
+    console.print(&Text::new("SVG embed", Style::null()));
+
+    let font_bytes = b"FAKE_FONT_DATA".to_vec();
+    let opts = SvgExportOptions::default()
+        .title("Embed Test")
+        .font_embedding(FontEmbedding::Base64(font_bytes.clone()));
+    let svg = console.export_svg_opts(None, &opts);
+
+    assert!(svg.contains("<svg"), "should contain <svg");
+    assert!(svg.contains("data:font/"), "should contain data: URL");
+    // The base64 of b"FAKE_FONT_DATA" must appear
+    assert!(
+        svg.contains("RkFLRV9GT05UX0RBVEE="),
+        "base64 of FAKE_FONT_DATA should appear in SVG"
+    );
+}
+
+#[test]
+fn test_export_svg_opts_none_embedding_no_data_url() {
+    use crate::export_format::{FontEmbedding, SvgExportOptions};
+    use crate::style::Style;
+    use crate::text::Text;
+
+    let mut console = Console::builder()
+        .width(40)
+        .record(true)
+        .no_color(true)
+        .markup(false)
+        .build();
+    console.print(&Text::new("SVG no embed", Style::null()));
+
+    let opts = SvgExportOptions::default()
+        .title("No Embed")
+        .font_embedding(FontEmbedding::None);
+    let svg = console.export_svg_opts(None, &opts);
+
+    assert!(svg.contains("<svg"), "should contain <svg");
+    assert!(!svg.contains("data:font/"), "should NOT contain data: URL");
+}
