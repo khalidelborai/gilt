@@ -17,13 +17,14 @@
 //! use gilt::text::Text;
 //! use gilt::style::Style;
 //!
+//! use futures_util::stream;
+//!
 //! #[tokio::main]
 //! async fn main() {
-//!     // Track async stream
-//!     let stream = tokio::fs::read_dir("./src").await.unwrap();
-//!     let progress_stream = stream.track_progress("Scanning files", None);
-//!     
-//!     // Use the stream
+//!     // Track any async `Stream` (here a simple range stream)
+//!     let items = stream::iter(0..100u64);
+//!     let progress_stream = items.track_progress("Scanning files", Some(100.0));
+//!     let _ = progress_stream; // drive it with `futures_util::StreamExt::next`
 //! }
 //! ```
 
@@ -55,13 +56,15 @@ use crate::text::Text;
 ///
 /// ```rust,no_run
 /// use gilt::r#async::ProgressStreamExt;
+/// use futures_util::stream;
 ///
 /// #[tokio::main]
 /// async fn main() {
-///     let stream = tokio::fs::read_dir("./src").await.unwrap();
-///     let progress_stream = stream.track_progress("Scanning files", None);
-///     
+///     let items = stream::iter(0..100u64);
+///     let progress_stream = items.track_progress("Scanning files", None);
+///
 ///     // Each item yielded advances the progress
+///     let _ = progress_stream;
 /// }
 /// ```
 pub trait ProgressStreamExt: Stream {
@@ -74,11 +77,13 @@ pub trait ProgressStreamExt: Stream {
     ///
     /// ```rust,no_run
     /// use gilt::r#async::ProgressStreamExt;
+    /// use futures_util::stream;
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let stream = tokio::fs::read_dir("./src").await.unwrap();
-    ///     let progress_stream = stream.track_progress("Scanning files", Some(100.0));
+    ///     let items = stream::iter(0..100u64);
+    ///     let progress_stream = items.track_progress("Scanning files", Some(100.0));
+    ///     let _ = progress_stream;
     /// }
     /// ```
     fn track_progress(self, description: &str, total: Option<f64>) -> ProgressStream<Self>
