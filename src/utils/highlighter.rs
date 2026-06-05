@@ -271,20 +271,36 @@ impl Highlighter for JSONHighlighter {
         }
 
         // Additional pass: detect JSON keys (strings followed by ':')
+        // P2 perf: build a byte→char index once, then look up O(1) per match
+        // instead of recomputing an O(prefix) chars().count() per regex match.
         let plain = text.plain().to_string();
+        let plain_len_bytes = plain.len();
+
+        // b2c[byte_pos] = char_index (for valid UTF-8 char start bytes)
+        let mut b2c = vec![0usize; plain_len_bytes + 1];
+        {
+            let mut char_idx = 0usize;
+            for (byte_idx, _) in plain.char_indices() {
+                b2c[byte_idx] = char_idx;
+                char_idx += 1;
+            }
+            b2c[plain_len_bytes] = char_idx;
+        }
+
+        // Build a char-indexed view for the cursor walk
         let plain_chars: Vec<char> = plain.chars().collect();
-        let plain_len = plain_chars.len();
+        let plain_len_chars = plain_chars.len();
 
         if let Some(key_style) = DEFAULT_STYLES.get("json.key") {
             for mat in JSON_STR_RE.find_iter(&plain) {
                 let byte_start = mat.start();
                 let byte_end = mat.end();
-                let char_start = plain[..byte_start].chars().count();
-                let char_end = plain[..byte_end].chars().count();
+                let char_start = b2c[byte_start];
+                let char_end = b2c[byte_end];
 
                 // Walk forward from end of match, skipping whitespace
                 let mut cursor = char_end;
-                while cursor < plain_len {
+                while cursor < plain_len_chars {
                     let ch = plain_chars[cursor];
                     cursor += 1;
                     if ch == ':' {
