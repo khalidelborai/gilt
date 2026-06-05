@@ -61,6 +61,7 @@ Auto-generate widget conversions from struct definitions. See [`crates/gilt-deri
 | API docs | [docs.rs/gilt](https://docs.rs/gilt) |
 | Release notes | [CHANGELOG.md](CHANGELOG.md) |
 | **v1.0 migration guide** | [MIGRATION_v1.md](MIGRATION_v1.md) |
+| Live & streaming guide | [docs/live-and-streaming.md](docs/live-and-streaming.md) |
 | Derive macros | [crates/gilt-derive/](crates/gilt-derive/README.md) · [docs.rs/gilt-derive](https://docs.rs/gilt-derive) |
 | Examples | [`examples/`](examples/) — run any with `cargo run --example <name>` |
 | Feature flags & deps | [docs.rs/crate/gilt/latest/features](https://docs.rs/crate/gilt/latest/features) |
