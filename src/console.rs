@@ -399,6 +399,33 @@ pub struct Console {
     /// writes within one synchronized frame to be coalesced into a single
     /// OS write by the `BufWriter` that wraps `writer_override`.
     pub(crate) sync_depth: usize,
+
+    // -- Asciinema v2 export (feature-gated) --------------------------------
+    /// Injected clock function (asciinema feature).
+    ///
+    /// `None` → use the default native/wasm clock inside `clock_now()`.
+    #[cfg(feature = "asciinema")]
+    pub(crate) asciinema_clock: Option<crate::console::console_asciinema::AsciinemaClock>,
+
+    /// Whether an asciinema timed-recording session is currently active.
+    ///
+    /// Set by `begin_asciinema_record`; cleared implicitly when there are
+    /// no events (a session is considered active when `asciinema_start`
+    /// has been set).
+    #[cfg(feature = "asciinema")]
+    pub(crate) asciinema_active: bool,
+
+    /// Absolute clock reading at the time `begin_asciinema_record` was called.
+    ///
+    /// Used to convert absolute clock readings into elapsed-seconds offsets.
+    #[cfg(feature = "asciinema")]
+    pub(crate) asciinema_start: f64,
+
+    /// Accumulated timed events: `(elapsed_secs, ansi_string)`.
+    ///
+    /// Populated by `maybe_record_asciinema_event` during an active session.
+    #[cfg(feature = "asciinema")]
+    pub(crate) asciinema_events: Vec<(f64, String)>,
 }
 
 impl Console {
@@ -623,6 +650,14 @@ impl Console {
             writer_override: None,
             sync_depth: 0,
             capabilities,
+            #[cfg(feature = "asciinema")]
+            asciinema_clock: None,
+            #[cfg(feature = "asciinema")]
+            asciinema_active: false,
+            #[cfg(feature = "asciinema")]
+            asciinema_start: 0.0,
+            #[cfg(feature = "asciinema")]
+            asciinema_events: Vec::new(),
         }
     }
 
@@ -1194,6 +1229,11 @@ use console_export::*;
 #[path = "console_recording.rs"]
 mod console_recording;
 pub use console_recording::Recording;
+
+// Asciinema v2 .cast export (opt-in: requires `asciinema` feature).
+#[cfg(feature = "asciinema")]
+#[path = "console_asciinema.rs"]
+pub mod console_asciinema;
 
 // ---------------------------------------------------------------------------
 // Terminal size query (feature-gated, native only)

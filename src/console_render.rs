@@ -581,6 +581,10 @@ impl Console {
             self.record_buffer.extend(segments.iter().cloned());
         }
 
+        // Asciinema timed-event capture (zero cost when session is not active).
+        #[cfg(feature = "asciinema")]
+        self.maybe_record_asciinema_event(segments);
+
         if let Some(ref mut capture) = self.capture_buffer {
             capture.extend(segments.iter().cloned());
             return;

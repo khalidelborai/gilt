@@ -72,6 +72,7 @@ async = ["dep:tokio", "dep:futures-core", "dep:futures-util"]
 # on non-Windows hosts so the build is always clean without it.
 windows-vt = ["dep:windows-sys"]
 http = ["dep:reqwest", "dep:bytes", "async", "json"]
+asciinema = ["json"]
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.59", features = ["Win32_System_Console", "Win32_Foundation"], optional = true }
