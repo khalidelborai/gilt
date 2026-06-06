@@ -107,6 +107,22 @@ required-features = ["markdown"]
 name = "text_macro"
 required-features = ["derive"]
 
+[[example]]
+name = "asciinema_export"
+required-features = ["asciinema"]
+
+[[example]]
+name = "themed_console"
+required-features = ["json"]
+
+[[example]]
+name = "form"
+required-features = ["interactive"]
+
+[[example]]
+name = "auto_theme"
+required-features = ["terminal-query"]
+
 [[bench]]
 name = "benchmarks"
 harness = false
