@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.7.1] - 2026-06-06
+
+Housekeeping — no API changes.
+
+### Added
+
+- Examples for recent features: `text_macro` (compile-time `text!`),
+  `notifications` (OSC 9 + taskbar), `gradient_progress`
+  (`BarColumn::with_gradient`), `export_themes` (`ThemeRegistry` + themed HTML).
+
+### Internal
+
+- Relocated the `Console` export methods (`export_text`/`export_html`/
+  `export_html_with_theme`/`export_html_opts`/`export_svg`/`export_svg_opts`)
+  from `console.rs` into `console_export.rs` beside their helpers, matching the
+  crate's `#[path]` + `impl Console` split convention (`console.rs` 1779 → 1112
+  lines). Pure relocation: same public paths, no behavior change.
+
 ## [1.7.0] - 2026-06-05
 
 Rust-native differentiators + parity completions, led by a compile-time markup
