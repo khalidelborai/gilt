@@ -105,6 +105,36 @@ impl Default for Rule {
 }
 
 impl Renderable for Rule {
+    /// Return a stable hash of this `Rule`'s visible parameters.
+    ///
+    /// Hashes the title plain text (if any) and the rule characters using
+    /// FNV-1a, mixed with a type-marker to distinguish from `Text`.
+    fn content_hash(&self) -> Option<u64> {
+        const FNV_OFFSET: u64 = 14_695_981_039_346_656_037;
+        const FNV_PRIME: u64 = 1_099_511_628_211;
+        const RULE_MARKER: u64 = 0x0000_0002;
+
+        let mut h = FNV_OFFSET;
+        // Hash the rule characters
+        for byte in self.characters.as_bytes() {
+            h ^= *byte as u64;
+            h = h.wrapping_mul(FNV_PRIME);
+        }
+        // Hash the title plain text, if any
+        if let Some(title) = &self.title {
+            h ^= 0xFF; // separator
+            h = h.wrapping_mul(FNV_PRIME);
+            for byte in title.plain().as_bytes() {
+                h ^= *byte as u64;
+                h = h.wrapping_mul(FNV_PRIME);
+            }
+        }
+        // Mix in type marker
+        h ^= RULE_MARKER;
+        h = h.wrapping_mul(FNV_PRIME);
+        Some(h)
+    }
+
     fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         let width = options.max_width;
 

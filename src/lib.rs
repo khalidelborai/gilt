@@ -13,7 +13,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! gilt = "1.8"
+//! gilt = "1.9"
 //! ```
 //!
 //! Then use the [`prelude`] for convenient access to common types:
@@ -537,7 +537,7 @@
 //! Enable in `Cargo.toml`:
 //!
 //! ```toml
-//! gilt = { version = "1.8", features = ["derive"] }
+//! gilt = { version = "1.9", features = ["derive"] }
 //! ```
 //!
 //! ## `gilt::derives` namespace
@@ -570,11 +570,13 @@
 //! | `readline` | No | `rustyline` | Readline-based prompt completions |
 //! | `asciinema` | No | (json) | `Console::export_asciinema` — asciinema v2 `.cast` export |
 //! | `windows-vt` | No | `windows-sys` | Enable VT processing at `Console::new()` (native Windows) |
+//! | `inline-images` | No | `image` | Decode PNG/JPEG for [`Image`](image::Image) (halfblock works without it) |
+//! | `tty-select` | No | `crossterm` | Interactive `FuzzySelect` (the core `FuzzySelectState` is dep-free) |
 //!
 //! For a minimal build with no heavy dependencies:
 //!
 //! ```toml
-//! gilt = { version = "1.8", default-features = false }
+//! gilt = { version = "1.9", default-features = false }
 //! ```
 //!
 //! # Integrations
@@ -771,6 +773,8 @@ pub mod figlet;
 pub mod gradient;
 pub mod windows_vt;
 pub use utils::group;
+pub mod form;
+pub mod fuzzy_select;
 pub mod layout;
 #[cfg(feature = "markdown")]
 pub mod markdown;
@@ -794,6 +798,28 @@ pub use utils::styled_str;
 pub mod syntax;
 pub mod tree;
 pub mod wrap;
+
+// Inline terminal images (always available for halfblock; `inline-images`
+// feature required for Image::from_path / Image::from_bytes).
+pub mod image;
+
+// Image tests (TDD: written before Image was implemented)
+#[cfg(test)]
+#[path = "image_tests.rs"]
+mod image_tests;
+
+// v1.9 TDD tests (RED before implementation)
+#[cfg(test)]
+#[path = "content_hash_tests.rs"]
+mod content_hash_tests;
+
+#[cfg(test)]
+#[path = "form_tests.rs"]
+mod form_tests;
+
+#[cfg(test)]
+#[path = "fuzzy_select_tests.rs"]
+mod fuzzy_select_tests;
 
 // Feature-gated modules
 #[cfg(feature = "async")]

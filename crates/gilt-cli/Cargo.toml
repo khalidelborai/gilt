@@ -1,0 +1,16 @@
+[package]
+name = "gilt-cli"
+version = "1.9.0"
+edition = "2021"
+rust-version = "1.82"
+description = "CLI binary for gilt — rich terminal output from scripts and CI"
+license = "MIT"
+repository = "https://github.com/khalidelborai/gilt"
+
+[[bin]]
+name = "gilt"
+path = "src/main.rs"
+
+[dependencies]
+gilt = { version = "1.8.0", path = "../..", features = ["markdown", "syntax", "json", "csv"] }
+clap = { version = "4", features = ["derive"] }

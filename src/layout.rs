@@ -6,6 +6,36 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+// ---------------------------------------------------------------------------
+// Per-region dirty-tracking cache (v1.9 Task 1)
+// ---------------------------------------------------------------------------
+
+/// A frame-to-frame cache for per-region dirty tracking in `Layout`.
+///
+/// Stores `(content_hash, rendered_lines)` per named pane. When a child's
+/// `content_hash` matches the cached value, the previous render result is
+/// reused instead of calling `gilt_console` again.
+///
+/// `LayoutCache::new()` creates an empty cache. Pass the same instance across
+/// successive render calls (e.g. inside a Live display loop) to benefit from
+/// caching.  Passing a fresh `LayoutCache` every call is equivalent to the
+/// uncached `Layout::render` path (no performance difference — just more heap
+/// allocations).
+#[derive(Default)]
+pub struct LayoutCache {
+    /// `key → (last_hash, cached_lines)`
+    entries: HashMap<String, (u64, Vec<Vec<Segment>>)>,
+}
+
+impl LayoutCache {
+    /// Create a new, empty `LayoutCache`.
+    pub fn new() -> Self {
+        LayoutCache {
+            entries: HashMap::new(),
+        }
+    }
+}
+
 use crate::console::{Console, ConsoleOptions, Renderable};
 use crate::ratio::{ratio_resolve, Edge};
 use crate::region::Region;
@@ -426,6 +456,119 @@ impl Layout {
                     unnamed_counter += 1;
                     k
                 }
+            };
+
+            render_map.insert(key, (*region, lines));
+        }
+
+        render_map
+    }
+
+    /// Render all leaf layouts, using `cache` to skip re-rendering panes whose
+    /// `content_hash` is unchanged since the last call.
+    ///
+    /// A child that returns `None` from [`Renderable::content_hash`] is always
+    /// re-rendered (the default — same as the uncached `render` path).  A child
+    /// that returns `Some(hash)` is re-rendered only on the first call or when
+    /// the hash changes; subsequent calls reuse the cached segments.
+    ///
+    /// Returns the same `HashMap<String, (Region, Vec<Vec<Segment>>)>` shape as
+    /// [`render`](Self::render).
+    pub fn render_with_cache(
+        &self,
+        console: &Console,
+        options: &ConsoleOptions,
+        cache: &mut LayoutCache,
+    ) -> HashMap<String, (Region, Vec<Vec<Segment>>)> {
+        let render_width = options.max_width;
+        let render_height = options.height.unwrap_or(options.size.height);
+        let region_map = self.make_region_map(render_width, render_height);
+
+        let mut render_map: HashMap<String, (Region, Vec<Vec<Segment>>)> = HashMap::new();
+        let mut unnamed_counter = 0usize;
+
+        for (layout, region) in &region_map {
+            // Only render leaf layouts.
+            if layout.children.iter().any(|c| c.visible) {
+                continue;
+            }
+
+            let child_opts = options.update_dimensions(region.width, region.height);
+
+            // Build the cache key (mirrors the key logic in `render`).
+            let key = match &layout.name {
+                Some(n) => n.clone(),
+                None => {
+                    let k = format!("__unnamed_{}", unnamed_counter);
+                    unnamed_counter += 1;
+                    k
+                }
+            };
+
+            // Try to use the cache.
+            let lines = if let Some(content) = &layout.renderable {
+                let new_hash = content.content_hash();
+                if let Some(hash) = new_hash {
+                    // Check whether the cached entry has the same hash.
+                    if let Some((cached_hash, cached_lines)) = cache.entries.get(&key) {
+                        if *cached_hash == hash {
+                            // Cache hit — reuse the previous render.
+                            cached_lines.clone()
+                        } else {
+                            // Hash changed — re-render and update cache.
+                            let fresh = console.render_lines(
+                                content.as_ref(),
+                                Some(&child_opts),
+                                None,
+                                true,
+                                false,
+                            );
+                            let shaped = Segment::set_shape(
+                                &fresh,
+                                region.width,
+                                Some(region.height),
+                                None,
+                                false,
+                            );
+                            cache.entries.insert(key.clone(), (hash, shaped.clone()));
+                            shaped
+                        }
+                    } else {
+                        // First render for this key — render and populate cache.
+                        let fresh = console.render_lines(
+                            content.as_ref(),
+                            Some(&child_opts),
+                            None,
+                            true,
+                            false,
+                        );
+                        let shaped = Segment::set_shape(
+                            &fresh,
+                            region.width,
+                            Some(region.height),
+                            None,
+                            false,
+                        );
+                        cache.entries.insert(key.clone(), (hash, shaped.clone()));
+                        shaped
+                    }
+                } else {
+                    // No hash (always dirty) — render unconditionally, no cache.
+                    let fresh = console.render_lines(
+                        content.as_ref(),
+                        Some(&child_opts),
+                        None,
+                        true,
+                        false,
+                    );
+                    Segment::set_shape(&fresh, region.width, Some(region.height), None, false)
+                }
+            } else {
+                // Placeholder: always render (no content = always dirty).
+                let placeholder = placeholder_text(layout, region.width, region.height);
+                let fresh =
+                    console.render_lines(&placeholder, Some(&child_opts), None, true, false);
+                Segment::set_shape(&fresh, region.width, Some(region.height), None, false)
             };
 
             render_map.insert(key, (*region, lines));
