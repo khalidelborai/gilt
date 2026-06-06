@@ -140,10 +140,13 @@ impl LiveRender {
     }
 }
 
-impl Renderable for LiveRender {
-    fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
-        // Render the inner content into lines via the live's own console,
-        // so width and theme are always the live console's values.
+impl LiveRender {
+    /// Render the content and return both the per-line segments (for diff)
+    /// and the flat segment list (for the `Renderable` trait).
+    ///
+    /// This is the shared implementation used by both `gilt_console` and
+    /// `gilt_console_lines`, keeping the logic in one place.
+    fn render_to_lines(&self, console: &Console, options: &ConsoleOptions) -> Vec<Vec<Segment>> {
         let style_ref = if self.style.is_null() {
             None
         } else {
@@ -169,9 +172,6 @@ impl Renderable for LiveRender {
                 VerticalOverflowMethod::Ellipsis => {
                     let ellipsis_lines = if max_height > 0 { max_height - 1 } else { 0 };
                     lines.truncate(ellipsis_lines);
-                    // Build an ellipsis text line using the "live.ellipsis" theme
-                    // style, matching rich's behaviour.  Fall back to null if the
-                    // theme key is absent (e.g. in tests without a theme).
                     let ellipsis_style = console
                         .get_style("live.ellipsis")
                         .unwrap_or_else(|_| Style::null());
@@ -188,7 +188,6 @@ impl Renderable for LiveRender {
             }
         }
 
-        // Compute and store the final shape.
         // Trim trailing empty lines caused by Text's trailing newline (Text::end="\n")
         while let Some(last) = lines.last() {
             if last.is_empty() || last.iter().all(|s| s.text.trim().is_empty()) {
@@ -197,8 +196,27 @@ impl Renderable for LiveRender {
                 break;
             }
         }
+
+        // Compute and store the final shape.
         let final_shape = Segment::get_shape(&lines);
         self.shape.set(Some(final_shape));
+
+        lines
+    }
+
+    /// Render the content and return per-line segments for line-diff use.
+    pub(crate) fn gilt_console_lines(
+        &self,
+        console: &Console,
+        options: &ConsoleOptions,
+    ) -> Vec<Vec<Segment>> {
+        self.render_to_lines(console, options)
+    }
+}
+
+impl Renderable for LiveRender {
+    fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
+        let lines = self.render_to_lines(console, options);
 
         // Flatten lines into a single segment list, inserting newlines between
         // lines (but not after the last line).

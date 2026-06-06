@@ -66,7 +66,23 @@ pub fn cell_len(text: &str) -> usize {
     }
     // Per-codepoint sum (NOT text.width(), which is cluster-aware and
     // disagrees with terminal reality for ZWJ sequences). See docstring.
-    text.chars().map(|c| c.width().unwrap_or(0)).sum()
+    //
+    // Opt 3: use the thread-local LRU cache for non-ASCII chars to avoid
+    // repeated unicode_width table lookups for the same codepoints.
+    text.chars()
+        .map(|c| {
+            if (c as u32) < 0x80 {
+                // ASCII: fast path, no cache needed.
+                if (c as u32) >= 0x20 && c != '\x7f' {
+                    1
+                } else {
+                    0
+                }
+            } else {
+                cached_char_width(c)
+            }
+        })
+        .sum()
 }
 
 /// Get the cell width of a single character (0, 1, or 2).
@@ -96,7 +112,8 @@ pub fn get_character_cell_size(c: char) -> usize {
             0
         };
     }
-    c.width().unwrap_or(0)
+    // Opt 3: use the thread-local LRU cache for non-ASCII chars.
+    cached_char_width(c)
 }
 
 /// Crop or pad a string to fit in exactly `total` cells.
@@ -250,9 +267,49 @@ pub fn is_single_cell_widths(text: &str) -> bool {
     text.chars().all(|c| get_character_cell_size(c) == 1)
 }
 
+// RED test lives in the `tests` mod below. See `cell_len_cache_hit_on_second_call`.
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // -- Opt 3: cell_len LRU cache ------------------------------------------
+
+    /// RED test: after calling `cell_len` on a CJK string, the non-ASCII chars
+    /// should be present in the thread-local cache. This test asserts that the
+    /// cache was populated (i.e., the width was stored), which only happens
+    /// AFTER the cache is wired in. Before implementation, `cache_hit_count_for`
+    /// returns `None` because the cache is never populated.
+    #[test]
+    fn cell_len_cache_hit_on_second_call() {
+        // Prime the cache by calling cell_len on a CJK string.
+        let cjk_str = "わさび"; // 3 CJK chars, each 2 cells wide
+        let first = cell_len(cjk_str);
+        assert_eq!(first, 6, "cell_len('わさび') must be 6");
+
+        // The first CJK char 'わ' (U+308F) should now be in the cache.
+        let cached = super::cache_hit_count_for('わ');
+        assert!(
+            cached.is_some(),
+            "after cell_len('わさび'), char 'わ' must be in the LRU cache \
+             (cache was not populated — Opt 3 not yet implemented)"
+        );
+        assert_eq!(cached.unwrap(), 2u8, "cached width of 'わ' must be 2");
+
+        // Second call must give identical result (correctness preserved).
+        let second = cell_len(cjk_str);
+        assert_eq!(second, 6, "repeated cell_len must return same value");
+
+        // Emoji test.
+        let emoji_str = "💩";
+        let emoji_len = cell_len(emoji_str);
+        assert_eq!(emoji_len, 2, "cell_len('💩') must be 2");
+        let cached_emoji = super::cache_hit_count_for('💩');
+        assert!(
+            cached_emoji.is_some(),
+            "after cell_len('💩'), the emoji must be in the LRU cache"
+        );
+        assert_eq!(cached_emoji.unwrap(), 2u8, "cached width of '💩' must be 2");
+    }
 
     #[test]
     fn test_get_character_cell_size() {
@@ -524,6 +581,46 @@ mod tests {
             newline_width
         );
     }
+}
+
+// ---------------------------------------------------------------------------
+// Opt 3: thread-local LRU cache for non-ASCII char widths
+// ---------------------------------------------------------------------------
+
+use lru::LruCache;
+use std::cell::RefCell;
+use std::num::NonZeroUsize;
+
+thread_local! {
+    /// Per-thread LRU cache: char → cell width (as u8, 0/1/2).
+    ///
+    /// Capacity 1024: enough for a full CJK/emoji working set without
+    /// excessive memory use. Only non-ASCII chars are cached; ASCII (< 0x80)
+    /// uses the fast path that already avoids the unicode_width lookup.
+    static CHAR_WIDTH_CACHE: RefCell<LruCache<char, u8>> =
+        RefCell::new(LruCache::new(NonZeroUsize::new(1024).unwrap()));
+}
+
+/// Look up the cached width of a non-ASCII `char`, or compute and store it.
+///
+/// Called only for chars with `c as u32 >= 0x80`. The result is cast to `u8`
+/// (values are 0, 1, or 2 — always fits).
+#[inline]
+fn cached_char_width(c: char) -> usize {
+    CHAR_WIDTH_CACHE.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        if let Some(&w) = cache.get(&c) {
+            return w as usize;
+        }
+        let w = c.width().unwrap_or(0) as u8;
+        cache.put(c, w);
+        w as usize
+    })
+}
+
+#[cfg(test)]
+pub(crate) fn cache_hit_count_for(c: char) -> Option<u8> {
+    CHAR_WIDTH_CACHE.with(|cache| cache.borrow().peek(&c).copied())
 }
 
 #[cfg(test)]

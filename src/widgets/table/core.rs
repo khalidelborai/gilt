@@ -631,6 +631,93 @@ impl Table {
         self.rows.push(Row {
             style: style.map(|s| s.to_string()),
             end_section,
+            col_spans: Vec::new(),
+        });
+    }
+
+    /// Add a row where cells can span multiple columns.
+    ///
+    /// `cells[i]` is the text content of the i-th logical cell; `spans[i]`
+    /// is how many physical columns that cell occupies (1 = normal).  If
+    /// `spans` is shorter than `cells`, the missing tail entries default to 1.
+    ///
+    /// A spanned cell occupies its own column width plus the widths of the
+    /// next `k-1` columns and the `k-1` inter-column separators between them.
+    /// The physical columns consumed by a span emit nothing for that row.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::table::Table;
+    ///
+    /// // 3-column table; row 1 has one cell that spans all 3 columns.
+    /// let mut table = Table::new(&["A", "B", "C"]);
+    /// table.add_row(&["a", "b", "c"]);
+    /// table.add_row_spanned(&["wide cell"], &[3]);
+    /// let output = format!("{table}");
+    /// assert!(output.contains("wide cell"));
+    /// ```
+    pub fn add_row_spanned(&mut self, cells: &[&str], spans: &[usize]) {
+        // Convert &str cells to CellContent.
+        let contents: Vec<CellContent> = cells.iter().map(|&s| CellContent::from(s)).collect();
+
+        let num_columns = self.columns.len();
+
+        // Expand logical cells into physical columns based on spans.
+        // Each logical cell[i] with span[i]=k occupies columns
+        // [physical_col, physical_col+k).  Columns consumed by a span after
+        // the first in that group store a sentinel (empty placeholder) so the
+        // column vec lengths stay consistent.
+        let mut physical_cells: Vec<CellContent> = Vec::with_capacity(num_columns);
+        let mut col_spans_vec: Vec<usize> = Vec::new();
+        let mut phys = 0usize;
+
+        for (i, cell_val) in contents.into_iter().enumerate() {
+            if phys >= num_columns {
+                break;
+            }
+            let span = if i < spans.len() { spans[i].max(1) } else { 1 };
+            // Cap span at remaining columns.
+            let capped_span = span.min(num_columns - phys);
+
+            physical_cells.push(cell_val);
+            col_spans_vec.push(capped_span);
+            phys += capped_span;
+
+            // Fill spanned-over slots with placeholders so column lengths stay equal.
+            // Note: phys was already fully incremented by capped_span above.
+            for _ in 1..capped_span {
+                physical_cells.push(CellContent::Plain(String::new()));
+                col_spans_vec.push(0); // 0 = "consumed by previous span"
+            }
+        }
+
+        // Pad to num_columns if needed.
+        while physical_cells.len() < num_columns {
+            physical_cells.push(CellContent::Plain(String::new()));
+            col_spans_vec.push(1);
+        }
+
+        // Push cells into column vecs, creating columns if needed.
+        for (i, cell_val) in physical_cells.into_iter().enumerate() {
+            if i >= self.columns.len() {
+                let mut new_column = Column {
+                    index: i,
+                    highlight: self.highlight,
+                    ..Default::default()
+                };
+                for _ in 0..self.rows.len() {
+                    new_column.cells.push(CellContent::Plain(String::new()));
+                }
+                self.columns.push(new_column);
+            }
+            self.columns[i].cells.push(cell_val);
+        }
+
+        self.rows.push(Row {
+            style: None,
+            end_section: false,
+            col_spans: col_spans_vec,
         });
     }
 
@@ -1189,17 +1276,61 @@ impl Table {
                 Style::null()
             };
 
+            // Look up span info for this data row (empty vec = all-1s / no spans).
+            let row_col_spans: &[usize] = if let Some(idx) = data_row_index {
+                if idx < self.rows.len() {
+                    &self.rows[idx].col_spans
+                } else {
+                    &[]
+                }
+            } else {
+                &[]
+            };
+
+            // Helper: effective span for physical column `col_index`.
+            // Returns 0 if this column is consumed by a previous span (skip it),
+            // ≥1 otherwise.
+            let get_span = |col_index: usize| -> usize {
+                if row_col_spans.is_empty() {
+                    1
+                } else {
+                    *row_col_spans.get(col_index).unwrap_or(&1)
+                }
+            };
+
+            // Compute effective width for a spanned cell:
+            // sum of the spanned columns' widths plus the (k-1) separator characters.
+            // The separator width is 1 when box_chars is Some, else 0.
+            let separator_width: usize = if the_box.is_some() { 1 } else { 0 };
+
+            let spanned_width = |col_index: usize, span: usize| -> usize {
+                let mut w = 0usize;
+                for k in 0..span {
+                    let ci = col_index + k;
+                    w += if ci < widths.len() { widths[ci] } else { 1 };
+                    if k + 1 < span {
+                        w += separator_width;
+                    }
+                }
+                w
+            };
+
             // Render all cells for this row
             let mut rendered_cells: Vec<Vec<Vec<Segment>>> = Vec::with_capacity(num_cols);
             let mut max_height: usize = 1;
 
+            #[allow(clippy::needless_range_loop)] // col_index needed for get_span / spanned_width
             for col_index in 0..num_cols {
-                let width = if col_index < widths.len() {
-                    widths[col_index]
-                } else {
-                    1
-                };
+                let span = get_span(col_index);
 
+                // span == 0 means this column is consumed by the previous span.
+                // Push an empty sentinel so indices stay in sync.
+                if span == 0 {
+                    rendered_cells.push(Vec::new()); // empty = skip in output
+                    continue;
+                }
+
+                let width = spanned_width(col_index, span);
                 let column = &self.columns[col_index];
 
                 let cell = if row_index < column_cells[col_index].len() {
@@ -1261,11 +1392,15 @@ impl Table {
 
             let mut shaped_cells: Vec<Vec<Vec<Segment>>> = Vec::with_capacity(num_cols);
             for col_index in 0..num_cols {
-                let width = if col_index < widths.len() {
-                    widths[col_index]
-                } else {
-                    1
-                };
+                let span = get_span(col_index);
+
+                // Skip consumed columns (they were rendered as part of the spanned cell).
+                if span == 0 {
+                    shaped_cells.push(Vec::new()); // sentinel
+                    continue;
+                }
+
+                let width = spanned_width(col_index, span);
 
                 let cell_lines = if col_index < rendered_cells.len() {
                     &rendered_cells[col_index]
@@ -1276,6 +1411,12 @@ impl Table {
                     )]]);
                     continue;
                 };
+
+                // Empty sentinel from a span=0 slot: skip.
+                if cell_lines.is_empty() && span == 0 {
+                    shaped_cells.push(Vec::new());
+                    continue;
+                }
 
                 // Get vertical alignment
                 let vertical = if header_row {
@@ -1353,13 +1494,29 @@ impl Table {
                     if show_edge {
                         segments.push(left.clone());
                     }
-                    for (cell_idx, cell) in shaped_cells.iter().enumerate() {
-                        let last_cell = cell_idx == shaped_cells.len() - 1;
+                    // Track which cells are "visible" (span>=1) so we can
+                    // insert dividers only between visible cells, not before/
+                    // after consumed-by-span slots.
+                    let visible_indices: Vec<usize> = shaped_cells
+                        .iter()
+                        .enumerate()
+                        .filter(|(ci, c)| get_span(*ci) != 0 || !c.is_empty())
+                        .map(|(ci, _)| ci)
+                        .collect();
+                    for (vis_pos, &cell_idx) in visible_indices.iter().enumerate() {
+                        let last_visible = vis_pos == visible_indices.len() - 1;
+                        let cell = &shaped_cells[cell_idx];
                         if line_no < cell.len() {
                             segments.extend(cell[line_no].iter().cloned());
                         }
-                        if !last_cell {
-                            segments.push(divider.clone());
+                        if !last_visible {
+                            // Only emit a divider if the NEXT column is not
+                            // consumed by the current span (i.e. get_span > 0).
+                            let next_ci = visible_indices[vis_pos + 1];
+                            let next_span = get_span(next_ci);
+                            if next_span != 0 {
+                                segments.push(divider.clone());
+                            }
                         }
                     }
                     if show_edge {
@@ -1370,7 +1527,11 @@ impl Table {
             } else {
                 // No box
                 for line_no in 0..max_height {
-                    for cell in &shaped_cells {
+                    for (ci, cell) in shaped_cells.iter().enumerate() {
+                        // Skip consumed-by-span columns.
+                        if get_span(ci) == 0 {
+                            continue;
+                        }
                         if line_no < cell.len() {
                             segments.extend(cell[line_no].iter().cloned());
                         }
@@ -1589,6 +1750,100 @@ mod padding_tests {
                 "measure/render disagree at column {col_idx}"
             );
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Task 2 (v1.8): column-span tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod col_span_tests {
+    use super::*;
+
+    /// Helper: render a Table to a plain string (no ANSI).
+    fn render_plain(table: &Table) -> String {
+        format!("{table}")
+    }
+
+    /// A 3-column table where row 1 has a cell spanning ALL 3 columns.
+    /// The spanned text must appear on ONE line and the line must be as wide
+    /// as the full inner table width (not split by vertical borders in the span).
+    #[test]
+    fn col_span_full_3col_text_on_one_line() {
+        let mut table = Table::new(&["A", "B", "C"]);
+        table.box_chars = None;
+        table.show_header = false;
+        table.padding = (0, 0, 0, 0);
+        // Fix column widths so the test is deterministic.
+        table.columns[0].width = Some(5);
+        table.columns[1].width = Some(5);
+        table.columns[2].width = Some(5);
+
+        // row 0: normal row
+        table.add_row(&["a", "b", "c"]);
+        // row 1: first cell spans all 3 columns
+        table.add_row_spanned(&["spanned_text"], &[3]);
+
+        let output = render_plain(&table);
+
+        // The spanned text must appear somewhere in the output.
+        assert!(
+            output.contains("spanned_text"),
+            "spanned text should appear in output: {output:?}"
+        );
+
+        // Find the line(s) that contain "spanned_text".
+        let span_lines: Vec<&str> = output
+            .lines()
+            .filter(|l| l.contains("spanned_text"))
+            .collect();
+        // The spanned cell should appear on exactly one line.
+        assert_eq!(
+            span_lines.len(),
+            1,
+            "spanned text should be on one line, got: {span_lines:?}"
+        );
+    }
+
+    /// Partial span: first cell spans 2 of 3 columns, third cell normal.
+    #[test]
+    fn col_span_partial_2of3_first_cell() {
+        let mut table = Table::new(&["X", "Y", "Z"]);
+        table.box_chars = None;
+        table.show_header = false;
+        table.padding = (0, 0, 0, 0);
+        table.columns[0].width = Some(4);
+        table.columns[1].width = Some(4);
+        table.columns[2].width = Some(4);
+
+        // row 0: normal
+        table.add_row(&["x", "y", "z"]);
+        // row 1: first cell spans 2 cols, second cell is normal (col 2)
+        table.add_row_spanned(&["wide", "z2"], &[2, 1]);
+
+        let output = render_plain(&table);
+        assert!(
+            output.contains("wide"),
+            "partial spanned text should appear: {output:?}"
+        );
+        assert!(
+            output.contains("z2"),
+            "non-spanned cell in partial span row should appear: {output:?}"
+        );
+    }
+
+    /// Default (no spans) path is unchanged — all existing rows render correctly.
+    #[test]
+    fn col_span_default_path_unchanged() {
+        let mut table = Table::new(&["Name", "Age"]);
+        table.add_row(&["Alice", "30"]);
+        table.add_row(&["Bob", "25"]);
+        let output = render_plain(&table);
+        assert!(output.contains("Alice"), "Alice should appear: {output:?}");
+        assert!(output.contains("Bob"), "Bob should appear: {output:?}");
+        assert!(output.contains("30"), "30 should appear: {output:?}");
+        assert!(output.contains("25"), "25 should appear: {output:?}");
     }
 }
 

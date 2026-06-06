@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.8.0] - 2026-06-06
+
+Rendering correctness, performance, and table-stakes quality — guided by the
+cross-language landscape study (`.review/landscape-and-strategy-2026-06-06.md`).
+Built test-first.
+
+### Added
+
+- **`Console::export_asciinema()`** (feature `asciinema`) — export a recorded
+  session to asciinema v2 `.cast` NDJSON, playable by `<asciinema-player>` (VS
+  Code/Jupyter/docs). First in the Rust ecosystem. Injectable WASM-safe clock;
+  `begin_asciinema_record()` / `with_asciinema_clock()` / `save_asciinema()`.
+- **`Console::scoped_record(|c| {…}) -> Recording`** — one-call scoped capture
+  returning `.to_text()` / `.to_html()` / `.to_svg()` (Spectre.Console pattern).
+- **`GILT_THEME` env var** — `ConsoleBuilder` loads a JSON `Theme` file at
+  construction and applies it (glamour's `GLAMOUR_STYLE` pattern; feature `json`,
+  native). `Theme::from_json_str`/`from_json_reader`, `theme_from_path`.
+- **`ConsoleCapabilities`** — env-derived terminal capability flags
+  (`Console::capabilities()`); foundation for image-protocol detection.
+- **Table column-span** — `Table::add_row_spanned(cells, spans)` / `Row.col_spans`.
+- **Windows VT** — opt-in `windows-vt` feature enables
+  `ENABLE_VIRTUAL_TERMINAL_PROCESSING` at `Console::new()` (native Windows).
+
+### Changed / Performance
+
+- **DEC mode 2026 synchronized output** — every Live frame is now wrapped in
+  `CSI ?2026h`/`l`, so terminals apply it atomically (no flicker/tearing, esp.
+  under tmux). Harmless no-op where unsupported.
+- **Line-diff repaint** in `LiveRender` — unchanged lines get a cursor-move only,
+  not an erase+rewrite; combined with frame-skip + sync output the Live display
+  is now flicker-free and minimal-write.
+- **BufWriter write coalescing** — segment writes within a synchronized frame are
+  buffered and flushed once (O(1) syscalls/frame instead of O(segments)).
+- **`cell_len` width cache** — thread-local LRU for non-ASCII character widths.
+
 ## [1.7.1] - 2026-06-06
 
 Housekeeping — no API changes.

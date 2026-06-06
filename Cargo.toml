@@ -3,7 +3,7 @@ members = ["crates/gilt-derive"]
 
 [package]
 name = "gilt"
-version = "1.7.1"
+version = "1.8.0"
 edition = "2021"
 exclude = [".claude/", ".review/", "vlc.zip"]
 description = "Fast, beautiful terminal formatting for Rust — styles, tables, trees, syntax highlighting, progress bars, markdown."
@@ -67,7 +67,15 @@ readline = ["dep:rustyline"]
 anstyle = ["dep:anstyle"]
 csv = ["dep:csv"]
 async = ["dep:tokio", "dep:futures-core", "dep:futures-util"]
+# Opt-in: enable Windows VT processing (ENABLE_VIRTUAL_TERMINAL_PROCESSING).
+# Pulls windows-sys only on Windows targets; the cfg(windows) body is excluded
+# on non-Windows hosts so the build is always clean without it.
+windows-vt = ["dep:windows-sys"]
 http = ["dep:reqwest", "dep:bytes", "async", "json"]
+asciinema = ["json"]
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = ["Win32_System_Console", "Win32_Foundation"], optional = true }
 
 [dev-dependencies]
 pretty_assertions = "1"

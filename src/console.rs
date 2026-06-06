@@ -5,6 +5,7 @@
 
 use crate::color::ColorSystem;
 use crate::color_env::{detect_color_env, ColorEnvOverride};
+use crate::console_caps::ConsoleCapabilities;
 use crate::control::Control;
 use crate::error::ConsoleError;
 use crate::pager::Pager;
@@ -377,6 +378,10 @@ pub struct Console {
     /// to leave room for cross-Console resegmenting in PR3.
     style_interner: Arc<Mutex<StyleInterner>>,
 
+    /// Detected terminal capabilities (color system, truecolor, unicode version, etc.).
+    /// Populated at construction time from environment variables.
+    capabilities: ConsoleCapabilities,
+
     /// Optional output sink override. When `Some`, render output goes here
     /// instead of `std::io::stdout()`. Set via [`Console::with_writer`].
     /// Capture and record modes still take precedence.
@@ -385,6 +390,42 @@ pub struct Console {
     /// downstream code can wrap a Console in `Arc<…>` for cross-task
     /// sharing — same trait bounds Console had pre-v1.2.0.
     pub(crate) writer_override: Option<Box<dyn std::io::Write + Send + Sync>>,
+
+    /// Opt 2 (BufWriter coalescing): nesting depth of
+    /// [`begin_synchronized`](Self::begin_synchronized) calls.
+    ///
+    /// When `sync_depth > 0`, `write_segments` defers the final `flush()`
+    /// to the matching `end_synchronized` call, allowing multiple segment
+    /// writes within one synchronized frame to be coalesced into a single
+    /// OS write by the `BufWriter` that wraps `writer_override`.
+    pub(crate) sync_depth: usize,
+
+    // -- Asciinema v2 export (feature-gated) --------------------------------
+    /// Injected clock function (asciinema feature).
+    ///
+    /// `None` → use the default native/wasm clock inside `clock_now()`.
+    #[cfg(feature = "asciinema")]
+    pub(crate) asciinema_clock: Option<crate::console::console_asciinema::AsciinemaClock>,
+
+    /// Whether an asciinema timed-recording session is currently active.
+    ///
+    /// Set by `begin_asciinema_record`; cleared implicitly when there are
+    /// no events (a session is considered active when `asciinema_start`
+    /// has been set).
+    #[cfg(feature = "asciinema")]
+    pub(crate) asciinema_active: bool,
+
+    /// Absolute clock reading at the time `begin_asciinema_record` was called.
+    ///
+    /// Used to convert absolute clock readings into elapsed-seconds offsets.
+    #[cfg(feature = "asciinema")]
+    pub(crate) asciinema_start: f64,
+
+    /// Accumulated timed events: `(elapsed_secs, ansi_string)`.
+    ///
+    /// Populated by `maybe_record_asciinema_event` during an active session.
+    #[cfg(feature = "asciinema")]
+    pub(crate) asciinema_events: Vec<(f64, String)>,
 }
 
 impl Console {
@@ -535,7 +576,52 @@ impl Console {
         let effective_no_color = builder.no_color || color_system.is_none();
 
         let theme = builder.theme.unwrap_or_else(|| Theme::new(None, true));
-        let theme_stack = ThemeStack::new(theme);
+        #[allow(unused_mut)]
+        let mut theme_stack = ThemeStack::new(theme);
+
+        // ---------------------------------------------------------------------------
+        // GILT_THEME env var (json + native only).
+        //
+        // If the caller set an explicit path via ConsoleBuilder::theme_from_path,
+        // use that.  Otherwise check the GILT_THEME environment variable.  Either
+        // way, errors (missing file, bad JSON) are non-fatal: we just skip the
+        // override and keep the default theme.
+        // ---------------------------------------------------------------------------
+        #[cfg(all(feature = "json", not(target_arch = "wasm32")))]
+        {
+            use crate::console::console_builder::load_theme_from_path;
+
+            // Explicit builder path wins over env var.
+            let path_to_load: Option<std::path::PathBuf> = if let Some(p) = builder.theme_path {
+                Some(p)
+            } else {
+                std::env::var("GILT_THEME")
+                    .ok()
+                    .map(std::path::PathBuf::from)
+            };
+
+            if let Some(path) = path_to_load {
+                if let Some(loaded) = load_theme_from_path(&path) {
+                    // Push the loaded theme on top of the default so it overrides
+                    // named styles while still inheriting defaults that weren't
+                    // overridden.
+                    theme_stack.push_theme(loaded, true);
+                }
+            }
+        }
+
+        // Determine is_terminal the same way the Console struct does it so
+        // ConsoleCapabilities mirrors the Console's own `is_terminal()` method.
+        let builder_is_terminal = if let Some(forced) = builder.force_terminal {
+            forced
+        } else {
+            detect_is_terminal()
+        };
+        let capabilities = ConsoleCapabilities::from_env(builder_is_terminal);
+
+        // Enable Windows VT processing (opt-in via `windows-vt` feature).
+        // On non-Windows or when the feature is disabled this is a pure no-op.
+        crate::windows_vt::enable_windows_vt();
 
         Console {
             color_system,
@@ -562,6 +648,16 @@ impl Console {
             live_stack: Vec::new(),
             style_interner: Arc::new(Mutex::new(StyleInterner::new())),
             writer_override: None,
+            sync_depth: 0,
+            capabilities,
+            #[cfg(feature = "asciinema")]
+            asciinema_clock: None,
+            #[cfg(feature = "asciinema")]
+            asciinema_active: false,
+            #[cfg(feature = "asciinema")]
+            asciinema_start: 0.0,
+            #[cfg(feature = "asciinema")]
+            asciinema_events: Vec::new(),
         }
     }
 
@@ -578,11 +674,34 @@ impl Console {
     /// // output is in console's writer, not on stdout
     /// ```
     pub fn with_writer<W: std::io::Write + Send + Sync + 'static>(mut self, writer: W) -> Self {
-        self.writer_override = Some(Box::new(writer));
+        // Wrap in BufWriter so that multiple write_all calls within a
+        // synchronized block are buffered and coalesced into a single OS
+        // write when flush() is called at end_synchronized (Opt 2).
+        self.writer_override = Some(Box::new(std::io::BufWriter::new(writer)));
         self
     }
 
     // -- Properties ---------------------------------------------------------
+
+    /// Return the detected terminal capabilities for this console.
+    ///
+    /// Capabilities are derived from environment variables at construction time
+    /// (no blocking probes).  See [`ConsoleCapabilities`] for the full list
+    /// of flags.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    ///
+    /// let console = Console::builder().force_terminal(true).build();
+    /// let caps = console.capabilities();
+    /// // synchronized_output defaults to true (CSI ?2026 is harmless on old terms)
+    /// assert!(caps.synchronized_output);
+    /// ```
+    pub fn capabilities(&self) -> &ConsoleCapabilities {
+        &self.capabilities
+    }
 
     /// The current terminal width in columns.
     pub fn width(&self) -> usize {
@@ -818,15 +937,40 @@ impl Console {
     /// The terminal buffers all subsequent output until
     /// [`end_synchronized`](Console::end_synchronized) is called, then paints
     /// atomically. This prevents flickering and tearing during rapid updates.
+    ///
+    /// Also increments the internal `sync_depth` counter so that
+    /// `write_segments` defers the final `flush()` to the matching
+    /// `end_synchronized`, allowing the `BufWriter` that wraps the
+    /// underlying writer to coalesce all segment writes into a single OS
+    /// write (Opt 2).
     pub fn begin_synchronized(&mut self) {
+        self.sync_depth += 1;
         self.control(&Control::begin_sync());
     }
 
     /// End synchronized output (DEC Mode 2026).
     ///
     /// The terminal flushes all buffered content and renders it at once.
+    ///
+    /// Decrements the `sync_depth` counter and, when it reaches zero,
+    /// explicitly flushes the underlying writer (BufWriter drain) so all
+    /// bytes buffered since `begin_synchronized` are sent to the OS in a
+    /// single write (Opt 2).
     pub fn end_synchronized(&mut self) {
         self.control(&Control::end_sync());
+        if self.sync_depth > 0 {
+            self.sync_depth -= 1;
+        }
+        // Flush the underlying BufWriter now that the synchronized block
+        // has closed. This drains all buffered bytes in one OS write.
+        if self.sync_depth == 0 && !self.quiet {
+            use std::io::Write as _;
+            if let Some(w) = self.writer_override.as_mut() {
+                let _ = w.flush();
+            }
+            // stdout path does not use BufWriter — its flush is still
+            // handled inside write_segments as before.
+        }
     }
 
     /// Execute a closure with synchronized output wrapping.
@@ -1079,6 +1223,17 @@ impl Default for Console {
 mod console_export;
 #[allow(unused_imports)]
 use console_export::*;
+
+// Scoped recording API (Console::scoped_record + Recording type).
+// Split into console_recording.rs in v1.8.
+#[path = "console_recording.rs"]
+mod console_recording;
+pub use console_recording::Recording;
+
+// Asciinema v2 .cast export (opt-in: requires `asciinema` feature).
+#[cfg(feature = "asciinema")]
+#[path = "console_asciinema.rs"]
+pub mod console_asciinema;
 
 // ---------------------------------------------------------------------------
 // Terminal size query (feature-gated, native only)
