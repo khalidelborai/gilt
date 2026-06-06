@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-`gilt` is a Rust port of Python's [rich](https://github.com/Textualize/rich) library — terminal formatting (styles, tables, trees, syntax highlighting, progress bars, live displays, markdown) emitted as ANSI escape sequences. It is a published crate (`gilt` on crates.io, currently v1.4.1) with a workspace member `gilt-derive` (proc-macro crate) under `crates/gilt-derive/`. MSRV is **1.82.0** (relies on `std::sync::LazyLock`).
+`gilt` is a Rust port of Python's [rich](https://github.com/Textualize/rich) library — terminal formatting (styles, tables, trees, syntax highlighting, progress bars, live displays, markdown) emitted as ANSI escape sequences. It is a published crate (`gilt` on crates.io, currently **v1.10.0**) in a workspace with three sibling crates under `crates/`: `gilt-derive` (proc-macro derives **+ the `text!` macro**), `gilt-cli` (an installable `gilt` binary — the gum pattern, published), and `gilt-vhs` (tape-as-code recording, `publish = false`). MSRV is **1.82.0** (relies on `std::sync::LazyLock`). It began as a rich port and now also ships Rust-native capabilities rich lacks: a compile-time `text!` macro, a WASM-safe build, lock-free async `Live`, inline terminal images, asciinema `.cast` export, and 7 widget derives.
 
 API/behavior parity with upstream Python `rich` is an explicit goal — when porting or fixing a widget, the reference behavior is rich's. The rich source is not checked out here; the porting reference is **`../research_doc/`** — 30 module-by-module analysis docs of rich's source (segment, style, color, text, cells/measure, protocols, console, table, …) with Python→Rust patterns. Consult the matching doc before porting or changing a widget's behavior. Parity gaps against rich's test suite are tracked in `.review/04-test-parity.md`.
 
@@ -75,11 +75,18 @@ Modules were reorganized into subdirectories (`color/`, `text/`, `utils/`, `widg
 
 ### Feature gating
 
-Default features: `json`, `markdown`, `syntax`, `interactive`, `logging`. Heavy/optional deps are behind features — `derive`, `tracing`, `miette`, `eyre`, `anstyle`, `csv`, `readline`, `async`, `http` (see `Cargo.toml`). Feature-gated modules use `#[cfg(feature = "...")]` on both the `pub mod` and the re-export. **Any new public item must compile under `--no-default-features` and on `wasm32`** — no `libc`/`crossterm`/terminal-syscall deps (that's how WASM support is kept).
+Default features: `json`, `markdown`, `syntax`, `interactive`, `logging`, `terminal-size`. Many opt-in features gate heavier or native-only capability: `derive` (+`text!`), `asciinema`, `inline-images` (`image`), `tty-select`/`terminal-query` (`crossterm`), `windows-vt` (`windows-sys`), `syntax-theme-file`, `tracing`, `miette`, `eyre`, `anstyle`, `csv`, `readline`, `async`, `http` (see `Cargo.toml`). Feature-gated modules use `#[cfg(feature = "...")]` on both the `pub mod` and the re-export. **The default, `--no-default-features`, and `wasm32` builds pull no `libc`/`crossterm`/terminal-syscall deps** — that is how WASM support is kept. A few **opt-in native features** (`tty-select`, `terminal-query`, `windows-vt`) do pull such deps, but they are never in `default` and never compiled for wasm (the wasm CI gate uses `--no-default-features --features json,markdown,syntax`). Any new public item must still compile under `--no-default-features` and on `wasm32`; native-only code goes behind an opt-in feature **and** `#[cfg(not(target_arch = "wasm32"))]`.
 
 ### Derive macros
 
-`crates/gilt-derive/` provides 7 derives (`Table`, `Panel`, `Tree`, `Columns`, `Rule`, `Inspect`, `Renderable`). Non-colliding ones are re-exported at the crate root (`gilt::Table`); the three that collide with widget type names (`Columns`, `Inspect`, `Rule`) live ONLY under `gilt::derives::*`. The derive crate version is pinned to the main crate version in `Cargo.toml`.
+`crates/gilt-derive/` provides 7 derives (`Table`, `Panel`, `Tree`, `Columns`, `Rule`, `Inspect`, `Renderable`). Non-colliding ones are re-exported at the crate root (`gilt::Table`); the three that collide with widget type names (`Columns`, `Inspect`, `Rule`) live ONLY under `gilt::derives::*`. It also provides the function-like **`text!` macro** (re-exported as `gilt::text!` under the `derive` feature), which validates gilt markup at compile time (its validator mirrors `Style::parse`/`Color::parse`). The derive crate version is pinned to the main crate version in `Cargo.toml`.
+
+### Internal conventions worth knowing
+
+- **Hashing**: use the single `utils::hash::fnv1a_64` / `fnv1a_64_extend` helper (link ids, content hashes, SVG ids) — do not roll a new FNV.
+- **`Renderable::content_hash()`** is an additive default (`None`); implement it for cheap-to-hash leaf widgets so `Layout::render_with_cache` can skip unchanged children across Live frames.
+- **`ConsoleCapabilities`** (`console_caps.rs`, env-derived, WASM-safe — no blocking probe) is the central place for terminal-feature flags; image-protocol and OSC-11 detection build on it.
+- **Live** holds an `Arc<dyn Renderable + Send + Sync>` (re-rendered through its own console each frame), updates content lock-free via `ArcSwap`, and emits each frame wrapped in DEC-2026 synchronized output with line-diff repaint — preserve that emit discipline when touching `live/mod.rs::do_refresh`.
 
 ## Conventions
 
@@ -93,3 +100,4 @@ Default features: `json`, `markdown`, `syntax`, `interactive`, `logging`. Heavy/
 
 - **`../research_doc/`** — the canonical rich-port reference (start at `00-SUMMARY.md` / `07-QUICK-REFERENCE.md` / `INDEX.md`). Use it to find rich's exact behavior when porting or fixing a widget.
 - **`.review/`** (coverage map, perf reports, code-quality, parity audit, v0.11 design) and **`thoughts/`** (research, audits, continuity ledgers) — in-repo prior analysis; consult before large refactors or perf work rather than re-deriving. Excluded from the published crate (`exclude` in `Cargo.toml`).
+- **`.review/` strategy + decision docs** (read before proposing big features or perf work): `ultracode-review-2026-06-05.md` + `ultracode-fixes-2026-06-05.md` (the audit that drove the v1.5 correctness pass), `feature-roadmap-2026-06-05.md`, `landscape-and-strategy-2026-06-06.md` (cross-language landscape that shaped v1.8–v1.10), and **`v2-structural-decision-2026-06-06.md`** — the evidence-based ADR deferring the `StyleId`/`SegmentBuf`/SoA refactor (measured `Style`=48 B, win applies only to huge buffers gilt's print model doesn't build; has a documented trigger to revisit).
