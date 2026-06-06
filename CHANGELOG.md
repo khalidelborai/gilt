@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.9.0] - 2026-06-06
+
+Fills the two largest structural gaps (inline images, interactive forms) and
+opens a shell-scripting adoption surface — from the landscape strategy. TDD.
+
+### Added
+
+- **Inline terminal images** — `Image` renderable (`gilt::image`). `Image::from_rgba`
+  renders anywhere via Unicode upper-half-block with truecolor (and exports to
+  HTML/SVG); `from_path`/`from_bytes` decode PNG/JPEG behind the opt-in
+  `inline-images` feature. Kitty graphics protocol used when the terminal
+  supports it (and not recording); recording/export always uses halfblock. No
+  `Segment` change. `ConsoleCapabilities` now detects kitty/iterm/sixel from env.
+- **`Form` builder** (feature `interactive`) — chain `Input`/`Confirm`/`Select`
+  fields with validation + re-prompt and an **accessibility fallback** (plain
+  prompts on `NO_COLOR`/`TERM=dumb`), à la `huh`.
+- **`FuzzySelect`** — a dep-free testable core (`FuzzySelectState<T>`: filter +
+  navigate + select) plus an interactive driver behind the opt-in `tty-select`
+  feature (crossterm, RAII raw-mode guard). crossterm is **not** in the default
+  dep graph.
+- **`gilt-cli`** — a new installable binary (`cargo install gilt-cli`) exposing
+  gilt to shell scripts: `gilt print '[bold]hi[/]'`, `gilt style`, `gilt table <
+  data.csv`, `gilt rule`, `gilt panel`, `gilt markdown`, `gilt json` (the `gum`
+  pattern). Separate crate; the library is unaffected.
+
+### Performance
+
+- **Per-region dirty tracking** — `Renderable::content_hash()` (additive default
+  `None`); `Layout::render_with_cache` reuses unchanged children's segments
+  across frames, so static sections of a compound Live display aren't
+  re-rendered each frame.
+
 ## [1.8.0] - 2026-06-06
 
 Rendering correctness, performance, and table-stakes quality — guided by the
