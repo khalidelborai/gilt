@@ -1,12 +1,22 @@
-/// Export-related helper functions used by Console::export_html and Console::export_svg.
-/// Split out of console.rs in v1.2 Phase 2; pub(super) so console.rs methods can call them.
+//! Export-mode methods and helper functions for [`Console`]. The helper
+//! functions (`html_escape`, `build_svg_chrome`, `build_svg_text`, etc.) were
+//! split out of `console.rs` in v1.2 Phase 2. The `impl Console` export
+//! methods (`export_text`, `export_html`, `export_html_with_theme`,
+//! `export_html_opts`, `export_svg`, `export_svg_opts`) were relocated here in
+//! v1.7.1 to mirror the pattern used by `console_render.rs` and
+//! `console_capture.rs`. Callers are unchanged — the methods remain on
+//! `Console` at the same public paths.
 use std::borrow::Cow;
 use std::fmt::Write as _;
 
 use crate::cells::cell_len;
+use crate::console::Console;
+use crate::export_format::{
+    FontEmbedding, HtmlExportOptions, SvgExportOptions, CONSOLE_HTML_FORMAT, CONSOLE_SVG_FORMAT,
+};
 use crate::segment::Segment;
 use crate::style::Style;
-use crate::terminal_theme::TerminalTheme;
+use crate::terminal_theme::{TerminalTheme, DEFAULT_TERMINAL_THEME, SVG_EXPORT_THEME};
 
 // ---------------------------------------------------------------------------
 // Helper functions
@@ -275,4 +285,675 @@ pub(super) fn svg_escape(s: &str) -> Cow<'_, str> {
         }
     }
     Cow::Owned(out)
+}
+
+// ---------------------------------------------------------------------------
+// Export methods on Console (relocated from console.rs in v1.7.1)
+// ---------------------------------------------------------------------------
+
+impl Console {
+    // -- Export (record mode) -----------------------------------------------
+
+    /// Export recorded output as plain or styled text.
+    ///
+    /// Only works if `record` was enabled when the Console was created.
+    /// Pass `clear = true` to empty the record buffer after export.
+    /// Pass `styles = true` to include ANSI escape codes in the output.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    /// use gilt::text::Text;
+    /// use gilt::style::Style;
+    ///
+    /// let mut console = Console::builder()
+    ///     .width(80)
+    ///     .no_color(true)
+    ///     .record(true)
+    ///     .markup(false)
+    ///     .build();
+    /// let text = Text::new("Export me", Style::null());
+    /// console.print(&text);
+    /// let exported = console.export_text(false, false);
+    /// assert!(exported.contains("Export me"));
+    /// ```
+    pub fn export_text(&mut self, clear: bool, styles: bool) -> String {
+        let buffer = self.record_buffer.clone();
+        if clear {
+            self.record_buffer.clear();
+        }
+
+        if styles {
+            self.render_buffer(&buffer)
+        } else {
+            // Strip control segments and just concatenate text
+            let mut output = String::new();
+            for segment in &buffer {
+                if !segment.is_control() {
+                    output.push_str(&segment.text);
+                }
+            }
+            output
+        }
+    }
+
+    /// Export recorded output as an HTML document.
+    ///
+    /// Generates a complete HTML page with inline or class-based styles.
+    /// Requires `record` mode to be enabled.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    /// use gilt::text::Text;
+    /// use gilt::style::Style;
+    ///
+    /// let mut console = Console::builder()
+    ///     .width(80)
+    ///     .record(true)
+    ///     .markup(false)
+    ///     .build();
+    /// let text = Text::styled("Red text", "red");
+    /// console.print(&text);
+    /// let html = console.export_html(None, false, true);
+    /// assert!(html.contains("<!DOCTYPE html>"));
+    /// assert!(html.contains("Red text"));
+    /// ```
+    pub fn export_html(
+        &mut self,
+        theme: Option<&TerminalTheme>,
+        clear: bool,
+        inline_styles: bool,
+    ) -> String {
+        let theme = theme.unwrap_or(&DEFAULT_TERMINAL_THEME);
+        // Finding #9: iterate by reference; only copy out when clear is needed.
+        let buffer_ref: &[Segment];
+        let taken: Vec<Segment>;
+        if clear {
+            taken = std::mem::take(&mut self.record_buffer);
+            buffer_ref = &taken;
+        } else {
+            buffer_ref = &self.record_buffer;
+        }
+
+        // Finding #8: merge adjacent same-style segments before HTML iteration.
+        let simplified = Segment::simplify(buffer_ref);
+
+        let mut code = String::new();
+        let mut stylesheet = String::new();
+        let mut style_cache: Vec<(Style, String)> = Vec::new();
+
+        for segment in &simplified {
+            if segment.is_control() {
+                continue;
+            }
+            let escaped = html_escape(&segment.text);
+
+            if let Some(style) = segment.style() {
+                // Finding #7: wrap the text in <a href> when the style has a link.
+                let link_url = style.link().map(|s| s.to_string());
+
+                if style.is_null() && link_url.is_none() {
+                    code.push_str(&escaped);
+                    continue;
+                }
+
+                let css = style.get_html_style(Some(theme));
+                let inner: String;
+                if css.is_empty() {
+                    inner = escaped.into_owned();
+                } else if inline_styles {
+                    inner = format!("<span style=\"{}\">{}</span>", css, escaped);
+                } else {
+                    // Use class-based styles
+                    let class_name =
+                        find_or_insert_class(&mut style_cache, &mut stylesheet, style, &css);
+                    inner = format!("<span class=\"{}\">{}</span>", class_name, escaped);
+                }
+
+                // Wrap in <a href> if there is a link (finding #7).
+                if let Some(url) = link_url {
+                    write!(code, "<a href=\"{}\">{}</a>", html_escape(&url), inner).unwrap();
+                } else {
+                    code.push_str(&inner);
+                }
+            } else {
+                code.push_str(&escaped);
+            }
+        }
+
+        let fg = theme.foreground_color.hex();
+        let bg = theme.background_color.hex();
+
+        CONSOLE_HTML_FORMAT
+            .replace("{stylesheet}", &stylesheet)
+            .replace("{foreground}", &fg)
+            .replace("{background}", &bg)
+            .replace("{code}", &code)
+    }
+
+    /// Export recorded output as HTML using a named palette from [`ThemeRegistry`].
+    ///
+    /// Convenience wrapper around [`export_html`](Self::export_html): looks up
+    /// `theme_name` in `ThemeRegistry` and passes the result.  Equivalent to:
+    ///
+    /// ```rust,ignore
+    /// let theme = ThemeRegistry::terminal_theme("dracula").unwrap();
+    /// console.export_html(Some(theme), clear, inline_styles);
+    /// ```
+    ///
+    /// Returns the same HTML as `export_html` with `theme = None` (the default
+    /// terminal theme) when `theme_name` is not found.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    /// use gilt::text::Text;
+    /// use gilt::style::Style;
+    ///
+    /// let mut console = Console::builder()
+    ///     .width(80)
+    ///     .record(true)
+    ///     .force_terminal(true)
+    ///     .markup(false)
+    ///     .build();
+    /// let text = Text::styled("Dracula", "bold magenta");
+    /// console.print(&text);
+    /// let html = console.export_html_with_theme("dracula", false, true);
+    /// assert!(html.contains("<!DOCTYPE html>"));
+    /// // Background should come from the Dracula palette (#282a36)
+    /// assert!(html.contains("#282a36") || html.contains("1a2a36") || html.len() > 100);
+    /// ```
+    pub fn export_html_with_theme(
+        &mut self,
+        theme_name: &str,
+        clear: bool,
+        inline_styles: bool,
+    ) -> String {
+        use crate::terminal_theme::ThemeRegistry;
+        let theme = ThemeRegistry::terminal_theme(theme_name);
+        self.export_html(theme, clear, inline_styles)
+    }
+
+    /// Export recorded output as an HTML document with full control via
+    /// [`HtmlExportOptions`].
+    ///
+    /// This is the options-based API; [`export_html`](Self::export_html) and
+    /// [`export_html_with_theme`](Self::export_html_with_theme) delegate to
+    /// this method via the default theme.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    /// use gilt::export_format::HtmlExportOptions;
+    /// use gilt::text::Text;
+    /// use gilt::style::Style;
+    ///
+    /// let mut console = Console::builder()
+    ///     .width(80)
+    ///     .record(true)
+    ///     .markup(false)
+    ///     .build();
+    /// console.print(&Text::styled("hello", "bold green"));
+    /// let opts = HtmlExportOptions::default()
+    ///     .inline_styles(true)
+    ///     .dark_mode(true)
+    ///     .copy_button(true);
+    /// let html = console.export_html_opts(None, &opts);
+    /// assert!(html.contains("<!DOCTYPE html>"));
+    /// assert!(html.contains("hello"));
+    /// ```
+    pub fn export_html_opts(
+        &mut self,
+        theme: Option<&TerminalTheme>,
+        opts: &HtmlExportOptions,
+    ) -> String {
+        let theme = theme.unwrap_or(&DEFAULT_TERMINAL_THEME);
+
+        // Optionally clear (same logic as export_html)
+        let buffer_ref: &[Segment];
+        let taken: Vec<Segment>;
+        if opts.clear {
+            taken = std::mem::take(&mut self.record_buffer);
+            buffer_ref = &taken;
+        } else {
+            buffer_ref = &self.record_buffer;
+        }
+
+        let simplified = Segment::simplify(buffer_ref);
+
+        let mut code = String::new();
+        let mut stylesheet = String::new();
+        let mut style_cache: Vec<(Style, String)> = Vec::new();
+
+        for segment in &simplified {
+            if segment.is_control() {
+                continue;
+            }
+            let escaped = html_escape(&segment.text);
+
+            if let Some(style) = segment.style() {
+                let link_url = style.link().map(|s| s.to_string());
+
+                if style.is_null() && link_url.is_none() {
+                    code.push_str(&escaped);
+                    continue;
+                }
+
+                let css = style.get_html_style(Some(theme));
+                let inner: String;
+                if css.is_empty() {
+                    inner = escaped.into_owned();
+                } else if opts.inline_styles {
+                    inner = format!("<span style=\"{}\">{}</span>", css, escaped);
+                } else {
+                    let class_name =
+                        find_or_insert_class(&mut style_cache, &mut stylesheet, style, &css);
+                    inner = format!("<span class=\"{}\">{}</span>", class_name, escaped);
+                }
+
+                if let Some(url) = link_url {
+                    write!(code, "<a href=\"{}\">{}</a>", html_escape(&url), inner).unwrap();
+                } else {
+                    code.push_str(&inner);
+                }
+            } else {
+                code.push_str(&escaped);
+            }
+        }
+
+        let fg = theme.foreground_color.hex();
+        let bg = theme.background_color.hex();
+
+        // Font-family override
+        let font_family = opts
+            .font_family
+            .as_deref()
+            .unwrap_or("Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace");
+
+        // Build @font-face if font_url is provided
+        let font_face = if let Some(ref url) = opts.font_url {
+            format!(
+                "@font-face {{ font-family: '{}'; src: url('{}'); }}\n",
+                font_family, url
+            )
+        } else {
+            String::new()
+        };
+
+        // Dark-mode CSS block
+        let dark_css = if opts.dark_mode {
+            format!(
+                "\n@media (prefers-color-scheme: dark) {{\n  body {{ color: {}; background-color: {}; }}\n}}\n",
+                bg, fg
+            )
+        } else {
+            String::new()
+        };
+
+        // Full stylesheet
+        let full_stylesheet = format!("{}{}{}", font_face, stylesheet, dark_css);
+
+        // Copy-button HTML + JS
+        let copy_snippet = if opts.copy_button {
+            r#"<button id="gilt-copy-btn" onclick="(function(){var p=document.querySelector('pre');if(p){navigator.clipboard&&navigator.clipboard.writeText(p.innerText)||window.prompt('Copy:',p.innerText)}})()">Copy</button>
+<script>document.getElementById('gilt-copy-btn').style.cssText='position:absolute;top:8px;right:8px;padding:2px 8px;cursor:pointer';</script>
+"#
+        } else {
+            ""
+        };
+
+        // Choose template
+        let template = opts.code_format.as_deref().unwrap_or(CONSOLE_HTML_FORMAT);
+
+        // Inject copy button before </body>
+        let html_base = template
+            .replace("{stylesheet}", &full_stylesheet)
+            .replace("{foreground}", &fg)
+            .replace("{background}", &bg)
+            .replace("{code}", &code);
+
+        if opts.copy_button {
+            html_base.replace("</body>", &format!("{}</body>", copy_snippet))
+        } else {
+            html_base
+        }
+    }
+
+    /// Export recorded output as an SVG document.
+    ///
+    /// Generates a complete SVG image with terminal-style chrome (title bar,
+    /// window controls) and styled text content. Requires `record` mode.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    /// use gilt::text::Text;
+    /// use gilt::style::Style;
+    ///
+    /// let mut console = Console::builder()
+    ///     .width(40)
+    ///     .record(true)
+    ///     .no_color(true)
+    ///     .markup(false)
+    ///     .build();
+    /// let text = Text::new("SVG test", Style::null());
+    /// console.print(&text);
+    /// let svg = console.export_svg("Test", None, false, None, 0.61);
+    /// assert!(svg.contains("<svg"));
+    /// assert!(svg.contains("SVG test"));
+    /// ```
+    pub fn export_svg(
+        &mut self,
+        title: &str,
+        theme: Option<&TerminalTheme>,
+        clear: bool,
+        unique_id: Option<&str>,
+        font_aspect_ratio: f64,
+    ) -> String {
+        let theme = theme.unwrap_or(&SVG_EXPORT_THEME);
+
+        // Finding #9: avoid cloning the whole buffer.
+        let buffer_ref: &[Segment];
+        let taken: Vec<Segment>;
+        if clear {
+            taken = std::mem::take(&mut self.record_buffer);
+            buffer_ref = &taken;
+        } else {
+            buffer_ref = &self.record_buffer;
+        }
+
+        // Finding #11: derive a unique id from FNV-1a hash of segment text + title
+        // when the caller leaves unique_id as None.
+        let derived_id: String;
+        let unique_id: &str = if let Some(id) = unique_id {
+            id
+        } else {
+            let mut hash: u64 = 14695981039346656037u64; // FNV-1a offset basis
+            for seg in buffer_ref {
+                for byte in seg.text.as_bytes() {
+                    hash = hash.wrapping_mul(1099511628211) ^ (*byte as u64);
+                }
+            }
+            for byte in title.as_bytes() {
+                hash = hash.wrapping_mul(1099511628211) ^ (*byte as u64);
+            }
+            derived_id = format!("gilt-{:016x}", hash);
+            &derived_id
+        };
+
+        // Finding #10: split multi-newline segments into per-line owned Segments.
+        let text_lines: Vec<Vec<Segment>> = {
+            let mut lines: Vec<Vec<Segment>> = Vec::new();
+            let mut current: Vec<Segment> = Vec::new();
+            for seg in buffer_ref {
+                if seg.is_control() {
+                    continue;
+                }
+                if seg.text.contains('\n') {
+                    let parts: Vec<&str> = seg.text.split('\n').collect();
+                    for (i, part) in parts.iter().enumerate() {
+                        if !part.is_empty() {
+                            // Create an owned sub-segment carrying the original style.
+                            current.push(Segment::new(part, seg.style().cloned(), None));
+                        }
+                        if i + 1 < parts.len() {
+                            lines.push(std::mem::take(&mut current));
+                        }
+                    }
+                } else {
+                    current.push(seg.clone());
+                }
+            }
+            if !current.is_empty() {
+                lines.push(current);
+            }
+            lines
+        };
+
+        let char_height = 20.0_f64;
+        let line_height = char_height * 1.22;
+        let char_width = char_height * font_aspect_ratio;
+        let margin_top = 1.0;
+        let margin_right = 1.0;
+        let margin_bottom = 1.0;
+        let margin_left = 1.0;
+        let padding_top = 40.0;
+        let padding_right = 8.0;
+        let padding_bottom = 8.0;
+        let padding_left = 8.0;
+
+        let console_width = self.width() as f64;
+        let line_count = text_lines.len().max(1) as f64;
+
+        let terminal_width = (console_width * char_width + padding_left + padding_right).ceil();
+        let terminal_height = (line_count * line_height + padding_top + padding_bottom).ceil();
+        let svg_width = (terminal_width + margin_left + margin_right).ceil();
+        let svg_height = (terminal_height + margin_top + margin_bottom).ceil();
+
+        let terminal_x = margin_left;
+        let terminal_y = margin_top;
+
+        // Build the chrome (window decorations)
+        let chrome = build_svg_chrome(terminal_width, terminal_height, theme, title, unique_id);
+
+        // Build the text matrix (pass buffer_ref so build_svg_text doesn't need the split lines)
+        let (matrix, backgrounds, styles, lines_defs) = build_svg_text(
+            buffer_ref,
+            theme,
+            unique_id,
+            char_width,
+            line_height,
+            padding_top,
+            padding_left,
+        );
+
+        // Pre-format numeric values into a shared buffer to avoid per-replace allocations.
+        let mut buf = String::with_capacity(16);
+        macro_rules! fmt_buf {
+            ($fmt:literal, $val:expr) => {{
+                buf.clear();
+                write!(buf, $fmt, $val).unwrap();
+                &buf
+            }};
+        }
+
+        // Apply replacements that use the shared buffer one at a time,
+        // cloning the formatted value so `buf` can be reused.
+        let mut svg = CONSOLE_SVG_FORMAT.replace("{unique_id}", unique_id);
+        svg = svg.replace("{char_height}", fmt_buf!("{:.1}", char_height));
+        svg = svg.replace("{line_height}", fmt_buf!("{:.1}", line_height));
+        svg = svg.replace("{width}", fmt_buf!("{:.0}", svg_width));
+        svg = svg.replace("{height}", fmt_buf!("{:.0}", svg_height));
+        svg = svg.replace("{terminal_width}", fmt_buf!("{:.0}", terminal_width));
+        svg = svg.replace("{terminal_height}", fmt_buf!("{:.0}", terminal_height));
+        svg = svg.replace("{terminal_x}", fmt_buf!("{:.0}", terminal_x));
+        svg = svg.replace("{terminal_y}", fmt_buf!("{:.0}", terminal_y));
+        svg = svg.replace("{chrome}", &chrome);
+        svg = svg.replace("{matrix}", &matrix);
+        svg = svg.replace("{backgrounds}", &backgrounds);
+        svg = svg.replace("{styles}", &styles);
+        svg = svg.replace("{lines}", &lines_defs);
+        svg
+    }
+
+    /// Export recorded output as an SVG document with full control via
+    /// [`SvgExportOptions`].
+    ///
+    /// The key addition over [`export_svg`](Self::export_svg) is
+    /// [`FontEmbedding::Base64`], which embeds raw font bytes as a base64
+    /// `data:` URL so the SVG is completely self-contained offline.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    /// use gilt::export_format::{FontEmbedding, SvgExportOptions};
+    /// use gilt::text::Text;
+    /// use gilt::style::Style;
+    ///
+    /// let mut console = Console::builder()
+    ///     .width(40)
+    ///     .record(true)
+    ///     .no_color(true)
+    ///     .markup(false)
+    ///     .build();
+    /// console.print(&Text::new("SVG opts", Style::null()));
+    ///
+    /// // Embed a tiny fake font for offline use
+    /// let opts = SvgExportOptions::default()
+    ///     .title("Demo")
+    ///     .font_embedding(FontEmbedding::Base64(b"FAKE_FONT".to_vec()));
+    /// let svg = console.export_svg_opts(None, &opts);
+    /// assert!(svg.contains("<svg"));
+    /// assert!(svg.contains("data:font/"));
+    /// ```
+    pub fn export_svg_opts(
+        &mut self,
+        theme: Option<&TerminalTheme>,
+        opts: &SvgExportOptions,
+    ) -> String {
+        use crate::utils::control::base64_encode;
+
+        let theme = theme.unwrap_or(&SVG_EXPORT_THEME);
+
+        let buffer_ref: &[Segment];
+        let taken: Vec<Segment>;
+        if opts.clear {
+            taken = std::mem::take(&mut self.record_buffer);
+            buffer_ref = &taken;
+        } else {
+            buffer_ref = &self.record_buffer;
+        }
+
+        // Derive unique_id
+        let derived_id: String;
+        let unique_id: &str = if let Some(ref id) = opts.unique_id {
+            id.as_str()
+        } else {
+            let mut hash: u64 = 14695981039346656037u64;
+            for seg in buffer_ref {
+                for byte in seg.text.as_bytes() {
+                    hash = hash.wrapping_mul(1099511628211) ^ (*byte as u64);
+                }
+            }
+            for byte in opts.title.as_bytes() {
+                hash = hash.wrapping_mul(1099511628211) ^ (*byte as u64);
+            }
+            derived_id = format!("gilt-{:016x}", hash);
+            &derived_id
+        };
+
+        let text_lines: Vec<Vec<Segment>> = {
+            let mut lines: Vec<Vec<Segment>> = Vec::new();
+            let mut current: Vec<Segment> = Vec::new();
+            for seg in buffer_ref {
+                if seg.is_control() {
+                    continue;
+                }
+                if seg.text.contains('\n') {
+                    let parts: Vec<&str> = seg.text.split('\n').collect();
+                    for (i, part) in parts.iter().enumerate() {
+                        if !part.is_empty() {
+                            current.push(Segment::new(part, seg.style().cloned(), None));
+                        }
+                        if i + 1 < parts.len() {
+                            lines.push(std::mem::take(&mut current));
+                        }
+                    }
+                } else {
+                    current.push(seg.clone());
+                }
+            }
+            if !current.is_empty() {
+                lines.push(current);
+            }
+            lines
+        };
+
+        let char_height = 20.0_f64;
+        let line_height = char_height * 1.22;
+        let char_width = char_height * opts.font_aspect_ratio;
+        let margin_top = 1.0;
+        let margin_right = 1.0;
+        let margin_bottom = 1.0;
+        let margin_left = 1.0;
+        let padding_top = 40.0;
+        let padding_right = 8.0;
+        let padding_bottom = 8.0;
+        let padding_left = 8.0;
+
+        let console_width = self.width() as f64;
+        let line_count = text_lines.len().max(1) as f64;
+
+        let terminal_width = (console_width * char_width + padding_left + padding_right).ceil();
+        let terminal_height = (line_count * line_height + padding_top + padding_bottom).ceil();
+        let svg_width = (terminal_width + margin_left + margin_right).ceil();
+        let svg_height = (terminal_height + margin_top + margin_bottom).ceil();
+        let terminal_x = margin_left;
+        let terminal_y = margin_top;
+
+        let chrome = build_svg_chrome(
+            terminal_width,
+            terminal_height,
+            theme,
+            &opts.title,
+            unique_id,
+        );
+
+        let (matrix, backgrounds, styles, lines_defs) = build_svg_text(
+            buffer_ref,
+            theme,
+            unique_id,
+            char_width,
+            line_height,
+            padding_top,
+            padding_left,
+        );
+
+        // Build base SVG from standard template
+        let mut buf = String::with_capacity(16);
+        macro_rules! fmt_buf {
+            ($fmt:literal, $val:expr) => {{
+                buf.clear();
+                write!(buf, $fmt, $val).unwrap();
+                &buf
+            }};
+        }
+
+        let mut svg = CONSOLE_SVG_FORMAT.replace("{unique_id}", unique_id);
+        svg = svg.replace("{char_height}", fmt_buf!("{:.1}", char_height));
+        svg = svg.replace("{line_height}", fmt_buf!("{:.1}", line_height));
+        svg = svg.replace("{width}", fmt_buf!("{:.0}", svg_width));
+        svg = svg.replace("{height}", fmt_buf!("{:.0}", svg_height));
+        svg = svg.replace("{terminal_width}", fmt_buf!("{:.0}", terminal_width));
+        svg = svg.replace("{terminal_height}", fmt_buf!("{:.0}", terminal_height));
+        svg = svg.replace("{terminal_x}", fmt_buf!("{:.0}", terminal_x));
+        svg = svg.replace("{terminal_y}", fmt_buf!("{:.0}", terminal_y));
+        svg = svg.replace("{chrome}", &chrome);
+        svg = svg.replace("{matrix}", &matrix);
+        svg = svg.replace("{backgrounds}", &backgrounds);
+        svg = svg.replace("{styles}", &styles);
+        svg = svg.replace("{lines}", &lines_defs);
+
+        // Task 2: inject @font-face with base64 data: URL when FontEmbedding::Base64
+        if let FontEmbedding::Base64(ref font_bytes) = opts.font_embedding {
+            let encoded = base64_encode(font_bytes);
+            let font_face = format!(
+                "@font-face {{\n    font-family: \"Fira Code\";\n    src: url(\"data:font/woff2;base64,{}\") format(\"woff2\");\n    font-style: normal;\n    font-weight: 400;\n}}\n",
+                encoded
+            );
+            // Replace the existing @font-face blocks (everything from the first
+            // @font-face up to the first `.{unique_id}-matrix` class).
+            // Simpler: just prepend the embedded rule inside the <style> tag.
+            svg = svg.replacen("<style>", &format!("<style>\n{}", font_face), 1);
+        }
+
+        svg
+    }
 }

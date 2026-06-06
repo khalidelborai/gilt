@@ -3,7 +3,7 @@ members = ["crates/gilt-derive"]
 
 [package]
 name = "gilt"
-version = "1.7.0"
+version = "1.7.1"
 edition = "2021"
 exclude = [".claude/", ".review/", "vlc.zip"]
 description = "Fast, beautiful terminal formatting for Rust — styles, tables, trees, syntax highlighting, progress bars, markdown."
@@ -77,6 +77,10 @@ proptest = "1"
 [[example]]
 name = "live_markdown"
 required-features = ["markdown"]
+
+[[example]]
+name = "text_macro"
+required-features = ["derive"]
 
 [[bench]]
 name = "benchmarks"
