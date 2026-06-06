@@ -1,0 +1,122 @@
+<svg class="gilt-terminal" viewBox="0 0 897 270" xmlns="http://www.w3.org/2000/svg">
+    <!-- Generated with gilt https://github.com/gilt-rs -->
+    <style>
+
+    @font-face {
+        font-family: "Fira Code";
+        src: local("FiraCode-Regular"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff2/FiraCode-Regular.woff2") format("woff2"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff/FiraCode-Regular.woff") format("woff");
+        font-style: normal;
+        font-weight: 400;
+    }
+    @font-face {
+        font-family: "Fira Code";
+        src: local("FiraCode-Bold"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff2/FiraCode-Bold.woff2") format("woff2"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff/FiraCode-Bold.woff") format("woff");
+        font-style: bold;
+        font-weight: 700;
+    }
+
+    .gilt-demo-styles-matrix {
+        font-family: Fira Code, monospace;
+        font-size: 20.0px;
+        line-height: 24.4px;
+        font-variant-east-asian: full-width;
+    }
+
+    .gilt-demo-styles-title {
+        font-size: 18px;
+        font-weight: bold;
+        font-family: arial;
+    }
+
+        .gilt-demo-styles-s1 { fill: #00823d }
+    .gilt-demo-styles-s2 { fill: #98729f; font-weight: bold }
+    .gilt-demo-styles-s3 { font-weight: bold }
+    .gilt-demo-styles-s4 { font-style: italic }
+    .gilt-demo-styles-s5 { text-decoration: underline }
+    .gilt-demo-styles-s6 { text-decoration: line-through }
+    .gilt-demo-styles-s7 { fill: #cc555a }
+    .gilt-demo-styles-s8 { fill: #98a84b }
+    .gilt-demo-styles-s9 { fill: #608ab1 }
+    .gilt-demo-styles-s10 { fill: #d0b344 }
+    .gilt-demo-styles-s11 { fill: #68a0b3 }
+    .gilt-demo-styles-s12 { fill: #98729f }
+    .gilt-demo-styles-s13 { fill: #e06c75 }
+    .gilt-demo-styles-s14 { fill: #98c379 }
+    .gilt-demo-styles-s15 { fill: #61afef }
+    .gilt-demo-styles-s16 { fill: #c678dd }
+    .gilt-demo-styles-s17 { fill: #c5c8c6; font-weight: bold }
+    .gilt-demo-styles-s18 { fill: #4b4e55; font-weight: bold }
+    .gilt-demo-styles-s19 { fill: #c5c8c6; font-weight: bold }
+    .gilt-demo-styles-s20 { fill: #68a0b3; text-decoration: underline }
+
+    </style>
+
+    <defs>
+    <clipPath id="gilt-demo-styles-clip-terminal">
+      <rect x="0" y="0" width="895" height="268" />
+    </clipPath>
+    
+    </defs>
+
+    <rect fill="#292929" stroke="rgba(255,255,255,0.35)" stroke-width="1" x="0" y="0" width="895" height="268" rx="8"/>
+    <circle cx="16" cy="18" r="5" fill="#ff5f57"/>
+    <circle cx="38" cy="18" r="5" fill="#febc2e"/>
+    <circle cx="60" cy="18" r="5" fill="#28c840"/>
+    <text class="gilt-demo-styles-title" fill="#c5c8c6" x="447.5" y="23" text-anchor="middle">gilt styles</text>
+
+    <g transform="translate(1, 1)" clip-path="url(#gilt-demo-styles-clip-terminal)">
+        <rect fill="#cc555a" x="8.0" y="165.0" width="85.4" height="24.4"/>
+    <rect fill="#d0b344" x="117.8" y="165.0" width="73.2" height="24.4"/>
+    <rect fill="#98a84b" x="215.4" y="165.0" width="48.8" height="24.4"/>
+
+    <g class="gilt-demo-styles-matrix">
+        <text class="gilt-demo-styles-s1" x="8.0" y="64.4" textLength="341.6">────────────────────────────</text>
+    <text fill="#c5c8c6" x="349.6" y="64.4" textLength="12.2"> </text>
+    <text fill="#c5c8c6" x="361.8" y="64.4" textLength="158.6">gilt — styles</text>
+    <text fill="#c5c8c6" x="520.4" y="64.4" textLength="12.2"> </text>
+    <text class="gilt-demo-styles-s1" x="532.6" y="64.4" textLength="353.8">─────────────────────────────</text>
+    <text class="gilt-demo-styles-s2" x="8.0" y="88.8" textLength="48.8">gilt</text>
+    <text fill="#c5c8c6" x="56.8" y="88.8" textLength="390.4"> — rich terminal output for Rust</text>
+    <text class="gilt-demo-styles-s3" x="8.0" y="113.2" textLength="48.8">bold</text>
+    <text fill="#c5c8c6" x="56.8" y="113.2" textLength="24.4">  </text>
+    <text class="gilt-demo-styles-s4" x="81.2" y="113.2" textLength="73.2">italic</text>
+    <text fill="#c5c8c6" x="154.4" y="113.2" textLength="24.4">  </text>
+    <text class="gilt-demo-styles-s5" x="178.8" y="113.2" textLength="109.8">underline</text>
+    <text fill="#c5c8c6" x="288.6" y="113.2" textLength="24.4">  </text>
+    <text fill="#c5c8c6" x="313.0" y="113.2" textLength="36.6">dim</text>
+    <text fill="#c5c8c6" x="349.6" y="113.2" textLength="24.4">  </text>
+    <text class="gilt-demo-styles-s6" x="374.0" y="113.2" textLength="73.2">strike</text>
+    <text class="gilt-demo-styles-s7" x="8.0" y="137.6" textLength="36.6">red</text>
+    <text fill="#c5c8c6" x="44.6" y="137.6" textLength="12.2"> </text>
+    <text class="gilt-demo-styles-s8" x="56.8" y="137.6" textLength="61.0">green</text>
+    <text fill="#c5c8c6" x="117.8" y="137.6" textLength="12.2"> </text>
+    <text class="gilt-demo-styles-s9" x="130.0" y="137.6" textLength="48.8">blue</text>
+    <text fill="#c5c8c6" x="178.8" y="137.6" textLength="12.2"> </text>
+    <text class="gilt-demo-styles-s10" x="191.0" y="137.6" textLength="73.2">yellow</text>
+    <text fill="#c5c8c6" x="264.2" y="137.6" textLength="12.2"> </text>
+    <text class="gilt-demo-styles-s11" x="276.4" y="137.6" textLength="48.8">cyan</text>
+    <text fill="#c5c8c6" x="325.2" y="137.6" textLength="12.2"> </text>
+    <text class="gilt-demo-styles-s12" x="337.4" y="137.6" textLength="85.4">magenta</text>
+    <text class="gilt-demo-styles-s13" x="8.0" y="162.0" textLength="73.2">salmon</text>
+    <text fill="#c5c8c6" x="81.2" y="162.0" textLength="24.4">  </text>
+    <text class="gilt-demo-styles-s14" x="105.6" y="162.0" textLength="48.8">sage</text>
+    <text fill="#c5c8c6" x="154.4" y="162.0" textLength="24.4">  </text>
+    <text class="gilt-demo-styles-s15" x="178.8" y="162.0" textLength="36.6">sky</text>
+    <text fill="#c5c8c6" x="215.4" y="162.0" textLength="24.4">  </text>
+    <text class="gilt-demo-styles-s16" x="239.8" y="162.0" textLength="48.8">plum</text>
+    <text class="gilt-demo-styles-s17" x="8.0" y="186.4" textLength="85.4"> ERROR </text>
+    <text fill="#c5c8c6" x="93.4" y="186.4" textLength="24.4">  </text>
+    <text class="gilt-demo-styles-s18" x="117.8" y="186.4" textLength="73.2"> WARN </text>
+    <text fill="#c5c8c6" x="191.0" y="186.4" textLength="24.4">  </text>
+    <text class="gilt-demo-styles-s19" x="215.4" y="186.4" textLength="48.8"> OK </text>
+    <text class="gilt-demo-styles-s20" x="8.0" y="210.8" textLength="207.4">gilt on crates.io</text>
+    <text class="gilt-demo-styles-s4" x="8.0" y="235.2" textLength="378.2">A quiet note tucked at the end.</text>
+    <text class="gilt-demo-styles-s1" x="8.0" y="259.6" textLength="878.4">────────────────────────────────────────────────────────────────────────</text>
+
+    </g>
+    </g>
+</svg>

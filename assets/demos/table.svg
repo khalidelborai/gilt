@@ -1,0 +1,100 @@
+<svg class="gilt-terminal" viewBox="0 0 897 270" xmlns="http://www.w3.org/2000/svg">
+    <!-- Generated with gilt https://github.com/gilt-rs -->
+    <style>
+
+    @font-face {
+        font-family: "Fira Code";
+        src: local("FiraCode-Regular"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff2/FiraCode-Regular.woff2") format("woff2"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff/FiraCode-Regular.woff") format("woff");
+        font-style: normal;
+        font-weight: 400;
+    }
+    @font-face {
+        font-family: "Fira Code";
+        src: local("FiraCode-Bold"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff2/FiraCode-Bold.woff2") format("woff2"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff/FiraCode-Bold.woff") format("woff");
+        font-style: bold;
+        font-weight: 700;
+    }
+
+    .gilt-demo-table-matrix {
+        font-family: Fira Code, monospace;
+        font-size: 20.0px;
+        line-height: 24.4px;
+        font-variant-east-asian: full-width;
+    }
+
+    .gilt-demo-table-title {
+        font-size: 18px;
+        font-weight: bold;
+        font-family: arial;
+    }
+
+        .gilt-demo-table-s1 { font-style: italic }
+    .gilt-demo-table-s2 { font-weight: bold; font-style: italic }
+
+    </style>
+
+    <defs>
+    <clipPath id="gilt-demo-table-clip-terminal">
+      <rect x="0" y="0" width="895" height="268" />
+    </clipPath>
+    
+    </defs>
+
+    <rect fill="#292929" stroke="rgba(255,255,255,0.35)" stroke-width="1" x="0" y="0" width="895" height="268" rx="8"/>
+    <circle cx="16" cy="18" r="5" fill="#ff5f57"/>
+    <circle cx="38" cy="18" r="5" fill="#febc2e"/>
+    <circle cx="60" cy="18" r="5" fill="#28c840"/>
+    <text class="gilt-demo-table-title" fill="#c5c8c6" x="447.5" y="23" text-anchor="middle">gilt table</text>
+
+    <g transform="translate(1, 1)" clip-path="url(#gilt-demo-table-clip-terminal)">
+    
+    <g class="gilt-demo-table-matrix">
+        <text class="gilt-demo-table-s1" x="8.0" y="64.4" textLength="158.6">             </text>
+    <text class="gilt-demo-table-s2" x="166.6" y="64.4" textLength="219.6">Rust CLI ecosystem</text>
+    <text class="gilt-demo-table-s1" x="386.2" y="64.4" textLength="158.6">             </text>
+    <text fill="#c5c8c6" x="8.0" y="88.8" textLength="536.8">┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┓</text>
+    <text fill="#c5c8c6" x="8.0" y="113.2" textLength="12.2">┃</text>
+    <text fill="#c5c8c6" x="20.2" y="113.2" textLength="158.6"> Crate       </text>
+    <text fill="#c5c8c6" x="178.8" y="113.2" textLength="12.2">┃</text>
+    <text fill="#c5c8c6" x="191.0" y="113.2" textLength="219.6"> Category         </text>
+    <text fill="#c5c8c6" x="410.6" y="113.2" textLength="12.2">┃</text>
+    <text fill="#c5c8c6" x="422.8" y="113.2" textLength="109.8"> Stars   </text>
+    <text fill="#c5c8c6" x="532.6" y="113.2" textLength="12.2">┃</text>
+    <text fill="#c5c8c6" x="8.0" y="137.6" textLength="536.8">┡━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━╇━━━━━━━━━┩</text>
+    <text fill="#c5c8c6" x="8.0" y="162.0" textLength="12.2">│</text>
+    <text fill="#c5c8c6" x="20.2" y="162.0" textLength="158.6"> clap        </text>
+    <text fill="#c5c8c6" x="178.8" y="162.0" textLength="12.2">│</text>
+    <text fill="#c5c8c6" x="191.0" y="162.0" textLength="219.6"> arg-parsing      </text>
+    <text fill="#c5c8c6" x="410.6" y="162.0" textLength="12.2">│</text>
+    <text fill="#c5c8c6" x="422.8" y="162.0" textLength="109.8"> ★★★★★   </text>
+    <text fill="#c5c8c6" x="532.6" y="162.0" textLength="12.2">│</text>
+    <text fill="#c5c8c6" x="8.0" y="186.4" textLength="12.2">│</text>
+    <text fill="#c5c8c6" x="20.2" y="186.4" textLength="158.6"> indicatif   </text>
+    <text fill="#c5c8c6" x="178.8" y="186.4" textLength="12.2">│</text>
+    <text fill="#c5c8c6" x="191.0" y="186.4" textLength="219.6"> progress-bars    </text>
+    <text fill="#c5c8c6" x="410.6" y="186.4" textLength="12.2">│</text>
+    <text fill="#c5c8c6" x="422.8" y="186.4" textLength="109.8"> ★★★★☆   </text>
+    <text fill="#c5c8c6" x="532.6" y="186.4" textLength="12.2">│</text>
+    <text fill="#c5c8c6" x="8.0" y="210.8" textLength="12.2">│</text>
+    <text fill="#c5c8c6" x="20.2" y="210.8" textLength="158.6"> console     </text>
+    <text fill="#c5c8c6" x="178.8" y="210.8" textLength="12.2">│</text>
+    <text fill="#c5c8c6" x="191.0" y="210.8" textLength="219.6"> terminal-utils   </text>
+    <text fill="#c5c8c6" x="410.6" y="210.8" textLength="12.2">│</text>
+    <text fill="#c5c8c6" x="422.8" y="210.8" textLength="109.8"> ★★★☆☆   </text>
+    <text fill="#c5c8c6" x="532.6" y="210.8" textLength="12.2">│</text>
+    <text fill="#c5c8c6" x="8.0" y="235.2" textLength="12.2">│</text>
+    <text fill="#c5c8c6" x="20.2" y="235.2" textLength="158.6"> gilt        </text>
+    <text fill="#c5c8c6" x="178.8" y="235.2" textLength="12.2">│</text>
+    <text fill="#c5c8c6" x="191.0" y="235.2" textLength="219.6"> rich-output      </text>
+    <text fill="#c5c8c6" x="410.6" y="235.2" textLength="12.2">│</text>
+    <text fill="#c5c8c6" x="422.8" y="235.2" textLength="109.8"> ★★★★★   </text>
+    <text fill="#c5c8c6" x="532.6" y="235.2" textLength="12.2">│</text>
+    <text fill="#c5c8c6" x="8.0" y="259.6" textLength="536.8">└─────────────┴──────────────────┴─────────┘</text>
+
+    </g>
+    </g>
+</svg>

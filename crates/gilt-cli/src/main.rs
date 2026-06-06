@@ -10,11 +10,15 @@
 //! gilt panel 'text' --title Title
 //! gilt markdown < README.md
 //! gilt json < data.json
+//! gilt tree < outline.txt
+//! gilt syntax --lang rust < main.rs
+//! gilt completions bash
 //! ```
 
 mod cmd;
 
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
+use clap_complete::Shell;
 use cmd::StyleOpts;
 use std::io;
 
@@ -26,7 +30,12 @@ use std::io;
 #[command(
     name = "gilt",
     about = "Rich terminal output for scripts and CI",
-    version
+    long_about = "gilt renders styled text, tables, trees, syntax-highlighted code, \
+                  and markdown to your terminal — from shell scripts, Makefiles, and \
+                  CI pipelines, without writing Rust.\n\n\
+                  All output is ANSI escape sequences compatible with any modern \
+                  terminal. Use `gilt completions <shell>` to enable tab-completion.",
+    version = env!("CARGO_PKG_VERSION")
 )]
 struct Cli {
     #[command(subcommand)]
@@ -36,12 +45,14 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     /// Print text with rich markup (e.g. `[bold red]hi[/]`)
+    #[command(about = "Print text with rich markup tags")]
     Print {
         /// Markup string to render
         markup: String,
     },
 
     /// Print text with explicit style flags
+    #[command(about = "Print text with explicit style flags (--fg, --bg, --bold, …)")]
     Style {
         /// Foreground color (e.g. red, #ff0000, 196)
         #[arg(long)]
@@ -72,15 +83,18 @@ enum Commands {
     },
 
     /// Read CSV from stdin and render as a table
+    #[command(about = "Read CSV from stdin and render as a Unicode box-drawing table")]
     Table,
 
     /// Draw a horizontal rule, optionally with a title
+    #[command(about = "Draw a horizontal rule (optionally with a centered title)")]
     Rule {
         /// Optional title to display in the center of the rule
         title: Option<String>,
     },
 
     /// Render text inside a bordered panel
+    #[command(about = "Render text inside a bordered panel")]
     Panel {
         /// Content text for the panel
         text: String,
@@ -91,10 +105,54 @@ enum Commands {
     },
 
     /// Read Markdown from stdin and render it
+    #[command(about = "Read Markdown from stdin and render it to the terminal")]
     Markdown,
 
     /// Read JSON from stdin and pretty-print it
+    #[command(about = "Read JSON from stdin and pretty-print it with syntax highlighting")]
     Json,
+
+    /// Read an indented outline from stdin and render as a tree
+    ///
+    /// Each line is a node. Indent by multiples of 2 spaces to set depth.
+    /// The first line is the root.
+    ///
+    /// Example input:
+    ///   Project/
+    ///     src/
+    ///       main.rs
+    ///     Cargo.toml
+    #[command(
+        about = "Read an indented outline from stdin and render as a tree",
+        long_about = "Read an indented text outline from stdin and render it as a Tree.\n\n\
+                      Each line is a node. Indent by multiples of 2 spaces to set depth.\n\
+                      The first non-empty line becomes the root.\n\n\
+                      Example:\n  echo -e 'Project/\\n  src/\\n    main.rs\\n  Cargo.toml' | gilt tree"
+    )]
+    Tree,
+
+    /// Read code from stdin and render with syntax highlighting
+    #[command(about = "Read code from stdin and render with syntax highlighting")]
+    Syntax {
+        /// Language name or file extension (e.g. rust, py, js, toml)
+        #[arg(long, short)]
+        lang: String,
+
+        /// Color theme name (default: base16-ocean.dark)
+        #[arg(long, default_value = "base16-ocean.dark")]
+        theme: String,
+
+        /// Show line numbers
+        #[arg(long)]
+        line_numbers: bool,
+    },
+
+    /// Emit a shell completion script
+    #[command(about = "Emit a shell completion script for bash, zsh, or fish")]
+    Completions {
+        /// Shell to generate completions for
+        shell: Shell,
+    },
 }
 
 // ---------------------------------------------------------------------------
@@ -138,6 +196,20 @@ fn main() {
         Commands::Markdown => cmd::cmd_markdown(io::stdin().lock(), &mut out),
 
         Commands::Json => cmd::cmd_json(io::stdin().lock(), &mut out),
+
+        Commands::Tree => cmd::cmd_tree(io::stdin().lock(), &mut out),
+
+        Commands::Syntax {
+            lang,
+            theme,
+            line_numbers,
+        } => cmd::cmd_syntax(io::stdin().lock(), &lang, &theme, line_numbers, &mut out),
+
+        Commands::Completions { shell } => {
+            let mut app = Cli::command();
+            clap_complete::generate(shell, &mut app, "gilt", &mut out);
+            Ok(())
+        }
     };
 
     if let Err(e) = result {

@@ -12,7 +12,9 @@ use gilt::markdown::Markdown;
 use gilt::panel::Panel;
 use gilt::rule::Rule;
 use gilt::style::Style;
+use gilt::syntax::Syntax;
 use gilt::text::Text;
+use gilt::tree::Tree;
 
 // ---------------------------------------------------------------------------
 // Style subcommand options
@@ -166,6 +168,93 @@ pub fn cmd_json(input: impl Read, out: &mut impl Write) -> io::Result<()> {
     let mut console = make_console();
     console.begin_capture();
     console.print(&json);
+    let rendered = console.end_capture();
+    out.write_all(rendered.as_bytes())
+}
+
+/// `gilt tree` — read an indented text outline from `input`, render a `Tree` to `out`.
+///
+/// Each line is a node. Indent by multiples of 2 spaces to set depth.
+/// The first non-empty line becomes the root; subsequent lines are placed
+/// as children according to their indentation level.
+pub fn cmd_tree(input: impl Read, out: &mut impl Write) -> io::Result<()> {
+    let mut buf = String::new();
+    let mut r = input;
+    r.read_to_string(&mut buf)?;
+
+    // Collect non-empty lines with their depth.
+    let nodes: Vec<(usize, &str)> = buf
+        .lines()
+        .filter(|l| !l.trim().is_empty())
+        .map(|l| {
+            let trimmed = l.trim_start_matches("  ");
+            let spaces = l.len() - trimmed.len();
+            let depth = spaces / 2;
+            (depth, l.trim())
+        })
+        .collect();
+
+    if nodes.is_empty() {
+        return out.write_all(b"");
+    }
+
+    // Build the tree using a stack of mutable raw pointers.
+    // Safety: we own `root` for the entire function and never alias.
+    let root_label = Text::new(nodes[0].1, Style::null());
+    let mut root = Tree::new(root_label);
+
+    // Stack holds (depth, *mut Tree).  We push the root at depth 0.
+    // For each subsequent line we pop until the top depth < current depth,
+    // then call add() on the top node.
+    let mut stack: Vec<(usize, *mut Tree)> = vec![(0, &mut root as *mut Tree)];
+
+    for &(depth, label) in &nodes[1..] {
+        // Pop stack entries whose depth >= current depth.
+        while stack.len() > 1 {
+            let top_depth = stack.last().map(|(d, _)| *d).unwrap_or(0);
+            if top_depth >= depth {
+                stack.pop();
+            } else {
+                break;
+            }
+        }
+
+        // SAFETY: the pointer in the stack always points into `root`'s owned
+        // subtree.  We hold `&mut root` for the duration of this function and
+        // never call `add()` on the same node while another `&mut` to a
+        // descendant is live (we always call it then immediately push the
+        // returned reference, so at most one live `&mut` exists at a time).
+        let parent: &mut Tree = unsafe { &mut *stack.last().unwrap().1 };
+        let child: &mut Tree = parent.add(Text::new(label, Style::null()));
+        stack.push((depth, child as *mut Tree));
+    }
+
+    let mut console = make_console();
+    console.begin_capture();
+    console.print(&root);
+    let rendered = console.end_capture();
+    out.write_all(rendered.as_bytes())
+}
+
+/// `gilt syntax --lang <lang>` — read code from `input`, render with syntax highlighting.
+pub fn cmd_syntax(
+    input: impl Read,
+    lang: &str,
+    theme: &str,
+    line_numbers: bool,
+    out: &mut impl Write,
+) -> io::Result<()> {
+    let mut buf = String::new();
+    let mut r = input;
+    r.read_to_string(&mut buf)?;
+
+    let syntax = Syntax::new(&buf, lang)
+        .with_theme(theme)
+        .with_line_numbers(line_numbers);
+
+    let mut console = make_console();
+    console.begin_capture();
+    console.print(&syntax);
     let rendered = console.end_capture();
     out.write_all(rendered.as_bytes())
 }
@@ -349,6 +438,88 @@ mod tests {
         assert!(
             s.contains("gilt"),
             "expected 'gilt' in json output, got: {:?}",
+            s
+        );
+    }
+
+    // -- cmd_tree ------------------------------------------------------------
+
+    /// RED: cmd_tree with a simple two-level outline renders the root and child.
+    #[test]
+    fn test_cmd_tree_root_and_child() {
+        let outline = "Root\n  Child\n";
+        let input = Cursor::new(outline.as_bytes());
+        let mut out = Vec::<u8>::new();
+        cmd_tree(input, &mut out).unwrap();
+        let s = output_of(out);
+        assert!(
+            s.contains("Root"),
+            "expected 'Root' in tree output, got: {:?}",
+            s
+        );
+        assert!(
+            s.contains("Child"),
+            "expected 'Child' in tree output, got: {:?}",
+            s
+        );
+    }
+
+    /// RED: cmd_tree with three levels renders all nodes.
+    #[test]
+    fn test_cmd_tree_three_levels() {
+        let outline = "Project\n  src\n    main.rs\n  Cargo.toml\n";
+        let input = Cursor::new(outline.as_bytes());
+        let mut out = Vec::<u8>::new();
+        cmd_tree(input, &mut out).unwrap();
+        let s = output_of(out);
+        assert!(s.contains("Project"), "missing 'Project': {:?}", s);
+        assert!(s.contains("src"), "missing 'src': {:?}", s);
+        assert!(s.contains("main.rs"), "missing 'main.rs': {:?}", s);
+        assert!(s.contains("Cargo.toml"), "missing 'Cargo.toml': {:?}", s);
+    }
+
+    /// RED: cmd_tree with empty input writes empty (no panic).
+    #[test]
+    fn test_cmd_tree_empty_input() {
+        let input = Cursor::new(b"");
+        let mut out = Vec::<u8>::new();
+        cmd_tree(input, &mut out).unwrap();
+        // Should not panic; output may be empty or a bare newline.
+    }
+
+    // -- cmd_syntax ----------------------------------------------------------
+
+    /// RED: cmd_syntax renders rust code containing the keyword "fn".
+    #[test]
+    fn test_cmd_syntax_rust_contains_fn() {
+        let code = "fn main() {\n    println!(\"hello\");\n}\n";
+        let input = Cursor::new(code.as_bytes());
+        let mut out = Vec::<u8>::new();
+        cmd_syntax(input, "rs", "base16-ocean.dark", false, &mut out).unwrap();
+        let s = output_of(out);
+        assert!(
+            s.contains("fn"),
+            "expected 'fn' in syntax output, got: {:?}",
+            s
+        );
+        assert!(
+            s.contains("main"),
+            "expected 'main' in syntax output, got: {:?}",
+            s
+        );
+    }
+
+    /// RED: cmd_syntax with line_numbers emits ANSI codes (force_terminal).
+    #[test]
+    fn test_cmd_syntax_contains_ansi_codes() {
+        let code = "x = 1\n";
+        let input = Cursor::new(code.as_bytes());
+        let mut out = Vec::<u8>::new();
+        cmd_syntax(input, "py", "base16-ocean.dark", false, &mut out).unwrap();
+        let s = output_of(out);
+        assert!(
+            s.contains('\x1b'),
+            "expected ANSI escape codes in syntax output, got: {:?}",
             s
         );
     }

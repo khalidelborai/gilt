@@ -5,6 +5,12 @@ A CLI binary for [gilt](../../README.md) — rich terminal output from shell scr
 ## Installation
 
 ```sh
+cargo install gilt-cli
+```
+
+Or from source:
+
+```sh
 cargo install --path crates/gilt-cli
 ```
 
@@ -17,6 +23,7 @@ Print text with rich markup tags.
 ```sh
 gilt print '[bold red]Error:[/] something went wrong'
 gilt print '[green]Success![/green]'
+gilt print '[link=https://crates.io/crates/gilt][underline cyan]gilt on crates.io[/]'
 ```
 
 ### `gilt style [FLAGS] <TEXT>`
@@ -38,7 +45,7 @@ Read CSV from stdin and render as a Unicode box-drawing table.
 
 ```sh
 gilt table < data.csv
-echo 'Name,Age\nAlice,30\nBob,25' | gilt table
+printf 'Name,Age\nAlice,30\nBob,25\n' | gilt table
 ```
 
 ### `gilt rule [TITLE]`
@@ -77,10 +84,51 @@ gilt json < data.json
 curl -s https://api.example.com/data | gilt json
 ```
 
+### `gilt tree`
+
+Read an indented text outline from stdin and render it as a tree.
+
+Each line is a node; indent by multiples of 2 spaces to set depth.
+The first non-empty line is the root.
+
+```sh
+printf 'Project/\n  src/\n    main.rs\n  Cargo.toml\n' | gilt tree
+find . -type f | sort | gilt tree
+```
+
+### `gilt syntax --lang <LANG>`
+
+Read code from stdin and render with syntax highlighting.
+
+```sh
+gilt syntax --lang rust < src/main.rs
+gilt syntax --lang python --line-numbers < script.py
+git show HEAD:src/lib.rs | gilt syntax --lang rust
+```
+
+`--lang` accepts language names (`rust`, `python`, `javascript`) or file
+extensions (`rs`, `py`, `js`, `toml`, `yaml`, …). `--theme` sets the colour
+theme (default: `base16-ocean.dark`). `--line-numbers` adds line numbers.
+
+### `gilt completions <SHELL>`
+
+Emit a shell completion script for `bash`, `zsh`, or `fish`.
+
+```sh
+# bash
+gilt completions bash >> ~/.bash_completion
+
+# zsh (oh-my-zsh / fpath)
+gilt completions zsh > "${fpath[1]}/_gilt"
+
+# fish
+gilt completions fish > ~/.config/fish/completions/gilt.fish
+```
+
 ## Design notes
 
 - Every subcommand is implemented as a testable function in `src/cmd.rs` that
   accepts an explicit `Write` sink, making unit tests straightforward.
-- `clap` is a dependency of `gilt-cli` only — the gilt library itself is not
-  affected.
+- `clap` and `clap_complete` are dependencies of `gilt-cli` only — the gilt
+  library itself is not affected.
 - MSRV: 1.82 (matches the gilt library).

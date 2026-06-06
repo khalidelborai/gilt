@@ -1,6 +1,6 @@
 [package]
 name = "gilt-cli"
-version = "1.9.0"
+version = "1.10.0"
 edition = "2021"
 rust-version = "1.82"
 description = "CLI binary for gilt — rich terminal output from scripts and CI"
@@ -12,5 +12,6 @@ name = "gilt"
 path = "src/main.rs"
 
 [dependencies]
-gilt = { version = "1.8.0", path = "../..", features = ["markdown", "syntax", "json", "csv"] }
+gilt = { version = "1.10", path = "../..", features = ["markdown", "syntax", "json", "csv"] }
 clap = { version = "4", features = ["derive"] }
+clap_complete = "4"
