@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.10.0] - 2026-06-06
+
+Terminal-awareness + higher-resolution graphics, plus reproducible demos.
+Completes the additive items from the landscape strategy. TDD.
+
+### Added
+
+- **OSC 11 background detection → auto dark/light** — `parse_osc11_response`
+  and `is_dark_background` (dep-free, WASM-safe core); `Console::detect_background`
+  and `ConsoleBuilder::auto_theme()` actively probe and pick a theme behind the
+  opt-in `terminal-query` feature (native, crossterm, 200 ms timeout).
+- **Canvas blitter ladder** — `Canvas::with_blitter(Blitter)`:
+  `Braille` (default, 2×4), `Sextant` (2×3, U+1FB00), `HalfBlock`, and `Octant`
+  (stubbed to Braille until Unicode 16 fonts are common). Same drawing API,
+  higher cell density.
+- **`gilt-vhs`** — a `publish = false` workspace crate for **tape-as-code**
+  recording: `Tape::new().frame(renderable, delay)` → `to_cast()` (deterministic
+  asciinema, injected clock — no sleeping) / `to_svg()`, for reproducible
+  README/docs demos.
+- **Examples for everything** — a runnable example per v1.8–v1.10 feature
+  (`asciinema_export`, `scoped_record`, `themed_console`, `table_colspan`,
+  `capabilities`, `inline_image`, `fuzzy_select`, `form`, `auto_theme`,
+  `canvas_blitters`, `live_dirty_cache`).
+
 ## [1.9.0] - 2026-06-06
 
 Fills the two largest structural gaps (inline images, interactive forms) and
