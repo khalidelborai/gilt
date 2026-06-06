@@ -45,6 +45,7 @@ lru = "0.12"
 arc-swap = "1"
 terminal_size = { version = "0.4", optional = true }
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"], optional = true }
+crossterm = { version = "0.28", optional = true }
 
 [features]
 default = ["json", "markdown", "syntax", "interactive", "logging", "terminal-size"]
@@ -79,6 +80,10 @@ asciinema = ["json"]
 # `Image::from_bytes`. The halfblock renderer and `Image::from_rgba` are
 # always available even without this feature.
 inline-images = ["dep:image"]
+# Opt-in: interactive fuzzy/substring single-select with arrow-key navigation.
+# Pulls crossterm (raw mode, key events) only when this feature is enabled.
+# NOT in default — keeps gilt dep-light for most users.
+tty-select = ["dep:crossterm"]
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.59", features = ["Win32_System_Console", "Win32_Foundation"], optional = true }

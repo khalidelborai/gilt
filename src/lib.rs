@@ -771,6 +771,8 @@ pub mod figlet;
 pub mod gradient;
 pub mod windows_vt;
 pub use utils::group;
+pub mod form;
+pub mod fuzzy_select;
 pub mod layout;
 #[cfg(feature = "markdown")]
 pub mod markdown;
@@ -803,6 +805,19 @@ pub mod image;
 #[cfg(test)]
 #[path = "image_tests.rs"]
 mod image_tests;
+
+// v1.9 TDD tests (RED before implementation)
+#[cfg(test)]
+#[path = "content_hash_tests.rs"]
+mod content_hash_tests;
+
+#[cfg(test)]
+#[path = "form_tests.rs"]
+mod form_tests;
+
+#[cfg(test)]
+#[path = "fuzzy_select_tests.rs"]
+mod fuzzy_select_tests;
 
 // Feature-gated modules
 #[cfg(feature = "async")]

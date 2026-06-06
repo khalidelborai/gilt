@@ -255,9 +255,46 @@ impl ConsoleOptions {
 pub trait Renderable {
     /// Produce segments for rendering on the given console with given options.
     fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment>;
+
+    /// Return a cheap hash of this widget's content for per-region dirty tracking.
+    ///
+    /// `None` (the default) means "always dirty — re-render every frame".
+    /// `Some(hash)` means "cache is valid as long as the hash matches the
+    /// previous frame".  Only implement `Some(...)` where the hash is both
+    /// cheap to compute and correct (i.e. it changes whenever the visible
+    /// output would change).
+    ///
+    /// This method is additive and non-breaking: all existing `Renderable`
+    /// implementations inherit the `None` default without any source change.
+    fn content_hash(&self) -> Option<u64> {
+        None
+    }
 }
 
 impl Renderable for Text {
+    /// Return a stable hash of this `Text`'s plain content.
+    ///
+    /// Uses a simple FNV-1a hash over the plain string bytes, mixed with
+    /// a type-marker so `Text("x")` and `Rule` with the same display don't
+    /// collide.  Cheap: O(n) in the plain-text length, no heap allocation.
+    fn content_hash(&self) -> Option<u64> {
+        // FNV-1a 64-bit over the plain string bytes.
+        const FNV_OFFSET: u64 = 14_695_981_039_346_656_037;
+        const FNV_PRIME: u64 = 1_099_511_628_211;
+        const TEXT_MARKER: u64 = 0x0000_0001; // distinguishes Text from Rule
+
+        let plain = self.plain();
+        let mut h = FNV_OFFSET;
+        for byte in plain.as_bytes() {
+            h ^= *byte as u64;
+            h = h.wrapping_mul(FNV_PRIME);
+        }
+        // Mix in the type marker so Text("x") != Rule with display "x"
+        h ^= TEXT_MARKER;
+        h = h.wrapping_mul(FNV_PRIME);
+        Some(h)
+    }
+
     fn gilt_console(&self, _console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         let mut text = self.clone();
         if let Some(justify) = &options.justify {
