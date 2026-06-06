@@ -13,7 +13,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! gilt = "1.9"
+//! gilt = "1.10"
 //! ```
 //!
 //! Then use the [`prelude`] for convenient access to common types:
@@ -537,7 +537,7 @@
 //! Enable in `Cargo.toml`:
 //!
 //! ```toml
-//! gilt = { version = "1.9", features = ["derive"] }
+//! gilt = { version = "1.10", features = ["derive"] }
 //! ```
 //!
 //! ## `gilt::derives` namespace
@@ -572,11 +572,12 @@
 //! | `windows-vt` | No | `windows-sys` | Enable VT processing at `Console::new()` (native Windows) |
 //! | `inline-images` | No | `image` | Decode PNG/JPEG for [`Image`](image::Image) (halfblock works without it) |
 //! | `tty-select` | No | `crossterm` | Interactive `FuzzySelect` (the core `FuzzySelectState` is dep-free) |
+//! | `terminal-query` | No | `crossterm` | OSC 11 background probe → `auto_theme` (parsing core is dep-free) |
 //!
 //! For a minimal build with no heavy dependencies:
 //!
 //! ```toml
-//! gilt = { version = "1.9", default-features = false }
+//! gilt = { version = "1.10", default-features = false }
 //! ```
 //!
 //! # Integrations
@@ -791,6 +792,7 @@ pub mod segment;
 pub mod sparkline;
 pub mod style;
 pub mod style_interner;
+pub mod terminal_bg;
 // styled and styled_str are now in utils/
 pub use utils::styled;
 pub use utils::styled_str;
@@ -820,6 +822,15 @@ mod form_tests;
 #[cfg(test)]
 #[path = "fuzzy_select_tests.rs"]
 mod fuzzy_select_tests;
+
+// v1.10 TDD tests (RED before implementation)
+#[cfg(test)]
+#[path = "terminal_bg_tests.rs"]
+mod terminal_bg_tests;
+
+#[cfg(test)]
+#[path = "canvas_blitter_tests.rs"]
+mod canvas_blitter_tests;
 
 // Feature-gated modules
 #[cfg(feature = "async")]

@@ -1,9 +1,9 @@
 [workspace]
-members = ["crates/gilt-derive", "crates/gilt-cli"]
+members = ["crates/gilt-derive", "crates/gilt-cli", "crates/gilt-vhs"]
 
 [package]
 name = "gilt"
-version = "1.9.0"
+version = "1.10.0"
 edition = "2021"
 exclude = [".claude/", ".review/", "vlc.zip"]
 description = "Fast, beautiful terminal formatting for Rust — styles, tables, trees, syntax highlighting, progress bars, markdown."
@@ -84,6 +84,12 @@ inline-images = ["dep:image"]
 # Pulls crossterm (raw mode, key events) only when this feature is enabled.
 # NOT in default — keeps gilt dep-light for most users.
 tty-select = ["dep:crossterm"]
+# Opt-in: probe the terminal background colour via OSC 11 (native only).
+# Uses crossterm for raw-mode I/O. On non-supporting terminals or on
+# timeout, returns ConsoleBackground::Unknown. The pure parsing/luminance
+# core (parse_osc11_response, is_dark_background, ConsoleBackground) is
+# always available without this feature.
+terminal-query = ["dep:crossterm"]
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.59", features = ["Win32_System_Console", "Win32_Foundation"], optional = true }
@@ -100,6 +106,22 @@ required-features = ["markdown"]
 [[example]]
 name = "text_macro"
 required-features = ["derive"]
+
+[[example]]
+name = "asciinema_export"
+required-features = ["asciinema"]
+
+[[example]]
+name = "themed_console"
+required-features = ["json"]
+
+[[example]]
+name = "form"
+required-features = ["interactive"]
+
+[[example]]
+name = "auto_theme"
+required-features = ["terminal-query"]
 
 [[bench]]
 name = "benchmarks"

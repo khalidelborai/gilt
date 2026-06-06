@@ -892,6 +892,43 @@ impl Console {
         }
     }
 
+    // -- Background detection -----------------------------------------------
+
+    /// Detect the terminal background (dark, light, or unknown).
+    ///
+    /// When the `terminal-query` feature is enabled **and** the build is
+    /// native (not wasm32), this probes the controlling TTY via OSC 11.
+    /// On failure, timeout, or unsupported terminals the result is
+    /// [`ConsoleBackground::Unknown`].
+    ///
+    /// Without the `terminal-query` feature (the default), this always
+    /// returns [`ConsoleBackground::Unknown`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    /// use gilt::terminal_bg::ConsoleBackground;
+    ///
+    /// let console = Console::new();
+    /// let bg = console.detect_background();
+    /// // In a non-interactive environment this will be Unknown.
+    /// assert!(matches!(
+    ///     bg,
+    ///     ConsoleBackground::Dark | ConsoleBackground::Light | ConsoleBackground::Unknown
+    /// ));
+    /// ```
+    pub fn detect_background(&self) -> crate::terminal_bg::ConsoleBackground {
+        #[cfg(all(feature = "terminal-query", not(target_arch = "wasm32")))]
+        {
+            crate::terminal_bg::query_terminal_background()
+        }
+        #[cfg(not(all(feature = "terminal-query", not(target_arch = "wasm32"))))]
+        {
+            crate::terminal_bg::ConsoleBackground::Unknown
+        }
+    }
+
     // -- Terminal detection -------------------------------------------------
 
     /// Detect the terminal size.
