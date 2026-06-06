@@ -8,10 +8,12 @@
 //! - `state.selection()` — currently highlighted item.
 //! - `state.move_down()` / `state.move_up()` — arrow-key navigation.
 //!
-//! Note: `--features tty-select` enables `FuzzySelect::ask()`, which adds
-//! an interactive arrow-key driven TUI using crossterm raw mode.
+//! `--features tty-select` additionally runs the interactive `FuzzySelect::ask()`
+//! picker at the end (arrow-key driven, crossterm raw mode).
 //!
-//! Run with: cargo run --example fuzzy_select
+//! Run with:
+//!   cargo run --example fuzzy_select                       # the dep-free core
+//!   cargo run --example fuzzy_select --features tty-select # + interactive picker
 
 use gilt::fuzzy_select::FuzzySelectState;
 
@@ -89,5 +91,25 @@ fn main() {
     assert_eq!(state.filtered().len(), words.len());
 
     println!("\n[assertions passed]");
-    println!("[tip] Add --features tty-select for the interactive FuzzySelect::ask() driver.");
+
+    // --- Interactive picker (only compiled with `--features tty-select`) ------
+    #[cfg(feature = "tty-select")]
+    {
+        use gilt::fuzzy_select::FuzzySelect;
+        println!(
+            "\n=== Interactive picker (type to filter · ↑/↓ move · Enter pick · Esc cancel) ==="
+        );
+        match FuzzySelect::new(words)
+            .with_prompt("Pick a fruit")
+            .ask()
+            .expect("fuzzy select failed")
+        {
+            Some(item) => println!("You picked: {item}"),
+            None => println!("Cancelled."),
+        }
+    }
+    #[cfg(not(feature = "tty-select"))]
+    println!(
+        "[tip] Re-run with --features tty-select for the interactive FuzzySelect::ask() picker."
+    );
 }
