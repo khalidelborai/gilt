@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/gilt-derive"]
+members = ["crates/gilt-derive", "crates/gilt-cli"]
 
 [package]
 name = "gilt"
