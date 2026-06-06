@@ -795,6 +795,15 @@ pub mod syntax;
 pub mod tree;
 pub mod wrap;
 
+// Inline terminal images (always available for halfblock; `inline-images`
+// feature required for Image::from_path / Image::from_bytes).
+pub mod image;
+
+// Image tests (TDD: written before Image was implemented)
+#[cfg(test)]
+#[path = "image_tests.rs"]
+mod image_tests;
+
 // Feature-gated modules
 #[cfg(feature = "async")]
 pub mod r#async;

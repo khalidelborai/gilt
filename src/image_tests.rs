@@ -1,0 +1,250 @@
+//! Tests for the `Image` renderable (TDD: written before implementation).
+//!
+//! Run with: `cargo nextest run --all-features -E 'test(image)'`
+
+#[cfg(test)]
+mod tests {
+    use crate::console::Console;
+    use crate::console_caps::ConsoleCapabilities;
+    use crate::image::Image;
+
+    // -----------------------------------------------------------------------
+    // Helper: build a 2×2 RGBA image (red, green, blue, white pixels).
+    //   Layout: [red, green] on top row, [blue, white] on bottom row
+    //   RGBA bytes: R=255 G=0 B=0 A=255, R=0 G=255 B=0 A=255,
+    //               R=0 G=0 B=255 A=255, R=255 G=255 B=255 A=255
+    // -----------------------------------------------------------------------
+    fn rgba_2x2() -> Vec<u8> {
+        vec![
+            255, 0, 0, 255, // top-left:  red
+            0, 255, 0, 255, // top-right: green
+            0, 0, 255, 255, // bot-left:  blue
+            255, 255, 255, 255, // bot-right: white
+        ]
+    }
+
+    // -----------------------------------------------------------------------
+    // RED TEST 1 — halfblock core (no `image` crate dep required)
+    //
+    // A 2-wide × 2-tall pixel grid with width(2) target cells.
+    // Each cell represents 1 column × 2 rows of pixels → 2 cells total.
+    // halfblock: cell 0 → fg=red  bg=blue  (▀ with ESC[38;2;255;0;0m fg, ESC[48;2;0;0;255m bg)
+    //            cell 1 → fg=green bg=white (▀ …)
+    // Then a newline.
+    // -----------------------------------------------------------------------
+    #[test]
+    fn halfblock_output_contains_upper_half_block_and_truecolor_escapes() {
+        let img = Image::from_rgba(2, 2, rgba_2x2()).width(2);
+
+        let mut console = Console::builder()
+            .no_color(false)
+            .force_terminal(true)
+            .color_system("truecolor")
+            .width(80)
+            .build();
+
+        // Force kitty=false so halfblock is used regardless of the test
+        // runner's environment (the developer may be running inside ghostty/kitty).
+        console.set_capabilities(ConsoleCapabilities {
+            kitty: false,
+            ..console.capabilities().clone()
+        });
+
+        console.begin_capture();
+        console.print(&img);
+        let output = console.end_capture();
+
+        // halfblock character must appear
+        assert!(
+            output.contains('\u{2580}'),
+            "halfblock path must emit \u{2580}; got: {:?}",
+            output
+        );
+        // truecolor fg SGR params for red pixel (top-left) — 38;2;255;0;0
+        // The console may combine fg+bg into one SGR sequence, so we search
+        // for the SGR parameter substring rather than the full standalone sequence.
+        assert!(
+            output.contains("38;2;255;0;0"),
+            "expected fg=red truecolor params; got: {:?}",
+            output
+        );
+        // truecolor bg SGR params for blue pixel (bottom-left) — 48;2;0;0;255
+        assert!(
+            output.contains("48;2;0;0;255"),
+            "expected bg=blue truecolor params; got: {:?}",
+            output
+        );
+        // truecolor fg SGR params for green pixel (top-right) — 38;2;0;255;0
+        assert!(
+            output.contains("38;2;0;255;0"),
+            "expected fg=green truecolor params; got: {:?}",
+            output
+        );
+        // truecolor bg SGR params for white pixel (bottom-right) — 48;2;255;255;255
+        assert!(
+            output.contains("48;2;255;255;255"),
+            "expected bg=white truecolor params; got: {:?}",
+            output
+        );
+        // NO Kitty APC — kitty was forced off
+        assert!(
+            !output.contains("\x1b_G"),
+            "halfblock path must NOT emit Kitty APC"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // RED TEST 2 — Kitty path
+    //
+    // Build a console whose capabilities have kitty=true and is NOT recording.
+    // Rendering Image::from_rgba must produce a segment whose text contains
+    // the Kitty APC introducer \x1b_G and the base64 of the raw RGBA bytes.
+    // -----------------------------------------------------------------------
+    #[test]
+    fn kitty_path_emits_apc_and_base64_of_pixels() {
+        let rgba = rgba_2x2();
+        let img = Image::from_rgba(2, 2, rgba.clone()).width(2);
+
+        // Build a console with kitty capability forced
+        let mut console = Console::builder()
+            .no_color(false)
+            .force_terminal(true)
+            .color_system("truecolor")
+            .width(80)
+            .build();
+
+        // Override capabilities with kitty=true after build
+        console.set_capabilities(ConsoleCapabilities {
+            kitty: true,
+            ..console.capabilities().clone()
+        });
+
+        console.begin_capture();
+        console.print(&img);
+        let output = console.end_capture();
+
+        // Must contain Kitty APC introducer
+        assert!(
+            output.contains("\x1b_G"),
+            "Kitty path must emit \\x1b_G APC; got: {:?}",
+            output
+        );
+        // Must NOT contain ▀ (halfblock chars)
+        assert!(
+            !output.contains('▀'),
+            "Kitty path must NOT emit halfblock ▀"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // RED TEST 3 — recording console always uses halfblock (for HTML/SVG export)
+    // -----------------------------------------------------------------------
+    #[test]
+    fn recording_console_uses_halfblock_not_kitty() {
+        let img = Image::from_rgba(2, 2, rgba_2x2()).width(2);
+
+        let mut console = Console::builder()
+            .no_color(false)
+            .force_terminal(true)
+            .color_system("truecolor")
+            .width(80)
+            .record(true) // recording mode → halfblock regardless
+            .build();
+
+        // Even with kitty=true, recording uses halfblock
+        console.set_capabilities(ConsoleCapabilities {
+            kitty: true,
+            ..console.capabilities().clone()
+        });
+
+        console.begin_capture();
+        console.print(&img);
+        let output = console.end_capture();
+
+        assert!(
+            output.contains('▀'),
+            "recording console must use halfblock for export; got: {:?}",
+            output
+        );
+        assert!(
+            !output.contains("\x1b_G"),
+            "recording console must NOT emit Kitty APC (breaks HTML export)"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // RED TEST 4 — ConsoleCapabilities detects kitty from env
+    // -----------------------------------------------------------------------
+    #[test]
+    fn caps_kitty_flag_from_xterm_kitty() {
+        let caps = ConsoleCapabilities::from_env_parts(
+            Some("truecolor"),
+            Some("xterm-kitty"),
+            true,
+            None,
+            None, // kitty_window_id
+            None, // term_program
+        );
+        assert!(caps.kitty, "TERM=xterm-kitty should set kitty=true");
+    }
+
+    #[test]
+    fn caps_kitty_flag_from_kitty_window_id() {
+        let caps = ConsoleCapabilities::from_env_parts(
+            None,
+            None,
+            true,
+            None,
+            Some("42"), // KITTY_WINDOW_ID set
+            None,
+        );
+        assert!(caps.kitty, "KITTY_WINDOW_ID set should set kitty=true");
+    }
+
+    #[test]
+    fn caps_kitty_flag_from_wezterm() {
+        let caps = ConsoleCapabilities::from_env_parts(
+            None,
+            None,
+            true,
+            None,
+            None,
+            Some("WezTerm"), // TERM_PROGRAM=WezTerm
+        );
+        assert!(caps.kitty, "TERM_PROGRAM=WezTerm should set kitty=true");
+    }
+
+    #[test]
+    fn caps_kitty_flag_from_ghostty() {
+        let caps =
+            ConsoleCapabilities::from_env_parts(None, None, true, None, None, Some("ghostty"));
+        assert!(caps.kitty, "TERM_PROGRAM=ghostty should set kitty=true");
+    }
+
+    #[test]
+    fn caps_iterm_flag_from_term_program() {
+        let caps =
+            ConsoleCapabilities::from_env_parts(None, None, true, None, None, Some("iTerm.app"));
+        assert!(caps.iterm, "TERM_PROGRAM=iTerm.app should set iterm=true");
+    }
+
+    #[test]
+    fn caps_no_kitty_on_plain_term() {
+        let caps = ConsoleCapabilities::from_env_parts(
+            Some("truecolor"),
+            Some("xterm-256color"),
+            true,
+            None,
+            None,
+            None,
+        );
+        assert!(
+            !caps.kitty,
+            "plain xterm-256color should NOT set kitty=true"
+        );
+        assert!(
+            !caps.iterm,
+            "plain xterm-256color should NOT set iterm=true"
+        );
+    }
+}

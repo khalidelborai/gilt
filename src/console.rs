@@ -703,6 +703,48 @@ impl Console {
         &self.capabilities
     }
 
+    /// Override the detected terminal capabilities.
+    ///
+    /// Primarily intended for testing, where callers need to force specific
+    /// protocol flags (e.g. `kitty = true`) without spawning a real terminal.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    /// use gilt::console_caps::ConsoleCapabilities;
+    ///
+    /// let mut console = Console::builder().force_terminal(true).build();
+    /// let caps = ConsoleCapabilities { kitty: true, ..console.capabilities().clone() };
+    /// console.set_capabilities(caps);
+    /// assert!(console.capabilities().kitty);
+    /// ```
+    pub fn set_capabilities(&mut self, caps: ConsoleCapabilities) {
+        self.capabilities = caps;
+    }
+
+    /// Whether the console is in recording mode (for `export_html` / `export_svg`).
+    ///
+    /// When `true`, `Image` and other renderables that have terminal-specific
+    /// rendering paths (Kitty graphics, Sixel) will fall back to the
+    /// always-correct halfblock representation so that HTML/SVG export produces
+    /// valid styled text rather than raw escape sequences.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    ///
+    /// let recording = Console::builder().record(true).build();
+    /// assert!(recording.is_recording());
+    ///
+    /// let normal = Console::builder().build();
+    /// assert!(!normal.is_recording());
+    /// ```
+    pub fn is_recording(&self) -> bool {
+        self.record
+    }
+
     /// The current terminal width in columns.
     pub fn width(&self) -> usize {
         if let Some(w) = self.width_override {
