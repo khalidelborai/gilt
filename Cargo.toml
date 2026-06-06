@@ -78,6 +78,10 @@ proptest = "1"
 name = "live_markdown"
 required-features = ["markdown"]
 
+[[example]]
+name = "text_macro"
+required-features = ["derive"]
+
 [[bench]]
 name = "benchmarks"
 harness = false
