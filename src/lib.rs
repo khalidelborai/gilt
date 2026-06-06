@@ -13,7 +13,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! gilt = "1.7"
+//! gilt = "1.8"
 //! ```
 //!
 //! Then use the [`prelude`] for convenient access to common types:
@@ -537,7 +537,7 @@
 //! Enable in `Cargo.toml`:
 //!
 //! ```toml
-//! gilt = { version = "1.7", features = ["derive"] }
+//! gilt = { version = "1.8", features = ["derive"] }
 //! ```
 //!
 //! ## `gilt::derives` namespace
@@ -568,11 +568,13 @@
 //! | `anstyle` | No | `anstyle` | Bidirectional `From` conversions |
 //! | `csv` | No | `csv` | CSV file reading (built-in parser always available) |
 //! | `readline` | No | `rustyline` | Readline-based prompt completions |
+//! | `asciinema` | No | (json) | `Console::export_asciinema` — asciinema v2 `.cast` export |
+//! | `windows-vt` | No | `windows-sys` | Enable VT processing at `Console::new()` (native Windows) |
 //!
 //! For a minimal build with no heavy dependencies:
 //!
 //! ```toml
-//! gilt = { version = "1.7", default-features = false }
+//! gilt = { version = "1.8", default-features = false }
 //! ```
 //!
 //! # Integrations
