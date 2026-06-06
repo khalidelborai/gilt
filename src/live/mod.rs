@@ -413,6 +413,8 @@ impl Live {
             let mut s = state.lock().unwrap();
             s.live_render.set_renderable(content.clone());
             s.live_render.vertical_overflow = vertical_overflow;
+            // DEC mode 2026: render the whole screen frame atomically.
+            s.console.begin_synchronized();
             // Emit home() so each frame overwrites from the top-left corner
             // instead of appending below the previous frame.
             let home_ctrl = crate::control::Control::home();
@@ -438,6 +440,7 @@ impl Live {
             let text = Text::new(&flat, crate::style::Style::null());
             let screen = Screen::new(text);
             s.console.print(&screen);
+            s.console.end_synchronized();
         } else {
             // Normal mode: render to segments, then emit cursor repositioning
             // + content — all within a single brief lock to keep the emitted
@@ -457,9 +460,15 @@ impl Live {
                 return;
             }
 
+            // DEC mode 2026: wrap the cursor-reposition + redraw in synchronized
+            // output so the terminal applies the whole frame atomically (no
+            // tearing/flicker, especially under tmux). Harmless no-op on
+            // terminals without support, and suppressed on dumb/non-terminals.
+            s.console.begin_synchronized();
             let position_segments = s.live_render.position_cursor();
             emit_control_segments(&mut s.console, &position_segments);
             s.console.write_segments(&render_segments);
+            s.console.end_synchronized();
             s.last_segments = Some(render_segments);
         }
     }
@@ -1274,6 +1283,42 @@ mod tests {
         live.start();
         live.print_above(Text::new("above", Style::null())); // must not panic
         live.stop();
+    }
+
+    /// DEC mode 2026: a Live refresh wraps its emit in begin/end synchronized
+    /// output so the terminal renders the frame atomically (no flicker).
+    #[test]
+    fn refresh_wraps_emit_in_synchronized_output() {
+        let console = Console::builder()
+            .width(80)
+            .height(25)
+            .quiet(false)
+            .markup(false)
+            .no_color(true)
+            .force_terminal(true)
+            .build();
+
+        let mut live = Live::new(Text::new("frame content", Style::null()))
+            .with_console(console)
+            .with_auto_refresh(false);
+
+        live.state.lock().unwrap().console.begin_capture();
+        live.start();
+        live.refresh();
+        let captured = live.state.lock().unwrap().console.end_capture();
+
+        assert!(
+            captured.contains("\x1b[?2026h"),
+            "frame should open synchronized output (CSI ?2026h): {captured:?}"
+        );
+        assert!(
+            captured.contains("\x1b[?2026l"),
+            "frame should close synchronized output (CSI ?2026l): {captured:?}"
+        );
+        let begin = captured.find("\x1b[?2026h").unwrap();
+        let end = captured.rfind("\x1b[?2026l").unwrap();
+        assert!(begin < end, "begin-sync must precede end-sync");
+        assert!(captured.contains("frame content"));
     }
 
     /// `print_above` in normal mode: both the above-content and the live
