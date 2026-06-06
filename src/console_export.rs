@@ -674,15 +674,12 @@ impl Console {
         let unique_id: &str = if let Some(id) = unique_id {
             id
         } else {
-            let mut hash: u64 = 14695981039346656037u64; // FNV-1a offset basis
+            use crate::utils::hash::{fnv1a_64_extend, FNV_OFFSET};
+            let mut hash = FNV_OFFSET;
             for seg in buffer_ref {
-                for byte in seg.text.as_bytes() {
-                    hash = hash.wrapping_mul(1099511628211) ^ (*byte as u64);
-                }
+                hash = fnv1a_64_extend(hash, seg.text.as_bytes());
             }
-            for byte in title.as_bytes() {
-                hash = hash.wrapping_mul(1099511628211) ^ (*byte as u64);
-            }
+            hash = fnv1a_64_extend(hash, title.as_bytes());
             derived_id = format!("gilt-{:016x}", hash);
             &derived_id
         };
@@ -836,15 +833,12 @@ impl Console {
         let unique_id: &str = if let Some(ref id) = opts.unique_id {
             id.as_str()
         } else {
-            let mut hash: u64 = 14695981039346656037u64;
+            use crate::utils::hash::{fnv1a_64_extend, FNV_OFFSET};
+            let mut hash = FNV_OFFSET;
             for seg in buffer_ref {
-                for byte in seg.text.as_bytes() {
-                    hash = hash.wrapping_mul(1099511628211) ^ (*byte as u64);
-                }
+                hash = fnv1a_64_extend(hash, seg.text.as_bytes());
             }
-            for byte in opts.title.as_bytes() {
-                hash = hash.wrapping_mul(1099511628211) ^ (*byte as u64);
-            }
+            hash = fnv1a_64_extend(hash, opts.title.as_bytes());
             derived_id = format!("gilt-{:016x}", hash);
             &derived_id
         };

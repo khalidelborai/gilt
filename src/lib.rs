@@ -746,6 +746,18 @@
 //! | [`emoji`] | Emoji shortcode replacement |
 //! | [`box_chars`] | 19 box-drawing character sets |
 //! | [`prelude`] | Convenience re-exports |
+//! | [`image`] | Inline terminal images (halfblock / Kitty / Sixel) |
+//! | [`terminal_bg`] | OSC 11 background detection and dark/light theme selection |
+//! | [`console_caps`] | Detected terminal capability flags (`ConsoleCapabilities`) |
+//! | [`form`] | Multi-step chained prompts with validation |
+//! | [`fuzzy_select`] | Fuzzy/substring item selection (state machine + interactive driver) |
+//! | [`prompt`] | Simple yes/no and text prompts |
+//! | [`pager`] | Pipe-based terminal pager (less-style) |
+//! | [`accordion`] | Collapsible section widgets |
+//! | [`badge`] | Inline status badges |
+//! | [`breadcrumbs`] | Breadcrumb navigation display |
+//! | [`windows_vt`] | Windows VT processing opt-in (`enable_windows_vt`) |
+//! | [`export_format`] | HTML/SVG export options and format strings |
 
 // Module hierarchy - organized by functionality
 pub mod color;

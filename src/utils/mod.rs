@@ -19,6 +19,7 @@ pub mod emoji_replace;
 pub mod file_proxy;
 pub mod filesize;
 pub mod group;
+pub(crate) mod hash;
 pub mod highlighter;
 pub mod inspect;
 pub mod padding;

@@ -1109,14 +1109,7 @@ pub(crate) fn next_link_id() -> u64 {
 /// produce the same id, and repeated `render()` calls on the same Style are
 /// idempotent — no mutable state or extra fields needed.
 fn link_id_for(url: &str) -> u64 {
-    const FNV_OFFSET: u64 = 14_695_981_039_346_656_037;
-    const FNV_PRIME: u64 = 1_099_511_628_211;
-    let mut hash = FNV_OFFSET;
-    for byte in url.bytes() {
-        hash ^= byte as u64;
-        hash = hash.wrapping_mul(FNV_PRIME);
-    }
-    hash
+    crate::utils::hash::fnv1a_64(url.as_bytes())
 }
 
 /// Global LRU cache for parsed styles with capacity for 256 entries.

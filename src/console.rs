@@ -278,20 +278,13 @@ impl Renderable for Text {
     /// a type-marker so `Text("x")` and `Rule` with the same display don't
     /// collide.  Cheap: O(n) in the plain-text length, no heap allocation.
     fn content_hash(&self) -> Option<u64> {
-        // FNV-1a 64-bit over the plain string bytes.
-        const FNV_OFFSET: u64 = 14_695_981_039_346_656_037;
-        const FNV_PRIME: u64 = 1_099_511_628_211;
         const TEXT_MARKER: u64 = 0x0000_0001; // distinguishes Text from Rule
 
         let plain = self.plain();
-        let mut h = FNV_OFFSET;
-        for byte in plain.as_bytes() {
-            h ^= *byte as u64;
-            h = h.wrapping_mul(FNV_PRIME);
-        }
+        let mut h = crate::utils::hash::fnv1a_64(plain.as_bytes());
         // Mix in the type marker so Text("x") != Rule with display "x"
         h ^= TEXT_MARKER;
-        h = h.wrapping_mul(FNV_PRIME);
+        h = h.wrapping_mul(crate::utils::hash::FNV_PRIME);
         Some(h)
     }
 
