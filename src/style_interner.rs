@@ -1,10 +1,17 @@
-//! Per-`Console` style interner. **Dormant in v0.11.0-alpha.1.**
+//! Per-`Console` style interner. **Dormant — types only, nothing interns yet.**
 //!
-//! Foundation for the L2 perf work documented in `.review/V0_11_DESIGN.md`:
-//! deduplicate `Style` instances inside a `Console` so `Segment::style`
-//! can shrink from `Option<Style>` (~136 B) to a 4-byte `StyleId`. This
-//! file lands the *types* — interner, ID, dedup map, NULL sentinel — but
-//! no callers wire through it yet. PR1b will swap `Segment.style` over.
+//! Foundation for the deferred L2 perf work: deduplicate `Style` instances
+//! inside a `Console` so `Segment::style` could shrink from `Option<Style>`
+//! (measured **48 B**, not the 136 B once claimed — `Color` was compacted to
+//! 4 B and `Option<Style>` is niche-optimized) to a 4-byte `StyleId`, taking
+//! `Segment` from 96 B → ~52 B. This file lands the *types* — interner, ID,
+//! dedup map, NULL sentinel — but no callers wire through it.
+//!
+//! Activation is **deferred** (semver-major): it requires changing the
+//! `Renderable` trait return type so segment construction has an interner
+//! context, which ripples through every widget and test. See
+//! `.review/v2-structural-decision-2026-06-06.md` for the full decision and
+//! the benchmark trigger that would justify doing it.
 //!
 //! # Design notes
 //!
