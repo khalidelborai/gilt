@@ -5,6 +5,7 @@
 
 use crate::color::ColorSystem;
 use crate::color_env::{detect_color_env, ColorEnvOverride};
+use crate::console_caps::ConsoleCapabilities;
 use crate::control::Control;
 use crate::error::ConsoleError;
 use crate::pager::Pager;
@@ -377,6 +378,10 @@ pub struct Console {
     /// to leave room for cross-Console resegmenting in PR3.
     style_interner: Arc<Mutex<StyleInterner>>,
 
+    /// Detected terminal capabilities (color system, truecolor, unicode version, etc.).
+    /// Populated at construction time from environment variables.
+    capabilities: ConsoleCapabilities,
+
     /// Optional output sink override. When `Some`, render output goes here
     /// instead of `std::io::stdout()`. Set via [`Console::with_writer`].
     /// Capture and record modes still take precedence.
@@ -546,6 +551,19 @@ impl Console {
         let theme = builder.theme.unwrap_or_else(|| Theme::new(None, true));
         let theme_stack = ThemeStack::new(theme);
 
+        // Determine is_terminal the same way the Console struct does it so
+        // ConsoleCapabilities mirrors the Console's own `is_terminal()` method.
+        let builder_is_terminal = if let Some(forced) = builder.force_terminal {
+            forced
+        } else {
+            detect_is_terminal()
+        };
+        let capabilities = ConsoleCapabilities::from_env(builder_is_terminal);
+
+        // Enable Windows VT processing (opt-in via `windows-vt` feature).
+        // On non-Windows or when the feature is disabled this is a pure no-op.
+        crate::windows_vt::enable_windows_vt();
+
         Console {
             color_system,
             width_override: builder.width,
@@ -572,6 +590,7 @@ impl Console {
             style_interner: Arc::new(Mutex::new(StyleInterner::new())),
             writer_override: None,
             sync_depth: 0,
+            capabilities,
         }
     }
 
@@ -596,6 +615,26 @@ impl Console {
     }
 
     // -- Properties ---------------------------------------------------------
+
+    /// Return the detected terminal capabilities for this console.
+    ///
+    /// Capabilities are derived from environment variables at construction time
+    /// (no blocking probes).  See [`ConsoleCapabilities`] for the full list
+    /// of flags.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    ///
+    /// let console = Console::builder().force_terminal(true).build();
+    /// let caps = console.capabilities();
+    /// // synchronized_output defaults to true (CSI ?2026 is harmless on old terms)
+    /// assert!(caps.synchronized_output);
+    /// ```
+    pub fn capabilities(&self) -> &ConsoleCapabilities {
+        &self.capabilities
+    }
 
     /// The current terminal width in columns.
     pub fn width(&self) -> usize {

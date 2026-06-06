@@ -760,11 +760,13 @@ pub mod breadcrumbs;
 pub mod canvas;
 pub mod columns;
 pub mod console;
+pub mod console_caps;
 pub mod csv_table;
 pub mod diff;
 pub mod export_format;
 pub mod figlet;
 pub mod gradient;
+pub mod windows_vt;
 pub use utils::group;
 pub mod layout;
 #[cfg(feature = "markdown")]

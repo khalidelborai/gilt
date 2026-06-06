@@ -104,4 +104,12 @@ pub struct Row {
     pub style: Option<String>,
     /// Whether this row ends a section (draws a line after it).
     pub end_section: bool,
+    /// Column span per logical cell.
+    ///
+    /// `col_spans[i]` is how many physical table columns the i-th logical cell
+    /// of this row occupies.  `1` means a normal single-column cell.  If this
+    /// `Vec` is shorter than the number of logical cells, the missing tail
+    /// entries are treated as `1`. An empty `Vec` means "all cells span 1"
+    /// (the default / legacy path).
+    pub col_spans: Vec<usize>,
 }

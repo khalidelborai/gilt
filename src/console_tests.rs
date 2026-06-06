@@ -1631,6 +1631,52 @@ fn make_default_options() -> ConsoleOptions {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Task 1 (v1.8): ConsoleCapabilities
+// ---------------------------------------------------------------------------
+
+#[test]
+fn capabilities_truecolor_flag_reflects_colorterm_env() {
+    // ConsoleCapabilities::from_env_parts is the pure helper; we test it
+    // directly so no env mutation is needed.
+    use crate::console_caps::ConsoleCapabilities;
+    let caps = ConsoleCapabilities::from_env_parts(Some("truecolor"), None, true, None);
+    assert!(
+        caps.truecolor,
+        "COLORTERM=truecolor → truecolor flag should be true"
+    );
+    assert!(caps.is_terminal);
+}
+
+#[test]
+fn capabilities_synchronized_output_default_true() {
+    use crate::console_caps::ConsoleCapabilities;
+    let caps = ConsoleCapabilities::from_env_parts(None, None, false, None);
+    assert!(
+        caps.synchronized_output,
+        "synchronized_output must default to true (CSI ?2026 is harmless no-op)"
+    );
+}
+
+#[test]
+fn console_capabilities_accessor_returns_struct() {
+    let console = Console::builder().force_terminal(true).build();
+    let caps = console.capabilities();
+    // synchronized_output defaults to true.
+    assert!(caps.synchronized_output);
+    // is_terminal should be true because force_terminal(true) was set.
+    assert!(caps.is_terminal);
+}
+
+#[test]
+fn capabilities_unicode_version_from_env_parts() {
+    use crate::console_caps::ConsoleCapabilities;
+    let caps = ConsoleCapabilities::from_env_parts(None, None, false, Some("15"));
+    assert_eq!(caps.unicode_version, Some(15));
+    let caps_none = ConsoleCapabilities::from_env_parts(None, None, false, None);
+    assert_eq!(caps_none.unicode_version, None);
+}
+
 // -- v1.3.1: Sync regression guard + with_writer coverage ----------------
 
 /// Compile-time assertion that `Console: Send + Sync`. The v1.2.0 release
