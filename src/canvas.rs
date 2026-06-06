@@ -1,20 +1,39 @@
-//! Canvas -- Braille dot matrix for high-resolution terminal graphics.
+//! Canvas -- dot-matrix terminal graphics with multiple blitter modes.
 //!
-//! Uses Unicode Braille patterns (U+2800..U+28FF) to create a pixel canvas
-//! where each terminal character cell contains a 2x4 grid of dots, giving
-//! 2x horizontal and 4x vertical sub-character resolution.
+//! By default (`Blitter::Braille`) the canvas uses Unicode Braille patterns
+//! (U+2800..U+28FF): each terminal character cell encodes a 2×4 pixel grid.
+//!
+//! Alternative blitters offer different trade-offs between resolution and
+//! font support:
+//!
+//! | Blitter    | Cell (w×h) | Unicode block         |
+//! |------------|------------|-----------------------|
+//! | `Braille`  | 2 × 4      | U+2800 (Braille)      |
+//! | `Sextant`  | 2 × 3      | U+1FB00 (Legacy comp.)   |
+//! | `HalfBlock`| 1 × 2      | U+2580..U+2588 (Blocks)  |
+//! | `Octant`   | 2 × 4      | Stubbed → Braille[^1]     |
+//!
+//! [^1]: Octant Unicode 16 block (U+1CD00) is not yet widely supported;
+//!       the stub falls back to Braille so output is always valid.
 //!
 //! # Example
 //!
 //! ```
-//! use gilt::canvas::Canvas;
+//! use gilt::canvas::{Canvas, Blitter};
 //!
+//! // Default Braille canvas
 //! let mut c = Canvas::new(4, 2); // 4 cols x 2 rows => 8x8 pixel grid
 //! c.set(0, 0);
 //! c.set(7, 7);
 //! assert!(c.get(0, 0));
 //! assert!(c.get(7, 7));
 //! assert!(!c.get(1, 1));
+//!
+//! // Sextant canvas (2x3 sub-cell resolution)
+//! let mut s = Canvas::new(4, 2).with_blitter(Blitter::Sextant);
+//! s.set(0, 0);
+//! s.set(7, 5); // pixel_width=8, pixel_height=6 for 4x2 sextant
+//! assert!(s.get(0, 0));
 //! ```
 
 use std::fmt;
@@ -23,6 +42,46 @@ use crate::console::{Console, ConsoleOptions, Renderable};
 use crate::measure::Measurement;
 use crate::segment::Segment;
 use crate::style::Style;
+
+// ---------------------------------------------------------------------------
+// Blitter enum
+// ---------------------------------------------------------------------------
+
+/// Sub-cell pixel rendering mode for [`Canvas`].
+///
+/// Each variant controls how pixel bits are mapped to Unicode glyphs in the
+/// final rendered output.  The drawing API (`set`, `line`, `rect`, …) is
+/// identical across all blitters; only the cell glyph changes.
+///
+/// # Resolution
+///
+/// | Variant     | Pixels per cell (w×h) | Unicode block                        |
+/// |-------------|------------------------|--------------------------------------|
+/// | `Braille`   | 2 × 4                  | U+2800 Braille Patterns              |
+/// | `Sextant`   | 2 × 3                  | U+1FB00 Legacy Computing Symbols     |
+/// | `HalfBlock` | 1 × 2                  | U+2580..U+2588 Block Elements        |
+/// | `Octant`    | 2 × 4                  | **Stub** — falls back to `Braille`   |
+///
+/// The `Octant` variant (Unicode 16 U+1CD00 block) is not yet widely
+/// available in terminal fonts, so it is currently stubbed to the Braille
+/// mapping.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum Blitter {
+    /// 2×4 Braille patterns (default). Maximum resolution, universal support.
+    #[default]
+    Braille,
+    /// 2×3 sextants (Unicode 13, U+1FB00). Higher vertical density than HalfBlock;
+    /// requires a font with the Legacy Computing block.
+    Sextant,
+    /// 1×2 half-block characters (▀ ▄ █). Lowest resolution, best compatibility.
+    HalfBlock,
+    /// 2×4 octant characters (Unicode 16, U+1CD00).
+    ///
+    /// **Currently stubbed to `Braille`** because the Unicode 16 Octant block is
+    /// not yet widely available in terminal fonts.  The API is stable; a future
+    /// version will activate the native mapping once font support is widespread.
+    Octant,
+}
 
 // ---------------------------------------------------------------------------
 // Braille pixel mapping
@@ -44,14 +103,85 @@ const PIXEL_MAP: [[u8; 2]; 4] = [
 const BRAILLE_BASE: u32 = 0x2800;
 
 // ---------------------------------------------------------------------------
+// Sextant pixel mapping
+// ---------------------------------------------------------------------------
+//
+// Unicode 13 Legacy Computing Supplement, block U+1FB00..U+1FB3B.
+//
+// Each sextant cell is 2 columns × 3 rows = 6 bits:
+//
+//   col:   0     1
+//   row 0: bit0  bit1   (top)
+//   row 1: bit2  bit3   (middle)
+//   row 2: bit4  bit5   (bottom)
+//
+// Bit pattern → codepoint:
+//   pattern 0        → SPACE  (no glyph)
+//   pattern 1..=62   → U+1FB00 + (pattern - 1)
+//   pattern 63       → U+2588  FULL BLOCK
+//
+// The bit to set for pixel at (col, row) within the 2×3 cell:
+const SEXTANT_PIXEL_MAP: [[u8; 2]; 3] = [
+    [0x01, 0x02], // row 0 (top)
+    [0x04, 0x08], // row 1 (middle)
+    [0x10, 0x20], // row 2 (bottom)
+];
+
+/// Render a 6-bit sextant pattern to its Unicode codepoint.
+const SEXTANT_BASE: u32 = 0x1FB00;
+const FULL_BLOCK: char = '\u{2588}';
+
+#[inline]
+fn sextant_bits_to_char(bits: u8) -> char {
+    match bits {
+        0 => ' ',
+        63 => FULL_BLOCK,
+        n => char::from_u32(SEXTANT_BASE + (n as u32) - 1).unwrap_or(' '),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// HalfBlock pixel mapping
+// ---------------------------------------------------------------------------
+//
+// Each half-block cell is 1 column × 2 rows = 2 bits:
+//
+//   row 0 (top):    bit 0
+//   row 1 (bottom): bit 1
+//
+//   0b00 → SPACE     (U+0020)
+//   0b01 → ▀ U+2580  UPPER HALF BLOCK
+//   0b10 → ▄ U+2584  LOWER HALF BLOCK
+//   0b11 → █ U+2588  FULL BLOCK
+
+#[inline]
+fn halfblock_bits_to_char(bits: u8) -> char {
+    match bits & 0x03 {
+        0b00 => ' ',
+        0b01 => '\u{2580}', // ▀ UPPER HALF BLOCK
+        0b10 => '\u{2584}', // ▄ LOWER HALF BLOCK
+        _ => '\u{2588}',    // █ FULL BLOCK (0b11)
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Canvas
 // ---------------------------------------------------------------------------
 
-/// A Braille dot-matrix canvas for terminal graphics.
+/// A dot-matrix canvas for terminal graphics.
 ///
 /// The canvas dimensions are specified in terminal columns and rows.  The
-/// actual *pixel* resolution is `width * 2` horizontally and `height * 4`
-/// vertically, because each braille character encodes a 2x4 dot grid.
+/// actual *pixel* resolution depends on the active [`Blitter`]:
+///
+/// | Blitter    | pixel_width        | pixel_height        |
+/// |------------|--------------------|--------------------|
+/// | `Braille`  | `width * 2`        | `height * 4`        |
+/// | `Sextant`  | `width * 2`        | `height * 3`        |
+/// | `HalfBlock`| `width * 1`        | `height * 2`        |
+/// | `Octant`   | `width * 2`        | `height * 4`        |
+///
+/// The default blitter is [`Blitter::Braille`], so existing code continues
+/// to work without any changes.
 #[derive(Debug, Clone)]
 pub struct Canvas {
     /// Width in terminal columns.
@@ -60,19 +190,47 @@ pub struct Canvas {
     height: usize,
     /// Dot bits for each character cell, stored row-major: `pixels[row][col]`.
     pixels: Vec<Vec<u8>>,
-    /// Visual style applied to the rendered braille text.
+    /// Visual style applied to the rendered text.
     style: Style,
+    /// The blitter used to map pixel bits to Unicode glyphs.
+    blitter: Blitter,
 }
 
 impl Canvas {
     /// Create a new empty canvas of the given dimensions (in terminal cells).
+    ///
+    /// Defaults to the [`Blitter::Braille`] blitter (unchanged from before v1.10).
     pub fn new(width: usize, height: usize) -> Self {
         Self {
             width,
             height,
             pixels: vec![vec![0u8; width]; height],
             style: Style::null(),
+            blitter: Blitter::Braille,
         }
+    }
+
+    /// Set the blitter used to convert pixel bits to Unicode glyphs (builder pattern).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::canvas::{Canvas, Blitter};
+    ///
+    /// let mut c = Canvas::new(4, 2).with_blitter(Blitter::Sextant);
+    /// c.set(0, 0);
+    /// // Sextant: pixel_height = 2 * 3 = 6, pixel_width = 4 * 2 = 8
+    /// assert!(c.get(0, 0));
+    /// ```
+    #[must_use]
+    pub fn with_blitter(mut self, blitter: Blitter) -> Self {
+        // Changing the blitter changes the pixel resolution of the cells, so
+        // we must also re-size the pixel buffer.
+        self.blitter = blitter;
+        // No change to the `pixels` storage layout — always `height × width`
+        // cells, each holding `u8` bits. Only the bit-layout interpretation
+        // changes between Braille / Sextant / HalfBlock.
+        self
     }
 
     /// Set the visual style (builder pattern).
@@ -82,68 +240,105 @@ impl Canvas {
         self
     }
 
-    /// Pixel width (horizontal resolution = terminal columns * 2).
+    /// Pixel width (horizontal resolution = terminal columns × cols-per-cell).
+    ///
+    /// | Blitter              | cols-per-cell |
+    /// |----------------------|---------------|
+    /// | Braille / Sextant / Octant | 2       |
+    /// | HalfBlock            | 1             |
     pub fn pixel_width(&self) -> usize {
-        self.width * 2
+        match self.blitter {
+            Blitter::HalfBlock => self.width,
+            _ => self.width * 2,
+        }
     }
 
-    /// Pixel height (vertical resolution = terminal rows * 4).
+    /// Pixel height (vertical resolution = terminal rows × rows-per-cell).
+    ///
+    /// | Blitter    | rows-per-cell |
+    /// |------------|---------------|
+    /// | Braille / Octant | 4      |
+    /// | Sextant    | 3             |
+    /// | HalfBlock  | 2             |
     pub fn pixel_height(&self) -> usize {
-        self.height * 4
+        match self.blitter {
+            Blitter::Braille | Blitter::Octant => self.height * 4,
+            Blitter::Sextant => self.height * 3,
+            Blitter::HalfBlock => self.height * 2,
+        }
     }
 
     // -- pixel operations ---------------------------------------------------
+
+    /// Compute `(cell_col, cell_row, bit_mask)` for a pixel at `(x, y)`.
+    ///
+    /// Returns `None` when the coordinates are out of bounds.
+    fn pixel_address(&self, x: usize, y: usize) -> Option<(usize, usize, u8)> {
+        if x >= self.pixel_width() || y >= self.pixel_height() {
+            return None;
+        }
+        let (cell_col, cell_row, bit) = match self.blitter {
+            Blitter::Braille | Blitter::Octant => {
+                // 2 columns × 4 rows per cell; Octant is stubbed to Braille.
+                let col = x / 2;
+                let row = y / 4;
+                let bit = PIXEL_MAP[y % 4][x % 2];
+                (col, row, bit)
+            }
+            Blitter::Sextant => {
+                // 2 columns × 3 rows per cell.
+                let col = x / 2;
+                let row = y / 3;
+                let bit = SEXTANT_PIXEL_MAP[y % 3][x % 2];
+                (col, row, bit)
+            }
+            Blitter::HalfBlock => {
+                // 1 column × 2 rows per cell.
+                let col = x; // one pixel per cell column
+                let row = y / 2;
+                // bit 0 = top (y even), bit 1 = bottom (y odd)
+                let bit: u8 = if y % 2 == 0 { 0x01 } else { 0x02 };
+                (col, row, bit)
+            }
+        };
+        Some((cell_col, cell_row, bit))
+    }
 
     /// Set a pixel at `(x, y)` in pixel coordinates.
     ///
     /// Out-of-bounds coordinates are silently ignored.
     pub fn set(&mut self, x: usize, y: usize) {
-        if x >= self.pixel_width() || y >= self.pixel_height() {
-            return;
+        if let Some((col, row, bit)) = self.pixel_address(x, y) {
+            self.pixels[row][col] |= bit;
         }
-        let col = x / 2;
-        let row = y / 4;
-        let bit = PIXEL_MAP[y % 4][x % 2];
-        self.pixels[row][col] |= bit;
     }
 
     /// Clear a pixel at `(x, y)` in pixel coordinates.
     ///
     /// Out-of-bounds coordinates are silently ignored.
     pub fn unset(&mut self, x: usize, y: usize) {
-        if x >= self.pixel_width() || y >= self.pixel_height() {
-            return;
+        if let Some((col, row, bit)) = self.pixel_address(x, y) {
+            self.pixels[row][col] &= !bit;
         }
-        let col = x / 2;
-        let row = y / 4;
-        let bit = PIXEL_MAP[y % 4][x % 2];
-        self.pixels[row][col] &= !bit;
     }
 
     /// Toggle a pixel at `(x, y)` in pixel coordinates.
     ///
     /// Out-of-bounds coordinates are silently ignored.
     pub fn toggle(&mut self, x: usize, y: usize) {
-        if x >= self.pixel_width() || y >= self.pixel_height() {
-            return;
+        if let Some((col, row, bit)) = self.pixel_address(x, y) {
+            self.pixels[row][col] ^= bit;
         }
-        let col = x / 2;
-        let row = y / 4;
-        let bit = PIXEL_MAP[y % 4][x % 2];
-        self.pixels[row][col] ^= bit;
     }
 
     /// Test whether the pixel at `(x, y)` is set.
     ///
     /// Out-of-bounds coordinates return `false`.
     pub fn get(&self, x: usize, y: usize) -> bool {
-        if x >= self.pixel_width() || y >= self.pixel_height() {
-            return false;
+        match self.pixel_address(x, y) {
+            Some((col, row, bit)) => self.pixels[row][col] & bit != 0,
+            None => false,
         }
-        let col = x / 2;
-        let row = y / 4;
-        let bit = PIXEL_MAP[y % 4][x % 2];
-        self.pixels[row][col] & bit != 0
     }
 
     // -- shape helpers ------------------------------------------------------
@@ -244,18 +439,26 @@ impl Canvas {
 
     // -- rendering ----------------------------------------------------------
 
-    /// Render the canvas to a multi-line string of braille characters.
+    /// Render the canvas to a multi-line string using the active [`Blitter`].
+    ///
+    /// Each character cell is mapped to its Unicode glyph according to the
+    /// blitter's bit-to-codepoint table.  Rows are joined with `'\n'`.
     pub fn frame(&self) -> String {
         let mut lines: Vec<String> = Vec::with_capacity(self.height);
         for row in &self.pixels {
-            let line: String = row
-                .iter()
-                .map(|&bits| {
-                    // Safety: BRAILLE_BASE + bits is always a valid Unicode
-                    // code point in U+2800..U+28FF.
-                    char::from_u32(BRAILLE_BASE + bits as u32).unwrap_or(' ')
-                })
-                .collect();
+            let line: String = match self.blitter {
+                Blitter::Braille | Blitter::Octant => {
+                    // Octant is stubbed to Braille (see `Blitter::Octant` docs).
+                    row.iter()
+                        .map(|&bits| char::from_u32(BRAILLE_BASE + bits as u32).unwrap_or(' '))
+                        .collect()
+                }
+                Blitter::Sextant => row.iter().map(|&bits| sextant_bits_to_char(bits)).collect(),
+                Blitter::HalfBlock => row
+                    .iter()
+                    .map(|&bits| halfblock_bits_to_char(bits))
+                    .collect(),
+            };
             lines.push(line);
         }
         lines.join("\n")
@@ -289,10 +492,17 @@ impl Renderable for Canvas {
     fn gilt_console(&self, _console: &Console, _options: &ConsoleOptions) -> Vec<Segment> {
         let mut segments = Vec::new();
         for (i, row) in self.pixels.iter().enumerate() {
-            let line: String = row
-                .iter()
-                .map(|&bits| char::from_u32(BRAILLE_BASE + bits as u32).unwrap_or(' '))
-                .collect();
+            let line: String = match self.blitter {
+                Blitter::Braille | Blitter::Octant => row
+                    .iter()
+                    .map(|&bits| char::from_u32(BRAILLE_BASE + bits as u32).unwrap_or(' '))
+                    .collect(),
+                Blitter::Sextant => row.iter().map(|&bits| sextant_bits_to_char(bits)).collect(),
+                Blitter::HalfBlock => row
+                    .iter()
+                    .map(|&bits| halfblock_bits_to_char(bits))
+                    .collect(),
+            };
             segments.push(Segment::new(&line, Some(self.style.clone()), None));
             if i < self.height - 1 {
                 segments.push(Segment::line());

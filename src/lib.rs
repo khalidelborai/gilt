@@ -791,6 +791,7 @@ pub mod segment;
 pub mod sparkline;
 pub mod style;
 pub mod style_interner;
+pub mod terminal_bg;
 // styled and styled_str are now in utils/
 pub use utils::styled;
 pub use utils::styled_str;
@@ -820,6 +821,15 @@ mod form_tests;
 #[cfg(test)]
 #[path = "fuzzy_select_tests.rs"]
 mod fuzzy_select_tests;
+
+// v1.10 TDD tests (RED before implementation)
+#[cfg(test)]
+#[path = "terminal_bg_tests.rs"]
+mod terminal_bg_tests;
+
+#[cfg(test)]
+#[path = "canvas_blitter_tests.rs"]
+mod canvas_blitter_tests;
 
 // Feature-gated modules
 #[cfg(feature = "async")]

@@ -215,6 +215,82 @@ impl ConsoleBuilder {
         self
     }
 
+    /// Probe the terminal background and, if dark or light is detected,
+    /// apply a matching built-in theme.
+    ///
+    /// When the `terminal-query` feature is enabled **and** the build is
+    /// native (not wasm32), this calls
+    /// [`query_terminal_background`](gilt::terminal_bg::query_terminal_background)
+    /// and switches to a dark or light theme accordingly:
+    ///
+    /// - `ConsoleBackground::Dark`  → the default gilt theme (already tuned
+    ///   for dark terminals; no change applied).
+    /// - `ConsoleBackground::Light` → overrides key text colours to darker,
+    ///   higher-contrast values for light backgrounds.
+    /// - `ConsoleBackground::Unknown` → no change.
+    ///
+    /// When `terminal-query` is **not** enabled, this is a complete no-op so
+    /// that default builds are unaffected.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # #[cfg(feature = "terminal-query")] {
+    /// use gilt::console::Console;
+    ///
+    /// let console = Console::builder()
+    ///     .width(80)
+    ///     .auto_theme()
+    ///     .build();
+    /// # }
+    /// ```
+    pub fn auto_theme(self) -> Self {
+        #[cfg(all(feature = "terminal-query", not(target_arch = "wasm32")))]
+        {
+            use crate::terminal_bg::{query_terminal_background, ConsoleBackground};
+            match query_terminal_background() {
+                ConsoleBackground::Light => {
+                    // Apply a light-background theme: darker text colours for
+                    // better contrast on white/cream terminal backgrounds.
+                    let mut styles = std::collections::HashMap::new();
+                    styles.insert(
+                        "markdown.h1".to_string(),
+                        crate::style::Style::parse("bold dark_blue"),
+                    );
+                    styles.insert(
+                        "markdown.h2".to_string(),
+                        crate::style::Style::parse("bold dark_blue"),
+                    );
+                    styles.insert(
+                        "markdown.code".to_string(),
+                        crate::style::Style::parse("dark_red on grey93"),
+                    );
+                    styles.insert(
+                        "repr.str".to_string(),
+                        crate::style::Style::parse("dark_green"),
+                    );
+                    styles.insert(
+                        "repr.number".to_string(),
+                        crate::style::Style::parse("dark_blue"),
+                    );
+                    styles.insert(
+                        "rule.line".to_string(),
+                        crate::style::Style::parse("dark_blue"),
+                    );
+                    let theme = crate::theme::Theme::new(Some(styles), true);
+                    self.theme(theme)
+                }
+                // Dark or Unknown: leave the default dark theme in place.
+                ConsoleBackground::Dark | ConsoleBackground::Unknown => self,
+            }
+        }
+        #[cfg(not(all(feature = "terminal-query", not(target_arch = "wasm32"))))]
+        {
+            // No-op when terminal-query is off.
+            self
+        }
+    }
+
     /// Build the `Console` instance with the configured options.
     ///
     /// # Examples

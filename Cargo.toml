@@ -84,6 +84,12 @@ inline-images = ["dep:image"]
 # Pulls crossterm (raw mode, key events) only when this feature is enabled.
 # NOT in default — keeps gilt dep-light for most users.
 tty-select = ["dep:crossterm"]
+# Opt-in: probe the terminal background colour via OSC 11 (native only).
+# Uses crossterm for raw-mode I/O. On non-supporting terminals or on
+# timeout, returns ConsoleBackground::Unknown. The pure parsing/luminance
+# core (parse_osc11_response, is_dark_background, ConsoleBackground) is
+# always available without this feature.
+terminal-query = ["dep:crossterm"]
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.59", features = ["Win32_System_Console", "Win32_Foundation"], optional = true }
