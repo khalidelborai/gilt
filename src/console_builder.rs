@@ -6,6 +6,21 @@ use crate::color::ColorSystem;
 use crate::console::Console;
 use crate::theme::Theme;
 
+// ---------------------------------------------------------------------------
+// Internal helper: try to load a JSON Theme from a file path (non-wasm only)
+// ---------------------------------------------------------------------------
+
+/// Load a [`Theme`] from a JSON file at `path`.
+///
+/// Returns `Some(theme)` on success, `None` on any error (missing file,
+/// bad JSON, …).  Errors are intentionally non-fatal so callers fall back
+/// to the default theme.
+#[cfg(all(feature = "json", not(target_arch = "wasm32")))]
+pub(crate) fn load_theme_from_path(path: &std::path::Path) -> Option<Theme> {
+    let file = std::fs::File::open(path).ok()?;
+    Theme::from_json_reader(file).ok()
+}
+
 /// Builder for constructing a `Console` with custom options.
 pub struct ConsoleBuilder {
     pub(crate) color_system: Option<String>,
@@ -15,6 +30,11 @@ pub struct ConsoleBuilder {
     pub(crate) force_terminal: Option<bool>,
     pub(crate) record: bool,
     pub(crate) theme: Option<Theme>,
+    /// Path to a JSON theme file, set via [`theme_from_path`](Self::theme_from_path).
+    /// Resolved at [`build`](Self::build) time; takes priority over the
+    /// [`theme`](Self::theme) builder method.
+    #[cfg(all(feature = "json", not(target_arch = "wasm32")))]
+    pub(crate) theme_path: Option<std::path::PathBuf>,
     pub(crate) markup: bool,
     pub(crate) highlight: bool,
     pub(crate) no_color: bool,
@@ -36,6 +56,8 @@ impl Default for ConsoleBuilder {
             force_terminal: None,
             record: false,
             theme: None,
+            #[cfg(all(feature = "json", not(target_arch = "wasm32")))]
+            theme_path: None,
             markup: true,
             highlight: true,
             no_color: false,
@@ -88,6 +110,32 @@ impl ConsoleBuilder {
     /// Set a custom theme for style lookups.
     pub fn theme(mut self, t: Theme) -> Self {
         self.theme = Some(t);
+        self
+    }
+
+    /// Load a [`Theme`] from a JSON file at `path` and push it onto the
+    /// new console's theme stack at construction time.
+    ///
+    /// If the file does not exist or cannot be parsed as JSON, the error is
+    /// silently ignored and the console falls back to the default theme.
+    ///
+    /// Requires the `json` feature (enabled by default).  No-op on wasm
+    /// targets (where filesystem access is unavailable).
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # #[cfg(all(feature = "json", not(target_arch = "wasm32")))] {
+    /// use gilt::console::Console;
+    ///
+    /// let console = Console::builder()
+    ///     .theme_from_path(std::path::Path::new("my-theme.json"))
+    ///     .build();
+    /// # }
+    /// ```
+    #[cfg(all(feature = "json", not(target_arch = "wasm32")))]
+    pub fn theme_from_path(mut self, path: &std::path::Path) -> Self {
+        self.theme_path = Some(path.to_path_buf());
         self
     }
 

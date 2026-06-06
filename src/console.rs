@@ -549,7 +549,39 @@ impl Console {
         let effective_no_color = builder.no_color || color_system.is_none();
 
         let theme = builder.theme.unwrap_or_else(|| Theme::new(None, true));
-        let theme_stack = ThemeStack::new(theme);
+        #[allow(unused_mut)]
+        let mut theme_stack = ThemeStack::new(theme);
+
+        // ---------------------------------------------------------------------------
+        // GILT_THEME env var (json + native only).
+        //
+        // If the caller set an explicit path via ConsoleBuilder::theme_from_path,
+        // use that.  Otherwise check the GILT_THEME environment variable.  Either
+        // way, errors (missing file, bad JSON) are non-fatal: we just skip the
+        // override and keep the default theme.
+        // ---------------------------------------------------------------------------
+        #[cfg(all(feature = "json", not(target_arch = "wasm32")))]
+        {
+            use crate::console::console_builder::load_theme_from_path;
+
+            // Explicit builder path wins over env var.
+            let path_to_load: Option<std::path::PathBuf> = if let Some(p) = builder.theme_path {
+                Some(p)
+            } else {
+                std::env::var("GILT_THEME")
+                    .ok()
+                    .map(std::path::PathBuf::from)
+            };
+
+            if let Some(path) = path_to_load {
+                if let Some(loaded) = load_theme_from_path(&path) {
+                    // Push the loaded theme on top of the default so it overrides
+                    // named styles while still inheriting defaults that weren't
+                    // overridden.
+                    theme_stack.push_theme(loaded, true);
+                }
+            }
+        }
 
         // Determine is_terminal the same way the Console struct does it so
         // ConsoleCapabilities mirrors the Console's own `is_terminal()` method.
@@ -1156,6 +1188,12 @@ impl Default for Console {
 mod console_export;
 #[allow(unused_imports)]
 use console_export::*;
+
+// Scoped recording API (Console::scoped_record + Recording type).
+// Split into console_recording.rs in v1.8.
+#[path = "console_recording.rs"]
+mod console_recording;
+pub use console_recording::Recording;
 
 // ---------------------------------------------------------------------------
 // Terminal size query (feature-gated, native only)

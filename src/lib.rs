@@ -684,6 +684,7 @@
 //! | `CLICOLOR_FORCE` | Same as `FORCE_COLOR` |
 //! | `CLICOLOR=0` | Disables color |
 //! | `COLUMNS` / `LINES` | Overrides terminal size detection |
+//! | `GILT_THEME` | Path to a JSON theme file loaded at console construction time (native + `json` feature only; see [`ConsoleBuilder::theme_from_path`](console::ConsoleBuilder::theme_from_path)) |
 //!
 //! Programmatic settings (via [`ConsoleBuilder`](console::ConsoleBuilder)) always take
 //! priority over environment variables.

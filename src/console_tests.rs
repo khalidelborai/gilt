@@ -2343,3 +2343,301 @@ fn bufwriter_coalesces_writes_within_synchronized_emit() {
     // We can't access the bytes here directly (the writer was moved into
     // the console), so we use a separate golden test below for byte parity.
 }
+
+// ---------------------------------------------------------------------------
+// v1.8 Task 1 RED tests: GILT_THEME env var / builder theme_from_path
+// ---------------------------------------------------------------------------
+
+/// ConsoleBuilder::theme_from_path loads a JSON theme file and makes styles
+/// available on the built console.  This test is the RED test — it fails
+/// until `theme_from_path` is implemented.
+#[cfg(all(feature = "json", not(target_arch = "wasm32")))]
+#[test]
+fn task1_theme_from_path_makes_custom_style_available() {
+    use std::io::Write as _;
+
+    // Write a minimal JSON theme to a temp file.
+    let dir = std::env::temp_dir();
+    let path = dir.join("gilt_test_theme_from_path.json");
+    {
+        let mut f = std::fs::File::create(&path).unwrap();
+        write!(f, r#"{{"info": "dim cyan", "warning": "bold yellow"}}"#).unwrap();
+    }
+
+    let console = Console::builder()
+        .width(80)
+        .no_color(true)
+        .theme_from_path(&path)
+        .build();
+
+    let style = console.get_style("info").expect("info style should exist");
+    assert_eq!(style, Style::parse("dim cyan"), "theme info style mismatch");
+
+    let style2 = console
+        .get_style("warning")
+        .expect("warning style should exist");
+    assert_eq!(
+        style2,
+        Style::parse("bold yellow"),
+        "theme warning style mismatch"
+    );
+
+    let _ = std::fs::remove_file(&path);
+}
+
+/// theme_from_path with a bad file path falls back gracefully (no panic,
+/// uses default theme).
+#[cfg(all(feature = "json", not(target_arch = "wasm32")))]
+#[test]
+fn task1_theme_from_path_bad_path_falls_back_to_default() {
+    use std::path::Path;
+
+    let console = Console::builder()
+        .width(80)
+        .no_color(true)
+        .theme_from_path(Path::new("/nonexistent/path/nope.json"))
+        .build();
+
+    // Default theme should still have "bold"
+    assert!(
+        console.get_style("bold").is_ok(),
+        "default theme should have 'bold' style even after failed theme_from_path"
+    );
+}
+
+/// theme_from_path with a bad JSON file falls back gracefully.
+#[cfg(all(feature = "json", not(target_arch = "wasm32")))]
+#[test]
+fn task1_theme_from_path_bad_json_falls_back_to_default() {
+    use std::io::Write as _;
+
+    let dir = std::env::temp_dir();
+    let path = dir.join("gilt_test_bad_json.json");
+    {
+        let mut f = std::fs::File::create(&path).unwrap();
+        write!(f, "this is not valid json {{{{").unwrap();
+    }
+
+    let console = Console::builder()
+        .width(80)
+        .no_color(true)
+        .theme_from_path(&path)
+        .build();
+
+    // Should fall back: default "bold" still works
+    assert!(
+        console.get_style("bold").is_ok(),
+        "should fall back to default on bad JSON"
+    );
+
+    let _ = std::fs::remove_file(&path);
+}
+
+/// Theme::from_json_str is a convenience method gated on the json feature.
+#[cfg(feature = "json")]
+#[test]
+fn task1_theme_from_json_str_parses_styles() {
+    use crate::theme::Theme;
+
+    let theme = Theme::from_json_str(r#"{"info": "dim cyan", "err": "bold red"}"#)
+        .expect("from_json_str should succeed");
+
+    assert_eq!(
+        theme.get("info").expect("info should exist"),
+        &Style::parse("dim cyan")
+    );
+    assert_eq!(
+        theme.get("err").expect("err should exist"),
+        &Style::parse("bold red")
+    );
+}
+
+/// GILT_THEME env var wiring smoke test — exercised via the pure path-loading
+/// helper to avoid global-env races under cargo nextest.
+/// This verifies that a console built via a theme path (which is what the
+/// GILT_THEME code path calls internally) overrides the default theme.
+#[cfg(all(feature = "json", not(target_arch = "wasm32")))]
+#[test]
+fn task1_gilt_theme_env_path_wiring_smoke() {
+    use std::io::Write as _;
+
+    // Write a JSON theme file.
+    let dir = std::env::temp_dir();
+    let path = dir.join("gilt_smoke_theme.json");
+    {
+        let mut f = std::fs::File::create(&path).unwrap();
+        write!(f, r#"{{"smoke_style": "bold magenta"}}"#).unwrap();
+    }
+
+    // Set the env var, build a console via default builder (which reads it).
+    let path_str = path.to_str().unwrap();
+    // We use set_var here isolated — this test checks the env reading codepath.
+    // In a parallel test suite this could race; we use an unusual style name to
+    // minimize collateral damage.
+    std::env::set_var("GILT_THEME", path_str);
+    let console = Console::builder().width(80).no_color(true).build();
+    std::env::remove_var("GILT_THEME");
+
+    let style = console.get_style("smoke_style");
+    assert!(
+        style.is_ok(),
+        "GILT_THEME env var should make smoke_style available; error: {:?}",
+        style.err()
+    );
+    assert_eq!(style.unwrap(), Style::parse("bold magenta"));
+
+    let _ = std::fs::remove_file(&path);
+}
+
+// ---------------------------------------------------------------------------
+// v1.8 Task 2 RED tests: Console::record(closure) scoped API
+// ---------------------------------------------------------------------------
+
+/// Basic scoped record: the returned Recording exposes to_text/to_html,
+/// and both contain the printed content.
+#[test]
+fn task2_scoped_record_text_and_html_contain_content() {
+    let mut console = Console::builder()
+        .width(80)
+        .force_terminal(true)
+        .record(true)
+        .markup(true)
+        .build();
+
+    let rec = console.scoped_record(|c| {
+        c.print_text("[bold red]hi[/]");
+    });
+
+    let text = rec.to_text();
+    let html = rec.to_html();
+
+    assert!(
+        text.contains("hi"),
+        "to_text() should contain 'hi'; got {:?}",
+        text
+    );
+    assert!(
+        html.contains("hi"),
+        "to_html() should contain 'hi'; got {:?}",
+        html
+    );
+}
+
+/// After the closure, the console is NOT in record mode (record state restored).
+#[test]
+fn task2_scoped_record_does_not_leave_console_in_record_mode() {
+    // Start with record disabled.
+    let mut console = Console::builder()
+        .width(80)
+        .no_color(true)
+        .markup(false)
+        .build();
+
+    assert!(
+        !console.record,
+        "precondition: record should be false before scoped_record"
+    );
+
+    let _rec = console.scoped_record(|c| {
+        c.print_text("inside closure");
+    });
+
+    assert!(
+        !console.record,
+        "record should be restored to false after scoped_record"
+    );
+}
+
+/// A subsequent normal print after scoped_record does NOT accumulate into
+/// the record buffer (the buffer was restored).
+#[test]
+fn task2_scoped_record_subsequent_print_not_accumulated() {
+    let mut console = Console::builder()
+        .width(80)
+        .no_color(true)
+        .record(false) // record starts OFF
+        .markup(false)
+        .build();
+
+    let _rec = console.scoped_record(|c| {
+        c.print_text("inside");
+    });
+
+    // Now that scoped_record has returned, record mode must be restored to false.
+    // Do a normal print and verify the record buffer is empty.
+    console.begin_capture();
+    console.print_text("outside");
+    let _ = console.end_capture();
+
+    // The record_buffer should NOT contain "outside" because record=false was restored.
+    let export = console.export_text(false, false);
+    assert!(
+        !export.contains("outside"),
+        "record buffer should not contain text printed after scoped_record (record=false); got {:?}",
+        export
+    );
+}
+
+/// to_svg returns a valid SVG document.
+#[test]
+fn task2_scoped_record_to_svg_is_valid_svg() {
+    let mut console = Console::builder()
+        .width(40)
+        .force_terminal(true)
+        .record(true)
+        .markup(true)
+        .build();
+
+    let rec = console.scoped_record(|c| {
+        c.print_text("svg test content");
+    });
+
+    let svg = rec.to_svg("Test Title");
+    assert!(svg.contains("<svg"), "to_svg() should produce valid SVG");
+    assert!(
+        svg.contains("svg test content"),
+        "SVG should contain printed text"
+    );
+}
+
+/// Recording segments are independent: two successive scoped_records produce
+/// independent Recording values.
+#[test]
+fn task2_two_successive_scoped_records_are_independent() {
+    let mut console = Console::builder()
+        .width(80)
+        .no_color(true)
+        .markup(false)
+        .build();
+
+    let rec1 = console.scoped_record(|c| {
+        c.print_text("first");
+    });
+    let rec2 = console.scoped_record(|c| {
+        c.print_text("second");
+    });
+
+    let t1 = rec1.to_text();
+    let t2 = rec2.to_text();
+
+    assert!(
+        t1.contains("first"),
+        "rec1 should contain 'first'; got {:?}",
+        t1
+    );
+    assert!(
+        t2.contains("second"),
+        "rec2 should contain 'second'; got {:?}",
+        t2
+    );
+    assert!(
+        !t1.contains("second"),
+        "rec1 should NOT contain 'second'; got {:?}",
+        t1
+    );
+    assert!(
+        !t2.contains("first"),
+        "rec2 should NOT contain 'first'; got {:?}",
+        t2
+    );
+}

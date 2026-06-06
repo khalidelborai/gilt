@@ -164,6 +164,54 @@ impl Theme {
 }
 
 // ---------------------------------------------------------------------------
+// JSON helpers (gated on `json` feature)
+// ---------------------------------------------------------------------------
+
+#[cfg(feature = "json")]
+impl Theme {
+    /// Deserialize a `Theme` from a JSON string.
+    ///
+    /// The JSON must be an object mapping style names to style definition
+    /// strings, e.g. `{"info": "dim cyan", "warning": "bold yellow"}`.
+    ///
+    /// The resulting theme does **not** inherit from defaults — it contains
+    /// only the styles listed in the JSON.  Call
+    /// [`Theme::new(Some(styles), true)`](Theme::new) if you want inheritance.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[cfg(feature = "json")] {
+    /// use gilt::theme::Theme;
+    ///
+    /// let theme = Theme::from_json_str(r#"{"info": "dim cyan"}"#).unwrap();
+    /// assert!(theme.get("info").is_some());
+    /// # }
+    /// ```
+    pub fn from_json_str(json: &str) -> Result<Self, serde_json::Error> {
+        serde_json::from_str(json)
+    }
+
+    /// Deserialize a `Theme` from any [`std::io::Read`] source (e.g. a file).
+    ///
+    /// Convenience wrapper around [`serde_json::from_reader`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # #[cfg(all(feature = "json", not(target_arch = "wasm32")))] {
+    /// use gilt::theme::Theme;
+    ///
+    /// let f = std::fs::File::open("theme.json").unwrap();
+    /// let theme = Theme::from_json_reader(f).unwrap();
+    /// # }
+    /// ```
+    pub fn from_json_reader<R: io::Read>(reader: R) -> Result<Self, serde_json::Error> {
+        serde_json::from_reader(reader)
+    }
+}
+
+// ---------------------------------------------------------------------------
 // serde Serialize / Deserialize for Theme (gated on `json` feature)
 // ---------------------------------------------------------------------------
 //
