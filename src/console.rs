@@ -385,6 +385,15 @@ pub struct Console {
     /// downstream code can wrap a Console in `Arc<…>` for cross-task
     /// sharing — same trait bounds Console had pre-v1.2.0.
     pub(crate) writer_override: Option<Box<dyn std::io::Write + Send + Sync>>,
+
+    /// Opt 2 (BufWriter coalescing): nesting depth of
+    /// [`begin_synchronized`](Self::begin_synchronized) calls.
+    ///
+    /// When `sync_depth > 0`, `write_segments` defers the final `flush()`
+    /// to the matching `end_synchronized` call, allowing multiple segment
+    /// writes within one synchronized frame to be coalesced into a single
+    /// OS write by the `BufWriter` that wraps `writer_override`.
+    pub(crate) sync_depth: usize,
 }
 
 impl Console {
@@ -562,6 +571,7 @@ impl Console {
             live_stack: Vec::new(),
             style_interner: Arc::new(Mutex::new(StyleInterner::new())),
             writer_override: None,
+            sync_depth: 0,
         }
     }
 
@@ -578,7 +588,10 @@ impl Console {
     /// // output is in console's writer, not on stdout
     /// ```
     pub fn with_writer<W: std::io::Write + Send + Sync + 'static>(mut self, writer: W) -> Self {
-        self.writer_override = Some(Box::new(writer));
+        // Wrap in BufWriter so that multiple write_all calls within a
+        // synchronized block are buffered and coalesced into a single OS
+        // write when flush() is called at end_synchronized (Opt 2).
+        self.writer_override = Some(Box::new(std::io::BufWriter::new(writer)));
         self
     }
 
@@ -818,15 +831,40 @@ impl Console {
     /// The terminal buffers all subsequent output until
     /// [`end_synchronized`](Console::end_synchronized) is called, then paints
     /// atomically. This prevents flickering and tearing during rapid updates.
+    ///
+    /// Also increments the internal `sync_depth` counter so that
+    /// `write_segments` defers the final `flush()` to the matching
+    /// `end_synchronized`, allowing the `BufWriter` that wraps the
+    /// underlying writer to coalesce all segment writes into a single OS
+    /// write (Opt 2).
     pub fn begin_synchronized(&mut self) {
+        self.sync_depth += 1;
         self.control(&Control::begin_sync());
     }
 
     /// End synchronized output (DEC Mode 2026).
     ///
     /// The terminal flushes all buffered content and renders it at once.
+    ///
+    /// Decrements the `sync_depth` counter and, when it reaches zero,
+    /// explicitly flushes the underlying writer (BufWriter drain) so all
+    /// bytes buffered since `begin_synchronized` are sent to the OS in a
+    /// single write (Opt 2).
     pub fn end_synchronized(&mut self) {
         self.control(&Control::end_sync());
+        if self.sync_depth > 0 {
+            self.sync_depth -= 1;
+        }
+        // Flush the underlying BufWriter now that the synchronized block
+        // has closed. This drains all buffered bytes in one OS write.
+        if self.sync_depth == 0 && !self.quiet {
+            use std::io::Write as _;
+            if let Some(w) = self.writer_override.as_mut() {
+                let _ = w.flush();
+            }
+            // stdout path does not use BufWriter — its flush is still
+            // handled inside write_segments as before.
+        }
     }
 
     /// Execute a closure with synchronized output wrapping.

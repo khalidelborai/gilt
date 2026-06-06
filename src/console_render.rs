@@ -593,12 +593,22 @@ impl Console {
 
         // Default path: render to ANSI and write to the configured sink
         // (custom writer if set via `Console::with_writer`, else stdout).
+        //
+        // Opt 2 (BufWriter coalescing): when inside a synchronized block
+        // (`sync_depth > 0`), skip the per-write `flush()`. The
+        // `BufWriter` wrapping `writer_override` accumulates all writes and
+        // flushes them in one OS call at `end_synchronized`. For the stdout
+        // path and unsynchronized writes, always flush immediately to
+        // preserve existing visibility semantics.
         let output = self.render_buffer(segments);
         use std::io::Write as _;
+        let deferred_flush = self.sync_depth > 0;
         match self.writer_override.as_mut() {
             Some(w) => {
                 let _ = w.write_all(output.as_bytes());
-                let _ = w.flush();
+                if !deferred_flush {
+                    let _ = w.flush();
+                }
             }
             None => {
                 let _ = std::io::stdout().write_all(output.as_bytes());
@@ -651,10 +661,13 @@ impl Console {
         }
         let output = self.render_buffer(&segments);
         use std::io::Write as _;
+        let deferred_flush = self.sync_depth > 0;
         match self.writer_override.as_mut() {
             Some(w) => {
                 let _ = w.write_all(output.as_bytes());
-                let _ = w.flush();
+                if !deferred_flush {
+                    let _ = w.flush();
+                }
             }
             None => {
                 let _ = std::io::stdout().write_all(output.as_bytes());

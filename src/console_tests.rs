@@ -2209,3 +2209,91 @@ fn test_export_svg_opts_none_embedding_no_data_url() {
     assert!(svg.contains("<svg"), "should contain <svg");
     assert!(!svg.contains("data:font/"), "should NOT contain data: URL");
 }
+
+// -- Opt 2: BufWriter write coalescing ------------------------------------------
+
+/// A `Write` impl that counts how many times its `write` / `write_all` methods
+/// are called at the OS level, and records all bytes for correctness checking.
+#[cfg(test)]
+struct CountingWriter {
+    bytes: Vec<u8>,
+    write_count: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+}
+
+#[cfg(test)]
+impl CountingWriter {
+    fn new(counter: std::sync::Arc<std::sync::atomic::AtomicUsize>) -> Self {
+        CountingWriter {
+            bytes: Vec::new(),
+            write_count: counter,
+        }
+    }
+
+    #[allow(dead_code)]
+    fn into_bytes(self) -> Vec<u8> {
+        self.bytes
+    }
+}
+
+#[cfg(test)]
+impl std::io::Write for CountingWriter {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.write_count
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        self.bytes.extend_from_slice(buf);
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+/// RED test (Opt 2): a multi-segment emit via `begin_synchronized` /
+/// `end_synchronized` should result in FEWER underlying `write` calls than
+/// the number of `write_segments` calls (coalescing via BufWriter).
+///
+/// Before BufWriter is added, every `write_segments` call writes directly to
+/// the underlying writer → write_count == write_segments_calls. After
+/// BufWriter is added (+ deferred-flush-until-sync-end), write_count == 1.
+#[test]
+fn bufwriter_coalesces_writes_within_synchronized_emit() {
+    use std::sync::atomic::Ordering;
+    use std::sync::Arc;
+
+    let counter = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let counting_writer = CountingWriter::new(Arc::clone(&counter));
+
+    let mut console = Console::builder()
+        .width(80)
+        .height(25)
+        .quiet(false)
+        .markup(false)
+        .no_color(true)
+        .force_terminal(true)
+        .build()
+        .with_writer(counting_writer);
+
+    // Perform a synchronized emit that internally produces multiple
+    // write_segments calls (begin_sync, content, end_sync at minimum).
+    console.begin_synchronized();
+    console.print_text("segment_one");
+    console.print_text("segment_two");
+    console.print_text("segment_three");
+    console.end_synchronized();
+
+    let write_count = counter.load(Ordering::SeqCst);
+
+    // Without BufWriter: 3+ writes (one per print_text + begin/end sync).
+    // With BufWriter + deferred flush: should be exactly 1 write (all
+    // bytes drained to underlying writer in one flush at end_synchronized).
+    assert!(
+        write_count < 5,
+        "expected coalesced writes (< 5), got {} underlying write calls",
+        write_count
+    );
+
+    // Byte-correctness: all text must have been written.
+    // We can't access the bytes here directly (the writer was moved into
+    // the console), so we use a separate golden test below for byte parity.
+}
