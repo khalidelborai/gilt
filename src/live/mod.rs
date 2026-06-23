@@ -109,6 +109,9 @@ pub struct Live {
     pub transient: bool,
     vertical_overflow: VerticalOverflowMethod,
     started: bool,
+    /// Whether the display is currently paused (started but not refreshing,
+    /// with its render erased). See [`pause`](Live::pause) / [`resume`](Live::resume).
+    paused: bool,
     refresh_thread: Option<thread::JoinHandle<()>>,
     stop_flag: Arc<(Mutex<bool>, Condvar)>,
 }
@@ -147,6 +150,7 @@ impl Live {
             transient: false,
             vertical_overflow: VerticalOverflowMethod::Ellipsis,
             started: false,
+            paused: false,
             refresh_thread: None,
             stop_flag: Arc::new((Mutex::new(false), Condvar::new())),
         }
@@ -249,8 +253,18 @@ impl Live {
     }
 
     /// Whether the live display is currently running.
+    ///
+    /// Remains `true` while [`paused`](Self::pause) — a paused display is
+    /// started but not refreshing.
     pub fn is_started(&self) -> bool {
         self.started
+    }
+
+    /// Whether the live display is currently paused.
+    ///
+    /// See [`pause`](Self::pause) / [`resume`](Self::resume).
+    pub fn is_paused(&self) -> bool {
+        self.paused
     }
 
     /// Get a reference to the underlying `LiveRender` (locks internal state).
@@ -288,24 +302,49 @@ impl Live {
             }
         }
 
-        if self.auto_refresh {
-            let flag = Arc::clone(&self.stop_flag);
-            let state = Arc::clone(&self.state);
-            let renderable = Arc::clone(&self.renderable);
-            let vertical_overflow = self.vertical_overflow;
-            let interval = Duration::from_secs_f64(1.0 / self.refresh_per_second);
+        self.spawn_refresh_thread();
+    }
 
-            let handle = thread::spawn(move || loop {
-                let (lock, cvar) = &*flag;
-                let stopped = lock.lock().unwrap();
-                let result = cvar.wait_timeout(stopped, interval).unwrap();
-                if *result.0 {
-                    break;
-                }
-                drop(result);
-                Self::do_refresh(&state, &renderable, vertical_overflow);
-            });
-            self.refresh_thread = Some(handle);
+    /// Spawn the background refresh thread (no-op when `auto_refresh` is off).
+    ///
+    /// Shared by [`start`](Self::start) and [`resume`](Self::resume). The
+    /// caller is responsible for clearing the stop flag beforehand so the
+    /// freshly spawned thread does not immediately observe a stale stop signal.
+    fn spawn_refresh_thread(&mut self) {
+        if !self.auto_refresh {
+            return;
+        }
+        let flag = Arc::clone(&self.stop_flag);
+        let state = Arc::clone(&self.state);
+        let renderable = Arc::clone(&self.renderable);
+        let vertical_overflow = self.vertical_overflow;
+        let interval = Duration::from_secs_f64(1.0 / self.refresh_per_second);
+
+        let handle = thread::spawn(move || loop {
+            let (lock, cvar) = &*flag;
+            let stopped = lock.lock().unwrap();
+            let result = cvar.wait_timeout(stopped, interval).unwrap();
+            if *result.0 {
+                break;
+            }
+            drop(result);
+            Self::do_refresh(&state, &renderable, vertical_overflow);
+        });
+        self.refresh_thread = Some(handle);
+    }
+
+    /// Signal the background refresh thread to exit and join it.
+    ///
+    /// Shared by [`stop`](Self::stop) and [`pause`](Self::pause). Safe to call
+    /// when no thread is running (e.g. `auto_refresh` disabled).
+    fn stop_refresh_thread(&mut self) {
+        {
+            let mut stopped = self.stop_flag.0.lock().unwrap();
+            *stopped = true;
+            self.stop_flag.1.notify_all();
+        }
+        if let Some(handle) = self.refresh_thread.take() {
+            let _ = handle.join();
         }
     }
 
@@ -321,18 +360,10 @@ impl Live {
             return;
         }
         self.started = false;
+        self.paused = false;
 
-        // Signal the refresh thread to stop.
-        {
-            let mut stopped = self.stop_flag.0.lock().unwrap();
-            *stopped = true;
-            self.stop_flag.1.notify_all();
-        }
-
-        // Join the refresh thread.
-        if let Some(handle) = self.refresh_thread.take() {
-            let _ = handle.join();
-        }
+        // Signal the refresh thread to stop and join it.
+        self.stop_refresh_thread();
 
         let mut s = self.state.lock().unwrap();
 
@@ -355,6 +386,140 @@ impl Live {
         s.console.show_cursor(true);
         if s.screen {
             s.console.set_alt_screen(false);
+        }
+    }
+
+    /// Pause the live display, erasing its current render but preserving its
+    /// content and state so [`resume`](Self::resume) can restore it.
+    ///
+    /// This is the cooperative counterpart to [`stop`](Self::stop): it halts
+    /// the background refresh and erases the rendered region *in place* (the
+    /// same erase transient [`stop`](Self::stop) performs), but — unlike a
+    /// non-transient stop — it emits **no trailing newline**, so the last
+    /// render is not left behind in the scrollback. The cursor is shown again
+    /// so intervening output (for example a child `Live`) behaves normally.
+    ///
+    /// Use this to hand the terminal's bottom row from one `Live` to another:
+    /// pause a sticky footer, let a child display take over, then
+    /// [`resume`](Self::resume) the footer. It avoids the duplicate-render
+    /// artifact you would otherwise get by toggling [`transient`](Self::transient)
+    /// around [`stop`](Self::stop) / [`start`](Self::start) and rebuilding the
+    /// renderable.
+    ///
+    /// Calling `pause` on a display that is not started, or already paused, is
+    /// a no-op. In alternate-screen (`screen`) mode there is no scrollback to
+    /// protect, so the erase is a no-op; the refresh thread is still halted and
+    /// the cursor shown.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use gilt::live::Live;
+    /// use gilt::text::Text;
+    /// use gilt::style::Style;
+    ///
+    /// let mut footer = Live::new(Text::new("status…", Style::null()));
+    /// footer.start();
+    /// footer.pause();
+    /// // … a child Live renders here without a stale footer above it …
+    /// footer.resume();
+    /// footer.stop();
+    /// ```
+    pub fn pause(&mut self) {
+        if !self.started || self.paused {
+            return;
+        }
+        self.paused = true;
+
+        // Halt the background refresh so it cannot repaint while paused.
+        self.stop_refresh_thread();
+
+        let mut s = self.state.lock().unwrap();
+
+        // Erase the rendered region in place (CR + per-line up/erase). This
+        // emits no newline, so nothing is left behind in the scrollback. In
+        // screen mode the shape is never tracked, so this is an empty no-op.
+        let segments = s.live_render.restore_cursor();
+        emit_control_segments(&mut s.console, &segments);
+
+        // Forget the shape and invalidate the diff caches so a later `stop`
+        // emits no spurious trailing newline and `resume` repaints fresh at
+        // the cursor's current location.
+        s.live_render.reset();
+        s.last_segments = None;
+        s.prev_lines = Vec::new();
+
+        // Show the cursor so intervening output behaves normally while paused.
+        s.console.show_cursor(true);
+    }
+
+    /// Resume a [`paused`](Self::pause) live display.
+    ///
+    /// Re-hides the cursor, redraws the preserved renderable at the cursor's
+    /// current position (drawing downward, so any output that scrolled in
+    /// while paused is not disturbed), and restarts the background refresh
+    /// thread if `auto_refresh` is enabled.
+    ///
+    /// Calling `resume` on a display that is not started, or not paused, is a
+    /// no-op.
+    pub fn resume(&mut self) {
+        if !self.started || !self.paused {
+            return;
+        }
+        self.paused = false;
+
+        let current = self.renderable.load().0.clone();
+
+        // Redraw the region at the current cursor position. We deliberately do
+        // NOT use the `do_refresh` reposition path (which moves the cursor up
+        // over the previous region): after `pause` the region is gone and the
+        // cursor sits where the new render should begin, so we draw straight
+        // down — the same approach `print_above` uses for its redraw.
+        let is_screen = {
+            let mut s = self.state.lock().unwrap();
+            s.console.show_cursor(false);
+            if s.screen {
+                true
+            } else {
+                s.live_render.set_renderable(current);
+                let opts = s.console.options();
+                let new_lines = s.live_render.gilt_console_lines(&s.console, &opts);
+
+                // Flatten to a single segment list (mirrors `do_refresh`).
+                let render_segments: Vec<Segment> = {
+                    let line_count = new_lines.len();
+                    let mut segs = Vec::new();
+                    for (i, line) in new_lines.iter().enumerate() {
+                        segs.extend(line.iter().cloned());
+                        if i + 1 < line_count {
+                            segs.push(Segment::line());
+                        }
+                    }
+                    segs
+                };
+
+                s.console.write_segments(&render_segments);
+
+                // Re-establish the diff caches so the next refresh diffs from
+                // the just-drawn frame (frame-skip / line-diff stay correct).
+                s.prev_lines = new_lines;
+                s.last_segments = Some(render_segments);
+                false
+            }
+        };
+
+        // Re-arm the stop flag and restart the refresh thread AFTER the initial
+        // paint so the thread cannot race the redraw.
+        {
+            let mut stopped = self.stop_flag.0.lock().unwrap();
+            *stopped = false;
+        }
+        self.spawn_refresh_thread();
+
+        // In screen mode the redraw above was skipped (rendering happens from
+        // home); paint the first frame now.
+        if is_screen {
+            self.refresh();
         }
     }
 
@@ -1745,5 +1910,204 @@ mod tests {
             "expected 100-char line to fit without wrapping at 120 cols, got: {:?}",
             plain
         );
+    }
+
+    // -- pause / resume -----------------------------------------------------
+
+    /// Build a capturing console (visible output, recorded for assertions).
+    fn capture_console() -> Console {
+        Console::builder()
+            .width(80)
+            .height(25)
+            .quiet(false)
+            .markup(false)
+            .no_color(true)
+            .force_terminal(true)
+            .build()
+    }
+
+    /// The headline scenario: an outer Live renders a multi-line footer, is
+    /// paused (footer erased with no stale scrollback line), then resumed
+    /// (footer redrawn). Mirrors a sticky-footer Live handing the bottom row
+    /// to a child Live and taking it back.
+    #[test]
+    fn pause_resume_footer_handoff_no_stale_scrollback() {
+        let mut outer = Live::new(Text::new("FOOTER_L1\nFOOTER_L2\nFOOTER_L3", Style::null()))
+            .with_console(capture_console())
+            .with_auto_refresh(false);
+
+        outer.start();
+        outer.refresh(); // draw the footer once
+
+        assert!(outer.is_started());
+        assert!(!outer.is_paused());
+
+        // -- pause: erase the footer in place, leave nothing in scrollback --
+        outer.state.lock().unwrap().console.begin_capture();
+        outer.pause();
+        let paused = outer.state.lock().unwrap().console.end_capture();
+
+        assert!(outer.is_paused(), "pause() should mark the display paused");
+        assert!(
+            outer.is_started(),
+            "pause() must preserve the started state so resume() can restore it"
+        );
+        // The rendered lines must be erased in place (EraseInLine -> CSI 2 K).
+        assert!(
+            paused.contains("\x1b[2K"),
+            "pause must erase the rendered footer lines, got: {paused:?}"
+        );
+        // The cursor must be shown again so intervening output behaves normally.
+        assert!(
+            paused.contains("\x1b[?25h"),
+            "pause must show the cursor, got: {paused:?}"
+        );
+        // No footer text is re-emitted...
+        assert!(
+            !paused.contains("FOOTER_L1"),
+            "pause must not re-print footer text, got: {paused:?}"
+        );
+        // ...and crucially no newline pushes the footer into the scrollback.
+        assert!(
+            !paused.contains('\n'),
+            "pause must not emit a newline into the scrollback, got: {paused:?}"
+        );
+
+        // -- resume: the footer reappears and refreshing resumes --
+        outer.state.lock().unwrap().console.begin_capture();
+        outer.resume();
+        let resumed = outer.state.lock().unwrap().console.end_capture();
+
+        assert!(!outer.is_paused(), "resume() should clear the paused state");
+        assert!(outer.is_started());
+        assert!(
+            resumed.contains("FOOTER_L1") && resumed.contains("FOOTER_L3"),
+            "resume must redraw the full footer, got: {resumed:?}"
+        );
+        // The live display re-takes ownership of the cursor on resume.
+        assert!(
+            resumed.contains("\x1b[?25l"),
+            "resume must hide the cursor again, got: {resumed:?}"
+        );
+        // resume must draw DOWNWARD from the cursor — it must not move the
+        // cursor up (CSI A), which would overwrite output that scrolled in
+        // above while paused.
+        assert!(
+            !resumed.contains("\x1b[1A"),
+            "resume must not move the cursor up over content above, got: {resumed:?}"
+        );
+
+        outer.stop();
+    }
+
+    /// After `pause()` the region is already erased and the shape reset, so a
+    /// subsequent `stop()` must NOT emit a trailing newline (which would leave
+    /// a blank line in the scrollback).
+    #[test]
+    fn pause_then_stop_emits_no_trailing_newline() {
+        let mut live = Live::new(Text::new("footer\npanel", Style::null()))
+            .with_console(capture_console())
+            .with_auto_refresh(false);
+
+        live.start();
+        live.refresh();
+        live.pause();
+
+        live.state.lock().unwrap().console.begin_capture();
+        live.stop();
+        let captured = live.state.lock().unwrap().console.end_capture();
+
+        assert!(
+            !captured.contains('\n'),
+            "stop() after pause() must not emit a trailing newline, got: {captured:?}"
+        );
+    }
+
+    /// `pause()` before `start()` is a no-op and must not panic.
+    #[test]
+    fn pause_without_start_is_noop() {
+        let mut live = Live::new(Text::empty())
+            .with_console(test_console())
+            .with_auto_refresh(false);
+        live.pause();
+        assert!(!live.is_paused());
+        assert!(!live.is_started());
+    }
+
+    /// A second `pause()` while already paused is a no-op (no double erase).
+    #[test]
+    fn double_pause_is_noop() {
+        let mut live = Live::new(Text::new("x", Style::null()))
+            .with_console(test_console())
+            .with_auto_refresh(false);
+        live.start();
+        live.refresh();
+        live.pause();
+        assert!(live.is_paused());
+        live.pause(); // second pause must be a no-op
+        assert!(live.is_paused());
+        live.stop();
+    }
+
+    /// `resume()` when not paused is a no-op.
+    #[test]
+    fn resume_without_pause_is_noop() {
+        let mut live = Live::new(Text::new("x", Style::null()))
+            .with_console(test_console())
+            .with_auto_refresh(false);
+        live.start();
+        live.refresh();
+        live.resume(); // never paused -> no-op
+        assert!(!live.is_paused());
+        assert!(live.is_started());
+        live.stop();
+    }
+
+    /// `resume()` before `start()` is a no-op and must not panic.
+    #[test]
+    fn resume_without_start_is_noop() {
+        let mut live = Live::new(Text::empty())
+            .with_console(test_console())
+            .with_auto_refresh(false);
+        live.resume();
+        assert!(!live.is_paused());
+        assert!(!live.is_started());
+    }
+
+    /// With auto-refresh on, `pause()` stops the background thread and
+    /// `resume()` restarts it. Existing start/stop thread behaviour is intact.
+    #[test]
+    fn pause_resume_stops_and_restarts_refresh_thread() {
+        let mut live = Live::new(Text::new("tick", Style::null()))
+            .with_console(test_console())
+            .with_auto_refresh(true)
+            .with_refresh_per_second(50.0);
+
+        live.start();
+        assert!(live.refresh_thread.is_some());
+
+        live.pause();
+        assert!(
+            live.refresh_thread.is_none(),
+            "pause must stop the background refresh thread"
+        );
+        assert!(live.is_paused());
+
+        live.resume();
+        assert!(
+            live.refresh_thread.is_some(),
+            "resume must restart the background refresh thread"
+        );
+        assert!(!live.is_paused());
+
+        live.stop();
+        assert!(live.refresh_thread.is_none());
+    }
+
+    /// A freshly constructed Live is not paused.
+    #[test]
+    fn new_live_is_not_paused() {
+        let live = Live::new(Text::empty());
+        assert!(!live.is_paused());
     }
 }

@@ -93,6 +93,20 @@ impl LiveRender {
         self.renderable = renderable;
     }
 
+    /// Forget the last render's shape so the next render starts fresh.
+    ///
+    /// After this, [`last_render_height`](Self::last_render_height) is `0` and
+    /// [`position_cursor`](Self::position_cursor) / [`restore_cursor`](Self::restore_cursor)
+    /// emit nothing. Used by [`Live::pause`](crate::live::Live::pause) so that,
+    /// once the region has been erased, a later
+    /// [`Live::resume`](crate::live::Live::resume) repaints at the cursor's
+    /// current position instead of moving up over content that has since
+    /// scrolled into view, and a [`Live::stop`](crate::live::Live::stop) does
+    /// not emit a spurious trailing newline for an already-erased region.
+    pub fn reset(&self) {
+        self.shape.set(None);
+    }
+
     /// Return control segments that move the cursor back to the start of the
     /// last render output so that it can be overwritten.
     ///

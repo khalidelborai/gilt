@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **`Live::pause()` / `Live::resume()`** — first-class pause/resume for a live
+  region. `pause` halts the background refresh and erases the current render in
+  place (the same erase a transient `stop` does) while preserving the renderable
+  and state; unlike a non-transient `stop` it emits **no trailing newline**, so
+  the last render is not left behind in the scrollback. `resume` re-hides the
+  cursor, redraws the preserved content at the cursor's current position
+  (drawing downward, so output that scrolled in while paused is untouched), and
+  restarts the refresh thread. Adds `Live::is_paused()`. This lets stacked live
+  UIs (e.g. a sticky-footer `Live` + a child tree that renders its own `Live`)
+  cleanly hand off the terminal's bottom row without callers toggling the
+  `transient` flag or managing cursor erase by hand. `start`/`stop` behaviour is
+  unchanged. TDD.
+
 ## [1.10.0] - 2026-06-06
 
 Terminal-awareness + higher-resolution graphics, plus reproducible demos.

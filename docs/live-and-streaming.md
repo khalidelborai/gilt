@@ -66,6 +66,32 @@ live.print_above(Text::styled("✓ step complete", "green"));
 The live region is lifted, the content is printed into the scrollback, and the
 region is redrawn below it.
 
+## Pausing & resuming
+
+To hand the terminal's bottom row from one live display to another — for example
+a sticky footer that needs to step aside while a child display takes over — pause
+the outer display, run the child, then resume:
+
+```rust
+footer.pause();   // erase the footer in place; keep its content & state
+child.start();    // a child Live renders here, with no stale footer above it
+child.stop();
+footer.resume();  // redraw the footer where the cursor now sits
+```
+
+`pause()` halts the background refresh and erases the current render *in place*
+(the same erase a transient `stop` performs), but unlike a non-transient `stop`
+it emits **no trailing newline**, so the previous frame is not left behind in the
+scrollback. The cursor is shown again so the child display behaves normally.
+`resume()` re-hides the cursor, redraws the preserved renderable at the cursor's
+current position (drawing downward, leaving any output that scrolled in while
+paused untouched), and restarts the refresh.
+
+This is cleaner and less error-prone than toggling `transient` around
+`stop`/`start` and rebuilding the renderable. `is_paused()` reports the state;
+`is_started()` stays `true` while paused. `start`/`stop` behave exactly as
+before.
+
 ## Vertical overflow
 
 When content is taller than the terminal, choose how it's clipped:
