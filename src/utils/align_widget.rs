@@ -116,7 +116,11 @@ impl Align {
     /// Measure the minimum and maximum width requirements.
     pub fn measure(&self, _console: &Console, options: &ConsoleOptions) -> Measurement {
         let content_width = self.content.cell_len();
-        Measurement::new(content_width, options.max_width)
+        let max_width = match self.width {
+            Some(w) => w,
+            None => content_width.min(options.max_width),
+        };
+        Measurement::new(content_width.min(max_width), max_width)
     }
 
     /// Generate vertically-padded blank lines above or below content.
@@ -477,12 +481,13 @@ mod tests {
 
     #[test]
     fn test_measure() {
+        // "Hello" is 5 cells; no explicit width → maximum is content width (5), not console width.
         let console = make_console(40);
         let align = Align::center(Text::new("Hello", Style::null()));
         let opts = console.options();
         let m = align.measure(&console, &opts);
         assert_eq!(m.minimum, 5);
-        assert_eq!(m.maximum, 40);
+        assert_eq!(m.maximum, 5);
     }
 
     // -- Enum equality ------------------------------------------------------
@@ -540,6 +545,51 @@ mod tests {
         }
     }
 
+    // -- Measure correctness (audit #14) ------------------------------------
+
+    #[test]
+    fn test_measure_content_width_no_explicit_width() {
+        // Without an explicit width, maximum must be the content width (2), not max_width (80).
+        let console = make_console(80);
+        let opts = console.options();
+        let align = Align::left(Text::new("Hi", Style::null()));
+        let m = align.measure(&console, &opts);
+        assert_eq!(m.minimum, 2);
+        assert_eq!(
+            m.maximum, 2,
+            "maximum must be content width, not options.max_width"
+        );
+    }
+
+    #[test]
+    fn test_measure_explicit_width() {
+        // With an explicit width set, that width is the maximum.
+        let console = make_console(80);
+        let opts = console.options();
+        let align = Align::new(
+            Text::new("Hi", Style::null()),
+            HorizontalAlign::Left,
+            None,
+            None,
+            true,
+            Some(30),
+            None,
+        );
+        let m = align.measure(&console, &opts);
+        assert_eq!(m.maximum, 30, "explicit width must become the maximum");
+        assert_eq!(m.minimum, 2);
+    }
+
+    #[test]
+    fn test_measure_content_wider_than_max() {
+        // Content wider than max_width must be clamped to max_width.
+        let console = make_console(5);
+        let opts = console.options();
+        let align = Align::left(Text::new("Hello World", Style::null()));
+        let m = align.measure(&console, &opts);
+        assert_eq!(m.maximum, 5, "maximum must be clamped to options.max_width");
+    }
+
     // -- gilt_measure override -----------------------------------------------
 
     #[test]
@@ -551,8 +601,7 @@ mod tests {
         let m_standalone = align.measure(&console, &opts);
         let m_trait = align.gilt_measure(&console, &opts);
         assert_eq!(
-            m_trait,
-            m_standalone,
+            m_trait, m_standalone,
             "Align::gilt_measure must delegate to Align::measure"
         );
     }
@@ -566,8 +615,7 @@ mod tests {
         let m_standalone = align.measure(&console, &opts);
         let m_trait = align.gilt_measure(&console, &opts);
         assert_eq!(
-            m_trait,
-            m_standalone,
+            m_trait, m_standalone,
             "Align::gilt_measure (center) must delegate to Align::measure"
         );
     }
