@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-Parity 2.0 — closing verified gaps against Python `rich` (see `.review/parity-audit-2026-06-24.md`). Phase 1: correctness fixes. Phase 2: render-time theme resolution. Phase 3: measurement protocol. Phase 4: container generalization. Phase 5: export correctness.
+Parity 2.0 — closing verified gaps against Python `rich` (see `.review/parity-audit-2026-06-24.md`). Phase 1: correctness fixes. Phase 2: render-time theme resolution. Phase 3: measurement protocol. Phase 4: container generalization. Phase 5: export correctness. Phase 6: live/progress nesting + logging layout.
 
 ### Added
 
@@ -30,6 +30,9 @@ Parity 2.0 — closing verified gaps against Python `rich` (see `.review/parity-
 
 ### Fixed
 
+- **Screen-mode `Live` preserves styling** (#25) — alt-screen `do_refresh` no longer flattens styled segments to plain text (it renders the content through `Screen::from_arc`); bold/color/dim survive. `Screen.renderable` is now a `RenderableArc` (`Screen::new(Text::new(..))` still compiles).
+- **`Live`/`Progress` nesting tracked via the console live-stack** (#26, #27) — `Live::start`/`stop` (and `Progress` through its internal `Live`) now `push_live`/`pop_live`, so nested live displays are tracked correctly. `pause`/`resume` leave the stack untouched.
+- **Log handlers use `Table::grid()` for column alignment** (#28) — `RichHandler` and the `tracing` `GiltLayer` build an expanded grid (time/level/message/path columns) instead of flat space-concatenation, so columns align across records regardless of message length.
 - **`export_*` methods panic when `record` mode is off** (#f) — previously returned an empty string silently; now `assert!(self.record, "export requires record mode — build the Console with .record(true)")` fires on all five base export methods (`export_text`, `export_html`, `export_html_opts`, `export_svg`, `export_svg_opts`), matching Python rich's `assert self.record`. Return types are unchanged (non-breaking for callers with record enabled).
 - **SVG/HTML export correctness** (audit §3.10): SVG lines are cropped to the console width (#22); `reverse` swaps the background-rect fill and `dim` blends the foreground toward the theme background when a segment has no background (#23); per-line `<clipPath>` defs are emitted; traffic-light chrome geometry matches rich; all-space segments no longer emit `<text>`; class-mode HTML anchors are now wrapped *inside* the styled span. `save_html`/`save_svg` forward `theme`/`clear`/`inline_styles`/`unique_id`/`code_format`. _Deferred:_ wiring the per-line clip-paths to their `<text>` elements.
 - **`save_html` / `save_svg` forward export parameters** (#e, #g) — `save_html(path)` is now `save_html(path, theme, clear, inline_styles, code_format)` and `save_svg(path, title)` is now `save_svg(path, title, theme, clear, unique_id, code_format)`. Both delegate to the underlying `export_*_opts` / `export_svg` methods. **Breaking:** existing call sites must add the new parameters.
