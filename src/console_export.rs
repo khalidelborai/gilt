@@ -10,6 +10,7 @@ use std::borrow::Cow;
 use std::fmt::Write as _;
 
 use crate::cells::cell_len;
+use crate::color::blend_rgb;
 use crate::console::Console;
 use crate::export_format::{
     FontEmbedding, HtmlExportOptions, SvgExportOptions, CONSOLE_HTML_FORMAT, CONSOLE_SVG_FORMAT,
@@ -143,8 +144,18 @@ pub(super) fn build_svg_text(
             let text_width = cell_len(text) as f64 * char_width;
 
             if let Some(ref style) = seg.style {
-                // Background
-                if let Some(bgcolor) = style.bgcolor() {
+                // Compute effective fg/bg color references, applying `reverse` swap.
+                // `reverse` swaps fg↔bg visually: the foreground color fills the
+                // background rect, and the background color fills the text glyph.
+                let (eff_fg_color, eff_bg_color) = if style.reverse() == Some(true) {
+                    (style.bgcolor(), style.color())
+                } else {
+                    (style.color(), style.bgcolor())
+                };
+
+                // Background rect — uses the *effective* background color so that
+                // `reverse` correctly paints the original fg as the rect fill.
+                if let Some(bgcolor) = eff_bg_color {
                     let bg_triplet = bgcolor.get_truecolor(Some(theme), false);
                     writeln!(
                         backgrounds,
@@ -159,30 +170,61 @@ pub(super) fn build_svg_text(
                     .unwrap();
                 }
 
-                // Foreground text with style class
-                let css = style.get_html_style(Some(theme));
-                if !css.is_empty() {
-                    let class_name =
-                        find_or_insert_svg_class(&mut style_cache, &mut styles, unique_id, &css);
-                    writeln!(
-                        matrix,
-                        "    <text class=\"{}\" x=\"{:.1}\" y=\"{:.1}\" \
-                         textLength=\"{:.1}\">{}</text>",
-                        class_name, x, y, text_width, escaped
-                    )
-                    .unwrap();
-                } else {
+                // When `dim` is set and the segment has no bgcolor (eff_bg_color is None),
+                // rich blends the foreground toward the theme background at cross-fade 0.4.
+                // `get_html_style` only blends when both fg and bg are present, so we handle
+                // this SVG-only case here and emit a direct `fill=` rather than a CSS class.
+                let dim_no_bg_override: Option<String> =
+                    if style.dim() == Some(true) && eff_bg_color.is_none() {
+                        if let Some(fg_color) = eff_fg_color {
+                            let fg_triplet = fg_color.get_truecolor(Some(theme), true);
+                            let blended = blend_rgb(fg_triplet, theme.background_color, 0.4);
+                            Some(blended.hex())
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    };
+
+                // Foreground text with style class (or direct fill for dim-no-bg override).
+                if let Some(ref blended_hex) = dim_no_bg_override {
                     writeln!(
                         matrix,
                         "    <text fill=\"{}\" x=\"{:.1}\" y=\"{:.1}\" \
                          textLength=\"{:.1}\">{}</text>",
-                        theme.foreground_color.hex(),
-                        x,
-                        y,
-                        text_width,
-                        escaped
+                        blended_hex, x, y, text_width, escaped
                     )
                     .unwrap();
+                } else {
+                    let css = style.get_html_style(Some(theme));
+                    if !css.is_empty() {
+                        let class_name = find_or_insert_svg_class(
+                            &mut style_cache,
+                            &mut styles,
+                            unique_id,
+                            &css,
+                        );
+                        writeln!(
+                            matrix,
+                            "    <text class=\"{}\" x=\"{:.1}\" y=\"{:.1}\" \
+                             textLength=\"{:.1}\">{}</text>",
+                            class_name, x, y, text_width, escaped
+                        )
+                        .unwrap();
+                    } else {
+                        writeln!(
+                            matrix,
+                            "    <text fill=\"{}\" x=\"{:.1}\" y=\"{:.1}\" \
+                             textLength=\"{:.1}\">{}</text>",
+                            theme.foreground_color.hex(),
+                            x,
+                            y,
+                            text_width,
+                            escaped
+                        )
+                        .unwrap();
+                    }
                 }
             } else {
                 writeln!(

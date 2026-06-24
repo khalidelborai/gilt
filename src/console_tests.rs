@@ -3092,3 +3092,80 @@ fn test_save_svg_forwards_unique_id() {
     );
     let _ = std::fs::remove_file(&path);
 }
+
+// -- SVG reverse on bg rects (fix b) ------------------------------------
+
+/// Fix b: when a segment's style has `reverse`, the `<rect fill>` must use the
+/// foreground color (swapped to become the background in the visual output).
+/// Segment: fg=#ffffff, bg=#000000, reverse — after swap the rect fill is the
+/// original fg (#ffffff); without the fix the rect fill would be #000000.
+#[test]
+fn test_svg_bg_rect_uses_swapped_color_when_reverse() {
+    use crate::console::console_export::build_svg_text;
+    use crate::segment::Segment;
+    use crate::style::Style;
+    use crate::terminal_theme::SVG_EXPORT_THEME;
+
+    let style = Style::parse("#ffffff on #000000 reverse");
+    let seg = Segment::styled("X", style);
+    let (_, backgrounds, _, _) = build_svg_text(
+        &[seg],
+        10,
+        &SVG_EXPORT_THEME,
+        "testid",
+        7.0,
+        14.0,
+        40.0,
+        14.0,
+    );
+    // After reverse swap, the bg rect should be filled with the original *fg*
+    // color (#ffffff), NOT the original bg (#000000).
+    assert!(
+        backgrounds.contains("#ffffff"),
+        "rect fill must use original fg after reverse swap; got:\n{backgrounds}"
+    );
+    assert!(
+        !backgrounds.contains("#000000"),
+        "rect fill must NOT use original bg when reverse is set; got:\n{backgrounds}"
+    );
+}
+
+// -- SVG dim blends toward theme bg when segment has no bgcolor (fix d) --
+
+/// Fix d: `dim` with no segment bgcolor must blend the fg toward the SVG theme
+/// background at cross-fade 0.4.  Without the fix, dim-only segments are
+/// silently ignored and the raw fg is emitted.
+///
+/// Segment fg = #c8c8c8 (200,200,200), no bg, dim=true.
+/// SVG_EXPORT_THEME background = (41,41,41).
+/// Expected blended hex: blend_rgb((200,200,200),(41,41,41),0.4) = (136,136,136) = #888888.
+#[test]
+fn test_svg_dim_no_bg_blends_toward_theme_bg() {
+    use crate::console::console_export::build_svg_text;
+    use crate::segment::Segment;
+    use crate::style::Style;
+    use crate::terminal_theme::SVG_EXPORT_THEME;
+
+    let style = Style::parse("#c8c8c8 dim");
+    let seg = Segment::styled("Y", style);
+    let (matrix, _, _, _) = build_svg_text(
+        &[seg],
+        10,
+        &SVG_EXPORT_THEME,
+        "testid",
+        7.0,
+        14.0,
+        40.0,
+        14.0,
+    );
+    // The text fill or CSS class for this segment must reflect the blended color
+    // (#888888), not the original fg (#c8c8c8).
+    assert!(
+        matrix.contains("#888888"),
+        "dim with no bg must blend fg toward theme bg; expected #888888 but got:\n{matrix}"
+    );
+    assert!(
+        !matrix.contains("#c8c8c8"),
+        "dim with no bg must NOT emit raw fg; got:\n{matrix}"
+    );
+}
