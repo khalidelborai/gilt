@@ -19,6 +19,7 @@
 //! tracing::info!(user = "alice", "request handled");
 //! ```
 
+use std::collections::HashMap;
 use std::fmt;
 use std::sync::Mutex;
 
@@ -28,9 +29,19 @@ use tracing_subscriber::layer::{Context, Layer};
 use tracing_subscriber::registry::LookupSpan;
 
 use crate::console::Console;
+use crate::highlighter::{Highlighter, ReprHighlighter};
+use crate::markup;
 use crate::style::Style;
 use crate::text::{JustifyMethod, Text};
 use crate::widgets::table::Table;
+
+// ---------------------------------------------------------------------------
+// Default keywords (mirrors logging_handler::DEFAULT_KEYWORDS)
+// ---------------------------------------------------------------------------
+
+const DEFAULT_KEYWORDS: &[&str] = &[
+    "GET", "POST", "HEAD", "PUT", "DELETE", "OPTIONS", "TRACE", "PATCH",
+];
 
 // ---------------------------------------------------------------------------
 // Field visitor — collects structured fields from a tracing event
@@ -123,6 +134,16 @@ pub struct GiltLayer {
     show_target: bool,
     show_level: bool,
     show_span_path: bool,
+    /// When `true`, log messages are parsed as rich markup.
+    markup: bool,
+    /// Keywords to highlight in log messages.
+    keywords: Vec<String>,
+    /// Highlighter applied to log messages. Default: [`ReprHighlighter`].
+    highlighter: Box<dyn Highlighter + Send + Sync>,
+    /// Minimum tracing level to emit. Events less severe are suppressed.
+    min_level: Level,
+    /// Level style map — consulted after theme lookup.
+    level_styles: HashMap<Level, Style>,
 }
 
 impl GiltLayer {
@@ -134,6 +155,11 @@ impl GiltLayer {
             show_target: true,
             show_level: true,
             show_span_path: true,
+            markup: false,
+            keywords: DEFAULT_KEYWORDS.iter().map(|s| s.to_string()).collect(),
+            highlighter: Box::new(ReprHighlighter),
+            min_level: Level::TRACE,
+            level_styles: Self::default_level_styles(),
         }
     }
 
@@ -172,7 +198,59 @@ impl GiltLayer {
         self
     }
 
-    /// Return the style for a given tracing level.
+    /// Set whether log messages are parsed as rich markup.
+    #[must_use]
+    pub fn with_markup(mut self, m: bool) -> Self {
+        self.markup = m;
+        self
+    }
+
+    /// Set the keywords to highlight in log messages.
+    #[must_use]
+    pub fn with_keywords(mut self, kw: Vec<String>) -> Self {
+        self.keywords = kw;
+        self
+    }
+
+    /// Replace the highlighter applied to log messages.
+    ///
+    /// Default: [`ReprHighlighter`]. Pass a [`crate::highlighter::NullHighlighter`] to disable.
+    #[must_use]
+    pub fn with_highlighter<H: Highlighter + Send + Sync + 'static>(mut self, h: H) -> Self {
+        self.highlighter = Box::new(h);
+        self
+    }
+
+    /// Set the minimum tracing level to emit.
+    ///
+    /// Events with lower severity than `level` are suppressed.
+    /// Default: [`Level::TRACE`] (pass everything).
+    #[must_use]
+    pub fn with_min_level(mut self, level: Level) -> Self {
+        self.min_level = level;
+        self
+    }
+
+    /// Override the level style map.
+    #[must_use]
+    pub fn with_level_styles(mut self, styles: HashMap<Level, Style>) -> Self {
+        self.level_styles = styles;
+        self
+    }
+
+    /// Return the default level style map.
+    fn default_level_styles() -> HashMap<Level, Style> {
+        let mut m = HashMap::new();
+        m.insert(Level::ERROR, Style::parse("bold red"));
+        m.insert(Level::WARN, Style::parse("bold yellow"));
+        m.insert(Level::INFO, Style::parse("bold blue"));
+        m.insert(Level::DEBUG, Style::parse("bold green"));
+        m.insert(Level::TRACE, Style::parse("dim"));
+        m
+    }
+
+    /// Return the style for a given tracing level (static helper, kept for tests).
+    #[cfg(test)]
     fn level_style(level: &Level) -> Style {
         let spec = match *level {
             Level::ERROR => "bold red",
@@ -195,7 +273,11 @@ impl GiltLayer {
     }
 
     /// Build the level column text, left-padded to 8 chars.
-    fn render_level(level: &Level) -> Text {
+    ///
+    /// Tries theme lookup via `console.get_style("logging.level.{name}")` first,
+    /// falls back to `self.level_styles`.
+    #[cfg(test)]
+    fn render_level(&self, level: &Level, console: &Console) -> Text {
         let name = match *level {
             Level::ERROR => "ERROR",
             Level::WARN => "WARN",
@@ -203,8 +285,16 @@ impl GiltLayer {
             Level::DEBUG => "DEBUG",
             Level::TRACE => "TRACE",
         };
+        let lvl_lower = name.to_lowercase();
+        let style = console
+            .get_style(&format!("logging.level.{}", lvl_lower))
+            .unwrap_or_else(|_| {
+                self.level_styles
+                    .get(level)
+                    .cloned()
+                    .unwrap_or_else(Style::null)
+            });
         let padded = format!("{:<8}", name);
-        let style = Self::level_style(level);
         Text::styled_with(&padded, style)
     }
 
@@ -236,6 +326,30 @@ impl GiltLayer {
         event.record(&mut visitor);
 
         let metadata = event.metadata();
+
+        // Phase 1: collect styles via a brief console lock, then drop.
+        let (level_style, kw_style) = if let Ok(console) = self.console.lock() {
+            let lvl_name = format!("logging.level.{}", metadata.level().as_str().to_lowercase());
+            let lvl = console.get_style(&lvl_name).unwrap_or_else(|_| {
+                self.level_styles
+                    .get(metadata.level())
+                    .cloned()
+                    .unwrap_or_else(Style::null)
+            });
+            let kw = console
+                .get_style("logging.keyword")
+                .unwrap_or_else(|_| Style::parse("bold on dark_green"));
+            (lvl, kw)
+        } else {
+            (
+                self.level_styles
+                    .get(metadata.level())
+                    .cloned()
+                    .unwrap_or_else(Style::null),
+                Style::parse("bold on dark_green"),
+            )
+        };
+
         let mut cells: Vec<Text> = Vec::new();
         let mut headers: Vec<&str> = Vec::new();
 
@@ -245,9 +359,17 @@ impl GiltLayer {
             headers.push("");
         }
 
-        // Level column
+        // Level column — use pre-fetched style
         if self.show_level {
-            cells.push(Self::render_level(metadata.level()));
+            let name = match *metadata.level() {
+                Level::ERROR => "ERROR",
+                Level::WARN => "WARN",
+                Level::INFO => "INFO",
+                Level::DEBUG => "DEBUG",
+                Level::TRACE => "TRACE",
+            };
+            let padded = format!("{:<8}", name);
+            cells.push(Text::styled_with(&padded, level_style));
             headers.push("");
         }
 
@@ -266,9 +388,20 @@ impl GiltLayer {
             }
         }
 
-        // Message
+        // Message — apply markup, highlighter, keyword highlighting
         let message = visitor.message.unwrap_or_default();
-        message_cell.append_str(&message, None);
+        let mut msg_text = if self.markup {
+            let base = Style::null();
+            markup::render(&message, base).unwrap_or_else(|_| Text::new(&message, Style::null()))
+        } else {
+            Text::new(&message, Style::null())
+        };
+        self.highlighter.highlight(&mut msg_text);
+        if !self.keywords.is_empty() {
+            let words: Vec<&str> = self.keywords.iter().map(|s| s.as_str()).collect();
+            msg_text.highlight_words(&words, kw_style, false);
+        }
+        message_cell.append_text(&msg_text);
 
         // Structured fields appended into message cell
         if !visitor.fields.is_empty() {
@@ -328,6 +461,10 @@ where
     fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
         self.emit(event, &ctx);
     }
+
+    fn event_enabled(&self, event: &Event<'_>, _ctx: Context<'_, S>) -> bool {
+        event.metadata().level() <= &self.min_level
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -358,7 +495,12 @@ pub fn install() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 mod tests {
     use super::*;
     use crate::console::Console;
+    use crate::highlighter::NullHighlighter;
     use tracing_subscriber::prelude::*;
+
+    fn test_console() -> Console {
+        Console::builder().width(80).no_color(true).build()
+    }
 
     // -- Construction and defaults -------------------------------------------
 
@@ -369,6 +511,9 @@ mod tests {
         assert!(layer.show_target);
         assert!(layer.show_level);
         assert!(layer.show_span_path);
+        assert!(!layer.markup);
+        assert!(!layer.keywords.is_empty());
+        assert_eq!(layer.min_level, Level::TRACE);
     }
 
     #[test]
@@ -410,6 +555,40 @@ mod tests {
     fn test_builder_console() {
         let console = Console::builder().width(120).build();
         let _layer = GiltLayer::new().with_console(console);
+    }
+
+    #[test]
+    fn test_markup_builder() {
+        let layer = GiltLayer::new().with_markup(true);
+        assert!(layer.markup);
+    }
+
+    #[test]
+    fn test_keywords_builder() {
+        let layer = GiltLayer::new().with_keywords(vec!["FOO".to_string(), "BAR".to_string()]);
+        assert_eq!(layer.keywords, vec!["FOO", "BAR"]);
+    }
+
+    #[test]
+    fn test_with_highlighter_builder() {
+        let layer = GiltLayer::new().with_highlighter(NullHighlighter);
+        // No easy way to inspect the box type, but construction should succeed.
+        drop(layer);
+    }
+
+    #[test]
+    fn test_min_level_builder() {
+        let layer = GiltLayer::new().with_min_level(Level::WARN);
+        assert_eq!(layer.min_level, Level::WARN);
+    }
+
+    #[test]
+    fn test_level_styles_builder() {
+        let mut styles = HashMap::new();
+        styles.insert(Level::ERROR, Style::parse("italic magenta"));
+        let layer = GiltLayer::new().with_level_styles(styles);
+        let s = layer.level_styles.get(&Level::ERROR).unwrap();
+        assert_eq!(s.italic(), Some(true));
     }
 
     // -- Level styles --------------------------------------------------------
@@ -468,36 +647,48 @@ mod tests {
 
     #[test]
     fn test_render_level_error() {
-        let text = GiltLayer::render_level(&Level::ERROR);
+        let layer = GiltLayer::new();
+        let console = test_console();
+        let text = layer.render_level(&Level::ERROR, &console);
         assert_eq!(text.plain(), "ERROR   ");
     }
 
     #[test]
     fn test_render_level_warn() {
-        let text = GiltLayer::render_level(&Level::WARN);
+        let layer = GiltLayer::new();
+        let console = test_console();
+        let text = layer.render_level(&Level::WARN, &console);
         assert_eq!(text.plain(), "WARN    ");
     }
 
     #[test]
     fn test_render_level_info() {
-        let text = GiltLayer::render_level(&Level::INFO);
+        let layer = GiltLayer::new();
+        let console = test_console();
+        let text = layer.render_level(&Level::INFO, &console);
         assert_eq!(text.plain(), "INFO    ");
     }
 
     #[test]
     fn test_render_level_debug() {
-        let text = GiltLayer::render_level(&Level::DEBUG);
+        let layer = GiltLayer::new();
+        let console = test_console();
+        let text = layer.render_level(&Level::DEBUG, &console);
         assert_eq!(text.plain(), "DEBUG   ");
     }
 
     #[test]
     fn test_render_level_trace() {
-        let text = GiltLayer::render_level(&Level::TRACE);
+        let layer = GiltLayer::new();
+        let console = test_console();
+        let text = layer.render_level(&Level::TRACE, &console);
         assert_eq!(text.plain(), "TRACE   ");
     }
 
     #[test]
     fn test_render_level_has_style() {
+        let layer = GiltLayer::new();
+        let console = test_console();
         for level in &[
             Level::ERROR,
             Level::WARN,
@@ -505,7 +696,7 @@ mod tests {
             Level::DEBUG,
             Level::TRACE,
         ] {
-            let text = GiltLayer::render_level(level);
+            let text = layer.render_level(level, &console);
             assert!(
                 !text.spans().is_empty(),
                 "level {:?} should have a styled span",

@@ -55,8 +55,17 @@ pub struct RichHandler {
     gilt_tracebacks: bool,
     keywords: Vec<String>,
     level_styles: HashMap<log::Level, Style>,
-    /// Cache of the last-emitted `HH:MM:SS` string for `omit_repeated_times`.
+    /// Cache of the last-emitted cache key (days+HH:MM:SS) for `omit_repeated_times`.
+    /// Using a date-inclusive key fixes the midnight repeat-suppression bug (item 7).
     last_time_str: Mutex<Option<String>>,
+    /// Optional strftime-style time format string. Currently stored for future use;
+    /// display always uses HH:MM:SS (no `time` crate dep). The cache key includes
+    /// the date so midnight rollover never falsely suppresses a new timestamp.
+    time_format: Option<String>,
+    /// Highlighter applied to log messages. Default: [`ReprHighlighter`].
+    highlighter: Box<dyn Highlighter + Send + Sync>,
+    /// Minimum log level to emit. Records with lower severity are suppressed.
+    min_level: log::LevelFilter,
 }
 
 impl RichHandler {
@@ -77,6 +86,9 @@ impl RichHandler {
             keywords: DEFAULT_KEYWORDS.iter().map(|s| s.to_string()).collect(),
             level_styles: Self::default_level_styles(),
             last_time_str: Mutex::new(None),
+            time_format: None,
+            highlighter: Box::new(ReprHighlighter),
+            min_level: log::LevelFilter::Trace,
         }
     }
 
@@ -122,6 +134,13 @@ impl RichHandler {
         self
     }
 
+    /// Override the level style map.
+    #[must_use]
+    pub fn with_level_styles(mut self, styles: HashMap<log::Level, Style>) -> Self {
+        self.level_styles = styles;
+        self
+    }
+
     /// Suppress repeated timestamps on consecutive records sharing the same
     /// wall-clock second (default `true`).
     ///
@@ -152,6 +171,37 @@ impl RichHandler {
         self
     }
 
+    /// Set a strftime-style time format string.
+    ///
+    /// The format string is stored and used as part of the omit-repeated-times
+    /// cache key (ensuring midnight rollover is handled correctly). Display
+    /// currently always uses `HH:MM:SS` — no extra time crate dependency is
+    /// introduced.
+    #[must_use]
+    pub fn with_time_format(mut self, fmt: String) -> Self {
+        self.time_format = Some(fmt);
+        self
+    }
+
+    /// Replace the highlighter applied to log messages.
+    ///
+    /// Default: [`ReprHighlighter`]. Pass [`NullHighlighter`] to disable.
+    #[must_use]
+    pub fn with_highlighter<H: Highlighter + Send + Sync + 'static>(mut self, h: H) -> Self {
+        self.highlighter = Box::new(h);
+        self
+    }
+
+    /// Set the minimum log level to emit.
+    ///
+    /// Records with lower severity than `level` are suppressed by [`enabled`](Self::enabled).
+    /// Default: [`log::LevelFilter::Trace`] (pass everything).
+    #[must_use]
+    pub fn with_min_level(mut self, level: log::LevelFilter) -> Self {
+        self.min_level = level;
+        self
+    }
+
     /// Return the default level style map.
     ///
     /// Finding #16: aligned to `default_styles.rs` theme values (single source
@@ -170,7 +220,11 @@ impl RichHandler {
     }
 
     /// Build the level column text, left-padded to 8 chars.
-    fn render_level(&self, level: log::Level) -> Text {
+    ///
+    /// Tries `console.get_style("logging.level.{name}")` first (item 2),
+    /// falling back to the handler's level_styles map.
+    #[cfg(test)]
+    fn render_level(&self, level: log::Level, console: &Console) -> Text {
         let name = match level {
             log::Level::Error => "ERROR",
             log::Level::Warn => "WARN",
@@ -178,21 +232,26 @@ impl RichHandler {
             log::Level::Debug => "DEBUG",
             log::Level::Trace => "TRACE",
         };
+        let lvl_lower = name.to_lowercase();
+        let style = console
+            .get_style(&format!("logging.level.{}", lvl_lower))
+            .unwrap_or_else(|_| {
+                self.level_styles
+                    .get(&level)
+                    .cloned()
+                    .unwrap_or_else(Style::null)
+            });
         let padded = format!("{:<8}", name);
-        let style = self
-            .level_styles
-            .get(&level)
-            .cloned()
-            .unwrap_or_else(Style::null);
         Text::styled_with(&padded, style)
     }
 
     /// Build the message column, optionally parsing markup and highlighting keywords.
     ///
-    /// Finding #14: apply `ReprHighlighter` to all log messages to match
-    /// Python's `RichHandler` behaviour (numbers, strings, booleans, etc. are
-    /// highlighted in repr-style).
-    fn render_message(&self, record: &log::Record) -> Text {
+    /// Finding #14: apply highlighter to all log messages to match Python's
+    /// `RichHandler` behaviour (numbers, strings, booleans, etc. are highlighted
+    /// in repr-style). Uses the configurable `self.highlighter` (item 4).
+    #[cfg(test)]
+    fn render_message(&self, record: &log::Record, console: &Console) -> Text {
         let msg = format!("{}", record.args());
         let mut text = if self.markup {
             let base = Style::null();
@@ -201,12 +260,14 @@ impl RichHandler {
             Text::new(&msg, Style::null())
         };
 
-        // Apply ReprHighlighter to match Python's RichHandler (finding #14).
-        ReprHighlighter.highlight(&mut text);
+        // Apply configurable highlighter (item 4).
+        self.highlighter.highlight(&mut text);
 
-        // Keyword highlighting
+        // Keyword highlighting (item 1 — style from theme).
         if !self.keywords.is_empty() {
-            let kw_style = Style::parse("bold on dark_green");
+            let kw_style = console
+                .get_style("logging.keyword")
+                .unwrap_or_else(|_| Style::parse("bold on dark_green"));
             let words: Vec<&str> = self.keywords.iter().map(|s| s.as_str()).collect();
             text.highlight_words(&words, kw_style, false);
         }
@@ -281,6 +342,37 @@ impl RichHandler {
             return;
         }
 
+        // Lock console briefly to extract styles, then drop before building cells.
+        let (level_style, kw_style) = if let Ok(console) = self.console.lock() {
+            let lvl_lower = match record.level() {
+                log::Level::Error => "error",
+                log::Level::Warn => "warn",
+                log::Level::Info => "info",
+                log::Level::Debug => "debug",
+                log::Level::Trace => "trace",
+            };
+            let level_style = console
+                .get_style(&format!("logging.level.{}", lvl_lower))
+                .unwrap_or_else(|_| {
+                    self.level_styles
+                        .get(&record.level())
+                        .cloned()
+                        .unwrap_or_else(Style::null)
+                });
+            let kw_style = console
+                .get_style("logging.keyword")
+                .unwrap_or_else(|_| Style::parse("bold on dark_green"));
+            (level_style, kw_style)
+        } else {
+            (
+                self.level_styles
+                    .get(&record.level())
+                    .cloned()
+                    .unwrap_or_else(Style::null),
+                Style::parse("bold on dark_green"),
+            )
+        };
+
         let mut cells: Vec<Text> = Vec::new();
         let mut headers: Vec<&str> = Vec::new();
 
@@ -290,11 +382,33 @@ impl RichHandler {
         }
 
         if self.show_level {
-            cells.push(self.render_level(record.level()));
+            // Build level cell directly using pre-fetched style (avoids re-locking).
+            let name = match record.level() {
+                log::Level::Error => "ERROR",
+                log::Level::Warn => "WARN",
+                log::Level::Info => "INFO",
+                log::Level::Debug => "DEBUG",
+                log::Level::Trace => "TRACE",
+            };
+            let padded = format!("{:<8}", name);
+            cells.push(Text::styled_with(&padded, level_style));
             headers.push("");
         }
 
-        cells.push(self.render_message(record));
+        // Build message cell using pre-fetched kw_style.
+        let msg = format!("{}", record.args());
+        let mut text = if self.markup {
+            let base = Style::null();
+            markup::render(&msg, base).unwrap_or_else(|_| Text::new(&msg, Style::null()))
+        } else {
+            Text::new(&msg, Style::null())
+        };
+        self.highlighter.highlight(&mut text);
+        if !self.keywords.is_empty() {
+            let words: Vec<&str> = self.keywords.iter().map(|s| s.as_str()).collect();
+            text.highlight_words(&words, kw_style, false);
+        }
+        cells.push(text);
         headers.push("");
 
         if self.show_path {
@@ -324,28 +438,41 @@ impl RichHandler {
     /// Compute the time string for this record, returning an equal-width
     /// blank string when `omit_repeated_times` is set and the second matches
     /// the previously-emitted time.
+    ///
+    /// Item 7: uses a date-inclusive cache key so midnight rollover never
+    /// falsely suppresses a new timestamp.
     fn render_time_with_omit(&self) -> Text {
-        let now = Self::current_time_str();
+        let (display, cache_key) = Self::current_time_with_date();
         if self.omit_repeated_times {
             let mut last = self.last_time_str.lock().unwrap_or_else(|p| p.into_inner());
-            if last.as_ref() == Some(&now) {
-                let blanks = " ".repeat(cell_len(&now));
+            if last.as_ref() == Some(&cache_key) {
+                let blanks = " ".repeat(cell_len(&display));
                 return Text::new(&blanks, Style::null());
             }
-            *last = Some(now.clone());
+            *last = Some(cache_key);
         }
         let dim_style = Style::parse("dim");
-        Text::styled_with(&now, dim_style)
+        Text::styled_with(&display, dim_style)
     }
 
-    /// Return the current UTC wall-clock time as `HH:MM:SS`.
-    ///
-    /// Delegates to `crate::error::fmt_time_hms()` — the shared helper
-    /// (finding #21) that eliminates the duplicate UTC-time code in
-    /// `logging_handler` and `tracing_layer`.
-    fn current_time_str() -> String {
-        crate::error::fmt_time_hms()
+    /// Return `(display_str, cache_key)` where `display_str` is `HH:MM:SS`
+    /// and `cache_key` includes the days-since-epoch so midnight rollover is
+    /// handled correctly (item 7).
+    fn current_time_with_date() -> (String, String) {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let dur = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default();
+        let total_secs = dur.as_secs();
+        let hours = (total_secs / 3600) % 24;
+        let minutes = (total_secs / 60) % 60;
+        let seconds = total_secs % 60;
+        let days = total_secs / 86400;
+        let display = format!("{:02}:{:02}:{:02}", hours, minutes, seconds);
+        let cache_key = format!("{} {}", days, display);
+        (display, cache_key)
     }
+
 }
 
 impl Default for RichHandler {
@@ -355,8 +482,8 @@ impl Default for RichHandler {
 }
 
 impl log::Log for RichHandler {
-    fn enabled(&self, _metadata: &log::Metadata) -> bool {
-        true
+    fn enabled(&self, metadata: &log::Metadata) -> bool {
+        metadata.level() <= self.min_level
     }
 
     fn log(&self, record: &log::Record) {
@@ -393,6 +520,11 @@ pub fn install() -> Result<(), log::SetLoggerError> {
 mod tests {
     use super::*;
     use crate::console::Console;
+    use crate::highlighter::NullHighlighter;
+
+    fn test_console() -> Console {
+        Console::builder().width(80).no_color(true).build()
+    }
 
     // -- Default construction ------------------------------------------------
 
@@ -452,6 +584,72 @@ mod tests {
         let console = Console::builder().width(120).build();
         let _handler = RichHandler::new().with_console(console);
         // No panic means success; we cannot inspect the inner console easily.
+    }
+
+    #[test]
+    fn test_builder_time_format() {
+        let handler = RichHandler::new().with_time_format("%H:%M:%S".to_string());
+        assert_eq!(handler.time_format.as_deref(), Some("%H:%M:%S"));
+    }
+
+    #[test]
+    fn test_builder_with_highlighter_null() {
+        let handler = RichHandler::new()
+            .with_highlighter(NullHighlighter)
+            .with_keywords(vec![]);
+        let record = log::Record::builder()
+            .args(format_args!("value=42"))
+            .level(log::Level::Info)
+            .build();
+        let console = test_console();
+        let text = handler.render_message(&record, &console);
+        assert_eq!(text.plain(), "value=42");
+        // NullHighlighter adds no spans; keywords empty so no keyword spans either.
+        assert!(
+            text.spans().is_empty(),
+            "NullHighlighter should add no spans"
+        );
+    }
+
+    #[test]
+    fn test_builder_min_level() {
+        let handler = RichHandler::new().with_min_level(log::LevelFilter::Warn);
+        assert_eq!(handler.min_level, log::LevelFilter::Warn);
+    }
+
+    // -- Item 5: min_level filtering -----------------------------------------
+
+    #[test]
+    fn test_min_level_filters_correctly() {
+        let handler = RichHandler::new().with_min_level(log::LevelFilter::Warn);
+
+        let make_meta = |level: log::Level| {
+            log::MetadataBuilder::new()
+                .level(level)
+                .target("test")
+                .build()
+        };
+
+        assert!(
+            !log::Log::enabled(&handler, &make_meta(log::Level::Trace)),
+            "Trace should be filtered"
+        );
+        assert!(
+            !log::Log::enabled(&handler, &make_meta(log::Level::Debug)),
+            "Debug should be filtered"
+        );
+        assert!(
+            !log::Log::enabled(&handler, &make_meta(log::Level::Info)),
+            "Info should be filtered"
+        );
+        assert!(
+            log::Log::enabled(&handler, &make_meta(log::Level::Warn)),
+            "Warn should pass"
+        );
+        assert!(
+            log::Log::enabled(&handler, &make_meta(log::Level::Error)),
+            "Error should pass"
+        );
     }
 
     // -- Level style mapping -------------------------------------------------
@@ -603,41 +801,47 @@ mod tests {
     #[test]
     fn test_render_level_error() {
         let handler = RichHandler::new();
-        let text = handler.render_level(log::Level::Error);
+        let console = test_console();
+        let text = handler.render_level(log::Level::Error, &console);
         assert_eq!(text.plain(), "ERROR   ");
     }
 
     #[test]
     fn test_render_level_warn() {
         let handler = RichHandler::new();
-        let text = handler.render_level(log::Level::Warn);
+        let console = test_console();
+        let text = handler.render_level(log::Level::Warn, &console);
         assert_eq!(text.plain(), "WARN    ");
     }
 
     #[test]
     fn test_render_level_info() {
         let handler = RichHandler::new();
-        let text = handler.render_level(log::Level::Info);
+        let console = test_console();
+        let text = handler.render_level(log::Level::Info, &console);
         assert_eq!(text.plain(), "INFO    ");
     }
 
     #[test]
     fn test_render_level_debug() {
         let handler = RichHandler::new();
-        let text = handler.render_level(log::Level::Debug);
+        let console = test_console();
+        let text = handler.render_level(log::Level::Debug, &console);
         assert_eq!(text.plain(), "DEBUG   ");
     }
 
     #[test]
     fn test_render_level_trace() {
         let handler = RichHandler::new();
-        let text = handler.render_level(log::Level::Trace);
+        let console = test_console();
+        let text = handler.render_level(log::Level::Trace, &console);
         assert_eq!(text.plain(), "TRACE   ");
     }
 
     #[test]
     fn test_render_level_has_style() {
         let handler = RichHandler::new();
+        let console = test_console();
         for level in &[
             log::Level::Error,
             log::Level::Warn,
@@ -645,13 +849,37 @@ mod tests {
             log::Level::Debug,
             log::Level::Trace,
         ] {
-            let text = handler.render_level(*level);
+            let text = handler.render_level(*level, &console);
             assert!(
                 !text.spans().is_empty(),
                 "level {:?} should have a styled span",
                 level
             );
         }
+    }
+
+    // -- Item 2: level style from theme override -----------------------------
+
+    #[test]
+    fn test_render_level_uses_theme_override() {
+        let mut styles = std::collections::HashMap::new();
+        styles.insert(
+            "logging.level.error".to_string(),
+            Style::parse("italic magenta"),
+        );
+        let theme = crate::color::theme::Theme::new(Some(styles), true);
+        let console = Console::builder()
+            .theme(theme)
+            .no_color(false)
+            .width(80)
+            .build();
+        let handler = RichHandler::new();
+        let text = handler.render_level(log::Level::Error, &console);
+        assert_eq!(text.plain(), "ERROR   ");
+        // Style should come from the theme override (italic magenta), not the default (bold red).
+        let span = text.spans().first().expect("should have a span");
+        let resolved = span.style.clone();
+        assert_eq!(resolved.italic(), Some(true), "expected italic from theme");
     }
 
     // -- Log formatting: path ------------------------------------------------
@@ -812,22 +1040,24 @@ mod tests {
     #[test]
     fn test_render_message_plain() {
         let handler = RichHandler::new().with_markup(false).with_keywords(vec![]);
+        let console = test_console();
         let record = log::Record::builder()
             .args(format_args!("simple message"))
             .level(log::Level::Info)
             .build();
-        let text = handler.render_message(&record);
+        let text = handler.render_message(&record, &console);
         assert_eq!(text.plain(), "simple message");
     }
 
     #[test]
     fn test_render_message_with_markup() {
         let handler = RichHandler::new().with_markup(true).with_keywords(vec![]);
+        let console = test_console();
         let record = log::Record::builder()
             .args(format_args!("[bold]hello[/bold] world"))
             .level(log::Level::Info)
             .build();
-        let text = handler.render_message(&record);
+        let text = handler.render_message(&record, &console);
         // Plain text should have markup stripped
         assert_eq!(text.plain(), "hello world");
         // Should have a span for the bold markup
@@ -886,11 +1116,12 @@ mod tests {
             .with_markup(false)
             .with_keywords(vec!["GET".to_string(), "POST".to_string()]);
 
+        let console = test_console();
         let record = log::Record::builder()
             .args(format_args!("GET /index.html 200"))
             .level(log::Level::Info)
             .build();
-        let text = handler.render_message(&record);
+        let text = handler.render_message(&record, &console);
         assert_eq!(text.plain(), "GET /index.html 200");
         // Should have at least one span for the keyword "GET"
         assert!(!text.spans().is_empty(), "expected keyword span for GET");
@@ -900,11 +1131,12 @@ mod tests {
     fn test_no_keyword_highlighting_when_empty() {
         let handler = RichHandler::new().with_markup(false).with_keywords(vec![]);
 
+        let console = test_console();
         let record = log::Record::builder()
             .args(format_args!("GET /index.html 200"))
             .level(log::Level::Info)
             .build();
-        let text = handler.render_message(&record);
+        let text = handler.render_message(&record, &console);
         // Finding #14: ReprHighlighter runs on all messages, so spans may be
         // present even with no keywords. Plain text content must still be correct.
         assert_eq!(text.plain(), "GET /index.html 200");
