@@ -379,25 +379,28 @@ fn test_parse_error_link_alone() {
 #[test]
 fn test_render_no_color_system() {
     let style = Style::parse("red");
-    assert_eq!(style.render("foo", None), "foo");
+    assert_eq!(style.render("foo", None, false), "foo");
 }
 
 #[test]
 fn test_render_empty_text() {
     let style = Style::parse("red");
-    assert_eq!(style.render("", Some(ColorSystem::TrueColor)), "");
+    assert_eq!(style.render("", Some(ColorSystem::TrueColor), false), "");
 }
 
 #[test]
 fn test_render_null_style() {
     let style = Style::null();
-    assert_eq!(style.render("foo", Some(ColorSystem::TrueColor)), "foo");
+    assert_eq!(
+        style.render("foo", Some(ColorSystem::TrueColor), false),
+        "foo"
+    );
 }
 
 #[test]
 fn test_render_bold_red_on_black() {
     let style = Style::parse("bold red on black");
-    let rendered = style.render("foo", Some(ColorSystem::TrueColor));
+    let rendered = style.render("foo", Some(ColorSystem::TrueColor), false);
     assert!(rendered.contains("\x1b[1;31;40m"));
     assert!(rendered.contains("foo"));
     assert!(rendered.contains("\x1b[0m"));
@@ -406,7 +409,7 @@ fn test_render_bold_red_on_black() {
 #[test]
 fn test_render_all_attributes() {
     let style = Style::parse("bold dim italic underline blink blink2 reverse conceal strike underline2 frame encircle overline red on black");
-    let rendered = style.render("foo", Some(ColorSystem::TrueColor));
+    let rendered = style.render("foo", Some(ColorSystem::TrueColor), false);
     assert!(rendered.contains("1;2;3;4;5;6;7;8;9;21;51;52;53;31;40"));
 }
 
@@ -651,7 +654,7 @@ fn test_parse_link_equals_empty_error() {
 #[test]
 fn test_render_link_only() {
     let style = Style::with_link("https://example.com");
-    let rendered = style.render("click", Some(ColorSystem::TrueColor));
+    let rendered = style.render("click", Some(ColorSystem::TrueColor), false);
     // OSC 8 with id= prefix; structural assertions, not exact id.
     assert!(rendered.starts_with("\x1b]8;id="));
     assert!(rendered.contains(";https://example.com\x1b\\click\x1b]8;;\x1b\\"));
@@ -697,7 +700,7 @@ fn test_link_id_is_monotonic() {
 #[test]
 fn test_render_bold_with_link() {
     let style = Style::parse("bold link https://example.com");
-    let rendered = style.render("click", Some(ColorSystem::TrueColor));
+    let rendered = style.render("click", Some(ColorSystem::TrueColor), false);
     assert!(rendered.starts_with("\x1b]8;id="));
     assert!(rendered.contains(";https://example.com\x1b\\"));
     assert!(rendered.ends_with("\x1b]8;;\x1b\\"));
@@ -709,7 +712,7 @@ fn test_render_bold_with_link() {
 fn test_render_link_no_color_system() {
     // With no color system, render returns plain text (no link wrapping)
     let style = Style::with_link("https://example.com");
-    let rendered = style.render("click", None);
+    let rendered = style.render("click", None, false);
     assert_eq!(rendered, "click");
 }
 
@@ -816,7 +819,7 @@ fn test_underline_color_add() {
 fn test_underline_style_render_curly() {
     let mut style = Style::null();
     style.set_underline_style(Some(UnderlineStyle::Curly));
-    let rendered = style.render("foo", Some(ColorSystem::TrueColor));
+    let rendered = style.render("foo", Some(ColorSystem::TrueColor), false);
     assert!(rendered.contains("4:3"));
 }
 
@@ -824,7 +827,7 @@ fn test_underline_style_render_curly() {
 fn test_underline_style_render_dashed() {
     let mut style = Style::null();
     style.set_underline_style(Some(UnderlineStyle::Dashed));
-    let rendered = style.render("foo", Some(ColorSystem::TrueColor));
+    let rendered = style.render("foo", Some(ColorSystem::TrueColor), false);
     assert!(rendered.contains("4:5"));
 }
 
@@ -833,7 +836,7 @@ fn test_underline_color_render_truecolor() {
     let mut style = Style::null();
     style.set_underline(Some(true));
     style.set_underline_color(Some(Color::from_rgb(255, 0, 0)));
-    let rendered = style.render("foo", Some(ColorSystem::TrueColor));
+    let rendered = style.render("foo", Some(ColorSystem::TrueColor), false);
     // Should contain 58;2;255;0;0 for underline color
     assert!(rendered.contains("58;2;255;0;0"), "rendered: {}", rendered);
 }
@@ -1030,14 +1033,14 @@ fn render_downgrades_color_to_console_system() {
     // A truecolor style rendered for a Standard (16-color) console must emit a
     // 16-color SGR (30-37/90-97), never a truecolor "38;2;r;g;b".
     let st = Style::parse("#ff0000"); // bright red truecolor fg
-    let out = st.render("X", Some(ColorSystem::Standard));
+    let out = st.render("X", Some(ColorSystem::Standard), false);
     assert!(
         !out.contains("38;2;"),
         "must not emit truecolor on Standard: {out:?}"
     );
     assert!(out.contains("\x1b["), "must still emit an SGR: {out:?}");
     // EightBit console -> 256-color form, not truecolor.
-    let out8 = st.render("X", Some(ColorSystem::EightBit));
+    let out8 = st.render("X", Some(ColorSystem::EightBit), false);
     assert!(
         !out8.contains("38;2;"),
         "must not emit truecolor on EightBit: {out8:?}"
@@ -1045,5 +1048,69 @@ fn render_downgrades_color_to_console_system() {
     assert!(
         out8.contains("38;5;"),
         "EightBit fg should use 38;5;N: {out8:?}"
+    );
+}
+
+// -- Phase 7.13 parity tests -----------------------------------------------
+
+/// Item 2: Style::render with legacy_windows=true must omit OSC 8 link wrapper.
+#[test]
+fn test_render_legacy_windows_suppresses_osc8() {
+    let style = Style::parse("link https://example.com");
+    let rendered = style.render("click", Some(ColorSystem::TrueColor), true);
+    assert!(
+        !rendered.contains("\x1b]8;"),
+        "legacy_windows=true must not emit OSC 8; got: {rendered:?}"
+    );
+    assert!(
+        rendered.contains("click"),
+        "text must still be present; got: {rendered:?}"
+    );
+}
+
+/// Item 2: Style::render with legacy_windows=false must still emit OSC 8 link wrapper.
+#[test]
+fn test_render_no_legacy_windows_emits_osc8() {
+    let style = Style::parse("link https://example.com");
+    let rendered = style.render("click", Some(ColorSystem::TrueColor), false);
+    assert!(
+        rendered.contains("\x1b]8;"),
+        "legacy_windows=false must emit OSC 8; got: {rendered:?}"
+    );
+}
+
+/// Item 3: normalize_str parses a definition string and returns the canonical form.
+#[test]
+fn test_normalize_str_canonical() {
+    assert_eq!(Style::normalize_str("bold red"), "bold red");
+}
+
+#[test]
+fn test_normalize_str_trims_and_lowercases() {
+    // Style::parse is case-insensitive; normalised output is lowercase.
+    assert_eq!(Style::normalize_str("  BOLD  RED  "), "bold red");
+}
+
+#[test]
+fn test_normalize_str_negated() {
+    assert_eq!(Style::normalize_str("bold not italic"), "bold not italic");
+}
+
+/// Item 4: parse cache capacity 4096 — verify more than 256 unique entries are cached.
+#[test]
+fn test_style_cache_holds_more_than_256_entries() {
+    // Clear the cache first so the count reflects only what this test adds.
+    crate::style::clear_style_cache();
+
+    // Warm up the cache with 300 distinct styles by varying the link URL.
+    // Using `link https://example.com/NNN` produces syntactically valid style
+    // strings that parse successfully and are stored in the cache.
+    for i in 0..300u32 {
+        let _ = Style::parse(&format!("link https://example.com/{i}"));
+    }
+    let size = crate::style::style_cache_size();
+    assert!(
+        size > 256,
+        "cache should hold >256 entries after 4096 capacity bump; got {size}"
     );
 }

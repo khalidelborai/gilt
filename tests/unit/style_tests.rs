@@ -382,25 +382,25 @@ fn test_parse_error_link_alone() {
 #[test]
 fn test_render_no_color_system() {
     let style = Style::parse("red");
-    assert_eq!(style.render("foo", None), "foo");
+    assert_eq!(style.render("foo", None, false), "foo");
 }
 
 #[test]
 fn test_render_empty_text() {
     let style = Style::parse("red");
-    assert_eq!(style.render("", Some(ColorSystem::TrueColor)), "");
+    assert_eq!(style.render("", Some(ColorSystem::TrueColor), false), "");
 }
 
 #[test]
 fn test_render_null_style() {
     let style = Style::null();
-    assert_eq!(style.render("foo", Some(ColorSystem::TrueColor)), "foo");
+    assert_eq!(style.render("foo", Some(ColorSystem::TrueColor), false), "foo");
 }
 
 #[test]
 fn test_render_bold_red_on_black() {
     let style = Style::parse("bold red on black");
-    let rendered = style.render("foo", Some(ColorSystem::TrueColor));
+    let rendered = style.render("foo", Some(ColorSystem::TrueColor), false);
     assert!(rendered.contains("\x1b[1;31;40m"));
     assert!(rendered.contains("foo"));
     assert!(rendered.contains("\x1b[0m"));
@@ -411,7 +411,7 @@ fn test_render_all_attributes() {
     let style = Style::parse(
         "bold dim italic underline blink blink2 reverse conceal strike underline2 frame encircle overline red on black"
     ).unwrap();
-    let rendered = style.render("foo", Some(ColorSystem::TrueColor));
+    let rendered = style.render("foo", Some(ColorSystem::TrueColor), false);
     assert!(rendered.contains("1;2;3;4;5;6;7;8;9;21;51;52;53;31;40"));
 }
 
@@ -657,19 +657,18 @@ fn test_parse_link_equals_empty_error() {
 #[test]
 fn test_render_link_only() {
     let style = Style::with_link("https://example.com");
-    let rendered = style.render("click", Some(ColorSystem::TrueColor));
-    assert_eq!(
-        rendered,
-        "\x1b]8;;https://example.com\x1b\\click\x1b]8;;\x1b\\"
-    );
+    let rendered = style.render("click", Some(ColorSystem::TrueColor), false);
+    // OSC 8 with id= prefix; structural assertions, not exact id.
+    assert!(rendered.starts_with("\x1b]8;id="));
+    assert!(rendered.contains(";https://example.com\x1b\\click\x1b]8;;\x1b\\"));
 }
 
 #[test]
 fn test_render_bold_with_link() {
     let style = Style::parse("bold link https://example.com");
-    let rendered = style.render("click", Some(ColorSystem::TrueColor));
+    let rendered = style.render("click", Some(ColorSystem::TrueColor), false);
     // Should have OSC 8 wrapping around the ANSI-styled text
-    assert!(rendered.starts_with("\x1b]8;;https://example.com\x1b\\"));
+    assert!(rendered.starts_with("\x1b]8;id="));
     assert!(rendered.ends_with("\x1b]8;;\x1b\\"));
     assert!(rendered.contains("\x1b[1m"));
     assert!(rendered.contains("click"));
@@ -679,7 +678,7 @@ fn test_render_bold_with_link() {
 fn test_render_link_no_color_system() {
     // With no color system, render returns plain text (no link wrapping)
     let style = Style::with_link("https://example.com");
-    let rendered = style.render("click", None);
+    let rendered = style.render("click", None, false);
     assert_eq!(rendered, "click");
 }
 
@@ -786,7 +785,7 @@ fn test_underline_color_add() {
 fn test_underline_style_render_curly() {
     let mut style = Style::null();
     style.set_underline_style(Some(UnderlineStyle::Curly));
-    let rendered = style.render("foo", Some(ColorSystem::TrueColor));
+    let rendered = style.render("foo", Some(ColorSystem::TrueColor), false);
     assert!(rendered.contains("4:3"));
 }
 
@@ -794,7 +793,7 @@ fn test_underline_style_render_curly() {
 fn test_underline_style_render_dashed() {
     let mut style = Style::null();
     style.set_underline_style(Some(UnderlineStyle::Dashed));
-    let rendered = style.render("foo", Some(ColorSystem::TrueColor));
+    let rendered = style.render("foo", Some(ColorSystem::TrueColor), false);
     assert!(rendered.contains("4:5"));
 }
 
@@ -803,7 +802,7 @@ fn test_underline_color_render_truecolor() {
     let mut style = Style::null();
     style.set_underline(Some(true));
     style.set_underline_color(Some(Color::from_rgb(255, 0, 0)));
-    let rendered = style.render("foo", Some(ColorSystem::TrueColor));
+    let rendered = style.render("foo", Some(ColorSystem::TrueColor), false);
     // Should contain 58;2;255;0;0 for underline color
     assert!(rendered.contains("58;2;255;0;0"), "rendered: {}", rendered);
 }

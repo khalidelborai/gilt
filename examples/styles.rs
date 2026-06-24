@@ -17,7 +17,7 @@ fn main() {
 
     for def in definitions {
         let style = Style::parse(def);
-        let rendered = style.render(def, Some(ColorSystem::TrueColor));
+        let rendered = style.render(def, Some(ColorSystem::TrueColor), false);
         println!("  {:<35} → {}", def, rendered);
     }
 
@@ -31,7 +31,7 @@ fn main() {
     println!("  merged:  {}", merged);
     println!(
         "  render:  {}",
-        merged.render("Hello, gilt!", Some(ColorSystem::TrueColor))
+        merged.render("Hello, gilt!", Some(ColorSystem::TrueColor), false)
     );
 
     println!("\n=== Tri-State Attributes ===\n");
@@ -70,6 +70,6 @@ fn main() {
     println!("  is_null: {}", null.is_null());
     println!(
         "  render:  \"{}\"",
-        null.render("plain text", Some(ColorSystem::TrueColor))
+        null.render("plain text", Some(ColorSystem::TrueColor), false)
     );
 }

@@ -333,7 +333,7 @@ mod tests {
             .filter_map(|s| {
                 if let Some(style) = &s.style {
                     // Render the segment the same way Console does: style + text.
-                    Some(style.render(&s.text, Some(crate::color::ColorSystem::TrueColor)))
+                    Some(style.render(&s.text, Some(crate::color::ColorSystem::TrueColor), false))
                 } else {
                     None
                 }

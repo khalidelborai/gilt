@@ -979,6 +979,9 @@ impl Console {
         // run (open/close around each segment) makes many terminals fail to
         // treat the whole text as a single clickable link. We track the
         // currently-open link URL and only emit open/close at run boundaries.
+        //
+        // On legacy Windows consoles OSC sequences are not supported, so the
+        // entire hyperlink-wrapping logic is skipped.
         let mut current_link: Option<String> = None;
 
         let close_link = |out: &mut String, link: &mut Option<String>| {
@@ -991,28 +994,32 @@ impl Console {
             if segment.is_control() {
                 // Control codes (cursor moves, screen clears, OSC sequences
                 // we don't manage) interrupt any active link wrapper.
-                close_link(&mut output, &mut current_link);
+                if !self.legacy_windows {
+                    close_link(&mut output, &mut current_link);
+                }
                 output.push_str(&segment.text);
                 continue;
             }
 
-            // Determine this segment's link, if any.
-            let seg_link: Option<&str> = segment.style().and_then(|s| s.link());
+            if !self.legacy_windows {
+                // Determine this segment's link, if any.
+                let seg_link: Option<&str> = segment.style().and_then(|s| s.link());
 
-            // Emit OSC 8 open/close only when the link changes.
-            match (seg_link, current_link.as_deref()) {
-                (Some(new), Some(cur)) if new == cur => {
-                    // Same link continuing — leave wrapper open.
-                }
-                (Some(new), _) => {
-                    close_link(&mut output, &mut current_link);
-                    use std::fmt::Write;
-                    let id = crate::style::next_link_id();
-                    write!(output, "\x1b]8;id={};{}\x1b\\", id, new).unwrap();
-                    current_link = Some(new.to_string());
-                }
-                (None, _) => {
-                    close_link(&mut output, &mut current_link);
+                // Emit OSC 8 open/close only when the link changes.
+                match (seg_link, current_link.as_deref()) {
+                    (Some(new), Some(cur)) if new == cur => {
+                        // Same link continuing — leave wrapper open.
+                    }
+                    (Some(new), _) => {
+                        close_link(&mut output, &mut current_link);
+                        use std::fmt::Write;
+                        let id = crate::style::next_link_id();
+                        write!(output, "\x1b]8;id={};{}\x1b\\", id, new).unwrap();
+                        current_link = Some(new.to_string());
+                    }
+                    (None, _) => {
+                        close_link(&mut output, &mut current_link);
+                    }
                 }
             }
 
@@ -1025,7 +1032,7 @@ impl Console {
         }
 
         // Close any link still open at end of buffer.
-        if current_link.is_some() {
+        if !self.legacy_windows && current_link.is_some() {
             output.push_str("\x1b]8;;\x1b\\");
         }
         output

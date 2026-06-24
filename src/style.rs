@@ -507,6 +507,27 @@ impl Style {
         self.to_string()
     }
 
+    /// Parse a style definition string and return its canonical string form.
+    ///
+    /// This is the class-method counterpart to the instance method
+    /// [`normalize`](Style::normalize) and mirrors Python rich's
+    /// `Style.normalize(definition)` class method: it parses the definition
+    /// (unrecognised tokens are silently dropped, as per rich's lossy parse)
+    /// and re-serialises the result.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::style::Style;
+    ///
+    /// assert_eq!(Style::normalize_str("bold red"), "bold red");
+    /// assert_eq!(Style::normalize_str("  BOLD  RED  "), "bold red");
+    /// assert_eq!(Style::normalize_str("bold not italic"), "bold not italic");
+    /// ```
+    pub fn normalize_str(definition: &str) -> String {
+        Style::parse(definition).to_string()
+    }
+
     /// Like [`Style::combine`] but iterates over references — avoids the
     /// per-step `Style.clone()` that the by-value `Add<Style>` impl forces.
     ///
@@ -534,12 +555,14 @@ impl Style {
         acc
     }
 
-    /// Renders text with this style as ANSI escape sequences.
     /// Render `text` with this style's SGR codes (color, bold, etc.) but
     /// **without** wrapping in an OSC 8 hyperlink even if `self.link` is set.
     ///
-    /// Used by `Console::render_buffer` when it has decided to coalesce a
-    /// run of consecutive same-link segments under a single OSC 8 wrapper.
+    /// Used by `Console::render_buffer`, which manages OSC 8 link wrappers
+    /// at the buffer level (coalescing runs of same-link segments into a
+    /// single open/close pair) rather than per-segment inside `render`.
+    /// On legacy-Windows consoles `render_buffer` skips OSC 8 entirely and
+    /// always calls this method.
     ///
     /// Returns plain `text` when `color_system` is `None` or `text` is empty.
     pub fn render_no_link(&self, text: &str, color_system: Option<ColorSystem>) -> String {
@@ -547,8 +570,20 @@ impl Style {
         self.render_inner(text, color_system, false)
     }
 
-    pub fn render(&self, text: &str, color_system: Option<ColorSystem>) -> String {
-        self.render_inner(text, color_system, true)
+    /// Renders text with this style as ANSI escape sequences.
+    ///
+    /// When `legacy_windows` is `true` the OSC 8 hyperlink wrapper is suppressed
+    /// (legacy Windows consoles do not support OSC sequences).  Pass `false` for
+    /// all normal terminal output.
+    ///
+    /// Mirrors Python rich's `Style.render(text, color_system, legacy_windows)`.
+    pub fn render(
+        &self,
+        text: &str,
+        color_system: Option<ColorSystem>,
+        legacy_windows: bool,
+    ) -> String {
+        self.render_inner(text, color_system, !legacy_windows)
     }
 
     /// Internal render path. `emit_link` controls whether `self.link` is
@@ -1132,7 +1167,7 @@ fn get_style_cache() -> std::sync::MutexGuard<'static, Option<LruCache<String, S
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
     if cache.is_none() {
-        *cache = Some(LruCache::new(NonZeroUsize::new(256).unwrap()));
+        *cache = Some(LruCache::new(NonZeroUsize::new(4096).unwrap()));
     }
     cache
 }

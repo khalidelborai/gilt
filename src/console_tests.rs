@@ -3500,3 +3500,42 @@ fn test_update_screen_region_in_alt_screen() {
         "expected cursor-positioning escape in output; got: {text:?}"
     );
 }
+
+// -- Phase 7.13 parity tests -----------------------------------------------
+
+/// Item 1: render_buffer with legacy_windows=true must NOT emit OSC 8 hyperlinks.
+#[test]
+fn test_render_buffer_legacy_windows_suppresses_osc8() {
+    let mut console = Console::builder().color_system("truecolor").build();
+    console.legacy_windows = true;
+    let style = Style::parse("bold link https://example.com");
+    let segments = vec![Segment::styled("click", style)];
+    let output = console.render_buffer(&segments);
+    assert!(
+        !output.contains("\x1b]8;"),
+        "legacy_windows=true must not emit OSC 8; got: {output:?}"
+    );
+    // Text and SGR styling must still be present.
+    assert!(
+        output.contains("click"),
+        "text must still appear; got: {output:?}"
+    );
+    assert!(
+        output.contains("\x1b["),
+        "SGR bold must still appear; got: {output:?}"
+    );
+}
+
+/// Item 1: render_buffer with legacy_windows=false must still emit OSC 8 hyperlinks.
+#[test]
+fn test_render_buffer_no_legacy_windows_emits_osc8() {
+    let mut console = Console::builder().color_system("truecolor").build();
+    console.legacy_windows = false;
+    let style = Style::with_link("https://example.com");
+    let segments = vec![Segment::styled("link text", style)];
+    let output = console.render_buffer(&segments);
+    assert!(
+        output.contains("\x1b]8;"),
+        "legacy_windows=false must emit OSC 8; got: {output:?}"
+    );
+}

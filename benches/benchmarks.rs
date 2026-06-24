@@ -44,7 +44,13 @@ fn bench_style_parsing(c: &mut Criterion) {
 
     group.bench_function("render_ansi", |b| {
         let style = Style::parse("bold red on blue");
-        b.iter(|| style.render(black_box("Hello, World!"), Some(ColorSystem::TrueColor)));
+        b.iter(|| {
+            style.render(
+                black_box("Hello, World!"),
+                Some(ColorSystem::TrueColor),
+                false,
+            )
+        });
     });
 
     group.finish();
