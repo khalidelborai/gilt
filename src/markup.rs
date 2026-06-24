@@ -160,11 +160,31 @@ pub fn parse_markup(markup: &str) -> Vec<MarkupElement> {
 
 /// Split a tag's inner text (between `[` and `]`) into name and optional
 /// parameters.  E.g. `"link=url"` → Tag { name: "link", parameters: Some("url") }.
+///
+/// For `@`-prefixed meta tags, parenthesised arguments are also detected:
+/// `"@click(handler, arg)"` → Tag { name: "@click", parameters: Some("handler, arg") }.
 fn parse_tag_inner(inner: &str) -> Tag {
     if let Some(eq_pos) = inner.find('=') {
         Tag {
             name: inner[..eq_pos].to_string(),
             parameters: Some(inner[eq_pos + 1..].to_string()),
+        }
+    } else if inner.starts_with('@') {
+        // Item 2: detect parenthesised argument suffix on `@`-prefixed meta tags.
+        // `[@click(handler, arg)]` → name="@click", parameters=Some("handler, arg")
+        if let Some(paren_pos) = inner.find('(') {
+            if inner.ends_with(')') {
+                let name = inner[..paren_pos].to_string();
+                let args = inner[paren_pos + 1..inner.len() - 1].to_string();
+                return Tag {
+                    name,
+                    parameters: if args.is_empty() { None } else { Some(args) },
+                };
+            }
+        }
+        Tag {
+            name: inner.to_string(),
+            parameters: None,
         }
     } else {
         Tag {
@@ -184,9 +204,26 @@ fn parse_tag_inner(inner: &str) -> Tag {
 ///
 /// Returns `MarkupError` if a closing tag does not match any open tag.
 pub fn render(markup: &str, style: Style) -> Result<Text, MarkupError> {
+    render_with_options(markup, style, None)
+}
+
+/// Render gilt markup into a styled `Text` object with an explicit emoji variant.
+///
+/// The `emoji_variant` parameter is forwarded to [`emoji_replace`].  Pass `None` to
+/// get the same behaviour as [`render`].  Pass `Some("text")` or `Some("emoji")` to
+/// force the text or graphical variant for ambiguous emoji codepoints.
+///
+/// # Errors
+///
+/// Returns `MarkupError` if a closing tag does not match any open tag.
+pub fn render_with_options(
+    markup: &str,
+    style: Style,
+    emoji_variant: Option<&str>,
+) -> Result<Text, MarkupError> {
     // Fast path: no markup at all — only emoji replacement needed.
     if !markup.contains('[') {
-        let replaced = emoji_replace(markup, None);
+        let replaced = emoji_replace(markup, emoji_variant);
         return Ok(Text::new(replaced.as_ref(), style));
     }
 
@@ -200,7 +237,7 @@ pub fn render(markup: &str, style: Style) -> Result<Text, MarkupError> {
             // parse_markup has already fully handled escape sequences; plain text
             // segments are ready to use as-is (no redundant re-escape needed).
             // Apply emoji shortcode replacement (:name: → Unicode).
-            let with_emoji = emoji_replace(plain, None);
+            let with_emoji = emoji_replace(plain, emoji_variant);
             text.append_str(with_emoji.as_ref(), None);
         } else if let Some(tag) = tag {
             if tag.name.starts_with('/') {
@@ -337,17 +374,20 @@ pub fn render(markup: &str, style: Style) -> Result<Text, MarkupError> {
 
 /// Parse an `@`-prefixed meta tag into a shared `HashMap<String, String>`.
 ///
-/// The tag name (after stripping the leading `@`) is the key.  If the tag has a
-/// `parameters` value it becomes the value (surrounding quotes are stripped,
-/// whitespace is trimmed); otherwise the value is `"true"`.
+/// The full tag name (including the leading `@`) is the key, matching rich's Python
+/// behaviour where `[@click]...[/]` produces `meta = {"@click": "true"}`.
+/// If the tag has a `parameters` value it becomes the value (surrounding quotes are
+/// stripped, whitespace is trimmed); otherwise the value is `"true"`.
 ///
 /// Examples:
-/// - `[@key=value]`  → `{"key": "value"}`
-/// - `[@flag]`        → `{"flag": "true"}`
-/// - `[@label="hello world"]` → `{"label": "hello world"}`
+/// - `[@key=value]`  → `{"@key": "value"}`
+/// - `[@flag]`        → `{"@flag": "true"}`
+/// - `[@label="hello world"]` → `{"@label": "hello world"}`
+/// - `[@click(handler, 42)]` → `{"@click": "handler, 42"}`
 fn parse_meta_tag(tag: &Tag) -> Arc<HashMap<String, String>> {
-    // Strip the leading '@' from the tag name.
-    let key = tag.name.trim_start_matches('@').trim().to_string();
+    // Item 1: keep the full tag name including the leading `@` as the key —
+    // this matches rich's Python behaviour (`meta = {"@click": ...}`).
+    let key = tag.name.trim().to_string();
 
     let raw_value = match &tag.parameters {
         Some(v) => {
@@ -673,17 +713,18 @@ mod tests {
     #[test]
     fn test_render_at_event_tag() {
         // `@`-prefixed tags are now meta tags: they produce a Span with metadata.
-        // Updated expectation: one meta span covering "hello", no style.
+        // The key KEEPS the leading `@` to match rich's Python behaviour.
         let result = render("[@click]hello[/]", Style::null()).unwrap();
         assert_eq!(result.plain(), "hello");
-        // One meta span is produced with null style and meta key "click" = "true".
+        // One meta span is produced with null style and meta key "@click" = "true".
         assert_eq!(result.spans().len(), 1);
         let span = &result.spans()[0];
         assert_eq!(span.start, 0);
         assert_eq!(span.end, 5);
         assert!(span.style.is_null());
         let meta = span.meta.as_ref().expect("meta span must have metadata");
-        assert_eq!(meta.get("click").map(|v| v.as_str()), Some("true"));
+        // Item 1 fix: key is "@click" (not "click") — rich parity.
+        assert_eq!(meta.get("@click").map(|v| v.as_str()), Some("true"));
     }
 
     #[test]
@@ -784,7 +825,8 @@ mod tests {
 
     #[test]
     fn test_render_meta_key_value() {
-        // `[@key=val]x[/]` — meta span covers "x", meta = {"key": "val"}.
+        // `[@key=val]x[/]` — meta span covers "x", meta = {"@key": "val"}.
+        // Item 1 fix: key is "@key" (keeps the `@` prefix) — rich parity.
         let result = render("[@key=val]x[/]", Style::null()).unwrap();
         assert_eq!(result.plain(), "x");
         assert_eq!(result.spans().len(), 1);
@@ -793,36 +835,39 @@ mod tests {
         assert_eq!(span.end, 1);
         assert!(span.style.is_null(), "meta span must have null style");
         let meta = span.meta.as_ref().expect("must have meta");
-        assert_eq!(meta.get("key").map(|v| v.as_str()), Some("val"));
+        assert_eq!(meta.get("@key").map(|v| v.as_str()), Some("val"));
     }
 
     #[test]
     fn test_render_meta_bare_flag() {
         // `[@flag]text[/]` — bare flag → value = "true".
+        // Item 1 fix: key is "@flag" — rich parity.
         let result = render("[@flag]text[/]", Style::null()).unwrap();
         assert_eq!(result.plain(), "text");
         assert_eq!(result.spans().len(), 1);
         let meta = result.spans()[0].meta.as_ref().expect("must have meta");
-        assert_eq!(meta.get("flag").map(|v| v.as_str()), Some("true"));
+        assert_eq!(meta.get("@flag").map(|v| v.as_str()), Some("true"));
     }
 
     #[test]
     fn test_render_meta_quoted_value() {
         // `[@label="hello world"]x[/]` — quoted value is unquoted.
+        // Item 1 fix: key is "@label" — rich parity.
         let result = render(r#"[@label="hello world"]x[/]"#, Style::null()).unwrap();
         assert_eq!(result.plain(), "x");
         let meta = result.spans()[0].meta.as_ref().expect("must have meta");
-        assert_eq!(meta.get("label").map(|v| v.as_str()), Some("hello world"));
+        assert_eq!(meta.get("@label").map(|v| v.as_str()), Some("hello world"));
     }
 
     #[test]
     fn test_render_meta_explicit_close() {
         // `[@key=val]x[/@key]` — explicit close.
+        // Item 1 fix: key is "@mykey" — rich parity.
         let result = render("[@mykey=42]text[/@mykey]", Style::null()).unwrap();
         assert_eq!(result.plain(), "text");
         assert_eq!(result.spans().len(), 1);
         let meta = result.spans()[0].meta.as_ref().expect("must have meta");
-        assert_eq!(meta.get("mykey").map(|v| v.as_str()), Some("42"));
+        assert_eq!(meta.get("@mykey").map(|v| v.as_str()), Some("42"));
     }
 
     #[test]
@@ -909,5 +954,91 @@ mod tests {
         assert!(result.plain().contains('\u{2764}'));
         assert!(result.plain().contains("world"));
         assert!(!result.plain().contains(":heart:"));
+    }
+
+    // -- Phase 7 / Task 7.14 tests -------------------------------------------
+
+    // Item 1: @-key preserved (keeps leading `@`)
+    #[test]
+    fn meta_key_keeps_at_prefix() {
+        let result = render("[@click]hi[/]", Style::null()).unwrap();
+        let meta = result.spans()[0].meta.as_ref().expect("must have meta");
+        // Key must be "@click", not "click".
+        assert!(
+            meta.contains_key("@click"),
+            "key must start with @; got {:?}",
+            meta
+        );
+        assert!(
+            !meta.contains_key("click"),
+            "stripped key must NOT be present"
+        );
+        assert_eq!(meta.get("@click").map(|v| v.as_str()), Some("true"));
+    }
+
+    // Item 2: @click(args) — parenthesis syntax parsed
+    #[test]
+    fn meta_tag_paren_args_parsed() {
+        let result = render("[@click(handler, 42)]text[/@click]", Style::null()).unwrap();
+        assert_eq!(result.plain(), "text");
+        assert_eq!(result.spans().len(), 1);
+        let meta = result.spans()[0].meta.as_ref().expect("must have meta");
+        // Rich stores the args as the value: `{"@click": ("handler", 42)}`.
+        // In Rust we store the raw arg string "handler, 42".
+        assert_eq!(meta.get("@click").map(|v| v.as_str()), Some("handler, 42"));
+    }
+
+    #[test]
+    fn meta_tag_paren_empty_args_is_flag() {
+        // `[@click()]` with empty parens → treated as bare flag (no params).
+        let result = render("[@click()]hi[/]", Style::null()).unwrap();
+        let meta = result.spans()[0].meta.as_ref().expect("must have meta");
+        assert_eq!(meta.get("@click").map(|v| v.as_str()), Some("true"));
+    }
+
+    #[test]
+    fn meta_tag_paren_preserves_at_key() {
+        // `[@on_click(fn)]` — key must be "@on_click", args = "fn"
+        let result = render("[@on_click(fn)]text[/@on_click]", Style::null()).unwrap();
+        let meta = result.spans()[0].meta.as_ref().expect("must have meta");
+        assert_eq!(meta.get("@on_click").map(|v| v.as_str()), Some("fn"));
+        assert!(!meta.contains_key("on_click"), "key must keep @");
+    }
+
+    // Item 4: render_with_options threads emoji_variant
+    #[test]
+    fn render_with_options_emoji_variant_fast_path() {
+        // Fast path (no `[`): emoji_variant forwarded to emoji_replace.
+        // Use a known ambiguous shortcode — the test just checks no panic +
+        // the shortcode is expanded (variant selection is emoji_replace's concern).
+        let result = render_with_options("Hello :heart:!", Style::null(), Some("emoji"));
+        assert!(result.is_ok());
+        let text = result.unwrap();
+        assert!(
+            !text.plain().contains(":heart:"),
+            "shortcode must be expanded"
+        );
+    }
+
+    #[test]
+    fn render_with_options_emoji_variant_full_path() {
+        // Full parse path: emoji_variant forwarded for each plain-text segment.
+        let result = render_with_options("[bold]:heart:[/bold]", Style::null(), Some("text"));
+        assert!(result.is_ok());
+        let text = result.unwrap();
+        assert!(
+            !text.plain().contains(":heart:"),
+            "shortcode must be expanded"
+        );
+        assert_eq!(text.spans().len(), 1);
+    }
+
+    #[test]
+    fn render_with_options_none_variant_matches_render() {
+        // None variant must produce same output as plain `render`.
+        let a = render("[bold]hi[/bold]", Style::null()).unwrap();
+        let b = render_with_options("[bold]hi[/bold]", Style::null(), None).unwrap();
+        assert_eq!(a.plain(), b.plain());
+        assert_eq!(a.spans().len(), b.spans().len());
     }
 }

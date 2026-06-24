@@ -1759,8 +1759,29 @@ impl Text {
         let mut closes: BTreeMap<usize, Vec<String>> = BTreeMap::new();
 
         for span in &self.spans {
+            // Item 3: meta spans (null style + `meta` map) must be preserved in the
+            // round-trip.  Build their open-tag string as `@key` (bare flag) or
+            // `@key=value` (non-"true" value) and close-tag as `/@key`.
+            if let Some(meta) = &span.meta {
+                for (key, val) in meta.as_ref() {
+                    // key already includes the leading `@` (e.g. "@click").
+                    // The emit loop prepends "[/" automatically, so the closes
+                    // map stores the bare tag name (without the `/` prefix).
+                    let open_tag = if val == "true" {
+                        key.clone()
+                    } else {
+                        format!("{}={}", key, val)
+                    };
+                    // close_tag stored WITHOUT `/` — the emitter adds `[/…]`
+                    opens.entry(span.start).or_default().push(open_tag);
+                    closes.entry(span.end).or_default().push(key.clone());
+                }
+                continue; // meta span handled — don't also emit a style tag
+            }
+
             let style_str = span.style.to_string();
-            // Skip null/unresolved styles — nothing to round-trip.
+            // Skip null/unresolved styles (theme-name spans) — nothing to round-trip
+            // without a console present; only meta spans (handled above) are exempt.
             if style_str == "none" {
                 continue;
             }
@@ -2330,6 +2351,98 @@ mod tests {
             text.render(),
             text.render_themed(&console),
             "non-named spans: render() must equal render_themed() (fast-path gate)"
+        );
+    }
+
+    // -- Phase 7 / Task 7.14: markup() meta-span round-trip (Item 3) ----------
+
+    /// A bare `[@flag]` meta span must survive a `markup()` → `from_markup()` round-trip.
+    #[test]
+    fn markup_roundtrip_meta_bare_flag() {
+        // Build a Text directly (not via from_markup) to avoid any parse dependency.
+        use std::collections::HashMap;
+        use std::sync::Arc;
+
+        let mut text = Text::new("hello", Style::null());
+        let mut m = HashMap::new();
+        m.insert("@click".to_string(), "true".to_string());
+        text.spans_mut()
+            .push(Span::with_meta(0, 5, Style::null(), Some(Arc::new(m))));
+
+        let markup_str = text.markup();
+        // Must contain `[@click]` (bare flag form) and NOT `[@click=true]`
+        // (either form is valid, but bare flag is canonical for "true")
+        assert!(
+            markup_str.contains("[@click]"),
+            "markup() must emit bare-flag form for value=true; got: {markup_str:?}"
+        );
+
+        // Round-trip: re-parse and verify the meta span is preserved.
+        let rt = crate::markup::render(&markup_str, Style::null()).unwrap();
+        assert_eq!(rt.plain(), "hello");
+        let meta_spans: Vec<_> = rt.spans().iter().filter(|s| s.meta.is_some()).collect();
+        assert_eq!(meta_spans.len(), 1, "meta span must survive round-trip");
+        let meta = meta_spans[0].meta.as_ref().unwrap();
+        assert_eq!(meta.get("@click").map(|v| v.as_str()), Some("true"));
+    }
+
+    /// A `[@key=val]` meta span with a non-"true" value must survive the round-trip.
+    #[test]
+    fn markup_roundtrip_meta_key_value() {
+        use std::collections::HashMap;
+        use std::sync::Arc;
+
+        let mut text = Text::new("world", Style::null());
+        let mut m = HashMap::new();
+        m.insert("@action".to_string(), "submit".to_string());
+        text.spans_mut()
+            .push(Span::with_meta(0, 5, Style::null(), Some(Arc::new(m))));
+
+        let markup_str = text.markup();
+        assert!(
+            markup_str.contains("[@action=submit]"),
+            "markup() must emit `[@key=val]` for non-true value; got: {markup_str:?}"
+        );
+
+        let rt = crate::markup::render(&markup_str, Style::null()).unwrap();
+        assert_eq!(rt.plain(), "world");
+        let meta_spans: Vec<_> = rt.spans().iter().filter(|s| s.meta.is_some()).collect();
+        assert_eq!(meta_spans.len(), 1, "meta span must survive round-trip");
+        let meta = meta_spans[0].meta.as_ref().unwrap();
+        assert_eq!(meta.get("@action").map(|v| v.as_str()), Some("submit"));
+    }
+
+    /// Markup round-trip: meta span from `from_markup` survives `markup()` + re-parse.
+    #[test]
+    fn markup_roundtrip_meta_from_parse() {
+        let original = crate::markup::render("[@click]btn[/]", Style::null()).unwrap();
+        let m = original.markup();
+        let rt = crate::markup::render(&m, Style::null()).unwrap();
+        assert_eq!(rt.plain(), "btn");
+        let meta_spans: Vec<_> = rt.spans().iter().filter(|s| s.meta.is_some()).collect();
+        assert_eq!(
+            meta_spans.len(),
+            1,
+            "meta span must survive markup→re-parse round-trip"
+        );
+        let meta = meta_spans[0].meta.as_ref().unwrap();
+        assert_eq!(meta.get("@click").map(|v| v.as_str()), Some("true"));
+    }
+
+    /// Named (theme) spans with null style must still be skipped by markup()
+    /// (intentional — cannot be round-tripped without a console). Only meta spans
+    /// are exempt.
+    #[test]
+    fn markup_roundtrip_named_theme_span_still_dropped() {
+        let mut text = Text::new("hello", Style::null());
+        text.spans_mut().push(Span::named(0, 5, "warning"));
+
+        let markup_str = text.markup();
+        // Named spans are intentionally not round-tripped (no console = no theme).
+        // The markup should just be the escaped plain text.
+        assert_eq!(
+            markup_str, "hello",
+            "named spans must be dropped from markup()"
         );
     }
 }
