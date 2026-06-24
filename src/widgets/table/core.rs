@@ -1350,13 +1350,13 @@ impl Table {
                 }
             };
 
+            // Item 5 (P3): get_row_style already calls console.get_style() internally and
+            // returns a fully resolved Style. The outer get_style(style_obj.to_string())
+            // was a redundant round-trip (Style → String → parse again). Removed.
             let row_style = if header_row || footer_row {
                 Style::null()
             } else if let Some(idx) = data_row_index {
-                let style_obj = self.get_row_style(console, idx);
-                console
-                    .get_style(&style_obj.to_string())
-                    .unwrap_or(style_obj)
+                self.get_row_style(console, idx)
             } else {
                 Style::null()
             };
@@ -1699,28 +1699,44 @@ impl Table {
             let row_ref = data_row_index.and_then(|idx| self.rows.get(idx));
             let end_section = row_ref.is_some_and(|r| r.end_section);
 
-            if let Some(b) = the_box {
-                if show_lines || leading > 0 || end_section {
-                    // Don't add separator after last row, after header (already done), or before footer
-                    let skip = last
-                        || (show_footer && row_index >= num_rows.saturating_sub(2))
-                        || (show_header && header_row);
+            // Common skip condition: don't emit after the last row, after the
+            // header row (header sep already emitted above), or before the footer.
+            let skip_sep = last
+                || (show_footer && row_index >= num_rows.saturating_sub(2))
+                || (show_header && header_row);
 
-                    if !skip {
-                        if leading > 0 {
-                            let row_str = b.get_row(widths, RowLevel::Mid, show_edge);
-                            for _ in 0..leading {
-                                segments.push(Segment::styled(&row_str, border_style.clone()));
-                                segments.push(new_line.clone());
-                            }
-                        } else {
-                            segments.push(Segment::styled(
-                                &b.get_row(widths, RowLevel::Row, show_edge),
-                                border_style.clone(),
-                            ));
+            if let Some(b) = the_box {
+                if (show_lines || leading > 0 || end_section) && !skip_sep {
+                    if leading > 0 {
+                        // Item 1 (P2): `leading` inserts blank lines, not Mid box
+                        // separator rows. A blank line is a space-padded segment of
+                        // the total table width (matching rich's Python behavior).
+                        let total_width = widths.iter().sum::<usize>()
+                            + if show_edge { 2 } else { 0 }
+                            + widths.len().saturating_sub(1);
+                        let blank = " ".repeat(total_width);
+                        for _ in 0..leading {
+                            segments.push(Segment::new(&blank, None, None));
                             segments.push(new_line.clone());
                         }
+                    } else {
+                        // show_lines or end_section: emit a box row separator.
+                        segments.push(Segment::styled(
+                            &b.get_row(widths, RowLevel::Row, show_edge),
+                            border_style.clone(),
+                        ));
+                        segments.push(new_line.clone());
                     }
+                }
+            } else if (show_lines || leading > 0) && !skip_sep {
+                // Item 2 (P2): when box_chars is None and show_lines/leading is
+                // active, emit blank separator lines between data rows.
+                let total_width = widths.iter().sum::<usize>() + widths.len().saturating_sub(1);
+                let blank = " ".repeat(total_width);
+                let count = if leading > 0 { leading } else { 1 };
+                for _ in 0..count {
+                    segments.push(Segment::new(&blank, None, None));
+                    segments.push(new_line.clone());
                 }
             }
         }
@@ -2203,5 +2219,135 @@ mod renderable_cell_tests {
             out_text, out_renderable,
             "add_row_text and add_row_renderable(Arc<Text>) should produce identical output"
         );
+    }
+}
+
+#[cfg(test)]
+mod parity_batch_7_10_tests {
+    use super::*;
+    use crate::box_chars::SQUARE;
+
+    fn render_plain(table: &Table) -> String {
+        format!("{table}")
+    }
+
+    // ---- Item 1: leading inserts blank lines, not Mid box chars ----
+
+    /// Table with a box and `leading=2`: the segments between rows must NOT
+    /// contain any Mid-level box separator characters (e.g. '─', '├', '┤', '┼').
+    /// Instead each leading line must be a blank space-padded line.
+    #[test]
+    fn test_leading_inserts_blank_lines_not_box_chars() {
+        let mut table = Table::new(&["Col1", "Col2"]);
+        table.show_header = false;
+        table.padding = (0, 0, 0, 0);
+        table.columns[0].width = Some(5);
+        table.columns[1].width = Some(5);
+        table.leading = 2;
+        table.add_row(&["aaaaa", "bbbbb"]);
+        table.add_row(&["ccccc", "ddddd"]);
+
+        let output = render_plain(&table);
+
+        // Mid box chars that would appear in a box separator row.
+        // If leading incorrectly uses get_row(Mid), these will appear between data rows.
+        let mid_chars = ['─', '├', '┤', '┼', '╞', '╡', '╪'];
+        // Lines between the two data rows should not contain box chars.
+        let lines: Vec<&str> = output.lines().collect();
+        // Find the two data lines and check what's in between.
+        let row1_pos = lines.iter().position(|l| l.contains("aaaaa"));
+        let row2_pos = lines.iter().position(|l| l.contains("ccccc"));
+        assert!(
+            row1_pos.is_some(),
+            "first data row missing from output:\n{output}"
+        );
+        assert!(
+            row2_pos.is_some(),
+            "second data row missing from output:\n{output}"
+        );
+        let r1 = row1_pos.unwrap();
+        let r2 = row2_pos.unwrap();
+        assert!(r2 > r1, "row2 should come after row1");
+        // The lines between r1 and r2 must not contain mid box chars.
+        for between_line in &lines[r1 + 1..r2] {
+            for ch in mid_chars {
+                assert!(
+                    !between_line.contains(ch),
+                    "leading line '{between_line}' contains Mid box char '{ch}'; \
+                    full output:\n{output}"
+                );
+            }
+            // Each leading line should be blank (only spaces).
+            assert!(
+                between_line.chars().all(|c| c == ' '),
+                "leading line '{between_line}' is not a blank space line; \
+                full output:\n{output}"
+            );
+        }
+        // There must be exactly 2 blank lines between the data rows.
+        let blank_between = lines[r1 + 1..r2].len();
+        assert_eq!(
+            blank_between, 2,
+            "expected 2 blank leading lines; got {blank_between}; output:\n{output}"
+        );
+    }
+
+    // ---- Item 2: show_lines=true with box_chars=None inserts blank separator ----
+
+    /// Table with `box_chars=None` and `show_lines=true`: a blank separator line
+    /// must appear between rows even without a box.
+    #[test]
+    fn test_show_lines_no_box_inserts_separator() {
+        let mut table = Table::new(&["A", "B"]);
+        table.box_chars = None;
+        table.show_header = false;
+        table.padding = (0, 0, 0, 0);
+        table.columns[0].width = Some(4);
+        table.columns[1].width = Some(4);
+        table.show_lines = true;
+        table.add_row(&["aaaa", "bbbb"]);
+        table.add_row(&["cccc", "dddd"]);
+
+        let output = render_plain(&table);
+
+        let lines: Vec<&str> = output.lines().collect();
+        let r1 = lines
+            .iter()
+            .position(|l| l.contains("aaaa"))
+            .expect("row1 missing");
+        let r2 = lines
+            .iter()
+            .position(|l| l.contains("cccc"))
+            .expect("row2 missing");
+        assert!(
+            r2 > r1 + 1,
+            "expected at least one blank separator line between data rows; output:\n{output}"
+        );
+        // All lines between r1 and r2 must be blank (spaces or empty).
+        for between_line in &lines[r1 + 1..r2] {
+            assert!(
+                between_line.chars().all(|c| c == ' '),
+                "separator line '{between_line}' is not blank; output:\n{output}"
+            );
+        }
+    }
+
+    // ---- Item 5: row_style resolved once (smoke test) ----
+
+    /// A table with a row_style set should render correctly without panic,
+    /// demonstrating that the style is applied with a single get_row_style call.
+    #[test]
+    fn test_row_style_resolved_once() {
+        let mut table = Table::new(&["Name", "Value"]);
+        table.show_header = false;
+        table.box_chars = Some(&SQUARE);
+        table.row_styles = vec!["bold".to_string(), "".to_string()];
+        table.add_row(&["alice", "1"]);
+        table.add_row(&["bob", "2"]);
+
+        // Should not panic; data should appear in output.
+        let output = render_plain(&table);
+        assert!(output.contains("alice"), "alice missing: {output:?}");
+        assert!(output.contains("bob"), "bob missing: {output:?}");
     }
 }

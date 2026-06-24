@@ -173,7 +173,12 @@ pub fn ratio_distribute(total: usize, ratios: &[usize], minimums: Option<&[usize
     };
 
     let mut total_ratio: usize = ratios.iter().sum();
-    assert!(total_ratio > 0, "Sum of ratios must be > 0");
+
+    // Item 3 (P2): when all ratios are zero, return a vec of zeros rather than
+    // panicking. Matches rich's Python behavior which silently returns zeros.
+    if total_ratio == 0 {
+        return vec![0; ratios.len()];
+    }
 
     let mut total_remaining = total;
     let default_minimums: Vec<usize>;
@@ -187,14 +192,17 @@ pub fn ratio_distribute(total: usize, ratios: &[usize], minimums: Option<&[usize
     let mut result = Vec::with_capacity(ratios.len());
 
     for (&ratio, &minimum) in ratios.iter().zip(mins.iter()) {
-        let distributed = if total_ratio > 0 {
-            // ceil(ratio * total_remaining / total_ratio)
-            let product = ratio.saturating_mul(total_remaining);
-            let ceiled = product.div_ceil(total_ratio);
-            ceiled.max(minimum)
-        } else {
-            total_remaining
-        };
+        // Item 4 (P2): use rounding division (matches rich's Python
+        // `int(ratio * total_remaining / total_ratio + 0.5)`) instead of
+        // ceiling division, to avoid systematic upward bias.
+        // round(ratio * total_remaining / total_ratio)
+        //   = (ratio * total_remaining + total_ratio / 2) / total_ratio  (integer)
+        let product = ratio.saturating_mul(total_remaining);
+        let distributed = product
+            .saturating_add(total_ratio / 2)
+            .checked_div(total_ratio)
+            .map(|r| r.max(minimum))
+            .unwrap_or(total_remaining);
         result.push(distributed);
         total_ratio = total_ratio.saturating_sub(ratio);
         total_remaining = total_remaining.saturating_sub(distributed);
@@ -477,13 +485,18 @@ mod tests {
         let result = ratio_distribute(10, &[1, 1, 1], None);
         let sum: usize = result.iter().sum();
         assert_eq!(sum, 10);
-        // With ceil, first gets 4, second 3, third 3
-        assert_eq!(result, vec![4, 3, 3]);
+        // With round (not ceil): total=10, ratios=[1,1,1]
+        // i=0: (1*10 + 3/2) / 3 = (10+1)/3 = 3. remaining=7, total_ratio=2
+        // i=1: (1*7  + 2/2) / 2 = (7+1)/2  = 4. remaining=3, total_ratio=1
+        // i=2: (1*3  + 1/2) / 1 = (3+0)/1  = 3. remaining=0.
+        // Result: [3, 4, 3]
+        assert_eq!(result, vec![3, 4, 3]);
     }
 
     #[test]
-    #[should_panic(expected = "Sum of ratios must be > 0")]
-    fn test_distribute_zero_ratios_panics() {
-        ratio_distribute(10, &[0, 0], None);
+    fn test_distribute_zero_ratios_returns_zeros() {
+        // When all ratios are zero, return a vec of zeros without panicking.
+        let result = ratio_distribute(10, &[0, 0], None);
+        assert_eq!(result, vec![0, 0]);
     }
 }
