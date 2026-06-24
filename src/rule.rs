@@ -225,7 +225,12 @@ impl Renderable for Rule {
 
                         // Space + title + space
                         segments.push(Segment::new(" ", None, None));
-                        segments.extend(title_text.render_themed(console).into_iter().filter(|s| s.text != "\n"));
+                        segments.extend(
+                            title_text
+                                .render_themed(console)
+                                .into_iter()
+                                .filter(|s| s.text != "\n"),
+                        );
                         segments.push(Segment::new(" ", None, None));
 
                         // Right rule
@@ -252,7 +257,12 @@ impl Renderable for Rule {
                         let rule_width = width.saturating_sub(title_width + 2);
 
                         // Title + space
-                        segments.extend(title_text.render_themed(console).into_iter().filter(|s| s.text != "\n"));
+                        segments.extend(
+                            title_text
+                                .render_themed(console)
+                                .into_iter()
+                                .filter(|s| s.text != "\n"),
+                        );
                         segments.push(Segment::new(" ", None, None));
 
                         // Rule line
@@ -286,7 +296,12 @@ impl Renderable for Rule {
                         segments.push(Segment::new(" ", None, None));
 
                         // Title
-                        segments.extend(title_text.render_themed(console).into_iter().filter(|s| s.text != "\n"));
+                        segments.extend(
+                            title_text
+                                .render_themed(console)
+                                .into_iter()
+                                .filter(|s| s.text != "\n"),
+                        );
 
                         segments.push(Segment::new(&self.end, None, None));
                     }
@@ -607,9 +622,12 @@ mod tests {
         let segs = rule.gilt_console(&console, &opts);
 
         assert!(
-            segs.iter().any(|s| s.style().is_some_and(|st| st.italic() == Some(true))),
+            segs.iter()
+                .any(|s| s.style().is_some_and(|st| st.italic() == Some(true))),
             "rule title named span must resolve to italic via theme; got: {:?}",
-            segs.iter().filter(|s| s.text.contains("42")).collect::<Vec<_>>()
+            segs.iter()
+                .filter(|s| s.text.contains("42"))
+                .collect::<Vec<_>>()
         );
     }
 }
