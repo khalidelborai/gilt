@@ -598,6 +598,10 @@ impl Renderable for Diff {
             DiffStyle::SideBySide => self.render_side_by_side(max_width),
         }
     }
+
+    fn gilt_measure(&self, console: &Console, options: &ConsoleOptions) -> Measurement {
+        self.measure(console, options)
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -658,6 +662,20 @@ mod tests {
             .force_terminal(true)
             .no_color(true)
             .build()
+    }
+
+    // -- gilt_measure override ----------------------------------------------
+
+    #[test]
+    fn diff_gilt_measure_delegates_to_measure() {
+        let diff = Diff::new("hello\nworld", "hello\nrust");
+        let console = make_console();
+        let opts = console.options();
+        assert_eq!(
+            diff.gilt_measure(&console, &opts),
+            diff.measure(&console, &opts),
+            "Diff::gilt_measure must delegate to Diff::measure",
+        );
     }
 
     // -- LCS / compute_diff tests -------------------------------------------

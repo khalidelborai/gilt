@@ -204,6 +204,10 @@ impl Renderable for Sparkline {
             Segment::line(),
         ]
     }
+
+    fn gilt_measure(&self, console: &Console, options: &ConsoleOptions) -> Measurement {
+        self.measure(console, options)
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -246,6 +250,24 @@ mod tests {
             markup: None,
             height: None,
         }
+    }
+
+    // -- gilt_measure override ----------------------------------------------
+
+    #[test]
+    fn sparkline_gilt_measure_delegates_to_measure() {
+        let spark = Sparkline::new(&[1.0, 2.0, 3.0]);
+        let console = Console::builder()
+            .width(80)
+            .force_terminal(true)
+            .no_color(true)
+            .build();
+        let opts = console.options();
+        assert_eq!(
+            spark.gilt_measure(&console, &opts),
+            spark.measure(&console, &opts),
+            "Sparkline::gilt_measure must delegate to Sparkline::measure",
+        );
     }
 
     // 1. Empty data

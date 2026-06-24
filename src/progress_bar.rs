@@ -351,6 +351,10 @@ impl Renderable for ProgressBar {
 
         segments
     }
+
+    fn gilt_measure(&self, console: &Console, options: &ConsoleOptions) -> Measurement {
+        self.measure(console, options)
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -382,6 +386,24 @@ mod tests {
             markup: None,
             height: None,
         }
+    }
+
+    // -- gilt_measure override ----------------------------------------------
+
+    #[test]
+    fn progress_bar_gilt_measure_delegates_to_measure() {
+        let bar = ProgressBar::new().with_completed(50.0);
+        let console = Console::builder()
+            .width(80)
+            .force_terminal(true)
+            .no_color(true)
+            .build();
+        let opts = console.options();
+        assert_eq!(
+            bar.gilt_measure(&console, &opts),
+            bar.measure(&console, &opts),
+            "ProgressBar::gilt_measure must delegate to ProgressBar::measure",
+        );
     }
 
     /// Render a ProgressBar through its Renderable impl and return segments.

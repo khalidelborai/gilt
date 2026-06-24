@@ -511,6 +511,10 @@ impl Renderable for Canvas {
         segments.push(Segment::line());
         segments
     }
+
+    fn gilt_measure(&self, console: &Console, options: &ConsoleOptions) -> Measurement {
+        self.measure(console, options)
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -552,6 +556,24 @@ mod tests {
             markup: None,
             height: None,
         }
+    }
+
+    // -- gilt_measure override ----------------------------------------------
+
+    #[test]
+    fn canvas_gilt_measure_delegates_to_measure() {
+        let canvas = Canvas::new(10, 4);
+        let console = Console::builder()
+            .width(80)
+            .force_terminal(true)
+            .no_color(true)
+            .build();
+        let opts = console.options();
+        assert_eq!(
+            canvas.gilt_measure(&console, &opts),
+            canvas.measure(&console, &opts),
+            "Canvas::gilt_measure must delegate to Canvas::measure",
+        );
     }
 
     // 1. Empty canvas

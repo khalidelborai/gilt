@@ -773,6 +773,10 @@ impl Renderable for Syntax {
     fn gilt_console(&self, _console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         self.render_syntax(options.max_width)
     }
+
+    fn gilt_measure(&self, _console: &Console, _options: &ConsoleOptions) -> Measurement {
+        self.measure()
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -846,6 +850,25 @@ impl std::fmt::Display for Syntax {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // -- gilt_measure override ----------------------------------------------
+
+    #[test]
+    fn syntax_gilt_measure_delegates_to_measure() {
+        let code = "fn main() {}\n";
+        let syntax = Syntax::new(code, "rs");
+        let console = Console::builder()
+            .width(80)
+            .force_terminal(true)
+            .no_color(true)
+            .build();
+        let opts = console.options();
+        assert_eq!(
+            syntax.gilt_measure(&console, &opts),
+            syntax.measure(),
+            "Syntax::gilt_measure must delegate to Syntax::measure",
+        );
+    }
 
     // -- Basic highlighting -------------------------------------------------
 

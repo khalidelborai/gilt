@@ -467,6 +467,10 @@ impl Renderable for Figlet {
         }
         segments
     }
+
+    fn gilt_measure(&self, console: &Console, options: &ConsoleOptions) -> Measurement {
+        self.measure(console, options)
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -501,6 +505,20 @@ mod tests {
             .no_color(true)
             .markup(false)
             .build()
+    }
+
+    // -- gilt_measure override ----------------------------------------------
+
+    #[test]
+    fn figlet_gilt_measure_delegates_to_measure() {
+        let figlet = Figlet::new("Hi");
+        let console = make_console(80);
+        let opts = console.options();
+        assert_eq!(
+            figlet.gilt_measure(&console, &opts),
+            figlet.measure(&console, &opts),
+            "Figlet::gilt_measure must delegate to Figlet::measure",
+        );
     }
 
     // -- Single character rendering -----------------------------------------

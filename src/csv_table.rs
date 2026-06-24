@@ -286,6 +286,10 @@ impl Renderable for CsvTable {
         let table = self.to_table();
         table.gilt_console(console, options)
     }
+
+    fn gilt_measure(&self, console: &Console, options: &ConsoleOptions) -> Measurement {
+        self.measure(console, options)
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -321,6 +325,20 @@ mod tests {
             .no_color(true)
             .markup(false)
             .build()
+    }
+
+    // -- gilt_measure override ----------------------------------------------
+
+    #[test]
+    fn csv_table_gilt_measure_delegates_to_measure() {
+        let csv = CsvTable::from_csv_str("Name,Age\nAlice,30\nBob,25").unwrap();
+        let console = make_console(80);
+        let opts = console.options();
+        assert_eq!(
+            csv.gilt_measure(&console, &opts),
+            csv.measure(&console, &opts),
+            "CsvTable::gilt_measure must delegate to CsvTable::measure",
+        );
     }
 
     // -- Simple CSV string --------------------------------------------------
