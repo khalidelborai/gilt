@@ -168,17 +168,36 @@ fn json_pretty_prints() {
 
 #[test]
 fn columns_renders_grid() {
+    // highlight(false): the ReprHighlighter (enabled by default, parity with rich)
+    // would insert SGR escapes between "Item " and "1", breaking literal-substring
+    // checks on raw captured output. This test exercises *layout* (all items
+    // appear, grid is non-empty), not highlighting behaviour; disable it so the
+    // assertion is deterministic regardless of the highlighter implementation.
     let mut cols = Columns::new();
     for i in 1..=6 {
         cols.add_renderable(&format!("Item {}", i));
     }
 
-    let mut c = Console::builder().width(80).force_terminal(true).build();
+    let mut c = Console::builder()
+        .width(80)
+        .force_terminal(true)
+        .highlight(false)
+        .build();
     c.begin_capture();
     c.print(&cols);
     let output = c.end_capture();
-    assert!(output.contains("Item 1"));
-    assert!(output.contains("Item 6"));
+    assert!(
+        output.contains("Item 1"),
+        "Item 1 missing from columns output"
+    );
+    assert!(
+        output.contains("Item 2"),
+        "Item 2 missing from columns output"
+    );
+    assert!(
+        output.contains("Item 6"),
+        "Item 6 missing from columns output"
+    );
 }
 
 // ---------------------------------------------------------------------------
