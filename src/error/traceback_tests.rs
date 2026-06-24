@@ -756,3 +756,182 @@ fn test_show_locals_false_render_content() {
         "render_content should NOT include locals when show_locals=false; got: {plain}"
     );
 }
+
+// ---------------------------------------------------------------------------
+// Item 1: PEP 678 notes
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_notes_default_empty() {
+    let tb = Traceback::new();
+    assert!(tb.notes.is_empty());
+}
+
+#[test]
+fn test_with_notes_builder() {
+    let tb = Traceback::new().with_notes(vec!["note A".to_string(), "note B".to_string()]);
+    assert_eq!(tb.notes.len(), 2);
+    assert_eq!(tb.notes[0], "note A");
+}
+
+#[test]
+fn test_notes_rendered_in_output() {
+    let tb = Traceback::new()
+        .with_title("NoteTest")
+        .with_message("error msg")
+        .with_notes(vec!["This is a PEP 678 note".to_string()]);
+    let console = Console::builder()
+        .width(80)
+        .no_color(true)
+        .markup(false)
+        .build();
+    let options = console.options();
+    let segments = tb.gilt_console(&console, &options);
+    let output: String = segments.iter().map(|s| s.text.as_str()).collect();
+    assert!(
+        output.contains("This is a PEP 678 note"),
+        "note not rendered; got:\n{}",
+        output
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Item 2: ExceptionGroup nested panel
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_sub_exceptions_default_empty() {
+    let tb = Traceback::new();
+    assert!(tb.sub_exceptions.is_empty());
+}
+
+#[test]
+fn test_with_sub_exceptions_builder() {
+    let sub = Traceback::new()
+        .with_title("SubError")
+        .with_message("sub msg");
+    let tb = Traceback::new()
+        .with_title("Group")
+        .with_sub_exceptions(vec![sub]);
+    assert_eq!(tb.sub_exceptions.len(), 1);
+}
+
+#[test]
+fn test_sub_exceptions_rendered_in_output() {
+    let sub = Traceback::new()
+        .with_title("InnerError")
+        .with_message("inner msg");
+    let tb = Traceback::new()
+        .with_title("ExceptionGroup")
+        .with_message("group error")
+        .with_sub_exceptions(vec![sub]);
+    let console = Console::builder()
+        .width(100)
+        .no_color(true)
+        .markup(false)
+        .build();
+    let options = console.options();
+    let segments = tb.gilt_console(&console, &options);
+    let output: String = segments.iter().map(|s| s.text.as_str()).collect();
+    assert!(
+        output.contains("InnerError") || output.contains("inner msg"),
+        "sub-exception not rendered; got:\n{}",
+        output
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Item 3: PanicHookConfig
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_panic_hook_config_defaults() {
+    let config = PanicHookConfig::default();
+    assert!(config.suppress_paths.is_empty());
+    assert!(config.width.is_none());
+    assert_eq!(config.extra_lines, 3);
+    assert_eq!(config.theme, "base16-ocean.dark");
+    assert!(!config.show_locals);
+    assert_eq!(config.max_frames, 100);
+    assert!(!config.word_wrap);
+}
+
+#[test]
+fn test_panic_hook_config_custom() {
+    let config = PanicHookConfig {
+        suppress_paths: vec!["/.cargo/".to_string()],
+        width: Some(120),
+        extra_lines: 5,
+        theme: "Solarized (dark)".to_string(),
+        show_locals: true,
+        max_frames: 50,
+        word_wrap: true,
+    };
+    assert_eq!(config.suppress_paths.len(), 1);
+    assert_eq!(config.width, Some(120));
+    assert_eq!(config.extra_lines, 5);
+    assert!(config.show_locals);
+    assert_eq!(config.max_frames, 50);
+    assert!(config.word_wrap);
+}
+
+// ---------------------------------------------------------------------------
+// Item 4: code_width field
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_code_width_default_none() {
+    let tb = Traceback::new();
+    assert!(tb.code_width.is_none());
+}
+
+#[test]
+fn test_with_code_width_builder() {
+    let tb = Traceback::new().with_code_width(100);
+    assert_eq!(tb.code_width, Some(100));
+}
+
+#[test]
+fn test_code_width_renderable() {
+    // Just verify it renders without panic when code_width is set
+    let tb = Traceback::new().with_title("CWTest").with_code_width(60);
+    let console = Console::builder()
+        .width(80)
+        .no_color(true)
+        .markup(false)
+        .build();
+    let options = console.options();
+    let segments = tb.gilt_console(&console, &options);
+    assert!(!segments.is_empty());
+}
+
+// ---------------------------------------------------------------------------
+// Item 5: locals side-by-side in Columns
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_show_locals_side_by_side_compiles() {
+    // When show_locals=true and frame has locals, rendering should not panic.
+    let mut tb = Traceback::new()
+        .with_title("LocalsCols")
+        .with_show_locals(true);
+    tb.frames.push(
+        Frame::new("src/main.rs", Some(5), "run")
+            .with_source_line("    let x = 42;")
+            .with_local("x", "42"),
+    );
+    let console = Console::builder()
+        .width(120)
+        .no_color(true)
+        .markup(false)
+        .build();
+    let options = console.options();
+    let segments = tb.gilt_console(&console, &options);
+    assert!(!segments.is_empty());
+    let output: String = segments.iter().map(|s| s.text.as_str()).collect();
+    assert!(
+        output.contains("x") && output.contains("42"),
+        "locals should appear in output; got:\n{}",
+        output
+    );
+}

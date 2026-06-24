@@ -136,6 +136,56 @@ pub struct Traceback {
     /// - `"/.cargo/registry/src/"` hides all third-party registry frames
     /// - `"tokio-"` hides Tokio internals
     pub suppress_paths: Vec<String>,
+    /// PEP 678-style notes appended after the error message.
+    ///
+    /// Each entry is rendered as a styled line below `message`.
+    pub notes: Vec<String>,
+    /// Nested sub-exceptions for exception group / multi-error display.
+    ///
+    /// When non-empty, each sub-exception is rendered as its own nested
+    /// `Panel` appended after the outer panel.
+    pub sub_exceptions: Vec<Traceback>,
+    /// Override the width used for the syntax-highlighted code block.
+    ///
+    /// When `None` (the default), the code width is derived from `panel_width - 4`.
+    pub code_width: Option<usize>,
+}
+
+// ---------------------------------------------------------------------------
+// PanicHookConfig
+// ---------------------------------------------------------------------------
+
+/// Configuration for [`Traceback::install_panic_hook_with_config`].
+#[derive(Debug, Clone)]
+pub struct PanicHookConfig {
+    /// Path-prefix substrings used to suppress matching frames.
+    pub suppress_paths: Vec<String>,
+    /// Fixed output width (overrides terminal width when `Some`).
+    pub width: Option<usize>,
+    /// Number of context lines shown around the highlighted source line.
+    pub extra_lines: usize,
+    /// Syntax highlighting theme name.
+    pub theme: String,
+    /// Whether to display local variables for each frame.
+    pub show_locals: bool,
+    /// Maximum number of frames to display.
+    pub max_frames: usize,
+    /// Whether to word-wrap long source lines.
+    pub word_wrap: bool,
+}
+
+impl Default for PanicHookConfig {
+    fn default() -> Self {
+        PanicHookConfig {
+            suppress_paths: Vec::new(),
+            width: None,
+            extra_lines: 3,
+            theme: "base16-ocean.dark".to_string(),
+            show_locals: false,
+            max_frames: 100,
+            word_wrap: false,
+        }
+    }
 }
 
 impl Traceback {
@@ -153,6 +203,9 @@ impl Traceback {
             word_wrap: false,
             max_frames: 100,
             suppress_paths: Vec::new(),
+            notes: Vec::new(),
+            sub_exceptions: Vec::new(),
+            code_width: None,
         }
     }
 
@@ -304,6 +357,27 @@ impl Traceback {
         self
     }
 
+    /// Set PEP 678-style notes shown after the error message.
+    #[must_use]
+    pub fn with_notes(mut self, notes: Vec<String>) -> Self {
+        self.notes = notes;
+        self
+    }
+
+    /// Set nested sub-exceptions for exception-group display.
+    #[must_use]
+    pub fn with_sub_exceptions(mut self, subs: Vec<Traceback>) -> Self {
+        self.sub_exceptions = subs;
+        self
+    }
+
+    /// Override the width used for the syntax-highlighted code block.
+    #[must_use]
+    pub fn with_code_width(mut self, width: usize) -> Self {
+        self.code_width = Some(width);
+        self
+    }
+
     // -- Helper: apply suppress filter + truncation -------------------------
 
     /// Return the frames that survive the suppress-path filter.
@@ -345,7 +419,7 @@ impl Traceback {
     /// Traceback::install_panic_hook();
     /// ```
     pub fn install_panic_hook() {
-        Self::install_panic_hook_with(Vec::new());
+        Self::install_panic_hook_with_config(PanicHookConfig::default());
     }
 
     /// Like [`install_panic_hook`](Self::install_panic_hook) but also applies
@@ -359,6 +433,27 @@ impl Traceback {
     /// Traceback::install_panic_hook_with(vec!["/.cargo/registry/src/".to_string()]);
     /// ```
     pub fn install_panic_hook_with(suppress_paths: Vec<String>) {
+        Self::install_panic_hook_with_config(PanicHookConfig {
+            suppress_paths,
+            ..PanicHookConfig::default()
+        });
+    }
+
+    /// Like [`install_panic_hook`](Self::install_panic_hook) but accepts a
+    /// full [`PanicHookConfig`] to control all rendering options.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use gilt::error::traceback::{Traceback, PanicHookConfig};
+    ///
+    /// Traceback::install_panic_hook_with_config(PanicHookConfig {
+    ///     suppress_paths: vec!["/.cargo/registry/src/".to_string()],
+    ///     max_frames: 50,
+    ///     ..PanicHookConfig::default()
+    /// });
+    /// ```
+    pub fn install_panic_hook_with_config(config: PanicHookConfig) {
         std::panic::set_hook(Box::new(move |info| {
             // -- Extract panic message ---
             let message = if let Some(s) = info.payload().downcast_ref::<&str>() {
@@ -380,9 +475,17 @@ impl Traceback {
             let bt = std::backtrace::Backtrace::force_capture();
             let bt_str = bt.to_string();
 
-            // -- Build the Traceback ---
-            let tb =
-                Traceback::from_panic(&full_message, &bt_str).with_suppress(suppress_paths.clone());
+            // -- Build the Traceback applying all config fields ---
+            let mut tb = Traceback::from_panic(&full_message, &bt_str)
+                .with_suppress(config.suppress_paths.clone())
+                .with_extra_lines(config.extra_lines)
+                .with_theme(&config.theme)
+                .with_show_locals(config.show_locals)
+                .with_max_frames(config.max_frames)
+                .with_word_wrap(config.word_wrap);
+            if let Some(w) = config.width {
+                tb = tb.with_width(w);
+            }
 
             // -- Render to a capture buffer then write to stderr ---
             let mut console = Console::builder().no_color(false).build();
@@ -675,6 +778,11 @@ impl Renderable for Traceback {
                 #[allow(unused_mut)]
                 let mut showed_syntax = false;
 
+                // Save syntax segments separately so Item 5 can use them for
+                // side-by-side Columns layout when show_locals is also true.
+                #[cfg(feature = "syntax")]
+                let mut saved_syntax_segs: Vec<Segment> = Vec::new();
+
                 #[cfg(feature = "syntax")]
                 if let Some(lineno) = frame.lineno {
                     if lineno > 0 {
@@ -712,27 +820,16 @@ impl Renderable for Traceback {
                                         .with_highlight_lines(vec![lineno])
                                         .with_word_wrap(self.word_wrap);
 
+                                    // Item 4: use code_width override when set.
                                     let syntax_segments = syntax.gilt_console(
                                         console,
-                                        &options.update_width(panel_width.saturating_sub(4)),
+                                        &options.update_width(
+                                            self.code_width
+                                                .unwrap_or(panel_width.saturating_sub(4)),
+                                        ),
                                     );
                                     if !syntax_segments.is_empty() {
-                                        // Finding #9: carry seg.style alongside text so
-                                        // syntax-highlighted output is colored correctly.
-                                        for seg in &syntax_segments {
-                                            match seg.style() {
-                                                Some(s) if !s.is_null() => {
-                                                    content_parts.push(TextPart::Styled(
-                                                        seg.text.to_string(),
-                                                        s.clone(),
-                                                    ));
-                                                }
-                                                _ => {
-                                                    content_parts
-                                                        .push(TextPart::Raw(seg.text.to_string()));
-                                                }
-                                            }
-                                        }
+                                        saved_syntax_segs = syntax_segments;
                                         showed_syntax = true;
                                     }
                                 }
@@ -740,6 +837,88 @@ impl Renderable for Traceback {
                         }
                     }
                 }
+
+                // Item 5: side-by-side Columns when syntax was shown AND locals exist.
+                #[cfg(feature = "syntax")]
+                let did_side_by_side = if showed_syntax
+                    && self.show_locals
+                    && !frame.locals.is_empty()
+                {
+                    use crate::columns::Columns;
+
+                    // Build a Text from the syntax segments.
+                    let mut syn_parts: Vec<TextPart> = Vec::new();
+                    for seg in &saved_syntax_segs {
+                        match seg.style() {
+                            Some(s) if !s.is_null() => {
+                                syn_parts.push(TextPart::Styled(seg.text.to_string(), s.clone()));
+                            }
+                            _ => {
+                                syn_parts.push(TextPart::Raw(seg.text.to_string()));
+                            }
+                        }
+                    }
+                    let syntax_text = Text::assemble(&syn_parts, Style::null());
+
+                    // Build a Text from the locals Scope.
+                    let scope_pairs: Vec<(&str, &str)> = frame
+                        .locals
+                        .iter()
+                        .map(|(k, v)| (k.as_str(), v.as_str()))
+                        .collect();
+                    let scope = Scope::from_pairs(&scope_pairs).title("locals");
+                    let scope_segments = scope.gilt_console(console, options);
+                    let mut loc_parts: Vec<TextPart> = Vec::new();
+                    for seg in &scope_segments {
+                        match seg.style() {
+                            Some(s) if !s.is_null() => {
+                                loc_parts.push(TextPart::Styled(seg.text.to_string(), s.clone()));
+                            }
+                            _ => {
+                                loc_parts.push(TextPart::Raw(seg.text.to_string()));
+                            }
+                        }
+                    }
+                    let locals_text = Text::assemble(&loc_parts, Style::null());
+
+                    // Render the two columns side by side.
+                    let cols = Columns::from_renderables([syntax_text, locals_text]);
+                    let col_segs = cols.gilt_console(console, options);
+                    for seg in &col_segs {
+                        match seg.style() {
+                            Some(s) if !s.is_null() => {
+                                content_parts
+                                    .push(TextPart::Styled(seg.text.to_string(), s.clone()));
+                            }
+                            _ => {
+                                content_parts.push(TextPart::Raw(seg.text.to_string()));
+                            }
+                        }
+                    }
+                    true
+                } else {
+                    // Not side-by-side: append syntax normally.
+                    if showed_syntax {
+                        // Finding #9: carry seg.style alongside text so
+                        // syntax-highlighted output is colored correctly.
+                        for seg in &saved_syntax_segs {
+                            match seg.style() {
+                                Some(s) if !s.is_null() => {
+                                    content_parts
+                                        .push(TextPart::Styled(seg.text.to_string(), s.clone()));
+                                }
+                                _ => {
+                                    content_parts.push(TextPart::Raw(seg.text.to_string()));
+                                }
+                            }
+                        }
+                    }
+                    false
+                };
+
+                // Non-syntax build: no side-by-side tracking needed.
+                #[cfg(not(feature = "syntax"))]
+                let did_side_by_side = false;
 
                 // Fallback: show the single source line if we didn't render syntax
                 if !showed_syntax {
@@ -751,8 +930,9 @@ impl Renderable for Traceback {
                     }
                 }
 
-                // Locals — rendered when show_locals is true and the frame has locals.
-                if self.show_locals && !frame.locals.is_empty() {
+                // Locals — rendered when show_locals is true and the frame has locals,
+                // but only when NOT already rendered side-by-side above.
+                if self.show_locals && !frame.locals.is_empty() && !did_side_by_side {
                     let scope_pairs: Vec<(&str, &str)> = frame
                         .locals
                         .iter()
@@ -789,6 +969,17 @@ impl Renderable for Traceback {
             ));
         }
 
+        // Item 1 (PEP 678): render notes after the message.
+        if !self.notes.is_empty() {
+            let note_style = console
+                .get_style("traceback.note")
+                .unwrap_or_else(|_| Style::parse("italic"));
+            for note in &self.notes {
+                content_parts.push(TextPart::Raw("\n".to_string()));
+                content_parts.push(TextPart::Styled(note.clone(), note_style.clone()));
+            }
+        }
+
         let content_text = Text::assemble(&content_parts, Style::null());
 
         // Wrap in a Panel
@@ -809,7 +1000,39 @@ impl Renderable for Traceback {
             options.clone()
         };
 
-        panel.gilt_console(console, &panel_opts)
+        let mut result = panel.gilt_console(console, &panel_opts);
+
+        // Item 2 (ExceptionGroup): render each sub-exception as a nested panel.
+        if !self.sub_exceptions.is_empty() {
+            let total = self.sub_exceptions.len();
+            for (idx, sub) in self.sub_exceptions.iter().enumerate() {
+                // Build nested panel title e.g. "Exception 1 of 3"
+                let nested_title =
+                    Text::styled(format!("Exception {} of {}", idx + 1, total), "bold yellow");
+                // Render the sub-exception into its own segments, then wrap in a Panel.
+                let sub_segs = sub.gilt_console(console, &panel_opts);
+                // Collect sub segments as plain text parts.
+                let mut sub_parts: Vec<TextPart> = Vec::new();
+                for seg in &sub_segs {
+                    match seg.style() {
+                        Some(s) if !s.is_null() => {
+                            sub_parts.push(TextPart::Styled(seg.text.to_string(), s.clone()));
+                        }
+                        _ => {
+                            sub_parts.push(TextPart::Raw(seg.text.to_string()));
+                        }
+                    }
+                }
+                let sub_content = Text::assemble(&sub_parts, Style::null());
+                let nested_panel = Panel::new(sub_content)
+                    .with_title(nested_title)
+                    .with_border_style(Style::parse("yellow"))
+                    .with_expand(true);
+                result.extend(nested_panel.gilt_console(console, &panel_opts));
+            }
+        }
+
+        result
     }
 }
 
