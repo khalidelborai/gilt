@@ -413,6 +413,23 @@ impl Color {
             return *self;
         }
 
+        // Fidelity order: Standard ≈ Windows (1) < EightBit (2) < TrueColor (3).
+        // Windows shares fidelity level with Standard.
+        fn fidelity(s: ColorSystem) -> u8 {
+            match s {
+                ColorSystem::Standard | ColorSystem::Windows => 1,
+                ColorSystem::EightBit => 2,
+                ColorSystem::TrueColor => 3,
+            }
+        }
+
+        // Early-return: color is already at or below the target fidelity —
+        // returning *self avoids a round-trip through the palette that can
+        // silently change the index (audit #39).
+        if fidelity(self.system()) <= fidelity(system) {
+            return *self;
+        }
+
         match system {
             ColorSystem::TrueColor => *self,
             ColorSystem::EightBit => match self {
@@ -1278,6 +1295,32 @@ mod tests {
         let color = Color::default_color();
         let downgraded = color.downgrade(ColorSystem::Standard);
         assert_eq!(downgraded.kind(), ColorType::Default);
+    }
+
+    #[test]
+    fn downgrade_to_same_system_is_identity() {
+        // A Standard color downgraded to Standard must NOT be re-matched through
+        // the palette (which can change the index). It must return itself.
+        let c = Color::Standard(5);
+        assert_eq!(c.downgrade(ColorSystem::Standard), Color::Standard(5));
+        // Discriminating case (audit #39): Standard(8) theme-RGB=(128,128,128)
+        // is closer to palette index 7=(170,170,170) than to index 8=(85,85,85)
+        // under the redmean metric — without the early-return it returns Standard(7).
+        assert_eq!(
+            Color::Standard(8).downgrade(ColorSystem::Standard),
+            Color::Standard(8)
+        );
+        // EightBit -> EightBit identity.
+        assert_eq!(
+            Color::EightBit(123).downgrade(ColorSystem::EightBit),
+            Color::EightBit(123)
+        );
+        // EightBit -> Standard still downgrades (different system, lower fidelity).
+        // (no identity assertion here — just must not panic and must be Standard)
+        assert!(matches!(
+            Color::EightBit(123).downgrade(ColorSystem::Standard),
+            Color::Standard(_)
+        ));
     }
 }
 
