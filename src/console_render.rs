@@ -11,7 +11,6 @@
 //!   - Buffering (enter_buffer, exit_buffer, check_buffer, flush_buffer,
 //!     render_buffer)
 
-use crate::cells::cell_len;
 use crate::console::{Console, ConsoleOptions, Renderable};
 use crate::error::traceback::Traceback;
 #[cfg(feature = "json")]
@@ -483,9 +482,14 @@ impl Console {
     /// Measure the minimum and maximum width of a renderable.
     ///
     /// Returns a `Measurement` with the minimum (longest word) and
-    /// maximum (longest line) cell widths. For types that implement
-    /// their own measurement (like `Text`), this renders and measures
-    /// the output segments.
+    /// maximum (longest line) cell widths. Dispatches through the
+    /// [`Renderable::gilt_measure`] protocol so widgets with their own
+    /// measurement logic (e.g. `Text`, `Panel`, `Table`) are measured
+    /// without a full render.  Types without an override fall back to
+    /// the default `gilt_measure` implementation, which renders and
+    /// derives widths from the output segments (identical to the old
+    /// direct-render logic), with the exception that an empty renderable
+    /// now yields `(0, max_width)` rather than `(0, 0)` (audit #3).
     ///
     /// # Examples
     ///
@@ -502,23 +506,7 @@ impl Console {
     /// ```
     pub fn measure<R: Renderable + ?Sized>(&self, renderable: &R) -> Measurement {
         let opts = self.options();
-        let segments = renderable.gilt_console(self, &opts);
-        // Collect all text, split by newlines to find line widths
-        let full_text: String = segments
-            .iter()
-            .filter(|s| !s.is_control())
-            .map(|s| s.text.as_str())
-            .collect();
-        if full_text.is_empty() {
-            return Measurement::new(0, 0);
-        }
-        let max_width = full_text.lines().map(cell_len).max().unwrap_or(0);
-        let min_width = full_text
-            .split_whitespace()
-            .map(cell_len)
-            .max()
-            .unwrap_or(0);
-        Measurement::new(min_width, max_width)
+        measurement_get(self, &opts, renderable)
     }
 
     /// Create a [`Status`] spinner with the given message.

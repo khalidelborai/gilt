@@ -2856,3 +2856,94 @@ fn text_gilt_measure_empty_matches_standalone() {
         "Text::gilt_measure empty must match standalone measure"
     );
 }
+
+// -- Task 3.5 — Console::measure rewired through gilt_measure protocol ------
+
+/// Verify that Console::measure routes through gilt_measure for Panel.
+///
+/// Panel::gilt_measure delegates to Panel::measure(console, opts).
+/// After the rewire, console.measure(&panel) == panel.measure(&console, &opts).
+/// Before the rewire, Console::measure runs a full render and derives widths
+/// from the border-including segments, which differs from Panel::measure.
+#[test]
+fn test_console_measure_routes_through_gilt_measure_panel() {
+    use crate::panel::Panel;
+    use crate::style::Style;
+    use crate::text::Text;
+
+    let console = Console::builder()
+        .width(80)
+        .no_color(true)
+        .markup(false)
+        .build();
+    let opts = console.options();
+
+    let content = Text::new("Hello World", Style::null());
+    let panel = Panel::new(content);
+
+    let via_console = console.measure(&panel);
+    let via_protocol = panel.measure(&console, &opts);
+
+    assert_eq!(
+        via_console, via_protocol,
+        "Console::measure must route through gilt_measure (Panel): \
+         console.measure={via_console:?}, panel.measure={via_protocol:?}"
+    );
+}
+
+/// Verify that console.measure(&Text::new("")) returns (0, max_width) after rewire.
+///
+/// Text::gilt_measure delegates to Text::measure() which returns (0, 0) for empty.
+/// measurement_get then calls .normalize().with_maximum(max_width) on (0, 0),
+/// which yields (0, 0) since both fields are already 0.
+/// So empty Text measures as (0, 0) — unchanged by the rewire.
+///
+/// The empty-case change (#3) to (0, max_width) applies only to types using the
+/// DEFAULT gilt_measure (no override). Text has its own override.
+#[test]
+fn test_console_measure_empty_text_unchanged_after_rewire() {
+    use crate::style::Style;
+    use crate::text::Text;
+
+    let console = Console::builder()
+        .width(80)
+        .no_color(true)
+        .markup(false)
+        .build();
+
+    let text = Text::new("", Style::null());
+    let m = console.measure(&text);
+
+    // Text::measure returns (0,0) for empty; measurement_get does not inflate it
+    // because with_maximum(80) on (0,0) = (0,0).
+    assert_eq!(m.minimum, 0, "empty Text minimum should be 0");
+    assert_eq!(
+        m.maximum, 0,
+        "empty Text maximum should be 0 (Text override, not default)"
+    );
+}
+
+/// Verify that Console::measure on a type using the DEFAULT gilt_measure
+/// returns (0, max_width) for empty output — the #3 fix.
+///
+/// Before the rewire, Console::measure returned (0, 0) for empty render.
+/// After the rewire, it calls measurement_get → default gilt_measure → (0, max_width).
+#[test]
+fn test_console_measure_empty_default_renderable_returns_zero_max_width() {
+    let console = Console::builder()
+        .width(80)
+        .no_color(true)
+        .markup(false)
+        .build();
+
+    // EmptyRenderable is defined in this module (above, Task 3.1 section).
+    let r = EmptyRenderable;
+    let m = console.measure(&r);
+
+    assert_eq!(m.minimum, 0, "empty default-measure minimum should be 0");
+    assert_eq!(
+        m.maximum,
+        console.options().max_width,
+        "empty default-measure maximum should be max_width (#3 fix)"
+    );
+}
