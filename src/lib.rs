@@ -343,7 +343,7 @@
 //! use gilt::progress::Progress;
 //!
 //! let mut progress = Progress::new(vec![]);
-//! let task = progress.add_task("Downloading", Some(100.0));
+//! let task = progress.add_task("Downloading", Some(100.0), true);
 //! progress.start();
 //! for _ in 0..100 {
 //!     progress.advance(task, 1.0);

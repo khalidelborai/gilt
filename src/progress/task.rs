@@ -131,6 +131,9 @@ impl Task {
     }
 
     /// Estimated time remaining in seconds, based on current speed.
+    ///
+    /// Ceiled to the nearest whole second so the ETA never reads lower than
+    /// the actual remaining time (rich parity — P3 fix).
     pub fn time_remaining(&self) -> Option<f64> {
         if self.finished() {
             return Some(0.0);
@@ -140,7 +143,7 @@ impl Task {
         if speed <= 0.0 {
             return None;
         }
-        Some(remaining / speed)
+        Some((remaining / speed).ceil())
     }
 
     /// Maximum number of historical samples to retain in the `progress` vec.
@@ -197,6 +200,61 @@ pub fn current_time_secs() -> f64 {
         .duration_since(SystemTime::UNIX_EPOCH)
         .map(|d| d.as_secs_f64())
         .unwrap_or(0.0)
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `time_remaining()` must ceil the fractional seconds so the ETA is
+    /// never lower than the true remaining time (P3 fix, rich parity).
+    #[test]
+    fn time_remaining_is_ceiled() {
+        let mut task = Task::new(0, "t", Some(10.0));
+        // completed=5, total=10 → remaining=5
+        task.completed = 5.0;
+        task.start_time = Some(0.0);
+        // Inject two samples so speed() returns a known fractional value.
+        // speed = (5-0)/(3-0) = 1.6̄  → raw remaining = 5/1.6̄ ≈ 3.0
+        task.samples.push_back(ProgressSample {
+            timestamp: 0.0,
+            completed: 0.0,
+        });
+        task.samples.push_back(ProgressSample {
+            timestamp: 3.0,
+            completed: 5.0,
+        });
+        // remaining / speed = 5 / (5/3) = 3.0 exactly — no fractional part to ceil.
+        // Use a slightly off denominator to force a fraction.
+        task.samples.clear();
+        // speed = (4)/(2.5) = 1.6 → remaining=5 → raw=3.125 → ceil=4
+        task.samples.push_back(ProgressSample {
+            timestamp: 0.0,
+            completed: 0.0,
+        });
+        task.samples.push_back(ProgressSample {
+            timestamp: 2.5,
+            completed: 4.0,
+        });
+        let tr = task
+            .time_remaining()
+            .expect("time_remaining should be Some");
+        // ceil(3.125) = 4.0
+        assert_eq!(tr, 4.0, "time_remaining should be ceiled: got {tr}");
+    }
+
+    /// Finished tasks always return `Some(0.0)`.
+    #[test]
+    fn time_remaining_finished_returns_zero() {
+        let mut task = Task::new(0, "t", Some(10.0));
+        task.completed = 10.0;
+        task.finished_time = Some(5.0);
+        assert_eq!(task.time_remaining(), Some(0.0));
+    }
 }
 
 /// Format a duration in seconds as `H:MM:SS`.

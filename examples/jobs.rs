@@ -30,7 +30,7 @@ fn main() {
 
     // Add tasks: overall tracks total steps across all jobs
     let total: f64 = jobs.iter().sum();
-    let master_task = progress.add_task("overall", Some(total));
+    let master_task = progress.add_task("overall", Some(total), true);
 
     progress.start();
 
@@ -39,7 +39,7 @@ fn main() {
         thread::sleep(Duration::from_millis(100));
 
         // Create a new task for each job (simulating reset behavior)
-        let job_task = progress.add_task(&format!("job #{}", job_no), Some(job_steps));
+        let job_task = progress.add_task(&format!("job #{}", job_no), Some(job_steps), true);
 
         // Simulate work on this job
         let mut completed = 0.0;
@@ -55,7 +55,7 @@ fn main() {
         progress.refresh();
 
         // Hide the completed job task
-        progress.update(job_task, None, None, None, None, Some(false));
+        progress.update(job_task, None, None, None, None, Some(false), None);
 
         progress.log(&format!("Job #{} is complete", job_no));
     }

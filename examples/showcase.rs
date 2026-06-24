@@ -492,9 +492,9 @@ Gilt supports **bold**, *italic*, and `inline code` in markdown.
             .with_console(progress_console)
             .with_auto_refresh(false);
 
-        let task1 = progress.add_task("Downloading dataset.tar.gz", Some(1000.0));
-        let task2 = progress.add_task("Processing model-weights.bin", Some(500.0));
-        let task3 = progress.add_task("Compiling config.json", Some(200.0));
+        let task1 = progress.add_task("Downloading dataset.tar.gz", Some(1000.0), true);
+        let task2 = progress.add_task("Processing model-weights.bin", Some(500.0), true);
+        let task3 = progress.add_task("Compiling config.json", Some(200.0), true);
 
         progress.start();
 

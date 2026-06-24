@@ -201,13 +201,13 @@ fn scene_progress(dir: &Path) {
     .with_auto_refresh(false)
     .with_disable(true); // keep it static — no live display at all
 
-    let t1 = progress.add_task("Compiling crates…", Some(100.0));
-    let t2 = progress.add_task("Running tests…", Some(200.0));
-    let t3 = progress.add_task("Generating docs…", Some(50.0));
+    let t1 = progress.add_task("Compiling crates…", Some(100.0), true);
+    let t2 = progress.add_task("Running tests…", Some(200.0), true);
+    let t3 = progress.add_task("Generating docs…", Some(50.0), true);
 
-    progress.update(t1, Some(62.0), None, None, None, None);
-    progress.update(t2, Some(130.0), None, None, None, None);
-    progress.update(t3, Some(18.0), None, None, None, None);
+    progress.update(t1, Some(62.0), None, None, None, None, None);
+    progress.update(t2, Some(130.0), None, None, None, None, None);
+    progress.update(t3, Some(18.0), None, None, None, None, None);
 
     let table = progress.make_tasks_table();
     c.print(&Rule::with_title("build progress"));

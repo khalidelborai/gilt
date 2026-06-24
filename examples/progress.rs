@@ -18,9 +18,9 @@ fn main() {
         .with_auto_refresh(false);
 
     // Simulate three concurrent downloads at different speeds.
-    let task1 = progress.add_task("Downloading dataset.tar.gz", Some(1000.0));
-    let task2 = progress.add_task("Downloading model-weights.bin", Some(500.0));
-    let task3 = progress.add_task("Downloading config.json", Some(200.0));
+    let task1 = progress.add_task("Downloading dataset.tar.gz", Some(1000.0), true);
+    let task2 = progress.add_task("Downloading model-weights.bin", Some(500.0), true);
+    let task3 = progress.add_task("Downloading config.json", Some(200.0), true);
 
     progress.start();
 

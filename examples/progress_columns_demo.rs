@@ -31,7 +31,7 @@ fn main() {
             Box::new(TextColumn::new("{task.description}")),
         ];
         let mut progress = Progress::new(columns);
-        let task = progress.add_task("Loading with spinner", None);
+        let task = progress.add_task("Loading with spinner", None, true);
         progress.start();
 
         for _ in 0..30 {
@@ -53,7 +53,7 @@ fn main() {
             Box::new(TimeElapsedColumn),
         ];
         let mut progress = Progress::new(columns);
-        let task = progress.add_task("Processing with elapsed time", Some(50.0));
+        let task = progress.add_task("Processing with elapsed time", Some(50.0), true);
         progress.start();
 
         for _ in 0..50 {
@@ -75,7 +75,7 @@ fn main() {
             Box::new(TimeRemainingColumn::default()),
         ];
         let mut progress = Progress::new(columns);
-        let task = progress.add_task("Processing with ETA", Some(50.0));
+        let task = progress.add_task("Processing with ETA", Some(50.0), true);
         progress.start();
 
         for _ in 0..50 {
@@ -97,7 +97,7 @@ fn main() {
             Box::new(FileSizeColumn),
         ];
         let mut progress = Progress::new(columns);
-        let task = progress.add_task("Uploading file", None);
+        let task = progress.add_task("Uploading file", None, true);
         progress.start();
 
         for _ in 0..40 {
@@ -120,7 +120,7 @@ fn main() {
         ];
         let mut progress = Progress::new(columns);
         let total = 10.0 * 1024.0 * 1024.0; // 10 MB
-        let task = progress.add_task("Downloading", Some(total));
+        let task = progress.add_task("Downloading", Some(total), true);
         progress.start();
 
         for _ in 0..50 {
@@ -143,7 +143,7 @@ fn main() {
         ];
         let mut progress = Progress::new(columns);
         let total = 50.0 * 1024.0 * 1024.0; // 50 MB
-        let task = progress.add_task("Transferring", Some(total));
+        let task = progress.add_task("Transferring", Some(total), true);
         progress.start();
 
         for _ in 0..50 {
@@ -169,7 +169,7 @@ fn main() {
         ];
         let mut progress = Progress::new(columns);
         let total = 100.0 * 1024.0 * 1024.0; // 100 MB
-        let task = progress.add_task("Mega download", Some(total));
+        let task = progress.add_task("Mega download", Some(total), true);
         progress.start();
 
         for _ in 0..60 {
@@ -193,9 +193,9 @@ fn main() {
         ];
         let mut progress = Progress::new(columns);
 
-        let task1 = progress.add_task("Task A", Some(100.0));
-        let task2 = progress.add_task("Task B", Some(100.0));
-        let task3 = progress.add_task("Task C", Some(100.0));
+        let task1 = progress.add_task("Task A", Some(100.0), true);
+        let task2 = progress.add_task("Task B", Some(100.0), true);
+        let task3 = progress.add_task("Task C", Some(100.0), true);
 
         progress.start();
 

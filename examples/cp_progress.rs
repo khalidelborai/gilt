@@ -46,7 +46,7 @@ fn copy_with_progress(src_path: &str, dst_path: &str) -> io::Result<()> {
         .and_then(|n| n.to_str())
         .unwrap_or(src_path);
 
-    let task_id = progress.add_task(description, Some(total_bytes));
+    let task_id = progress.add_task(description, Some(total_bytes), true);
     progress.start();
 
     let mut buf = [0u8; CHUNK_SIZE];

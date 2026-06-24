@@ -133,16 +133,25 @@ fn spinner_column_animates_with_elapsed() {
 }
 
 #[test]
-fn download_column_uses_decimal_units_below_threshold() {
+fn download_column_uses_shared_unit_from_max() {
+    // completed=1500 B, total=2 MB. Before the P2 fix the completed side
+    // would show "kB" while the total showed "MB" (inconsistent units).
+    // After the fix, both sides use the same magnitude — the larger of
+    // completed and total — so both render in MB.
     let mut task = Task::new(0, "t", Some(2_000_000.0));
-    task.completed = 1_500.0; // 1.5 kB
+    task.completed = 1_500.0;
 
     let col = DownloadColumn::new();
     let rendered = col.render(&task).plain().to_string();
-    // Decimal units: should contain "kB"
+    // Both sides must be in the same unit (MB, driven by the 2 MB total).
+    let lower = rendered.to_lowercase();
     assert!(
-        rendered.contains("kB"),
-        "1500 bytes should render with 'kB', got: {rendered}"
+        !lower.contains("kb"),
+        "completed side must not use kB when total is 2 MB (shared-unit fix); got: {rendered}"
+    );
+    assert!(
+        lower.contains("mb"),
+        "both sides should be in MB; got: {rendered}"
     );
 }
 
@@ -170,7 +179,7 @@ fn transfer_speed_column_after_some_advance() {
         .with_disable(true)
         .with_get_time(move || *clock_clone.lock().unwrap());
 
-    let id: TaskId = progress.add_task("dl", Some(1000.0));
+    let id: TaskId = progress.add_task("dl", Some(1000.0), true);
 
     // First sample at t=0
     progress.advance(id, 100.0);
@@ -198,9 +207,9 @@ fn transfer_speed_column_after_some_advance() {
 #[test]
 fn task_ids_are_monotonic() {
     let mut p = Progress::new(vec![]).with_disable(true);
-    let id0 = p.add_task("a", Some(10.0));
-    let id1 = p.add_task("b", Some(10.0));
-    let id2 = p.add_task("c", Some(10.0));
+    let id0 = p.add_task("a", Some(10.0), true);
+    let id1 = p.add_task("b", Some(10.0), true);
+    let id2 = p.add_task("c", Some(10.0), true);
     assert!(id0 < id1, "task IDs should be monotonically increasing");
     assert!(id1 < id2, "task IDs should be monotonically increasing");
 }
@@ -208,7 +217,7 @@ fn task_ids_are_monotonic() {
 #[test]
 fn task_finished_when_completed_equals_total() {
     let mut p = Progress::new(vec![]).with_disable(true);
-    let id = p.add_task("work", Some(10.0));
+    let id = p.add_task("work", Some(10.0), true);
 
     // Advance to exactly total
     p.advance(id, 10.0);
@@ -238,7 +247,7 @@ fn task_speed_window_estimate() {
         .with_disable(true)
         .with_get_time(move || *clock_clone.lock().unwrap());
 
-    let id = p.add_task("work", Some(1000.0));
+    let id = p.add_task("work", Some(1000.0), true);
 
     // Simulate 10 advances of 100 units each, 100ms apart
     for i in 1..=10_u64 {
@@ -267,7 +276,7 @@ fn task_progress_finished_speed_freezes_after_completion() {
         .with_disable(true)
         .with_get_time(move || *clock_clone.lock().unwrap());
 
-    let id = p.add_task("work", Some(100.0));
+    let id = p.add_task("work", Some(100.0), true);
 
     // Build up two samples for a speed estimate
     *clock.lock().unwrap() = 0.5;
@@ -323,7 +332,7 @@ fn reset_clears_completed_and_restarts_start_time() {
         .with_disable(true)
         .with_get_time(move || *clock_clone.lock().unwrap());
 
-    let id = p.add_task("work", Some(100.0));
+    let id = p.add_task("work", Some(100.0), true);
     p.advance(id, 50.0);
 
     // Advance clock so reset() records a new start_time
@@ -354,7 +363,7 @@ fn expand_bar_fills_remaining_width() {
     .with_disable(true)
     .with_expand(true);
 
-    p.add_task("work", Some(100.0));
+    p.add_task("work", Some(100.0), true);
 
     let table = p.make_tasks_table();
     assert!(

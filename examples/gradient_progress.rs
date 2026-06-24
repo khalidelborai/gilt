@@ -21,7 +21,7 @@ fn main() {
     ];
 
     let mut progress = Progress::new(columns);
-    let task = progress.add_task("Rendering", Some(100.0));
+    let task = progress.add_task("Rendering", Some(100.0), true);
 
     progress.start();
     for _ in 0..100 {

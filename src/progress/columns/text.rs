@@ -110,8 +110,51 @@ impl ProgressColumn for TextColumn {
     fn render(&self, task: &Task) -> Text {
         let content = self.substitute(task);
         let style = self.style.clone().unwrap_or_else(Style::null);
-        let mut text = Text::new(&content, style);
+        // Attempt to parse markup tags so [bold]text[/bold]-style syntax in
+        // templates is honoured.  Fall back to a plain Text::new when the
+        // content is not valid markup (rich parity — P2 fix).
+        let mut text = Text::from_markup(&content).unwrap_or_else(|_| Text::new(&content, style));
         text.justify = Some(self.justify);
         text
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// TextColumn must parse markup in the substituted string.
+    #[test]
+    fn text_column_parses_markup() {
+        let mut task = Task::new(0, "hello", Some(100.0));
+        task.fields.insert("msg".to_string(), "world".to_string());
+        // Template with markup tags — the plain content should be "hello"
+        // regardless of the markup tags wrapping it.
+        let col = TextColumn::new("[bold]{task.description}[/bold]");
+        let text = col.render(&task);
+        // plain() strips markup; the content must still be "hello".
+        assert_eq!(
+            text.plain(),
+            "hello",
+            "markup should be parsed, plain text preserved"
+        );
+    }
+
+    /// Invalid markup falls back to plain text without panicking.
+    #[test]
+    fn text_column_invalid_markup_falls_back_gracefully() {
+        let task = Task::new(0, "oops [unclosed", Some(10.0));
+        let col = TextColumn::new("{task.description}");
+        // Must not panic; plain output should contain the description.
+        let text = col.render(&task);
+        assert!(
+            text.plain().contains("oops"),
+            "fallback should preserve plain text, got: {}",
+            text.plain()
+        );
     }
 }

@@ -124,7 +124,7 @@ fn main() {
     ];
 
     let mut progress = Progress::new(custom_columns);
-    let task_id = progress.add_task("Custom columns task", Some(30.0));
+    let task_id = progress.add_task("Custom columns task", Some(30.0), true);
     progress.start();
 
     for _ in 0..30 {
@@ -179,7 +179,7 @@ fn main() {
         Box::new(TextColumn::new("dots spinner")),
     ];
     let mut progress = Progress::new(custom_columns_dots);
-    let task_id = progress.add_task("", Some(10.0));
+    let task_id = progress.add_task("", Some(10.0), true);
     progress.start();
     for _ in 0..10 {
         thread::sleep(Duration::from_millis(80));
@@ -194,7 +194,7 @@ fn main() {
         Box::new(TextColumn::new("line spinner")),
     ];
     let mut progress = Progress::new(custom_columns_line);
-    let task_id = progress.add_task("", Some(10.0));
+    let task_id = progress.add_task("", Some(10.0), true);
     progress.start();
     for _ in 0..10 {
         thread::sleep(Duration::from_millis(80));
@@ -209,7 +209,7 @@ fn main() {
         Box::new(TextColumn::new("moon spinner")),
     ];
     let mut progress = Progress::new(custom_columns_moon);
-    let task_id = progress.add_task("", Some(10.0));
+    let task_id = progress.add_task("", Some(10.0), true);
     progress.start();
     for _ in 0..10 {
         thread::sleep(Duration::from_millis(80));

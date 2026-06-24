@@ -15,34 +15,25 @@ fn format_speed_si(speed: f64) -> String {
     }
 }
 
-/// A column that shows `completed/total` counts.
+/// A column that shows percentage complete as `N%`.
 ///
 /// When `total` is `None` (indeterminate task) and `show_speed` is enabled
 /// (the default), renders the current speed as `N it/s` — matching rich's
 /// behaviour for indeterminate progress.
+///
+/// This replaces the previous `completed/total` rendering with the
+/// `percentage` format that rich uses for `TaskProgressColumn` (P2 fix).
 #[derive(Debug, Clone)]
 pub struct TaskProgressColumn {
-    /// Separator between completed and total.
-    pub separator: String,
     /// When `true` (default), indeterminate tasks show `N it/s` instead of
-    /// `N/?`.
+    /// nothing.
     pub show_speed: bool,
 }
 
 impl TaskProgressColumn {
-    /// Create a new TaskProgressColumn with the default separator.
+    /// Create a new TaskProgressColumn.
     pub fn new() -> Self {
-        TaskProgressColumn {
-            separator: "/".to_string(),
-            show_speed: true,
-        }
-    }
-
-    /// Builder: set the separator.
-    #[must_use]
-    pub fn with_separator(mut self, sep: &str) -> Self {
-        self.separator = sep.to_string();
-        self
+        TaskProgressColumn { show_speed: true }
     }
 
     /// Builder: control whether indeterminate tasks show speed.
@@ -62,21 +53,21 @@ impl Default for TaskProgressColumn {
 impl ProgressColumn for TaskProgressColumn {
     fn render(&self, task: &Task) -> Text {
         let style = Style::parse("progress.percentage");
-        let completed = task.completed;
         match task.total {
-            Some(t) => {
-                let total_str = format!("{t}");
-                Text::new(&format!("{completed}{}{total_str}", self.separator), style)
+            Some(_) => {
+                // Determinate: show percentage (rich parity).
+                let pct = task.percentage();
+                Text::new(&format!("{pct:.0}%"), style)
             }
             None => {
                 // Indeterminate task: show speed when available and enabled.
                 if self.show_speed {
                     if let Some(speed) = task.speed() {
                         let speed_str = format_speed_si(speed);
-                        return Text::new(&format!("{completed} {speed_str} it/s"), style);
+                        return Text::new(&format!("{} it/s", speed_str), style);
                     }
                 }
-                Text::new(&format!("{completed}{sep}?", sep = self.separator), style)
+                Text::new("--%", style)
             }
         }
     }
@@ -126,5 +117,55 @@ impl ProgressColumn for MofNCompleteColumn {
             &format!("{completed_str}{}{total_str}", self.separator),
             style,
         )
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// TaskProgressColumn must render percentage (e.g. "50%") not "50/100".
+    #[test]
+    fn task_progress_column_renders_percent() {
+        let mut task = Task::new(0, "t", Some(100.0));
+        task.completed = 50.0;
+        let col = TaskProgressColumn::default();
+        let rendered = col.render(&task).plain().to_string();
+        assert_eq!(rendered, "50%", "should render '50%', got: {rendered}");
+    }
+
+    /// At 0% should render "0%".
+    #[test]
+    fn task_progress_column_renders_zero_percent() {
+        let task = Task::new(0, "t", Some(100.0));
+        let col = TaskProgressColumn::default();
+        let rendered = col.render(&task).plain().to_string();
+        assert_eq!(rendered, "0%", "should render '0%', got: {rendered}");
+    }
+
+    /// At 100% should render "100%".
+    #[test]
+    fn task_progress_column_renders_100_percent() {
+        let mut task = Task::new(0, "t", Some(100.0));
+        task.completed = 100.0;
+        let col = TaskProgressColumn::default();
+        let rendered = col.render(&task).plain().to_string();
+        assert_eq!(rendered, "100%", "should render '100%', got: {rendered}");
+    }
+
+    /// Indeterminate task with no speed renders "--%".
+    #[test]
+    fn task_progress_column_indeterminate_no_speed() {
+        let task = Task::new(0, "t", None);
+        let col = TaskProgressColumn::default();
+        let rendered = col.render(&task).plain().to_string();
+        assert_eq!(
+            rendered, "--%",
+            "indeterminate should render '--%', got: {rendered}"
+        );
     }
 }

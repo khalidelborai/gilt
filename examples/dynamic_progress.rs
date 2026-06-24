@@ -32,17 +32,17 @@ fn main() {
     // Start with three initial compile tasks.
     let mut jobs: Vec<Job> = vec![
         Job {
-            task_id: progress.add_task("Compiling core...", Some(100.0)),
+            task_id: progress.add_task("Compiling core...", Some(100.0), true),
             total: 100.0,
             speed: 5.0,
         },
         Job {
-            task_id: progress.add_task("Compiling utils...", Some(60.0)),
+            task_id: progress.add_task("Compiling utils...", Some(60.0), true),
             total: 60.0,
             speed: 8.0,
         },
         Job {
-            task_id: progress.add_task("Compiling macros...", Some(40.0)),
+            task_id: progress.add_task("Compiling macros...", Some(40.0), true),
             total: 40.0,
             speed: 4.0,
         },
@@ -81,7 +81,7 @@ fn main() {
         // Add follow-up tasks when a job finishes for the first time.
         while finished_count < new_finished && next_follow_up < follow_ups.len() {
             let (desc, total, speed) = follow_ups[next_follow_up];
-            let tid = progress.add_task(desc, Some(total));
+            let tid = progress.add_task(desc, Some(total), true);
             jobs.push(Job {
                 task_id: tid,
                 total,

@@ -369,7 +369,7 @@ impl ProgressResponse {
 
         // Create progress display
         let mut progress = create_progress(total);
-        let task_id = progress.add_task(&description, total);
+        let task_id = progress.add_task(&description, total, true);
         progress.start();
 
         Self {
@@ -575,7 +575,7 @@ impl ProgressResponse {
         if let Some(mut progress) = self.progress.take() {
             // Mark task as complete
             if let Some(total) = self.total {
-                progress.update(self.task_id, Some(total), None, None, None, None);
+                progress.update(self.task_id, Some(total), None, None, None, None, None);
             }
             progress.stop();
         }

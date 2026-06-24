@@ -67,7 +67,7 @@ fn main() {
     // Add all download tasks.
     let task_ids: Vec<_> = downloads
         .iter()
-        .map(|d| progress.add_task(d.name, Some(d.size)))
+        .map(|d| progress.add_task(d.name, Some(d.size), true))
         .collect();
 
     progress.start();

@@ -1,5 +1,6 @@
 //! Main progress tracking orchestrator.
 
+use std::collections::HashMap;
 use std::io::{self, Read, Seek, SeekFrom};
 
 use crate::console::{Console, ConsoleOptions, Renderable};
@@ -20,11 +21,33 @@ use crate::utils::filesize;
 ///
 /// Each column is responsible for producing a [`Text`] renderable from
 /// a [`Task`] reference.
+///
+/// The default `render_renderable` method wraps the `Text` returned by
+/// [`render`] as a [`RenderableArc`] so columns can participate in the
+/// richer renderable pipeline without requiring every implementor to change
+/// its return type (least-breaking option — P2 fix, item 3).  Custom columns
+/// that need to return non-`Text` renderables can override
+/// `render_renderable` directly while keeping `render` as a no-op.
 pub trait ProgressColumn: Send + Sync {
     /// Render this column for the given task.
     fn render(&self, task: &Task) -> Text;
 
-    /// Maximum refresh rate in seconds, or None for unlimited.
+    /// Render this column as a [`RenderableArc`] for richer renderable support.
+    ///
+    /// The default implementation wraps the result of [`render`] in an `Arc`.
+    /// Override this to return a custom `Renderable` type (e.g. an image, a
+    /// styled widget) without changing the `render` signature.
+    fn render_renderable(&self, task: &Task) -> crate::console::RenderableArc {
+        use std::sync::Arc;
+        Arc::new(self.render(task))
+    }
+
+    /// Maximum refresh rate in Hz (refreshes per second), or `None` for
+    /// unlimited.
+    ///
+    /// When `Some(hz)`, the render loop will skip re-rendering this column
+    /// if the elapsed time since the last render is less than `1.0 / hz`
+    /// seconds — matching rich's `ProgressColumn.max_refresh` parity (P2 fix).
     fn max_refresh(&self) -> Option<f64> {
         None
     }
@@ -61,11 +84,47 @@ impl DownloadColumn {
     }
 
     /// Format a byte count using the configured unit system.
+    ///
+    /// This uses independent magnitude selection based on `size` alone.
+    /// Prefer [`format_size_with_ref`](Self::format_size_with_ref) when
+    /// formatting a pair of values (completed/total) to keep units consistent.
+    #[allow(dead_code)]
     pub(crate) fn format_size(&self, size: u64) -> String {
         if self.binary_units {
             filesize::binary(size, 1, " ")
         } else {
             filesize::decimal(size, 1, " ")
+        }
+    }
+
+    /// Format `size` using the same magnitude bracket as `reference`.
+    ///
+    /// This keeps the unit consistent between the completed and total values
+    /// so the display doesn't flip from "kB" to "MB" mid-download.
+    pub(crate) fn format_size_with_ref(&self, size: u64, reference: u64) -> String {
+        // Determine which suffix/divisor to use from the reference magnitude.
+        if self.binary_units {
+            // IEC: GiB ≥ 2^30, MiB ≥ 2^20, KiB ≥ 2^10
+            if reference >= 1 << 30 {
+                format!("{:.1} GiB", size as f64 / (1u64 << 30) as f64)
+            } else if reference >= 1 << 20 {
+                format!("{:.1} MiB", size as f64 / (1u64 << 20) as f64)
+            } else if reference >= 1 << 10 {
+                format!("{:.1} KiB", size as f64 / (1u64 << 10) as f64)
+            } else {
+                format!("{size} B")
+            }
+        } else {
+            // SI: GB ≥ 1e9, MB ≥ 1e6, kB ≥ 1e3
+            if reference >= 1_000_000_000 {
+                format!("{:.1} GB", size as f64 / 1_000_000_000.0)
+            } else if reference >= 1_000_000 {
+                format!("{:.1} MB", size as f64 / 1_000_000.0)
+            } else if reference >= 1_000 {
+                format!("{:.1} kB", size as f64 / 1_000.0)
+            } else {
+                format!("{size} B")
+            }
         }
     }
 }
@@ -78,9 +137,16 @@ impl Default for DownloadColumn {
 
 impl ProgressColumn for DownloadColumn {
     fn render(&self, task: &Task) -> Text {
-        let completed = self.format_size(task.completed as u64);
+        // Use the same unit magnitude for both sides of the slash: derive the
+        // unit from max(completed, total) so the display is consistent and the
+        // unit doesn't flip as the download progresses (rich parity, P2 fix).
+        let reference_bytes = match task.total {
+            Some(t) => (task.completed as u64).max(t as u64),
+            None => task.completed as u64,
+        };
+        let completed = self.format_size_with_ref(task.completed as u64, reference_bytes);
         let total = match task.total {
-            Some(t) => self.format_size(t as u64),
+            Some(t) => self.format_size_with_ref(t as u64, reference_bytes),
             None => "?".to_string(),
         };
         let style = Style::parse("progress.download");
@@ -207,7 +273,7 @@ impl ProgressColumn for RenderableColumn {
 /// use gilt::progress::{Progress, BarColumn, TextColumn, TaskProgressColumn, TimeRemainingColumn};
 ///
 /// let mut progress = Progress::new(Progress::default_columns());
-/// let task_id = progress.add_task("Downloading...", Some(100.0));
+/// let task_id = progress.add_task("Downloading...", Some(100.0), true);
 /// progress.start();
 /// for i in 0..100 {
 ///     progress.advance(task_id, 1.0);
@@ -235,11 +301,23 @@ pub struct Progress {
     ///
     /// Default: `false`. Enable with [`Progress::with_taskbar`].
     taskbar: bool,
+    /// Per-column last-render timestamps (indexed by column position).
+    ///
+    /// Used to implement `max_refresh` rate-limiting: a column with
+    /// `max_refresh = Some(hz)` is skipped when the elapsed time since its
+    /// last render is less than `1 / hz` seconds.
+    column_last_rendered: Vec<f64>,
+    /// Per-column × per-task cached Text output for rate-limited columns.
+    ///
+    /// Index: `[column_idx][task_idx]`. Populated on first render; reused
+    /// when the column is within its `max_refresh` interval.
+    column_render_cache: Vec<Vec<Text>>,
 }
 
 impl Progress {
     /// Create a new Progress with the given columns.
     pub fn new(columns: Vec<Box<dyn ProgressColumn>>) -> Self {
+        let n = columns.len();
         Progress {
             columns,
             tasks: Vec::new(),
@@ -252,6 +330,8 @@ impl Progress {
             disable: false,
             expand: false,
             taskbar: false,
+            column_last_rendered: vec![0.0; n],
+            column_render_cache: vec![Vec::new(); n],
         }
     }
 
@@ -331,7 +411,7 @@ impl Progress {
     /// let mut progress = Progress::new(Progress::default_columns())
     ///     .with_taskbar(true);
     /// progress.start();
-    /// progress.add_task("demo", Some(100.0));
+    /// progress.add_task("demo", Some(100.0), true);
     /// progress.stop();
     /// ```
     #[must_use]
@@ -354,14 +434,18 @@ impl Progress {
 
     /// Add a new task and return its ID.
     ///
-    /// The task is created with `completed = 0.0` and is automatically
-    /// started (start_time is set).
-    pub fn add_task(&mut self, description: &str, total: Option<f64>) -> TaskId {
+    /// When `start` is `true` (the default for most callers), `start_time` is
+    /// set immediately. When `start` is `false` the task is created in a
+    /// not-yet-started state and must be explicitly started with
+    /// [`start_task`](Self::start_task).
+    pub fn add_task(&mut self, description: &str, total: Option<f64>, start: bool) -> TaskId {
         let id = self.task_id_counter;
         self.task_id_counter += 1;
         let mut task = Task::new(id, description, total);
-        let now = (self.get_time)();
-        task.start_time = Some(now);
+        if start {
+            let now = (self.get_time)();
+            task.start_time = Some(now);
+        }
         self.tasks.push(task);
         id
     }
@@ -370,9 +454,12 @@ impl Progress {
     ///
     /// Any parameter set to `None` is left unchanged. Use `advance` to
     /// set a relative increment instead of an absolute `completed` value.
+    /// `fields`, when `Some`, is merged into `task.fields` (existing keys
+    /// are overwritten; unmentioned keys are preserved).
     ///
     /// Refreshes the live display after the state mutation so the new
     /// values appear without waiting for the next auto-refresh tick.
+    #[allow(clippy::too_many_arguments)]
     pub fn update(
         &mut self,
         task_id: TaskId,
@@ -381,6 +468,7 @@ impl Progress {
         advance: Option<f64>,
         description: Option<&str>,
         visible: Option<bool>,
+        fields: Option<HashMap<String, String>>,
     ) {
         let now = (self.get_time)();
         let mut changed = false;
@@ -412,6 +500,10 @@ impl Progress {
                 task.visible = v;
                 changed = true;
             }
+            if let Some(f) = fields {
+                task.fields.extend(f);
+                changed = true;
+            }
 
             // Record a speed sample only when something actually changed —
             // recording on no-op calls would corrupt the speed estimate.
@@ -436,7 +528,7 @@ impl Progress {
     ///
     /// Triggers a live-display refresh through [`update`](Self::update).
     pub fn advance(&mut self, task_id: TaskId, advance: f64) {
-        self.update(task_id, None, None, Some(advance), None, None);
+        self.update(task_id, None, None, Some(advance), None, None, None);
     }
 
     /// Mark a task as started (set start_time to now).
@@ -564,7 +656,7 @@ impl Progress {
     where
         I: IntoIterator,
     {
-        let task_id = self.add_task(description, total);
+        let task_id = self.add_task(description, total, true);
         ProgressTracker {
             inner: iter.into_iter(),
             progress: self,
@@ -607,7 +699,7 @@ impl Progress {
     ) -> io::Result<ProgressReader<'_, std::fs::File>> {
         let file = std::fs::File::open(path)?;
         let len = file.metadata()?.len();
-        let task_id = self.add_task(description, Some(len as f64));
+        let task_id = self.add_task(description, Some(len as f64), true);
         // Sound: the callback captures `&mut *self` (a re-borrow) with the
         // explicit `'_` lifetime that ties the returned ProgressReader to
         // this `&mut self` borrow.  The borrow checker therefore prevents any
@@ -649,7 +741,7 @@ impl Progress {
     ) -> io::Result<ProgressReader<'_, R>> {
         let len = reader.seek(SeekFrom::End(0))?;
         reader.seek(SeekFrom::Start(0))?;
-        let task_id = self.add_task(description, Some(len as f64));
+        let task_id = self.add_task(description, Some(len as f64), true);
         // Sound: same lifetime-borrow approach as `open_file`.
         Ok(ProgressReader::new(reader, move |n| {
             self.advance(task_id, n as f64);
@@ -730,7 +822,7 @@ impl Progress {
         if self.disable {
             return;
         }
-        let table_text = self.render_tasks_text();
+        let table_text = self.render_tasks_text_limited();
         self.live.update_renderable(table_text, true);
         // Emit taskbar progress update if enabled.
         if self.taskbar {
@@ -746,7 +838,7 @@ impl Progress {
         if self.disable {
             return;
         }
-        let table_text = self.render_tasks_text();
+        let table_text = self.render_tasks_text_limited();
         // refresh = false: just update s.renderable so the next tick paints
         // the fresh content; do not synchronously call write_segments.
         self.live.update_renderable(table_text, false);
@@ -800,6 +892,8 @@ impl Progress {
     /// Render the tasks table as a single Text for the live display.
     ///
     /// Preserves styled spans from each column render (bar colors, etc.).
+    /// This path does not apply `max_refresh` rate-limiting; it is used by
+    /// the `Renderable` impl and direct render calls.
     fn render_tasks_text(&self) -> Text {
         let visible_tasks: Vec<&Task> = self.tasks.iter().filter(|t| t.visible).collect();
         if visible_tasks.is_empty() {
@@ -819,6 +913,98 @@ impl Progress {
                 }
                 let rendered = col.render(task);
                 result.append_text(&rendered);
+            }
+        }
+
+        result
+    }
+
+    /// Render the tasks table as a single Text, honouring per-column
+    /// `max_refresh` rate-limits (P2 fix — rich parity).
+    ///
+    /// Columns that have a `max_refresh(hz)` limit are skipped when the
+    /// elapsed time since their last render is shorter than `1.0 / hz`
+    /// seconds.  Skipped columns reuse their last cached [`Text`] output.
+    fn render_tasks_text_limited(&mut self) -> Text {
+        let visible_tasks: Vec<usize> = self
+            .tasks
+            .iter()
+            .enumerate()
+            .filter_map(|(i, t)| if t.visible { Some(i) } else { None })
+            .collect();
+
+        if visible_tasks.is_empty() {
+            return Text::empty();
+        }
+
+        let now = (self.get_time)();
+        let ncols = self.columns.len();
+
+        // Ensure the per-column metadata vecs are the right length.
+        while self.column_last_rendered.len() < ncols {
+            self.column_last_rendered.push(0.0);
+        }
+        while self.column_render_cache.len() < ncols {
+            self.column_render_cache.push(Vec::new());
+        }
+
+        // Determine which columns need re-rendering.
+        let mut should_render: Vec<bool> = (0..ncols)
+            .map(|j| match self.columns[j].max_refresh() {
+                Some(hz) if hz > 0.0 => {
+                    let min_interval = 1.0 / hz;
+                    (now - self.column_last_rendered[j]) >= min_interval
+                }
+                _ => true,
+            })
+            .collect();
+
+        // Render all columns that need it, into temporary storage.
+        // We collect into a separate Vec to avoid borrow conflicts.
+        let rendered: Vec<Option<Vec<Text>>> = (0..ncols)
+            .map(|j| {
+                if should_render[j] {
+                    let texts: Vec<Text> = visible_tasks
+                        .iter()
+                        .map(|&task_idx| self.columns[j].render(&self.tasks[task_idx]))
+                        .collect();
+                    Some(texts)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        // Commit fresh renders into the cache and update timestamps.
+        for (j, fresh) in rendered.into_iter().enumerate() {
+            if let Some(texts) = fresh {
+                self.column_last_rendered[j] = now;
+                self.column_render_cache[j] = texts;
+            } else if self.column_render_cache[j].len() < visible_tasks.len() {
+                // Cache is stale (e.g. tasks were added): force a render.
+                should_render[j] = true;
+                self.column_render_cache[j] = visible_tasks
+                    .iter()
+                    .map(|&task_idx| self.columns[j].render(&self.tasks[task_idx]))
+                    .collect();
+                self.column_last_rendered[j] = now;
+            }
+        }
+
+        let separator = Text::new(" ", Style::null());
+        let mut result = Text::empty();
+
+        for (ti, _task_idx) in visible_tasks.iter().enumerate() {
+            if ti > 0 {
+                result.append_str("\n", None);
+            }
+            for j in 0..ncols {
+                if j > 0 {
+                    result.append_text(&separator);
+                }
+                if let Some(cached) = self.column_render_cache[j].get(ti) {
+                    result.append_text(cached);
+                }
             }
         }
 
@@ -892,7 +1078,7 @@ where
     /// Create a new TrackIterator wrapping the given iterator.
     pub fn new(iter: I, description: &str, total: Option<f64>) -> Self {
         let mut progress = Progress::new(Progress::default_columns()).with_auto_refresh(false);
-        let task_id = progress.add_task(description, total);
+        let task_id = progress.add_task(description, total, true);
         TrackIterator {
             inner: iter,
             progress,
@@ -1025,7 +1211,7 @@ impl<I: Iterator> ProgressIter<I> {
     /// Create a new `ProgressIter` wrapping the given iterator.
     fn new(iter: I, description: &str, total: Option<f64>) -> Self {
         let mut progress = Progress::new(Progress::default_columns()).with_auto_refresh(true);
-        let task_id = progress.add_task(description, total);
+        let task_id = progress.add_task(description, total, true);
         ProgressIter {
             inner: iter,
             progress,
@@ -1282,8 +1468,8 @@ mod tests {
     #[test]
     fn test_progress_overall_percent_basic() {
         let mut p = make_progress();
-        let t = p.add_task("demo", Some(100.0));
-        p.update(t, Some(50.0), None, None, None, None);
+        let t = p.add_task("demo", Some(100.0), true);
+        p.update(t, Some(50.0), None, None, None, None, None);
         let pct = p.overall_percent();
         assert_eq!(pct, Some(50), "50/100 should give 50%");
     }
@@ -1291,7 +1477,7 @@ mod tests {
     #[test]
     fn test_progress_overall_percent_no_total() {
         let mut p = make_progress();
-        p.add_task("indeterminate", None);
+        p.add_task("indeterminate", None, true);
         assert_eq!(
             p.overall_percent(),
             None,
@@ -1319,8 +1505,8 @@ mod tests {
             .with_console(recording_console)
             .with_auto_refresh(false); // manual refresh only
 
-        let t = p.add_task("demo", Some(100.0));
-        p.update(t, Some(50.0), None, None, None, None);
+        let t = p.add_task("demo", Some(100.0), true);
+        p.update(t, Some(50.0), None, None, None, None, None);
         // refresh() should emit Normal state + 50%.
         p.refresh();
 
@@ -1393,8 +1579,8 @@ mod tests {
         p1.start();
         p2.start();
 
-        let t1 = p1.add_task("task1", Some(10.0));
-        let t2 = p2.add_task("task2", Some(10.0));
+        let t1 = p1.add_task("task1", Some(10.0), true);
+        let t2 = p2.add_task("task2", Some(10.0), true);
 
         p1.advance(t1, 5.0);
         p2.advance(t2, 3.0);
@@ -1421,6 +1607,160 @@ mod tests {
 
         p2.stop();
         assert_eq!(p2.live_stack_depth(), 0, "p2 depth should be 0 after stop");
+    }
+
+    // -- Item 4: max_refresh rate-limiting -------------------------------------
+
+    /// A column with `max_refresh(Some(1.0))` should return the same cached
+    /// Text on subsequent renders within 1-second intervals.
+    #[test]
+    fn max_refresh_column_is_rate_limited() {
+        use std::sync::{Arc, Mutex};
+
+        // A column that counts how many times render() is called.
+        struct CountingColumn {
+            count: Arc<Mutex<u32>>,
+        }
+        impl ProgressColumn for CountingColumn {
+            fn render(&self, _task: &Task) -> Text {
+                let mut c = self.count.lock().unwrap();
+                *c += 1;
+                Text::new(&format!("render#{c}"), Style::null())
+            }
+            // Limit to 1 Hz — only re-render after ≥ 1 s has elapsed.
+            fn max_refresh(&self) -> Option<f64> {
+                Some(1.0)
+            }
+        }
+
+        let count = Arc::new(Mutex::new(0u32));
+        let clock = Arc::new(Mutex::new(0.0_f64));
+        let clock_c = clock.clone();
+
+        let col = CountingColumn {
+            count: count.clone(),
+        };
+        // Must NOT disable — mark_dirty is a no-op when disabled,
+        // so render_tasks_text_limited would never be called.
+        let mut p = Progress::new(vec![Box::new(col)])
+            .with_disable(false)
+            .with_auto_refresh(false)
+            .with_get_time(move || *clock_c.lock().unwrap());
+
+        let id = p.add_task("t", Some(10.0), true);
+
+        // First render at t=0 → must render (cache cold).
+        p.advance(id, 1.0); // triggers mark_dirty → render_tasks_text_limited
+        let c1 = *count.lock().unwrap();
+        assert!(c1 >= 1, "first render must happen");
+
+        // Second call within the 1-Hz interval (t=0.1 → elapsed=0.1 < 1.0).
+        *clock.lock().unwrap() = 0.1;
+        p.advance(id, 1.0);
+        let c2 = *count.lock().unwrap();
+        assert_eq!(
+            c2, c1,
+            "second render within interval must be skipped; count was {c2}"
+        );
+
+        // After interval expires (t=2.0 → elapsed ≥ 1.0) a fresh render must happen.
+        *clock.lock().unwrap() = 2.0;
+        p.advance(id, 1.0);
+        let c3 = *count.lock().unwrap();
+        assert!(
+            c3 > c2,
+            "render must happen after interval expires; count was {c3}"
+        );
+    }
+
+    // -- Item 5: DownloadColumn shared units -----------------------------------
+
+    /// Both sides of the slash must share the same unit magnitude.
+    #[test]
+    fn download_column_shared_unit() {
+        // completed=512 kB, total=1 MB → reference = 1 MB (SI) → both in MB.
+        let mut task = Task::new(0, "t", Some(1_000_000.0));
+        task.completed = 512_000.0;
+
+        let col = DownloadColumn::new();
+        let rendered = col.render(&task).plain().to_string();
+        // Both sides must be in MB (no "kB/MB" inconsistency).
+        let lower = rendered.to_lowercase();
+        assert!(
+            !lower.contains("kb"),
+            "completed side must not use kB when total is 1 MB; got: {rendered}"
+        );
+        assert!(
+            lower.contains("mb"),
+            "both sides should be in MB; got: {rendered}"
+        );
+    }
+
+    // -- Item 1: add_task start=false ------------------------------------------
+
+    /// `add_task` with `start=false` must NOT set `start_time`.
+    #[test]
+    fn add_task_start_false_leaves_start_time_unset() {
+        let mut p = make_progress();
+        let id = p.add_task("deferred", Some(10.0), false);
+        let task = p.get_task(id).unwrap();
+        assert!(
+            task.start_time.is_none(),
+            "start_time should be None when start=false"
+        );
+    }
+
+    /// `add_task` with `start=true` must set `start_time`.
+    #[test]
+    fn add_task_start_true_sets_start_time() {
+        let mut p = make_progress();
+        let id = p.add_task("eager", Some(10.0), true);
+        let task = p.get_task(id).unwrap();
+        assert!(
+            task.start_time.is_some(),
+            "start_time should be Some when start=true"
+        );
+    }
+
+    // -- Item 2: update fields merge -------------------------------------------
+
+    /// `update` with `fields=Some(...)` merges new keys into `task.fields`.
+    #[test]
+    fn update_fields_merges_into_task_fields() {
+        let mut p = make_progress();
+        let id = p.add_task("fielded", Some(10.0), true);
+
+        let mut f1 = HashMap::new();
+        f1.insert("key1".to_string(), "v1".to_string());
+        f1.insert("key2".to_string(), "v2".to_string());
+        p.update(id, None, None, None, None, None, Some(f1));
+
+        let task = p.get_task(id).unwrap();
+        assert_eq!(task.fields.get("key1").map(|s| s.as_str()), Some("v1"));
+        assert_eq!(task.fields.get("key2").map(|s| s.as_str()), Some("v2"));
+
+        // Merge again — existing keys overwritten, others preserved.
+        let mut f2 = HashMap::new();
+        f2.insert("key2".to_string(), "updated".to_string());
+        f2.insert("key3".to_string(), "v3".to_string());
+        p.update(id, None, None, None, None, None, Some(f2));
+
+        let task = p.get_task(id).unwrap();
+        assert_eq!(
+            task.fields.get("key1").map(|s| s.as_str()),
+            Some("v1"),
+            "key1 preserved"
+        );
+        assert_eq!(
+            task.fields.get("key2").map(|s| s.as_str()),
+            Some("updated"),
+            "key2 overwritten"
+        );
+        assert_eq!(
+            task.fields.get("key3").map(|s| s.as_str()),
+            Some("v3"),
+            "key3 added"
+        );
     }
 
     /// When `disable = true`, `start` and `stop` are no-ops so the live-stack

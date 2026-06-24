@@ -138,7 +138,7 @@ impl<S: Stream> ProgressStream<S> {
     /// Typically called via [`ProgressStreamExt::track_progress`] instead of directly.
     pub fn new(inner: S, description: &str, total: Option<f64>) -> Self {
         let mut progress = Progress::new(Progress::default_columns()).with_auto_refresh(true);
-        let task = progress.add_task(description, total);
+        let task = progress.add_task(description, total, true);
 
         ProgressStream {
             inner,
@@ -854,7 +854,7 @@ impl ProgressChannel {
     pub fn new(description: &str) -> (ProgressSender, Self) {
         let (sender, receiver) = mpsc::channel(1024);
         let mut progress = Progress::new(Progress::default_columns()).with_auto_refresh(true);
-        let task = progress.add_task(description, None);
+        let task = progress.add_task(description, None, true);
 
         (
             ProgressSender { sender },
@@ -878,7 +878,7 @@ impl ProgressChannel {
     pub fn with_total(description: &str, total: f64) -> (ProgressSender, Self) {
         let (sender, receiver) = mpsc::channel(1024);
         let mut progress = Progress::new(Progress::default_columns()).with_auto_refresh(true);
-        let task = progress.add_task(description, Some(total));
+        let task = progress.add_task(description, Some(total), true);
 
         (
             ProgressSender { sender },
@@ -927,7 +927,7 @@ impl ProgressChannel {
             match update {
                 ProgressUpdate::Set(completed) => {
                     self.progress
-                        .update(self.task, Some(completed), None, None, None, None);
+                        .update(self.task, Some(completed), None, None, None, None, None);
                     // Refresh display immediately after each update
                     self.progress.refresh();
                 }
@@ -936,8 +936,15 @@ impl ProgressChannel {
                     // (the auto-finish logic will set finished_time when completed >= total)
                     if let Some(task) = self.progress.get_task(self.task) {
                         if let Some(total) = task.total {
-                            self.progress
-                                .update(self.task, Some(total), None, None, None, None);
+                            self.progress.update(
+                                self.task,
+                                Some(total),
+                                None,
+                                None,
+                                None,
+                                None,
+                                None,
+                            );
                         }
                     }
                     self.progress.refresh();
@@ -1014,7 +1021,7 @@ pub mod fs {
 
         // Create progress tracker
         let mut progress = Progress::new(Progress::default_columns()).with_auto_refresh(true);
-        let task = progress.add_task(description, Some(total_size));
+        let task = progress.add_task(description, Some(total_size), true);
         progress.start();
 
         // Read in chunks
@@ -1028,7 +1035,7 @@ pub mod fs {
                 Ok(n) => {
                     buffer.extend_from_slice(&chunk[..n]);
                     bytes_read += n as u64;
-                    progress.update(task, Some(bytes_read as f64), None, None, None, None);
+                    progress.update(task, Some(bytes_read as f64), None, None, None, None, None);
                 }
                 Err(e) => {
                     progress.stop();
@@ -1076,7 +1083,7 @@ pub mod fs {
 
         // Create progress tracker
         let mut progress = Progress::new(Progress::default_columns()).with_auto_refresh(true);
-        let task = progress.add_task(description, Some(total_size));
+        let task = progress.add_task(description, Some(total_size), true);
         progress.start();
 
         // Copy in chunks
@@ -1092,7 +1099,15 @@ pub mod fs {
                         return Err(e);
                     }
                     total_copied += n as u64;
-                    progress.update(task, Some(total_copied as f64), None, None, None, None);
+                    progress.update(
+                        task,
+                        Some(total_copied as f64),
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                    );
                 }
                 Err(e) => {
                     progress.stop();

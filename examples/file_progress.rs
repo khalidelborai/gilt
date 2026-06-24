@@ -54,7 +54,7 @@ fn read_with_progress(file_path: &str) -> io::Result<usize> {
         .and_then(|n| n.to_str())
         .unwrap_or(file_path);
 
-    let task_id = progress.add_task(description, Some(total_bytes));
+    let task_id = progress.add_task(description, Some(total_bytes), true);
     progress.start();
 
     let mut line_count = 0usize;
