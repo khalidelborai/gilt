@@ -179,6 +179,29 @@ fn test_ask_float_invalid_then_valid() {
     assert!((result - 2.5).abs() < f64::EPSILON);
 }
 
+// -- ask_int() EOF terminates (audit #38) ---------------------------------
+
+#[test]
+fn ask_int_returns_on_eof_instead_of_looping() {
+    // An empty Cursor immediately returns Ok(0) from read_line — EOF.
+    // Before the fix this looped forever; now it must return 0.
+    let mut input = Cursor::new(b"" as &[u8]);
+    let result = ask_int_with_input("Enter number", &mut input);
+    assert_eq!(result, 0, "EOF must terminate and return 0");
+}
+
+// -- ask_float() EOF terminates (audit #38) --------------------------------
+
+#[test]
+fn ask_float_returns_on_eof_instead_of_looping() {
+    let mut input = Cursor::new(b"" as &[u8]);
+    let result = ask_float_with_input("Enter number", &mut input);
+    assert!(
+        (result - 0.0).abs() < f64::EPSILON,
+        "EOF must terminate and return 0.0"
+    );
+}
+
 // -- Prompt text includes choices when show_choices is true --------------
 
 #[test]

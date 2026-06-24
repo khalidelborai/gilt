@@ -605,8 +605,9 @@ pub fn ask_int_with_input<R: BufRead>(prompt: &str, input: &mut R) -> i64 {
         let mut line = String::new();
         match input.read_line(&mut line) {
             Ok(0) => {
-                err_console.print_text("[bold red]Please enter a valid integer number[/]");
-                continue;
+                // EOF: terminate and return 0 (consistent with confirm/ask EOF
+                // semantics — no default available for numeric prompts).
+                return 0;
             }
             Ok(_) => {}
             Err(_) => {
@@ -642,8 +643,8 @@ pub fn ask_float_with_input<R: BufRead>(prompt: &str, input: &mut R) -> f64 {
         let mut line = String::new();
         match input.read_line(&mut line) {
             Ok(0) => {
-                err_console.print_text("[bold red]Please enter a valid number[/]");
-                continue;
+                // EOF: terminate and return 0.0 (mirrors ask_int EOF semantics).
+                return 0.0;
             }
             Ok(_) => {}
             Err(_) => {
