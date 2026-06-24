@@ -12,6 +12,7 @@ use std::sync::Arc;
 
 use regex::Regex;
 
+use crate::default_styles::DEFAULT_STYLES;
 use crate::error::MarkupError;
 use crate::measure::Measurement;
 use crate::segment::Segment;
@@ -942,7 +943,11 @@ impl Text {
             for name in pattern.capture_names().flatten() {
                 if let Some(mat) = captures.name(name) {
                     let style_str = format!("{}{}", style_prefix, name);
-                    if let Ok(style) = Style::parse_strict(&style_str) {
+                    let style = DEFAULT_STYLES
+                        .get(&style_str as &str)
+                        .cloned()
+                        .or_else(|| Style::parse_strict(&style_str).ok());
+                    if let Some(style) = style {
                         pending.push((style, mat.start(), mat.end()));
                     }
                 }
@@ -2121,5 +2126,42 @@ mod tests {
             Some("red".to_string()),
             "expected red foreground"
         );
+    }
+
+    // --- highlight_regex_with_groups DEFAULT_STYLES resolution (#7) ---
+
+    #[test]
+    fn highlight_regex_with_groups_resolves_default_style_names() {
+        let re = regex::Regex::new(r"(?P<number>\d+)").unwrap();
+        let mut text = Text::new("count=42", Style::null());
+        let count = text.highlight_regex_with_groups(&re, "repr.");
+        assert_eq!(count, 1, "repr.number exists in DEFAULT_STYLES → count must be 1");
+        // span covering "42" should carry repr.number = bold not-italic cyan
+        let plain = text.plain().to_string();
+        let s = text
+            .spans()
+            .iter()
+            .find(|sp| {
+                let b = |n: usize| {
+                    plain.char_indices().nth(n).map(|(i, _)| i).unwrap_or(plain.len())
+                };
+                &plain[b(sp.start)..b(sp.end)] == "42"
+            })
+            .expect("expected a span covering '42'");
+        assert_eq!(s.style.bold(), Some(true), "repr.number should be bold");
+        assert_eq!(s.style.italic(), Some(false), "repr.number should be not italic");
+        assert!(
+            s.style.color().is_some_and(|c| c.name().contains("cyan")),
+            "repr.number should have cyan foreground"
+        );
+    }
+
+    #[test]
+    fn highlight_regex_with_groups_unknown_name_produces_no_span() {
+        let re = regex::Regex::new(r"(?P<frobnicator>\d+)").unwrap();
+        let mut text = Text::new("x=99", Style::null());
+        // "repr.frobnicator" is in neither DEFAULT_STYLES nor parseable as a style literal
+        let count = text.highlight_regex_with_groups(&re, "repr.");
+        assert_eq!(count, 0, "unknown group name should produce no span");
     }
 }
