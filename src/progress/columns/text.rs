@@ -113,7 +113,13 @@ impl ProgressColumn for TextColumn {
         // Attempt to parse markup tags so [bold]text[/bold]-style syntax in
         // templates is honoured.  Fall back to a plain Text::new when the
         // content is not valid markup (rich parity — P2 fix).
-        let mut text = Text::from_markup(&content).unwrap_or_else(|_| Text::new(&content, style));
+        let mut text =
+            Text::from_markup(&content).unwrap_or_else(|_| Text::new(&content, Style::null()));
+        // Apply the column-level base style unconditionally (rich parity: Text.stylize(style)).
+        // Use stylize_before so it underlies any markup spans that came from parsing.
+        if !style.is_null() {
+            text.stylize_before(style, 0, None);
+        }
         text.justify = Some(self.justify);
         text
     }
@@ -155,6 +161,47 @@ mod tests {
             text.plain().contains("oops"),
             "fallback should preserve plain text, got: {}",
             text.plain()
+        );
+    }
+
+    /// Column-level style must be applied even when markup parsing succeeds
+    /// (rich parity: TextColumn.stylize(style) is always called).
+    #[test]
+    fn text_column_applies_base_style_on_markup_success() {
+        let task = Task::new(0, "hello world", Some(100.0));
+        let bold = Style::parse("bold");
+        let col = TextColumn::new("{task.description}").with_style(bold.clone());
+        let text = col.render(&task);
+        // The plain text must be correct.
+        assert_eq!(text.plain(), "hello world");
+        // The base bold style must appear as a span.
+        let spans = text.spans();
+        assert!(
+            !spans.is_empty(),
+            "expected at least one span carrying the column style, got none"
+        );
+        let has_bold = spans.iter().any(|s| s.style == bold);
+        assert!(
+            has_bold,
+            "expected a span with bold style, got spans: {:?}",
+            spans
+        );
+    }
+
+    /// Column-level style must also be applied when the fallback path fires
+    /// (invalid markup).
+    #[test]
+    fn text_column_applies_base_style_on_markup_failure() {
+        let task = Task::new(0, "oops [unclosed", Some(10.0));
+        let bold = Style::parse("bold");
+        let col = TextColumn::new("{task.description}").with_style(bold.clone());
+        let text = col.render(&task);
+        assert!(text.plain().contains("oops"));
+        let has_bold = text.spans().iter().any(|s| s.style == bold);
+        assert!(
+            has_bold,
+            "expected bold span in fallback path, got spans: {:?}",
+            text.spans()
         );
     }
 }
