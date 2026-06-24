@@ -34,7 +34,7 @@ fn main() {
     // ---- 2. Push the theme onto a console -----------------------------------
 
     let mut console = Console::builder().width(80).force_terminal(true).build();
-    console.push_theme(theme);
+    console.push_theme(theme, true);
 
     // Resolve a named style through the active theme stack.
     let primary = console

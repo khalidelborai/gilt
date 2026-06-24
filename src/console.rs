@@ -429,6 +429,24 @@ mod console_render;
 pub use console_render::{measure_renderables, measurement_get};
 
 // ---------------------------------------------------------------------------
+// ThemeGuard
+// ---------------------------------------------------------------------------
+
+/// RAII guard returned by [`Console::use_theme`].
+///
+/// Holds a mutable reference to the `Console` and pops the theme layer when
+/// dropped, restoring the previous theme state automatically.
+pub struct ThemeGuard<'a> {
+    console: &'a mut Console,
+}
+
+impl Drop for ThemeGuard<'_> {
+    fn drop(&mut self) {
+        self.console.pop_theme();
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Console
 // ---------------------------------------------------------------------------
 
@@ -1094,13 +1112,38 @@ impl Console {
     }
 
     /// Push a new theme onto the theme stack.
-    pub fn push_theme(&mut self, theme: Theme) {
-        self.theme_stack.push_theme(theme, true);
+    ///
+    /// If `inherit` is true the new layer inherits all styles from the current
+    /// top of the stack, with the pushed theme's styles overriding any that
+    /// share the same name.  If `inherit` is false, only the pushed theme's
+    /// styles are visible until [`pop_theme`](Self::pop_theme) is called.
+    pub fn push_theme(&mut self, theme: Theme, inherit: bool) {
+        self.theme_stack.push_theme(theme, inherit);
     }
 
     /// Pop the top theme from the theme stack.
     pub fn pop_theme(&mut self) {
         let _ = self.theme_stack.pop_theme();
+    }
+
+    /// Push `theme` and return a guard that pops it on drop.
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    /// use gilt::theme::Theme;
+    /// use std::collections::HashMap;
+    ///
+    /// let mut console = Console::new();
+    /// let mut styles = HashMap::new();
+    /// styles.insert("info".to_string(), gilt::style::Style::parse("bold cyan"));
+    /// {
+    ///     let _guard = console.use_theme(Theme::new(Some(styles), true), true);
+    ///     // "info" resolves to bold cyan here
+    /// } // guard drops → pop_theme called automatically
+    /// ```
+    pub fn use_theme(&mut self, theme: Theme, inherit: bool) -> ThemeGuard<'_> {
+        self.push_theme(theme, inherit);
+        ThemeGuard { console: self }
     }
 
     // -- Control ------------------------------------------------------------

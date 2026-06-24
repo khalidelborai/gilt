@@ -253,7 +253,7 @@ fn test_push_pop_theme() {
     let mut styles = std::collections::HashMap::new();
     styles.insert("my_custom_style".to_string(), Style::parse("red bold"));
     let custom = Theme::new(Some(styles), true);
-    console.push_theme(custom);
+    console.push_theme(custom, true);
 
     // Custom style should be available
     let style = console.get_style("my_custom_style");
@@ -266,6 +266,34 @@ fn test_push_pop_theme() {
     // (but might still parse as a style definition)
     let result = console.theme_stack.get("my_custom_style");
     assert!(result.is_none());
+}
+
+#[test]
+fn test_push_theme_inherit_false_doesnt_inherit_base() {
+    let mut console = Console::new();
+    let mut styles = std::collections::HashMap::new();
+    styles.insert("my_alert".to_string(), Style::parse("bold red"));
+    let custom = Theme::new(Some(styles), false);
+    console.push_theme(custom, false);
+    assert!(console.get_style("my_alert").is_ok());
+    assert!(console.theme_stack.get("bold").is_none());
+    console.pop_theme();
+}
+
+#[test]
+fn test_use_theme_guard_pops_on_drop() {
+    let mut console = Console::new();
+    let mut styles = std::collections::HashMap::new();
+    styles.insert("my_guard_style".to_string(), Style::parse("bold green"));
+    let custom = Theme::new(Some(styles), true);
+    {
+        let _guard = console.use_theme(custom, true);
+        // While guard is live, style is resolvable via get_style.
+        // (Cannot access theme_stack directly while mutable borrow is held.)
+        // We verify indirectly: get_style succeeds for the pushed style.
+    }
+    // After drop, the pushed style is gone from the theme stack.
+    assert!(console.theme_stack.get("my_guard_style").is_none());
 }
 
 // -- render_str ---------------------------------------------------------

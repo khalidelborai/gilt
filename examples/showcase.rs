@@ -884,7 +884,7 @@ Gilt supports **bold**, *italic*, and `inline code` in markdown.
     let mut custom_styles = HashMap::new();
     custom_styles.insert("info".to_string(), Style::parse("bold magenta on grey15"));
     let custom_theme = Theme::new(Some(custom_styles), true);
-    console.push_theme(custom_theme);
+    console.push_theme(custom_theme, true);
 
     console.print_text("[bold]Custom theme:[/bold] [info]info is now magenta on grey[/info]");
 

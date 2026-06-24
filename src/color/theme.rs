@@ -96,7 +96,7 @@ impl Theme {
             let line = raw_line.trim();
 
             // Skip blank lines and comments
-            if line.is_empty() || line.starts_with('#') {
+            if line.is_empty() || line.starts_with('#') || line.starts_with(';') {
                 continue;
             }
 
@@ -144,21 +144,23 @@ impl Theme {
     /// Reads theme content from a file path.
     ///
     /// The file should contain INI-style theme content as described in
-    /// [`Theme::from_str`].
-    pub fn from_file(path: &Path) -> Result<Self, io::Error> {
+    /// [`Theme::from_str`]. If `inherit` is true, default styles are included;
+    /// if false, only the styles in the file are loaded.
+    pub fn from_file(path: &Path, inherit: bool) -> Result<Self, io::Error> {
         let content = std::fs::read_to_string(path)?;
-        Theme::from_str(&content, true)
+        Theme::from_str(&content, inherit)
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))
     }
 
     /// Reads theme content from any reader.
     ///
     /// The reader should provide INI-style theme content as described in
-    /// [`Theme::from_str`].
-    pub fn read(reader: &mut impl io::Read) -> Result<Self, io::Error> {
+    /// [`Theme::from_str`]. If `inherit` is true, default styles are included;
+    /// if false, only the styles from the reader are loaded.
+    pub fn read(reader: &mut impl io::Read, inherit: bool) -> Result<Self, io::Error> {
         let mut content = String::new();
         reader.read_to_string(&mut content)?;
-        Theme::from_str(&content, true)
+        Theme::from_str(&content, inherit)
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))
     }
 }
@@ -699,7 +701,7 @@ info = dim cyan
 warning = magenta
 ";
         let mut reader = std::io::Cursor::new(content);
-        let theme = Theme::read(&mut reader).unwrap();
+        let theme = Theme::read(&mut reader, true).unwrap();
         assert_eq!(theme.get("info").unwrap(), &Style::parse("dim cyan"));
         assert_eq!(theme.get("warning").unwrap(), &Style::parse("magenta"));
     }
@@ -713,7 +715,7 @@ warning = magenta
             let mut f = std::fs::File::create(&path).unwrap();
             write!(f, "[styles]\ninfo = dim cyan\nwarning = magenta\n").unwrap();
         }
-        let theme = Theme::from_file(&path).unwrap();
+        let theme = Theme::from_file(&path, true).unwrap();
         assert_eq!(theme.get("info").unwrap(), &Style::parse("dim cyan"));
         assert_eq!(theme.get("warning").unwrap(), &Style::parse("magenta"));
         // Clean up
@@ -722,7 +724,7 @@ warning = magenta
 
     #[test]
     fn test_from_file_not_found() {
-        let result = Theme::from_file(Path::new("/nonexistent/path/theme.ini"));
+        let result = Theme::from_file(Path::new("/nonexistent/path/theme.ini"), true);
         assert!(result.is_err());
     }
 
@@ -735,7 +737,7 @@ warning = magenta
             let mut f = std::fs::File::create(&path).unwrap();
             write!(f, "[styles]\nbad line with no equals\n").unwrap();
         }
-        let result = Theme::from_file(&path);
+        let result = Theme::from_file(&path, true);
         assert!(result.is_err());
         let _ = std::fs::remove_file(&path);
     }
@@ -843,6 +845,37 @@ progress.elapsed = cyan
                 name
             );
         }
+    }
+
+    #[test]
+    fn test_semicolon_comment_skipped() {
+        let content = "[styles]\n; this is a semicolon comment\ninfo = dim cyan\n";
+        let theme = Theme::from_str(content, false).unwrap();
+        assert!(theme.get("info").is_some());
+    }
+
+    #[test]
+    fn test_from_file_inherit_false() {
+        use std::io::Write;
+        let dir = std::env::temp_dir();
+        let path = dir.join("gilt_test_theme_noinherit.ini");
+        {
+            let mut f = std::fs::File::create(&path).unwrap();
+            write!(f, "[styles]\ninfo = dim cyan\n").unwrap();
+        }
+        let theme = Theme::from_file(&path, false).unwrap();
+        assert!(theme.get("info").is_some());
+        assert!(theme.get("dim").is_none());
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_read_inherit_false() {
+        let content = "[styles]\ninfo = dim cyan\n";
+        let mut reader = std::io::Cursor::new(content);
+        let theme = Theme::read(&mut reader, false).unwrap();
+        assert!(theme.get("info").is_some());
+        assert!(theme.get("dim").is_none());
     }
 
     #[cfg(feature = "json")]

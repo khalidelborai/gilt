@@ -638,7 +638,7 @@
 //! styles.insert("info".to_string(), Style::parse("bold cyan"));
 //!
 //! let mut console = Console::new();
-//! console.push_theme(Theme::new(Some(styles), true));
+//! console.push_theme(Theme::new(Some(styles), true), true);
 //! // All rendering now uses the custom "info" style
 //! console.pop_theme();
 //! ```

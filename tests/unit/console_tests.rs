@@ -282,7 +282,7 @@ fn test_push_pop_theme() {
         Style::parse("red bold"),
     );
     let custom = Theme::new(Some(styles), true);
-    console.push_theme(custom);
+    console.push_theme(custom, true);
 
     // Custom style should be available
     let style = console.get_style("my_custom_style");

@@ -1,7 +1,6 @@
 //! RAII guards demonstration for Console
 //!
-//! This example demonstrates the RAII guard patterns for Console
-//! (Note: Full RAII guard implementation is in progress)
+//! Demonstrates RAII guard patterns — theme, capture, and screen management.
 //!
 //! Run: cargo run --example raii_guards
 
@@ -16,27 +15,27 @@ fn main() {
     console.print_text("Demonstrating RAII patterns for Console\n");
 
     // ========================================================================
-    // 1. Manual Theme Management (until ThemeGuard is implemented)
+    // 1. use_theme — RAII ThemeGuard
+    //
+    // use_theme pushes a theme and returns a ThemeGuard.  When the guard drops
+    // (end of scope), pop_theme is called automatically.  Because the guard
+    // holds an exclusive `&mut Console`, you cannot call console methods inside
+    // the same scope while the guard is alive — hold the guard in a block and
+    // do your themed rendering before or after, or use push_theme/pop_theme for
+    // interleaved rendering (see section 4 below).
     // ========================================================================
-    console.rule(Some("Theme Push/Pop Pattern"));
+    console.rule(Some("use_theme (ThemeGuard)"));
 
-    console.print_text("Before theme push:");
-    console.print_text("  [info]This uses the default 'info' style[/info]");
-
-    // Create custom theme
     let mut custom_styles = HashMap::new();
     custom_styles.insert("info".to_string(), Style::parse("bold magenta on grey15"));
     let custom_theme = Theme::new(Some(custom_styles), true);
 
-    // Push theme
-    console.push_theme(custom_theme);
-    console.print_text("\nAfter theme push:");
-    console.print_text("  [info]This uses the custom magenta 'info' style[/info]");
+    // Push via RAII guard — theme is automatically popped when guard drops.
+    let _guard = console.use_theme(custom_theme, true);
+    drop(_guard); // explicit drop; in real code let the block scope handle it
 
-    // Pop theme
-    console.pop_theme();
-    console.print_text("\nAfter theme pop:");
-    console.print_text("  [info]This reverts to default 'info' style[/info]");
+    console.print_text("Theme guard was active and has now been automatically popped.");
+    console.print_text("  [info]'info' is back to the default style[/info]");
 
     // ========================================================================
     // 2. Screen Management
@@ -64,32 +63,24 @@ fn main() {
     console.print(&Text::new(&captured, Style::null()));
 
     // ========================================================================
-    // 4. RAII Guard Pattern (Conceptual)
+    // 4. Manual push_theme / pop_theme (for interleaved rendering)
     // ========================================================================
-    console.rule(Some("RAII Guard Pattern (Conceptual)"));
+    console.rule(Some("Manual push_theme / pop_theme"));
 
-    console.print_text("Future implementation will support:");
-    console.print_text("");
-    console.print_text("  {");
-    console.print_text("      let _guard = console.use_theme(custom_theme);");
-    console.print_text("      // Theme active here");
-    console.print_text("  } // Theme automatically popped");
-    console.print_text("");
-    console.print_text("  {");
-    console.print_text("      let _guard = console.screen(true)?;");
-    console.print_text("      // Alternate screen active");
-    console.print_text("  } // Automatically exits screen");
+    console.print_text("Before theme push:");
+    console.print_text("  [info]This uses the default 'info' style[/info]");
 
-    // ========================================================================
-    // 5. Current Best Practice
-    // ========================================================================
-    console.rule(Some("Current Best Practice"));
+    let mut manual_styles = HashMap::new();
+    manual_styles.insert("info".to_string(), Style::parse("bold magenta on grey15"));
+    let manual_theme = Theme::new(Some(manual_styles), true);
 
-    console.print_text("For now, use explicit push/pop with defer pattern:");
-    console.print_text("");
-    console.print_text("  console.push_theme(theme);");
-    console.print_text("  // ... do work ...");
-    console.print_text("  console.pop_theme(); // Always pop!");
+    console.push_theme(manual_theme, true);
+    console.print_text("\nAfter theme push:");
+    console.print_text("  [info]This uses the custom magenta 'info' style[/info]");
+
+    console.pop_theme();
+    console.print_text("\nAfter theme pop:");
+    console.print_text("  [info]This reverts to default 'info' style[/info]");
 
     console.line(1);
     console.print_text("[green]✓[/green] RAII guards demo complete!");
