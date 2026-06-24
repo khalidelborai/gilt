@@ -154,6 +154,9 @@ impl Tree {
     /// - `Some(value)` — use the given value for this node.
     /// - `None` — inherit from the parent (same behaviour as [`add`](Self::add)).
     ///
+    /// For `expanded`: `None` inherits from parent (default true unless parent is
+    /// collapsed).
+    ///
     /// # Examples
     ///
     /// ```
@@ -187,7 +190,7 @@ impl Tree {
             style: style.unwrap_or_else(|| self.style.clone()),
             guide_style: guide_style.unwrap_or_else(|| self.guide_style.clone()),
             children: Vec::new(),
-            expanded: expanded.unwrap_or(true),
+            expanded: expanded.unwrap_or(self.expanded),
             hide_root: false,
             highlight: highlight.unwrap_or(self.highlight),
         });
@@ -547,8 +550,10 @@ impl Renderable for Tree {
                 ));
 
                 // Push the node's styles onto the stacks for the child subtree.
-                style_stack.push(node.style.clone());
-                guide_style_stack.push(node.guide_style.clone());
+                // Use the already-resolved styles (node_style / node_guide_style)
+                // so that ancestor accumulation carries forward correctly.
+                style_stack.push(node_style.clone());
+                guide_style_stack.push(node_guide_style.clone());
 
                 stack.push(StackFrame {
                     index: 0,
@@ -1409,14 +1414,23 @@ mod tests {
         );
     }
 
-    /// add_with() with expanded=None must default to true.
+    /// add_with() with expanded=None must inherit from the parent's expanded state.
     #[test]
-    fn test_add_with_expanded_defaults_true() {
-        let mut tree = Tree::new(Text::new("root", Style::null()));
+    fn test_add_with_expanded_none_inherits_parent() {
+        // Parent is expanded (default true) — child should also be expanded.
+        let mut tree = Tree::new(Text::new("root", Style::null())); // expanded=true
         tree.add_with(Text::new("child", Style::null()), None, None, None, None);
         assert!(
             tree.children[0].expanded,
-            "add_with() with expanded=None should default to true"
+            "add_with() with expanded=None should inherit parent's expanded=true"
+        );
+
+        // Parent is collapsed — child with None should also be collapsed.
+        let mut collapsed_tree = Tree::new(Text::new("root", Style::null())).with_expanded(false);
+        collapsed_tree.add_with(Text::new("child", Style::null()), None, None, None, None);
+        assert!(
+            !collapsed_tree.children[0].expanded,
+            "add_with() with expanded=None should inherit parent's expanded=false"
         );
     }
 
@@ -1494,6 +1508,40 @@ mod tests {
              guide bold should be negated so it doesn't bleed into labels. \
              Segments: {:?}",
             child_label_segs
+        );
+    }
+
+    /// The guide-removal negation (`prefix_post`) must actually strip bold from
+    /// guide/prefix segments after `Segment::apply_style`.  This unit-tests the
+    /// negation logic directly: build a bold segment, apply a negating style that
+    /// sets bold=false, and confirm the result has bold == Some(false).
+    #[test]
+    fn test_guide_removal_negation_applies_to_prefix() {
+        // A bold guide segment — simulates what make_guide produces when the
+        // guide_style carries "bold".
+        let bold_style = Style::parse("bold");
+        let guide_seg = Segment::styled("\u{2514}\u{2500}\u{2500} ", bold_style.clone());
+
+        // Build the negating prefix_post style the same way the renderer does:
+        // if node_guide_style.bold().is_some() → set bold = Some(false).
+        let node_guide_style = bold_style.clone();
+        let mut prefix_post = Style::null();
+        if node_guide_style.bold().is_some() {
+            prefix_post.set_bold(Some(false));
+        }
+
+        // Apply the negating style (post_style) to the guide segment.
+        let negated =
+            Segment::apply_style(std::slice::from_ref(&guide_seg), None, Some(prefix_post));
+
+        assert_eq!(negated.len(), 1);
+        let result_bold = negated[0].style.as_ref().and_then(|s| s.bold());
+        assert_eq!(
+            result_bold,
+            Some(false),
+            "After applying the negating prefix_post style, bold must be Some(false) \
+             (negated off), not Some(true). Result segment: {:?}",
+            negated[0]
         );
     }
 
@@ -1591,16 +1639,16 @@ mod tests {
             "Expected at least one guide segment in output"
         );
 
-        // At least one guide segment should carry a red foreground from the theme.
-        let has_red = guide_segs.iter().any(|s| {
+        // At least one guide segment should carry a foreground color from the theme.
+        let has_color = guide_segs.iter().any(|s| {
             s.style
                 .as_ref()
                 .map(|st| st.color().is_some())
                 .unwrap_or(false)
         });
         assert!(
-            has_red,
-            "Guide segments should carry the 'tree.line' red theme style; \
+            has_color,
+            "Guide segments should carry a color from the 'tree.line' theme style; \
              segments: {:?}",
             guide_segs
         );
