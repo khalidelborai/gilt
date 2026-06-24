@@ -86,6 +86,11 @@ impl Markdown {
 struct ListContext {
     ordered: bool,
     item_number: u64,
+    /// The digit-width to use for right-aligning ordered list numbers.
+    /// Pre-computed from the total item count before the render pass begins,
+    /// so all items in a list use the same field width (e.g. items 1–9 in a
+    /// 10-item list render as " 1." not "1.").
+    max_digits: usize,
 }
 
 // ---------------------------------------------------------------------------
@@ -165,10 +170,68 @@ impl Renderable for Markdown {
         md_options.insert(Options::ENABLE_STRIKETHROUGH);
         md_options.insert(Options::ENABLE_TASKLISTS);
 
-        // P3 perf: iterate the parser directly (no lookahead needed)
-        let parser = Parser::new_ext(&self.markup, md_options);
+        // Collect all events so we can pre-compute ordered-list item counts
+        // (needed for right-aligned numbering: all items use max_digits based
+        // on the largest number in the list, not just the current item).
+        let events: Vec<Event<'_>> = Parser::new_ext(&self.markup, md_options).collect();
 
-        for event in parser {
+        // Pre-pass: compute the total item count (and therefore max_digits)
+        // for every ordered list.  We push max_digits in list-OPEN order
+        // (i.e. when Start(List(Some(..))) fires) so the Vec index matches
+        // the render pass, which also consumes values in open-order.
+        //
+        // When a Start(List(Some(start))) is encountered we scan forward
+        // through the remaining events to count how many direct-child items
+        // this list has (using a nesting-depth counter so we skip items that
+        // belong to inner lists), compute max_digits, and push immediately.
+        //
+        // This guarantees ordered_list_max_digits[0] = outermost list's
+        // max_digits, [1] = next list opened, etc., matching the order the
+        // render pass increments ordered_list_idx.
+        //
+        // (The old approach pushed on End, which is DFS-close order: inner
+        // lists close before outer ones, inverting the index relative to the
+        // render pass's open-order consumption — causing outer lists to use
+        // the inner list's max_digits and vice versa.)
+        let mut ordered_list_max_digits: Vec<usize> = Vec::new();
+        {
+            for (ev_idx, ev) in events.iter().enumerate() {
+                if let Event::Start(Tag::List(Some(start))) = ev {
+                    // Scan ahead to count direct-child items of this list.
+                    // Track nesting depth: we are at depth 0 for this list.
+                    // depth 0 = inside this list (not nested deeper).
+                    let mut depth: usize = 0;
+                    let mut item_count: u64 = 0;
+                    for future_ev in events.iter().skip(ev_idx + 1) {
+                        match future_ev {
+                            Event::Start(Tag::List(_)) => {
+                                // Entering a nested list — increase depth.
+                                depth += 1;
+                            }
+                            Event::End(TagEnd::List(_)) => {
+                                if depth == 0 {
+                                    // This is the End for *this* list — stop.
+                                    break;
+                                }
+                                depth -= 1;
+                            }
+                            Event::Start(Tag::Item) if depth == 0 => {
+                                // Direct child item of this list.
+                                item_count += 1;
+                            }
+                            _ => {}
+                        }
+                    }
+                    let last_num = start + item_count.saturating_sub(1);
+                    ordered_list_max_digits.push(count_digits(last_num));
+                }
+            }
+        }
+        // We'll consume max_digits values as ordered lists are opened.
+        // Use an iterator index tracked by a separate counter.
+        let mut ordered_list_idx = 0usize;
+
+        for event in events {
             match event {
                 // -- Headings -----------------------------------------------
                 Event::Start(Tag::Heading { .. }) => {
@@ -521,15 +584,23 @@ impl Renderable for Markdown {
                 // -- Lists --------------------------------------------------
                 Event::Start(Tag::List(first_item)) => match first_item {
                     Some(start_num) => {
+                        // Pull the pre-computed max_digits for this ordered list.
+                        let max_digits = ordered_list_max_digits
+                            .get(ordered_list_idx)
+                            .copied()
+                            .unwrap_or(1);
+                        ordered_list_idx += 1;
                         list_stack.push(ListContext {
                             ordered: true,
                             item_number: start_num,
+                            max_digits,
                         });
                     }
                     None => {
                         list_stack.push(ListContext {
                             ordered: false,
                             item_number: 0,
+                            max_digits: 1,
                         });
                     }
                 },
@@ -562,19 +633,25 @@ impl Renderable for Markdown {
                         }
                     };
 
+                    // Accumulate item segments separately so we can wrap them
+                    // with the blockquote prefix when inside a blockquote.
+                    let mut item_buf: Vec<Segment> = Vec::new();
+
                     if let Some(ctx) = list_stack.last_mut() {
                         if ctx.ordered {
                             let num_style = console
                                 .get_style("markdown.item.number")
                                 .unwrap_or_else(|_| Style::parse("cyan"));
-                            let num_digits = count_digits(ctx.item_number);
+                            // Use the pre-computed max_digits so all items in a
+                            // list use the same field width (e.g. items 1–9 in a
+                            // 10-item list render as " 1." not "1.").
                             let prefix = format!(
                                 "{}{:>width$}. ",
                                 indent,
                                 ctx.item_number,
-                                width = num_digits
+                                width = ctx.max_digits
                             );
-                            segments.push(Segment::styled(&prefix, num_style));
+                            item_buf.push(Segment::styled(&prefix, num_style));
                             ctx.item_number += 1;
                         } else {
                             let bullet_style = console
@@ -582,14 +659,15 @@ impl Renderable for Markdown {
                                 .unwrap_or_else(|_| Style::parse("bold"));
                             // P3 parity: rich uses " • " (leading space, 3 cells)
                             let prefix = format!("{} \u{2022} ", indent);
-                            segments.push(Segment::styled(&prefix, bullet_style));
+                            item_buf.push(Segment::styled(&prefix, bullet_style));
                         }
                     }
 
                     // Render item text
                     // P2 parity: account for 3-cell " • " prefix in width calculation
-                    let item_width =
-                        width.saturating_sub((list_stack.len().saturating_sub(1)) * 4 + 3);
+                    let item_width = width
+                        .saturating_sub(blockquote_depth * 4)
+                        .saturating_sub((list_stack.len().saturating_sub(1)) * 4 + 3);
                     let item_opts = options.update_width(item_width);
                     let item_segs = text_buffer.gilt_console(console, &item_opts);
                     // P2 parity: prepend the item indent to continuation lines
@@ -598,12 +676,37 @@ impl Renderable for Markdown {
                     let mut first_line = true;
                     for seg in item_segs {
                         if !first_line && seg.text == "\n" {
-                            segments.push(seg);
-                            segments.push(Segment::text(&cont_indent));
+                            item_buf.push(seg);
+                            item_buf.push(Segment::text(&cont_indent));
                             continue;
                         }
                         first_line = false;
-                        segments.push(seg);
+                        item_buf.push(seg);
+                    }
+
+                    // Emit item segments, wrapping with blockquote prefix when needed.
+                    // P3 parity: list items inside blockquotes get the ▌ prefix on
+                    // each logical line, matching rich's behaviour for other block
+                    // elements (headings, code blocks, horizontal rules).
+                    if blockquote_depth > 0 {
+                        let bq_style = console
+                            .get_style("markdown.block_quote")
+                            .unwrap_or_else(|_| Style::null());
+                        let bq_indent: String =
+                            std::iter::repeat_n(' ', blockquote_depth.saturating_sub(1) * 4)
+                                .collect();
+                        let bq_prefix = format!("{}\u{258C} ", bq_indent);
+                        segments.push(Segment::styled(&bq_prefix, bq_style.clone()));
+                        for seg in item_buf {
+                            if seg.text == "\n" {
+                                segments.push(Segment::line());
+                                segments.push(Segment::styled(&bq_prefix, bq_style.clone()));
+                            } else {
+                                segments.push(seg);
+                            }
+                        }
+                    } else {
+                        segments.extend(item_buf);
                     }
 
                     text_buffer = Text::new("", Style::null());

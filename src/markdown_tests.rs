@@ -833,9 +833,10 @@ fn test_markdown_inline_code_lexer() {
                 && s.style().is_some()
         })
         .collect();
+    // syntax highlighting must produce ≥2 styled token segments
     assert!(
-        code_segs.len() >= 1,
-        "inline code with lexer should produce styled spans; got: {}",
+        code_segs.len() >= 2,
+        "inline code with lexer should produce ≥2 styled spans (real highlighting vs plain fallback); got: {}",
         code_segs.len()
     );
 }
@@ -990,5 +991,275 @@ fn test_markdown_image_with_alt_not_overridden() {
         output.contains("Beautiful sunset"),
         "explicit alt text should appear; got: {:?}",
         output
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Reviewer fixes (task-7.2 post-review pass)
+// ---------------------------------------------------------------------------
+
+// Item 3 follow-up: list items inside blockquotes must get the ▌ prefix.
+#[test]
+fn test_markdown_blockquote_list_prefix() {
+    // A bullet list nested inside a blockquote must have ▌ prefixed on each
+    // item line, matching rich's behaviour for block elements in blockquotes.
+    let console = make_console(80);
+    let md = Markdown::new("> - alpha\n> - beta\n> - gamma");
+    let output = render_markdown(&console, &md);
+    assert!(
+        output.contains("alpha"),
+        "list item 'alpha' should appear; got: {:?}",
+        output
+    );
+    assert!(
+        output.contains("beta"),
+        "list item 'beta' should appear; got: {:?}",
+        output
+    );
+    // Every item line must be prefixed with ▌ (U+258C).
+    assert!(
+        output.contains('\u{258C}'),
+        "blockquote prefix ▌ must appear for list items inside a blockquote; got: {:?}",
+        output
+    );
+    // The bullet character (•) must also be present.
+    assert!(
+        output.contains('\u{2022}'),
+        "bullet • must appear for unordered list items; got: {:?}",
+        output
+    );
+}
+
+// Item 6 follow-up: ordered list right-alignment uses list-max-width, not per-item width.
+#[test]
+fn test_markdown_ordered_list_alignment_10_items() {
+    // A 10-item ordered list must right-align all numbers to 2 digits.
+    // Items 1–9 must render as " 1." … " 9." and item 10 as "10.".
+    let console = make_console(80);
+    let md_src = (1u32..=10)
+        .map(|i| format!("{}. item{}", i, i))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let md = Markdown::new(&md_src);
+    let segments = render_segments(&console, &md);
+    let output: String = segments.iter().map(|s| s.text.as_str()).collect();
+
+    // All ten items must appear in the output.
+    for i in 1u32..=10 {
+        assert!(
+            output.contains(&format!("item{}", i)),
+            "item{} should appear in output; got: {:?}",
+            i,
+            output
+        );
+    }
+
+    // Collect the ordered-list prefix segments (those that contain ". ").
+    // In the no-color console these are plain-text styled segments.
+    let prefix_segs: Vec<&str> = segments
+        .iter()
+        .filter_map(|s| {
+            if s.text.contains(". ")
+                && s.text
+                    .trim()
+                    .split('.')
+                    .next()
+                    .map_or(false, |n| n.trim().parse::<u32>().is_ok())
+            {
+                Some(s.text.as_str())
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    assert!(
+        prefix_segs.len() >= 10,
+        "expected at least 10 number-prefix segments; got {:?}",
+        prefix_segs
+    );
+
+    // All prefix segments must have the same display width (right-aligned to 2 digits).
+    let first_len = prefix_segs[0].len();
+    for seg in &prefix_segs {
+        assert_eq!(
+            seg.len(),
+            first_len,
+            "all number prefixes must have equal width for right-alignment; got {:?}",
+            prefix_segs
+        );
+    }
+
+    // Item 1 must be padded: " 1. " (leading space) not "1. ".
+    let item1_prefix = prefix_segs
+        .iter()
+        .find(|s| s.contains("1."))
+        .copied()
+        .unwrap_or("");
+    assert!(
+        item1_prefix.starts_with(' '),
+        "item 1 prefix should be right-padded to width 2 (e.g. ' 1. '); got: {:?}",
+        item1_prefix
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Nested ordered list alignment (pre-pass order bug fix)
+// ---------------------------------------------------------------------------
+
+/// Regression guard: for nested ordered lists the pre-pass must push
+/// max_digits in list-OPEN order so the render pass (which consumes in
+/// open-order) reads the correct value for each list.
+///
+/// Outer list: 2 items → max_digits = 1 (numbers fit in 1 char)
+/// Inner list (nested inside outer item 1): 10 items → max_digits = 2
+///
+/// Before the fix the pre-pass pushed in End-order (inner closes first),
+/// so ordered_list_max_digits = [inner=2, outer=1].  The render pass then
+/// used 2 for the outer list (wrong — outer items got leading spaces) and
+/// 1 for the inner list (wrong — "10." rendered with max_digits=1, so items
+/// 1–9 were not padded to width 2 with a leading space).
+///
+/// NOTE: The pre-existing rendering bug (outer item text lost when a nested
+/// list immediately follows) is separate and not tested here. This test
+/// focuses solely on the max_digits assignment for the inner list.
+#[test]
+fn test_markdown_nested_ordered_list_alignment() {
+    // Build markdown with:
+    //   - An outer list with 2 items (max_digits should be 1)
+    //   - The first outer item contains a nested 10-item list (max_digits should be 2)
+    //
+    // With the buggy pre-pass (End-order push), outer gets max_digits=2 and
+    // inner gets max_digits=1. With the correct fix (Start-order push), the
+    // inner list correctly gets max_digits=2.
+    //
+    // We detect the bug by checking whether inner item "1." is right-padded
+    // to 2 digits (i.e. the prefix contains " 1." with a leading space).
+    let inner_items: String = (1u32..=10)
+        .map(|i| format!("   {}. Inner {}", i, i))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let md_src = format!("1. Outer item one\n{}\n2. Outer item two", inner_items);
+
+    let console = make_console(120);
+    let md = Markdown::new(&md_src);
+    let segments = render_segments(&console, &md);
+    let output: String = segments.iter().map(|s| s.text.as_str()).collect();
+
+    // Inner items must appear in output (outer item text loss is a separate bug).
+    for i in 1u32..=10 {
+        assert!(
+            output.contains(&format!("Inner {}", i)),
+            "Inner {} missing from output; output: {:?}",
+            i,
+            output
+        );
+    }
+
+    // Collect the number-prefix segments emitted by the ordered list renderer.
+    // These are styled segments of the form "<indent><digits>. " (e.g. "    1. ").
+    let prefix_segs: Vec<&str> = segments
+        .iter()
+        .filter_map(|s| {
+            if s.text.contains(". ")
+                && s.text
+                    .trim()
+                    .split('.')
+                    .next()
+                    .map_or(false, |n| n.trim().parse::<u32>().is_ok())
+            {
+                Some(s.text.as_str())
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    // We expect at least 10 inner prefix segments.
+    assert!(
+        prefix_segs.len() >= 10,
+        "expected ≥10 prefix segments (10 inner); got {:?}",
+        prefix_segs
+    );
+
+    // --- Inner list: max_digits = 2 ---
+    // The inner list has 10 items, so max_digits = 2.
+    // Items 1–9 must be padded: prefix contains " 1." not "1." in the number field.
+    // The inner items are at indent_level=1 (4 spaces indent).
+    // The styled prefix segment for inner item N looks like "    <num>. "
+    // where <num> is right-aligned in a max_digits=2 field: " 1", " 2", …, "10".
+    let inner_prefix_segs: Vec<&str> = prefix_segs
+        .iter()
+        .filter(|s| s.starts_with("    "))
+        .copied()
+        .collect();
+
+    assert!(
+        inner_prefix_segs.len() >= 10,
+        "expected ≥10 inner prefix segments (with 4-space indent); got {:?}",
+        inner_prefix_segs
+    );
+
+    // All inner prefix segments must have the same total length (right-aligned to 2 digits).
+    let first_inner_len = inner_prefix_segs[0].len();
+    for seg in &inner_prefix_segs {
+        assert_eq!(
+            seg.len(),
+            first_inner_len,
+            "inner list prefix widths must all be equal for right-alignment; got {:?}",
+            inner_prefix_segs
+        );
+    }
+
+    // Inner item 1 must be padded to max_digits=2: the number field is " 1" not "1".
+    // After stripping the 4-space indent, the next char must be a space (the padding).
+    let inner1 = inner_prefix_segs
+        .iter()
+        .find(|s| {
+            // The segment for item 1 is "    <pad>1. " — find it by the trailing "1. "
+            s.trim_end().ends_with("1.")
+        })
+        .copied()
+        .unwrap_or("");
+    let after_indent = inner1.trim_start_matches("    ");
+    assert!(
+        after_indent.starts_with(' '),
+        "inner item 1 must be right-padded to max_digits=2 (e.g. '     1. '); \
+         got prefix {:?}; all inner prefixes: {:?}",
+        inner1,
+        inner_prefix_segs
+    );
+}
+
+// Item 2 strengthened: inline_code_lexer must produce ≥2 styled token segments.
+#[test]
+#[cfg(feature = "syntax")]
+fn test_markdown_inline_code_lexer_multi_token() {
+    // When inline_code_lexer is set, inline code should produce multiple styled spans
+    // (one per token) rather than a single plain-styled span.
+    let console = make_console(80);
+    let mut md = Markdown::new("Use `let x = 1` here.");
+    md.inline_code_lexer = Some("rust".to_string());
+    let segments = render_segments(&console, &md);
+    // At minimum, the code text should appear somewhere in the output.
+    let output: String = segments.iter().map(|s| s.text.as_str()).collect();
+    assert!(
+        output.contains("let") || output.contains("x") || output.contains("1"),
+        "syntax-highlighted inline code should appear in output; got: {:?}",
+        output
+    );
+    // There should be multiple styled segments for the code (more than 1 token).
+    // syntax highlighting must produce ≥2 styled token segments
+    let code_segs: Vec<_> = segments
+        .iter()
+        .filter(|s| {
+            (s.text.contains("let") || s.text.contains("x") || s.text.contains("1"))
+                && s.style().is_some()
+        })
+        .collect();
+    assert!(
+        code_segs.len() >= 2,
+        "inline code with lexer should produce ≥2 styled spans (real highlighting vs plain fallback); got: {}",
+        code_segs.len()
     );
 }
