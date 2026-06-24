@@ -435,7 +435,15 @@ pub use console_render::{measure_renderables, measurement_get};
 /// A hook that intercepts renderables just before they are printed.
 ///
 /// Each hook receives the current list of renderables and may return a
-/// modified list. Hooks are invoked in registration order by [`Console::print`].
+/// modified list. Hooks are invoked in registration order by
+/// [`Console::print_with_hooks`].
+///
+/// # Note
+///
+/// Hooks do **not** fire when calling [`Console::print`] directly, because
+/// `print<R: ?Sized>` cannot coerce an unsized `&R` (e.g. `&str`) to
+/// `&dyn Renderable` without specialization. Use
+/// [`Console::print_with_hooks`] when you need hooks to run.
 ///
 /// # WASM safety
 ///
@@ -498,7 +506,10 @@ pub struct Console {
     /// clobbering the others' state.
     live_stack: Vec<usize>,
 
-    /// Registered render hooks, invoked in order by [`Console::print`].
+    /// Registered render hooks, invoked in order by [`Console::print_with_hooks`].
+    ///
+    /// Note: hooks do **not** fire when calling [`Console::print`] directly —
+    /// use [`Console::print_with_hooks`] to have hooks process the renderable.
     render_hooks: Vec<Box<dyn RenderHook>>,
 
     /// Per-console style interner (foundation for L2 — see

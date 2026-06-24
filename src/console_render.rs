@@ -483,7 +483,16 @@ impl Console {
     /// assert!(out.contains("foo"));
     /// assert!(out.contains("bar"));
     /// ```
+    #[track_caller]
     pub fn log_objects(&mut self, objects: &[&dyn Renderable], log_locals: bool) {
+        // Mirror log()'s #[track_caller] so log_path works for log_objects too.
+        let location = std::panic::Location::caller();
+        let caller_path = {
+            let file = location.file();
+            let short = file.rsplit('/').next().unwrap_or(file);
+            format!(" [{}:{}]", short, location.line())
+        };
+
         let now = {
             let secs = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -523,6 +532,18 @@ impl Console {
                 .unwrap_or_else(|_| Style::parse("dim"));
             segments.push(Segment::text(" "));
             segments.push(Segment::styled("(locals)", locals_style));
+        }
+
+        // Append caller path when log_path is enabled — mirrors log() behaviour.
+        if self.log_path {
+            let path_style = self
+                .get_style("log.path")
+                .unwrap_or_else(|_| Style::parse("dim"));
+            segments.retain(|s| s.text != "\n");
+            segments.push(Segment::text(" "));
+            segments.push(Segment::styled(&caller_path, path_style));
+        } else {
+            let _ = caller_path;
         }
 
         // Ensure trailing newline
@@ -1355,6 +1376,80 @@ mod batch_7_7_tests {
         assert!(
             !out.contains("ORIGINAL"),
             "original should not appear after replacement"
+        );
+    }
+
+    /// Regression guard: hooks must NOT fire when calling `print()` directly
+    /// (unsized `?Sized` coercion prevents it without specialization/unsafe).
+    /// `print_with_hooks` is the documented hook entry point.
+    #[test]
+    fn render_hook_does_not_fire_on_plain_print() {
+        use crate::console::RenderHook;
+        use std::sync::{Arc, Mutex};
+
+        struct CountingHook {
+            count: Arc<Mutex<usize>>,
+        }
+        impl RenderHook for CountingHook {
+            fn process_renderables<'a>(
+                &self,
+                renderables: Vec<&'a dyn Renderable>,
+            ) -> Vec<&'a dyn Renderable> {
+                *self.count.lock().unwrap() += 1;
+                renderables
+            }
+        }
+
+        let count = Arc::new(Mutex::new(0usize));
+        let mut console = Console::builder()
+            .width(80)
+            .no_color(true)
+            .markup(false)
+            .build();
+        console.add_render_hook(Box::new(CountingHook {
+            count: Arc::clone(&count),
+        }));
+
+        console.begin_capture();
+        let text = Text::new("hi", Style::null());
+        console.print(&text); // plain print — hooks should NOT fire
+        let _ = console.end_capture();
+
+        assert_eq!(
+            *count.lock().unwrap(),
+            0,
+            "print() should not invoke render hooks (use print_with_hooks)"
+        );
+    }
+
+    // -- log_objects log_path --------------------------------------------------
+
+    #[test]
+    fn log_objects_log_path_appends_caller_location() {
+        let mut console = Console::builder()
+            .width(120)
+            .no_color(true)
+            .markup(false)
+            .log_path(true)
+            .build();
+        console.begin_capture();
+        let a = Text::new("msg", Style::null());
+        console.log_objects(&[&a], false);
+        let out = console.end_capture();
+        // log_path=true should append [filename:line] — look for the bracket pattern
+        assert!(
+            out.contains('[') && out.contains(':'),
+            "expected caller path [file:line] in log_objects output, got {:?}",
+            out
+        );
+        // The caller path should NOT be the timestamp (timestamp is at the start)
+        // — assert the output contains at least two [...] groups
+        let bracket_count = out.chars().filter(|&c| c == '[').count();
+        assert!(
+            bracket_count >= 2,
+            "expected timestamp bracket + path bracket (>=2 '['), got {} in {:?}",
+            bracket_count,
+            out
         );
     }
 
