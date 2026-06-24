@@ -323,6 +323,10 @@ impl Renderable for Text {
         Some(h)
     }
 
+    fn gilt_measure(&self, _console: &Console, _options: &ConsoleOptions) -> Measurement {
+        self.measure()
+    }
+
     fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         let mut text = self.clone();
         if let Some(justify) = &options.justify {

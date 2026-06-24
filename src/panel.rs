@@ -329,6 +329,10 @@ fn align_title_segments(
 // ---------------------------------------------------------------------------
 
 impl Renderable for Panel {
+    fn gilt_measure(&self, console: &Console, options: &ConsoleOptions) -> Measurement {
+        self.measure(console, options)
+    }
+
     fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         // Apply box substitution (ascii_only / safe_box), matching rich behaviour.
         let safe = self.safe_box.unwrap_or(true);
@@ -1273,5 +1277,32 @@ mod tests {
                 line
             );
         }
+    }
+
+    // -- gilt_measure override ------------------------------------------
+
+    #[test]
+    fn panel_gilt_measure_matches_standalone() {
+        let console = make_console(80);
+        let panel = Panel::new(Text::new("Hello World", Style::null()));
+        let opts = console.options();
+        assert_eq!(
+            panel.gilt_measure(&console, &opts),
+            panel.measure(&console, &opts),
+            "Panel::gilt_measure must delegate to Panel::measure"
+        );
+    }
+
+    #[test]
+    fn panel_gilt_measure_with_title_matches_standalone() {
+        let console = make_console(80);
+        let mut panel = Panel::new(Text::new("content", Style::null()));
+        panel.title = Some(Text::new("My Title", Style::null()));
+        let opts = console.options();
+        assert_eq!(
+            panel.gilt_measure(&console, &opts),
+            panel.measure(&console, &opts),
+            "Panel::gilt_measure with title must delegate to Panel::measure"
+        );
     }
 }

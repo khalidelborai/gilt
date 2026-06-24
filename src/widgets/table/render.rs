@@ -1,11 +1,16 @@
 //! Renderable and Display implementations for Table.
 
 use crate::console::{Console, ConsoleOptions, ConsoleOptionsUpdates, Renderable};
+use crate::measure::Measurement;
 use crate::segment::Segment;
 use crate::style::Style;
 use crate::widgets::table::Table;
 
 impl Renderable for Table {
+    fn gilt_measure(&self, console: &Console, options: &ConsoleOptions) -> Measurement {
+        self.measure(console, options)
+    }
+
     fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         if self.columns.is_empty() {
             return vec![Segment::line()];
@@ -126,5 +131,45 @@ impl std::fmt::Display for Table {
         console.print(self);
         let output = console.end_capture();
         write!(f, "{}", output.trim_end_matches('\n'))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::widgets::table::Table;
+
+    fn make_console(width: usize) -> Console {
+        Console::builder()
+            .width(width)
+            .force_terminal(true)
+            .no_color(true)
+            .markup(false)
+            .build()
+    }
+
+    #[test]
+    fn table_gilt_measure_matches_standalone() {
+        let console = make_console(80);
+        let opts = console.options();
+        let mut table = Table::new(&["Name", "Age"]);
+        table.add_row(&["Alice", "30"]);
+        assert_eq!(
+            table.gilt_measure(&console, &opts),
+            table.measure(&console, &opts),
+            "Table::gilt_measure must delegate to Table::measure"
+        );
+    }
+
+    #[test]
+    fn table_gilt_measure_empty_matches_standalone() {
+        let console = make_console(80);
+        let opts = console.options();
+        let table = Table::new(&[]);
+        assert_eq!(
+            table.gilt_measure(&console, &opts),
+            table.measure(&console, &opts),
+            "Table::gilt_measure empty table must delegate to Table::measure"
+        );
     }
 }

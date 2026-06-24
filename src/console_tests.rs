@@ -2818,3 +2818,41 @@ fn test_measure_renderables_max_of_minimums_and_maximums() {
     assert_eq!(m.minimum, 5, "minimum should be max of minimums");
     assert_eq!(m.maximum, 11, "maximum should be max of maximums");
 }
+
+// -- gilt_measure override: Text ----------------------------------------
+
+#[test]
+fn text_gilt_measure_matches_standalone() {
+    let console = Console::builder().width(80).build();
+    let text = Text::new("Hello World", Style::null());
+    let opts = console.options();
+    assert_eq!(
+        text.gilt_measure(&console, &opts),
+        text.measure(),
+        "Text::gilt_measure must delegate to Text::measure()"
+    );
+}
+
+#[test]
+fn text_gilt_measure_multiline_matches_standalone() {
+    let console = Console::builder().width(80).build();
+    let text = Text::new("short\na longer line here", Style::null());
+    let opts = console.options();
+    assert_eq!(
+        text.gilt_measure(&console, &opts),
+        text.measure(),
+        "Text::gilt_measure multiline must match standalone measure"
+    );
+}
+
+#[test]
+fn text_gilt_measure_empty_matches_standalone() {
+    let console = Console::builder().width(80).build();
+    let text = Text::new("", Style::null());
+    let opts = console.options();
+    assert_eq!(
+        text.gilt_measure(&console, &opts),
+        text.measure(),
+        "Text::gilt_measure empty must match standalone measure"
+    );
+}

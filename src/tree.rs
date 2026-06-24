@@ -205,6 +205,10 @@ struct StackFrame<'a> {
 }
 
 impl Renderable for Tree {
+    fn gilt_measure(&self, console: &Console, options: &ConsoleOptions) -> Measurement {
+        self.measure(console, options)
+    }
+
     fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         let mut segments: Vec<Segment> = Vec::new();
         let ascii_only = options.ascii_only();
@@ -1100,5 +1104,36 @@ mod tests {
         assert!(text.contains("root"));
         assert!(text.contains("child"));
         assert!(text.contains("grandchild"));
+    }
+
+    // -- gilt_measure override ------------------------------------------
+
+    #[test]
+    fn tree_gilt_measure_matches_standalone() {
+        let console = test_console(80);
+        let opts = console.options();
+        let mut tree = Tree::new(Text::new("root", Style::null()));
+        tree.add(Text::new("child node", Style::null()));
+        assert_eq!(
+            tree.gilt_measure(&console, &opts),
+            tree.measure(&console, &opts),
+            "Tree::gilt_measure must delegate to Tree::measure"
+        );
+    }
+
+    #[test]
+    fn tree_gilt_measure_nested_matches_standalone() {
+        let console = test_console(80);
+        let opts = console.options();
+        let mut tree = Tree::new(Text::new("parent", Style::null()));
+        let child = tree.add(Text::new("child", Style::null()));
+        child
+            .children
+            .push(Tree::new(Text::new("a long grandchild label", Style::null())));
+        assert_eq!(
+            tree.gilt_measure(&console, &opts),
+            tree.measure(&console, &opts),
+            "Tree::gilt_measure nested must delegate to Tree::measure"
+        );
     }
 }
