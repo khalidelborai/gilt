@@ -57,7 +57,7 @@ pub struct RichHandler {
     level_styles: HashMap<log::Level, Style>,
     /// Cache of the last-emitted cache key (days+HH:MM:SS) for `omit_repeated_times`.
     /// Using a date-inclusive key fixes the midnight repeat-suppression bug (item 7).
-    last_time_str: Mutex<Option<String>>,
+    pub(crate) last_time_str: Mutex<Option<String>>,
     /// Optional strftime-style time format string. Currently stored for future use;
     /// display always uses HH:MM:SS (no `time` crate dep). The cache key includes
     /// the date so midnight rollover never falsely suppresses a new timestamp.
@@ -173,10 +173,12 @@ impl RichHandler {
 
     /// Set a strftime-style time format string.
     ///
-    /// The format string is stored and used as part of the omit-repeated-times
-    /// cache key (ensuring midnight rollover is handled correctly). Display
-    /// currently always uses `HH:MM:SS` — no extra time crate dependency is
-    /// introduced.
+    /// The format string is stored for future use only. It does **not** affect
+    /// the omit-repeated-times cache key — the midnight-safe cache key is
+    /// implemented independently by [`Self::current_time_with_date`], which
+    /// prefixes the `HH:MM:SS` display string with the days-since-epoch count.
+    /// Display currently always uses `HH:MM:SS` — no extra time crate
+    /// dependency is introduced.
     #[must_use]
     pub fn with_time_format(mut self, fmt: String) -> Self {
         self.time_format = Some(fmt);
@@ -472,7 +474,6 @@ impl RichHandler {
         let cache_key = format!("{} {}", days, display);
         (display, cache_key)
     }
-
 }
 
 impl Default for RichHandler {
@@ -750,6 +751,36 @@ mod tests {
         let second = handler.render_time_with_omit();
         assert_eq!(first.plain(), second.plain());
         assert!(!first.plain().chars().all(|c| c == ' '));
+    }
+
+    /// Item 7: midnight rollover must not falsely suppress a new timestamp.
+    ///
+    /// Seed the cache with a prior-day prefix at the same HH:MM:SS as the
+    /// current time. The next call must return a visible timestamp, not blanks.
+    ///
+    /// This test would FAIL against the old code (before the date-inclusive
+    /// cache key was introduced): the old code cached only `HH:MM:SS`, so the
+    /// second call would see the same string and suppress it.
+    #[test]
+    fn omit_repeated_times_different_day_not_suppressed() {
+        let handler = RichHandler::new().with_omit_repeated_times(true);
+
+        // Seed the cache with the current HH:MM:SS but a day-0 prefix.
+        // Day 0 is 1970-01-01; the test machine is almost certainly past day 0.
+        {
+            let mut last = handler.last_time_str.lock().unwrap();
+            let hms_now = crate::error::fmt_time_hms();
+            *last = Some(format!("0 {}", hms_now));
+        }
+
+        // Now call render_time_with_omit — same HH:MM:SS, different day prefix
+        // → must NOT be blank.
+        let result = handler.render_time_with_omit();
+        assert!(
+            !result.plain().chars().all(|c| c == ' '),
+            "same HH:MM:SS on a different day must NOT be suppressed; got {:?}",
+            result.plain()
+        );
     }
 
     #[test]
@@ -1145,7 +1176,7 @@ mod tests {
     // -- log::Log trait implementation ---------------------------------------
 
     #[test]
-    fn test_log_trait_enabled_always_true() {
+    fn test_log_trait_enabled_default_passes_all() {
         let handler = RichHandler::new();
         let metadata = log::MetadataBuilder::new()
             .level(log::Level::Trace)
