@@ -117,7 +117,7 @@ impl Align {
     pub fn measure(&self, _console: &Console, options: &ConsoleOptions) -> Measurement {
         let content_width = self.content.cell_len();
         let max_width = match self.width {
-            Some(w) => w,
+            Some(w) => w.min(options.max_width),
             None => content_width.min(options.max_width),
         };
         Measurement::new(content_width.min(max_width), max_width)
@@ -588,6 +588,29 @@ mod tests {
         let align = Align::left(Text::new("Hello World", Style::null()));
         let m = align.measure(&console, &opts);
         assert_eq!(m.maximum, 5, "maximum must be clamped to options.max_width");
+    }
+
+    // -- Explicit width clamped to console width (audit #14 parity gap) -------
+
+    #[test]
+    fn test_measure_explicit_width_clamped_to_console() {
+        // Align with explicit width=200 on 80-col console must clamp to 80.
+        let console = make_console(80);
+        let opts = console.options();
+        let align = Align::new(
+            Text::new("Hi", Style::null()),
+            HorizontalAlign::Left,
+            None,
+            None,
+            true,
+            Some(200),
+            None,
+        );
+        let m = align.measure(&console, &opts);
+        assert_eq!(
+            m.maximum, 80,
+            "explicit width must be clamped to options.max_width"
+        );
     }
 
     // -- gilt_measure override -----------------------------------------------
