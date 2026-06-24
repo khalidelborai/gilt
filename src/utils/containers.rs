@@ -5,10 +5,11 @@
 //! collections of `Text` objects can be rendered to the console.
 //!
 
-use crate::console::{Console, ConsoleOptions, Renderable};
+use std::sync::Arc;
+
+use crate::console::{Console, ConsoleOptions, Renderable, RenderableArc};
 use crate::measure::Measurement;
 use crate::segment::Segment;
-use crate::text::Text;
 
 // ---------------------------------------------------------------------------
 // Renderables
@@ -16,22 +17,41 @@ use crate::text::Text;
 
 /// A container of renderable items that renders them in sequence.
 ///
-/// This is the Rust equivalent of Renderables`.
-/// In gilt, renderables are `Text` objects.
-#[derive(Clone, Debug, Default)]
+/// This is the Rust equivalent of rich's `Renderables`. Items can be any type
+/// implementing [`Renderable`]: `Text`, `Table`, `Panel`, `Tree`, etc.
+#[derive(Clone, Default)]
 pub struct Renderables {
-    items: Vec<Text>,
+    items: Vec<RenderableArc>,
+}
+
+// Manual Debug — RenderableArc (Arc<dyn Renderable + Send + Sync>) doesn't
+// implement Debug, so we print a placeholder for each item.
+impl std::fmt::Debug for Renderables {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Renderables")
+            .field(
+                "items",
+                &self
+                    .items
+                    .iter()
+                    .map(|_| "<renderable>")
+                    .collect::<Vec<_>>(),
+            )
+            .finish()
+    }
 }
 
 impl Renderables {
-    /// Create a new `Renderables` from a vector of `Text` items.
-    pub fn new(items: Vec<Text>) -> Self {
+    /// Create a new `Renderables` from a vector of [`RenderableArc`] items.
+    pub fn new(items: Vec<RenderableArc>) -> Self {
         Renderables { items }
     }
 
-    /// Append a `Text` item to the container.
-    pub fn append(&mut self, item: Text) {
-        self.items.push(item);
+    /// Append any [`Renderable`] item to the container.
+    ///
+    /// The value is wrapped in an [`Arc`] internally.
+    pub fn append(&mut self, item: impl Renderable + Send + Sync + 'static) {
+        self.items.push(Arc::new(item));
     }
 
     /// Return the number of items in the container.
@@ -48,15 +68,15 @@ impl Renderables {
     ///
     /// The minimum width is the maximum of all individual minimums,
     /// and the maximum width is the maximum of all individual maximums.
-    /// If there are no items, returns `Measurement(1, 1)` (matching Python).
-    pub fn measure(&self) -> Measurement {
+    /// If there are no items, returns `Measurement(1, 1)` (matching Python rich).
+    pub fn measure(&self, console: &Console, options: &ConsoleOptions) -> Measurement {
         if self.items.is_empty() {
             return Measurement::new(1, 1);
         }
         let mut min_width = 0usize;
         let mut max_width = 0usize;
         for item in &self.items {
-            let m = item.measure();
+            let m = item.gilt_measure(console, options);
             min_width = min_width.max(m.minimum);
             max_width = max_width.max(m.maximum);
         }
@@ -65,14 +85,14 @@ impl Renderables {
 }
 
 impl Renderable for Renderables {
-    fn gilt_measure(&self, _console: &Console, _options: &ConsoleOptions) -> Measurement {
-        self.measure()
+    fn gilt_measure(&self, console: &Console, options: &ConsoleOptions) -> Measurement {
+        self.measure(console, options)
     }
 
     fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         let mut segments = Vec::new();
         for item in &self.items {
-            segments.extend(item.gilt_console(console, options));
+            segments.extend(item.as_ref().gilt_console(console, options));
         }
         segments
     }
@@ -102,7 +122,8 @@ impl Renderable for Lines {
 mod tests {
     use super::*;
     use crate::style::Style;
-    use crate::text::{JustifyMethod, OverflowMethod};
+    use crate::text::{JustifyMethod, Lines, OverflowMethod, Text};
+    use crate::widgets::table::Table;
 
     fn make_console() -> Console {
         Console::builder()
@@ -116,6 +137,53 @@ mod tests {
         segments.iter().map(|s| s.text.as_str()).collect()
     }
 
+    fn text_arc(s: &str) -> RenderableArc {
+        Arc::new(Text::new(s, Style::null()))
+    }
+
+    // -- NEW: heterogeneous widget tests ------------------------------------
+
+    #[test]
+    fn renderables_append_table_renders() {
+        let console = make_console();
+        let options = console.options();
+
+        let mut r = Renderables::new(vec![]);
+        let mut table = Table::new(&["Col A", "Col B"]);
+        table.add_row(&["r1c1", "r1c2"]);
+        r.append(table);
+        assert_eq!(r.len(), 1);
+
+        let segments = r.gilt_console(&console, &options);
+        let output = segments_text(&segments);
+
+        assert!(output.contains("Col A"), "Table header Col A not found");
+        assert!(output.contains("r1c1"), "Table cell not found");
+    }
+
+    #[test]
+    fn renderables_new_accepts_renderable_arcs() {
+        let console = make_console();
+        let options = console.options();
+
+        let items: Vec<RenderableArc> = vec![text_arc("item one"), text_arc("item two")];
+        let r = Renderables::new(items);
+        assert_eq!(r.len(), 2);
+
+        let segments = r.gilt_console(&console, &options);
+        let output = segments_text(&segments);
+        assert!(output.contains("item one"));
+        assert!(output.contains("item two"));
+    }
+
+    #[test]
+    fn renderables_debug_impl() {
+        let r = Renderables::new(vec![text_arc("debug")]);
+        let debug_str = format!("{:?}", r);
+        assert!(debug_str.contains("Renderables"));
+        assert!(debug_str.contains("<renderable>"));
+    }
+
     // -- Renderables: construction ------------------------------------------
 
     #[test]
@@ -127,19 +195,14 @@ mod tests {
 
     #[test]
     fn test_renderables_single_item() {
-        let t = Text::new("Hello", Style::null());
-        let r = Renderables::new(vec![t]);
+        let r = Renderables::new(vec![text_arc("Hello")]);
         assert!(!r.is_empty());
         assert_eq!(r.len(), 1);
     }
 
     #[test]
     fn test_renderables_multiple_items() {
-        let items = vec![
-            Text::new("Hello", Style::null()),
-            Text::new("World", Style::null()),
-            Text::new("Foo", Style::null()),
-        ];
+        let items: Vec<RenderableArc> = vec![text_arc("Hello"), text_arc("World"), text_arc("Foo")];
         let r = Renderables::new(items);
         assert_eq!(r.len(), 3);
     }
@@ -164,16 +227,19 @@ mod tests {
 
     #[test]
     fn test_renderables_measure_empty() {
+        let console = make_console();
+        let opts = console.options();
         let r = Renderables::new(vec![]);
-        let m = r.measure();
+        let m = r.measure(&console, &opts);
         assert_eq!(m, Measurement::new(1, 1));
     }
 
     #[test]
     fn test_renderables_measure_single() {
-        let t = Text::new("Hello World", Style::null());
-        let r = Renderables::new(vec![t]);
-        let m = r.measure();
+        let console = make_console();
+        let opts = console.options();
+        let r = Renderables::new(vec![text_arc("Hello World")]);
+        let m = r.measure(&console, &opts);
         // "Hello World" -> min=5 (longest word "Hello" or "World"), max=11
         assert_eq!(m.minimum, 5);
         assert_eq!(m.maximum, 11);
@@ -181,13 +247,15 @@ mod tests {
 
     #[test]
     fn test_renderables_measure_multiple() {
-        let items = vec![
-            Text::new("Hi", Style::null()),          // min=2, max=2
-            Text::new("Hello World", Style::null()), // min=5, max=11
-            Text::new("Foo", Style::null()),         // min=3, max=3
+        let console = make_console();
+        let opts = console.options();
+        let items: Vec<RenderableArc> = vec![
+            text_arc("Hi"),          // min=2, max=2
+            text_arc("Hello World"), // min=5, max=11
+            text_arc("Foo"),         // min=3, max=3
         ];
         let r = Renderables::new(items);
-        let m = r.measure();
+        let m = r.measure(&console, &opts);
         // min = max(2, 5, 3) = 5
         // max = max(2, 11, 3) = 11
         assert_eq!(m.minimum, 5);
@@ -196,12 +264,14 @@ mod tests {
 
     #[test]
     fn test_renderables_measure_correct_min_max() {
-        let items = vec![
-            Text::new("abcdefghij", Style::null()), // single word, min=10, max=10
-            Text::new("ab cd ef", Style::null()),   // min=2, max=8
+        let console = make_console();
+        let opts = console.options();
+        let items: Vec<RenderableArc> = vec![
+            text_arc("abcdefghij"), // single word, min=10, max=10
+            text_arc("ab cd ef"),   // min=2, max=8
         ];
         let r = Renderables::new(items);
-        let m = r.measure();
+        let m = r.measure(&console, &opts);
         assert_eq!(m.minimum, 10); // max(10, 2)
         assert_eq!(m.maximum, 10); // max(10, 8)
     }
@@ -223,7 +293,7 @@ mod tests {
         let options = console.options();
         let mut t = Text::new("Hello", Style::null());
         t.end = String::new();
-        let r = Renderables::new(vec![t]);
+        let r = Renderables::new(vec![Arc::new(t)]);
         let segments = r.gilt_console(&console, &options);
         let text = segments_text(&segments);
         assert!(text.contains("Hello"));
@@ -237,7 +307,7 @@ mod tests {
         t1.end = String::new();
         let mut t2 = Text::new("World", Style::null());
         t2.end = String::new();
-        let r = Renderables::new(vec![t1, t2]);
+        let r = Renderables::new(vec![Arc::new(t1), Arc::new(t2)]);
         let segments = r.gilt_console(&console, &options);
         let text = segments_text(&segments);
         assert!(text.contains("Hello"));
@@ -248,11 +318,11 @@ mod tests {
     fn test_renderables_renderable_preserves_order() {
         let console = make_console();
         let options = console.options();
-        let mut items = Vec::new();
+        let mut items: Vec<RenderableArc> = Vec::new();
         for i in 0..5 {
             let mut t = Text::new(&format!("item{}", i), Style::null());
             t.end = String::new();
-            items.push(t);
+            items.push(Arc::new(t));
         }
         let r = Renderables::new(items);
         let segments = r.gilt_console(&console, &options);
@@ -525,13 +595,10 @@ mod tests {
     fn renderables_gilt_measure_matches_standalone() {
         let console = make_console();
         let opts = console.options();
-        let items = vec![
-            Text::new("Hello", Style::null()),
-            Text::new("Hello, World!", Style::null()),
-            Text::new("Hi", Style::null()),
-        ];
+        let items: Vec<RenderableArc> =
+            vec![text_arc("Hello"), text_arc("Hello, World!"), text_arc("Hi")];
         let r = Renderables::new(items);
-        let m_standalone = r.measure();
+        let m_standalone = r.measure(&console, &opts);
         let m_trait = r.gilt_measure(&console, &opts);
         assert_eq!(
             m_trait, m_standalone,
@@ -544,7 +611,7 @@ mod tests {
         let console = make_console();
         let opts = console.options();
         let r = Renderables::new(vec![]);
-        let m_standalone = r.measure();
+        let m_standalone = r.measure(&console, &opts);
         let m_trait = r.gilt_measure(&console, &opts);
         assert_eq!(
             m_trait, m_standalone,

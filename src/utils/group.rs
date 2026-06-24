@@ -1,7 +1,7 @@
 //! Group widget -- renders a collection of renderables in sequence.
 //!
-//! The `Group` widget holds a list of `Text` renderables and renders them one
-//! after another. It supports two modes:
+//! The `Group` widget holds a list of `RenderableArc` items and renders them
+//! one after another. It supports two modes:
 //!
 //! - **Default (`new`)**: fills the available width (measurement returns
 //!   `max_width` for both minimum and maximum).
@@ -10,11 +10,11 @@
 //!
 
 use std::fmt;
+use std::sync::Arc;
 
-use crate::console::{Console, ConsoleOptions, Renderable};
+use crate::console::{Console, ConsoleOptions, Renderable, RenderableArc};
 use crate::measure::Measurement;
 use crate::segment::Segment;
-use crate::text::Text;
 
 // ---------------------------------------------------------------------------
 // Group
@@ -22,48 +22,76 @@ use crate::text::Text;
 
 /// A group of renderables that are rendered in sequence.
 ///
-/// When `fit` is `true` (the default, matching ), the group's
-/// measurement is derived from its contents so that it occupies only as much
-/// width as the widest item requires. When `fit` is `false`, the group fills
-/// the entire available width.
+/// When `fit` is `true`, the group's measurement is derived from its contents
+/// so that it occupies only as much width as the widest item requires. When
+/// `fit` is `false`, the group fills the entire available width.
+///
+/// Items can be any type implementing [`Renderable`]: `Text`, `Panel`, `Rule`,
+/// `Table`, etc.
 ///
 /// # Examples
 ///
 /// ```
+/// use std::sync::Arc;
 /// use gilt::group::Group;
 /// use gilt::text::Text;
 /// use gilt::style::Style;
 ///
-/// let items = vec![
-///     Text::new("Hello", Style::null()),
-///     Text::new("World", Style::null()),
+/// let items: Vec<gilt::RenderableArc> = vec![
+///     Arc::new(Text::new("Hello", Style::null())),
+///     Arc::new(Text::new("World", Style::null())),
 /// ];
 /// let group = Group::new(items);
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Group {
     /// The renderable items in this group.
-    items: Vec<Text>,
+    items: Vec<RenderableArc>,
     /// When `true`, constrain width to the widest item.
     /// When `false`, fill the available width.
     fit: bool,
 }
 
+// Manual Debug — RenderableArc (Arc<dyn Renderable + Send + Sync>) doesn't
+// implement Debug, so we print a placeholder for each item.
+impl fmt::Debug for Group {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Group")
+            .field(
+                "items",
+                &self
+                    .items
+                    .iter()
+                    .map(|_| "<renderable>")
+                    .collect::<Vec<_>>(),
+            )
+            .field("fit", &self.fit)
+            .finish()
+    }
+}
+
 impl Group {
-    /// Create a new `Group` from a vector of `Text` items.
+    /// Create a new `Group` from a vector of [`RenderableArc`] items.
     ///
     /// By default, `fit` is `false` -- the group fills the available width.
     /// Use [`Group::fit`] to create a group that constrains to content width.
-    pub fn new(items: Vec<Text>) -> Self {
+    pub fn new(items: Vec<RenderableArc>) -> Self {
         Group { items, fit: false }
     }
 
     /// Create a new `Group` that constrains its width to the widest item.
     ///
-    /// This is equivalent to `Group::new(items)` with `fit` set to `true`,
-    /// matching the `Group(*renderables, fit=True)`.
-    pub fn fit(items: Vec<Text>) -> Self {
+    /// This is equivalent to `Group::new(items)` with `fit` set to `true`.
+    pub fn fit(items: Vec<RenderableArc>) -> Self {
         Group { items, fit: true }
+    }
+
+    /// Push a single item into the group.
+    ///
+    /// Accepts any type that implements [`Renderable`]; wraps it in an [`Arc`]
+    /// internally.
+    pub fn push(&mut self, item: impl Renderable + Send + Sync + 'static) {
+        self.items.push(Arc::new(item));
     }
 
     /// Return `true` if this group constrains width to content.
@@ -72,7 +100,7 @@ impl Group {
     }
 
     /// Return a reference to the items in this group.
-    pub fn items(&self) -> &[Text] {
+    pub fn items(&self) -> &[RenderableArc] {
         &self.items
     }
 
@@ -91,9 +119,9 @@ impl Group {
     /// When `fit` is `true`, the measurement is the combined measurement of all
     /// items (maximum of each item's min and max). When `fit` is `false`, both
     /// minimum and maximum are set to `options.max_width` (fill available space).
-    pub fn measure(&self, _console: &Console, options: &ConsoleOptions) -> Measurement {
+    pub fn measure(&self, console: &Console, options: &ConsoleOptions) -> Measurement {
         if self.fit {
-            self.measure_renderables(options)
+            self.measure_renderables(console, options)
         } else {
             Measurement::new(options.max_width, options.max_width)
         }
@@ -104,14 +132,14 @@ impl Group {
     /// The minimum width is the maximum of all individual minimums, and the
     /// maximum width is the maximum of all individual maximums, clamped to
     /// `options.max_width`.
-    fn measure_renderables(&self, options: &ConsoleOptions) -> Measurement {
+    fn measure_renderables(&self, console: &Console, options: &ConsoleOptions) -> Measurement {
         if self.items.is_empty() {
             return Measurement::new(1, 1);
         }
         let mut min_width = 0usize;
         let mut max_width = 0usize;
         for item in &self.items {
-            let m = item.measure();
+            let m = item.gilt_measure(console, options);
             min_width = min_width.max(m.minimum);
             max_width = max_width.max(m.maximum);
         }
@@ -129,7 +157,7 @@ impl Renderable for Group {
 
     fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         let render_options = if self.fit {
-            let measurement = self.measure_renderables(options);
+            let measurement = self.measure_renderables(console, options);
             options.update_width(measurement.maximum.min(options.max_width))
         } else {
             options.clone()
@@ -137,7 +165,7 @@ impl Renderable for Group {
 
         let mut segments = Vec::new();
         for item in &self.items {
-            segments.extend(item.gilt_console(console, &render_options));
+            segments.extend(item.as_ref().gilt_console(console, &render_options));
         }
         segments
     }
@@ -169,7 +197,10 @@ impl fmt::Display for Group {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::panel::Panel;
+    use crate::rule::Rule;
     use crate::style::Style;
+    use crate::text::Text;
 
     fn make_console(width: usize) -> Console {
         Console::builder()
@@ -184,14 +215,83 @@ mod tests {
         segments.iter().map(|s| s.text.as_str()).collect()
     }
 
+    // Helper: wrap a Text into a RenderableArc
+    fn text_arc(s: &str) -> RenderableArc {
+        Arc::new(Text::new(s, Style::null()))
+    }
+
+    // -- NEW: heterogeneous widget tests ------------------------------------
+
+    #[test]
+    fn group_new_with_text_panel_rule_renders_all() {
+        let console = make_console(80);
+        let opts = console.options();
+
+        let text = Text::new("plain text", Style::null());
+        let panel = Panel::new(Text::new("panel content", Style::null()));
+        let rule = Rule::new();
+
+        let items: Vec<RenderableArc> = vec![Arc::new(text), Arc::new(panel), Arc::new(rule)];
+        let group = Group::new(items);
+        let segments = group.gilt_console(&console, &opts);
+        let output = segments_text(&segments);
+
+        // Text item renders
+        assert!(
+            output.contains("plain text"),
+            "Text item not found in output"
+        );
+        // Panel item renders its content
+        assert!(
+            output.contains("panel content"),
+            "Panel content not found in output"
+        );
+        // Rule item renders (produces non-empty output)
+        assert!(
+            !segments.is_empty(),
+            "Group with Rule should produce segments"
+        );
+    }
+
+    #[test]
+    fn group_push_adds_widget() {
+        let console = make_console(80);
+        let opts = console.options();
+
+        let mut group = Group::new(vec![Arc::new(Text::new("first", Style::null()))]);
+        group.push(Text::new("second", Style::null()));
+        assert_eq!(group.len(), 2);
+
+        let segments = group.gilt_console(&console, &opts);
+        let output = segments_text(&segments);
+        assert!(output.contains("first"));
+        assert!(output.contains("second"));
+    }
+
+    #[test]
+    fn group_items_returns_renderable_arc_slice() {
+        let items: Vec<RenderableArc> = vec![
+            Arc::new(Text::new("a", Style::null())),
+            Arc::new(Text::new("b", Style::null())),
+        ];
+        let group = Group::new(items);
+        assert_eq!(group.items().len(), 2);
+    }
+
+    #[test]
+    fn group_debug_impl() {
+        let items: Vec<RenderableArc> = vec![Arc::new(Text::new("debug", Style::null()))];
+        let group = Group::new(items);
+        let debug_str = format!("{:?}", group);
+        assert!(debug_str.contains("Group"));
+        assert!(debug_str.contains("<renderable>"));
+    }
+
     // -- Construction -------------------------------------------------------
 
     #[test]
     fn test_new_creates_non_fit_group() {
-        let items = vec![
-            Text::new("Hello", Style::null()),
-            Text::new("World", Style::null()),
-        ];
+        let items = vec![text_arc("Hello"), text_arc("World")];
         let group = Group::new(items);
         assert!(!group.is_fit());
         assert_eq!(group.len(), 2);
@@ -199,10 +299,7 @@ mod tests {
 
     #[test]
     fn test_fit_creates_fit_group() {
-        let items = vec![
-            Text::new("Hello", Style::null()),
-            Text::new("World", Style::null()),
-        ];
+        let items = vec![text_arc("Hello"), text_arc("World")];
         let group = Group::fit(items);
         assert!(group.is_fit());
         assert_eq!(group.len(), 2);
@@ -217,14 +314,9 @@ mod tests {
 
     #[test]
     fn test_items_accessor() {
-        let items = vec![
-            Text::new("Alpha", Style::null()),
-            Text::new("Beta", Style::null()),
-        ];
+        let items = vec![text_arc("Alpha"), text_arc("Beta")];
         let group = Group::new(items);
         assert_eq!(group.items().len(), 2);
-        assert_eq!(group.items()[0].plain(), "Alpha");
-        assert_eq!(group.items()[1].plain(), "Beta");
     }
 
     // -- Measure (non-fit) --------------------------------------------------
@@ -233,10 +325,7 @@ mod tests {
     fn test_measure_non_fit_fills_width() {
         let console = make_console(80);
         let opts = console.options();
-        let items = vec![
-            Text::new("Short", Style::null()),
-            Text::new("A bit longer text", Style::null()),
-        ];
+        let items = vec![text_arc("Short"), text_arc("A bit longer text")];
         let group = Group::new(items);
         let m = group.measure(&console, &opts);
         // Non-fit group fills available width
@@ -251,9 +340,9 @@ mod tests {
         let console = make_console(80);
         let opts = console.options();
         let items = vec![
-            Text::new("Hi", Style::null()),          // max=2
-            Text::new("Hello World", Style::null()), // max=11
-            Text::new("Foo", Style::null()),         // max=3
+            text_arc("Hi"),          // max=2
+            text_arc("Hello World"), // max=11
+            text_arc("Foo"),         // max=3
         ];
         let group = Group::fit(items);
         let m = group.measure(&console, &opts);
@@ -276,7 +365,7 @@ mod tests {
     fn test_measure_fit_clamped_to_max_width() {
         let console = make_console(5);
         let opts = console.options();
-        let items = vec![Text::new("A very long line of text", Style::null())];
+        let items = vec![text_arc("A very long line of text")];
         let group = Group::fit(items);
         let m = group.measure(&console, &opts);
         // Should be clamped to console width of 5
@@ -289,11 +378,7 @@ mod tests {
     fn test_render_contains_all_items() {
         let console = make_console(80);
         let opts = console.options();
-        let items = vec![
-            Text::new("First", Style::null()),
-            Text::new("Second", Style::null()),
-            Text::new("Third", Style::null()),
-        ];
+        let items = vec![text_arc("First"), text_arc("Second"), text_arc("Third")];
         let group = Group::new(items);
         let segments = group.gilt_console(&console, &opts);
         let text = segments_text(&segments);
@@ -306,11 +391,7 @@ mod tests {
     fn test_render_preserves_order() {
         let console = make_console(80);
         let opts = console.options();
-        let items = vec![
-            Text::new("AAA", Style::null()),
-            Text::new("BBB", Style::null()),
-            Text::new("CCC", Style::null()),
-        ];
+        let items = vec![text_arc("AAA"), text_arc("BBB"), text_arc("CCC")];
         let group = Group::new(items);
         let segments = group.gilt_console(&console, &opts);
         let text = segments_text(&segments);
@@ -336,7 +417,7 @@ mod tests {
         let opts = console.options();
         let mut t = Text::new("Only one", Style::null());
         t.end = String::new();
-        let group = Group::new(vec![t]);
+        let group = Group::new(vec![Arc::new(t)]);
         let segments = group.gilt_console(&console, &opts);
         let text = segments_text(&segments);
         assert!(text.contains("Only one"));
@@ -350,12 +431,10 @@ mod tests {
         // With fit=true, the render width should be constrained.
         let console = make_console(80);
         let opts = console.options();
-        let items = vec![
-            Text::new("Short", Style::null()),
-            Text::new("Medium text", Style::null()),
-        ];
-        let group_fit = Group::fit(items.clone());
-        let group_no_fit = Group::new(items);
+        let items_fit = vec![text_arc("Short"), text_arc("Medium text")];
+        let items_no_fit = vec![text_arc("Short"), text_arc("Medium text")];
+        let group_fit = Group::fit(items_fit);
+        let group_no_fit = Group::new(items_no_fit);
 
         let seg_fit = group_fit.gilt_console(&console, &opts);
         let seg_no_fit = group_no_fit.gilt_console(&console, &opts);
@@ -374,7 +453,7 @@ mod tests {
     #[test]
     fn test_console_render_integration() {
         let console = make_console(80);
-        let items = vec![Text::new("via console render", Style::null())];
+        let items = vec![text_arc("via console render")];
         let group = Group::new(items);
         let segments = console.render(&group, None);
         let combined: String = segments.iter().map(|s| s.text.as_str()).collect();
@@ -385,17 +464,16 @@ mod tests {
 
     #[test]
     fn test_clone() {
-        let items = vec![Text::new("cloneable", Style::null())];
+        let items = vec![text_arc("cloneable")];
         let group = Group::fit(items);
         let cloned = group.clone();
         assert_eq!(cloned.len(), group.len());
         assert_eq!(cloned.is_fit(), group.is_fit());
-        assert_eq!(cloned.items()[0].plain(), "cloneable");
     }
 
     #[test]
     fn test_debug() {
-        let items = vec![Text::new("debug", Style::null())];
+        let items = vec![text_arc("debug")];
         let group = Group::new(items);
         let debug_str = format!("{:?}", group);
         assert!(debug_str.contains("Group"));
@@ -407,9 +485,9 @@ mod tests {
     fn test_styled_content_preserved() {
         let console = make_console(80);
         let opts = console.options();
-        let items = vec![
-            Text::styled("Bold item", "bold"),
-            Text::styled("Italic item", "italic"),
+        let items: Vec<RenderableArc> = vec![
+            Arc::new(Text::styled("Bold item", "bold")),
+            Arc::new(Text::styled("Italic item", "italic")),
         ];
         let group = Group::new(items);
         let segments = group.gilt_console(&console, &opts);
@@ -432,10 +510,7 @@ mod tests {
     fn group_gilt_measure_non_fit_matches_standalone() {
         let console = make_console(80);
         let opts = console.options();
-        let items = vec![
-            Text::new("Short", Style::null()),
-            Text::new("A bit longer text", Style::null()),
-        ];
+        let items = vec![text_arc("Short"), text_arc("A bit longer text")];
         let group = Group::new(items);
         let m_standalone = group.measure(&console, &opts);
         let m_trait = group.gilt_measure(&console, &opts);
@@ -449,10 +524,7 @@ mod tests {
     fn group_gilt_measure_fit_matches_standalone() {
         let console = make_console(80);
         let opts = console.options();
-        let items = vec![
-            Text::new("Hi", Style::null()),
-            Text::new("Hello World", Style::null()),
-        ];
+        let items = vec![text_arc("Hi"), text_arc("Hello World")];
         let group = Group::fit(items);
         let m_standalone = group.measure(&console, &opts);
         let m_trait = group.gilt_measure(&console, &opts);

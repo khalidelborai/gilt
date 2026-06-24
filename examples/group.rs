@@ -1,5 +1,7 @@
 //! Demonstrates gilt's Group widget — rendering multiple items in sequence.
 
+use std::sync::Arc;
+
 use gilt::console::Console;
 use gilt::group::Group;
 use gilt::panel::Panel;
@@ -19,19 +21,18 @@ fn main() {
     console.print(&Rule::with_title("Group — Direct Rendering"));
 
     let items = vec![
-        Text::from_markup("[bold blue]Hello[/bold blue] from item one").unwrap(),
-        Text::from_markup("[bold red]World[/bold red] from item two").unwrap(),
-        Text::from_markup("[bold green]Goodbye[/bold green] from item three").unwrap(),
+        Arc::new(Text::from_markup("[bold blue]Hello[/bold blue] from item one").unwrap()),
+        Arc::new(Text::from_markup("[bold red]World[/bold red] from item two").unwrap()),
+        Arc::new(Text::from_markup("[bold green]Goodbye[/bold green] from item three").unwrap()),
     ];
     let group = Group::new(items);
 
     console.print(&group);
 
-    // -- 2. Group inside a Panel (via Text) -----------------------------------
+    // -- 2. Group inside a Panel ----------------------------------------------
 
     console.print(&Rule::with_title("Group in a Panel"));
 
-    // Panel accepts Text, so we build a multi-line Text that mimics the group.
     let mut combined = Text::from_markup("[bold blue]First[/bold blue] line of the group").unwrap();
     combined.append_str("\n", None);
     combined.append_str("Second line with ", None);
@@ -50,8 +51,8 @@ fn main() {
     console.print(&Rule::with_title("Fit Group"));
 
     let items2 = vec![
-        Text::from_markup("[bold magenta]Short").unwrap(),
-        Text::from_markup("[dim]A slightly longer line here").unwrap(),
+        Arc::new(Text::from_markup("[bold magenta]Short").unwrap()),
+        Arc::new(Text::from_markup("[dim]A slightly longer line here").unwrap()),
     ];
     let group2 = Group::fit(items2);
 
