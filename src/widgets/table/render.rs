@@ -32,6 +32,7 @@ impl Renderable for Table {
             .map(|(i, col)| self.get_cells(console, i, col))
             .collect();
         let widths = self.calculate_column_widths_with_cells(
+            console,
             &options.update_width(max_width.saturating_sub(extra_width)),
             &column_cells,
         );

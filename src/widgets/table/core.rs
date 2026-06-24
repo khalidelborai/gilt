@@ -1,7 +1,7 @@
 //! Table module -- rich table rendering with columns, rows, and box borders.
 //!
 
-use crate::console::{Console, ConsoleOptions, ConsoleOptionsUpdates, Renderable};
+use crate::console::{Console, ConsoleOptions, ConsoleOptionsUpdates, Renderable, RenderableArc};
 use crate::measure::Measurement;
 use crate::segment::Segment;
 use crate::style::Style;
@@ -15,7 +15,20 @@ use std::sync::Arc;
 /// A single cell in the table (internal).
 pub(crate) struct CellInfo {
     pub(crate) style: Style,
+    /// Pre-resolved `Text` used for plain/styled cells (includes any left/right
+    /// padding spaces embedded by `get_cells`).  For `CellContent::Renderable`
+    /// cells this is `Text::empty()` — rendering is done via `renderable_arc`.
     pub(crate) renderable: Text,
+    /// For `CellContent::Renderable` cells: the original `Arc` kept so the
+    /// cell widget can be rendered at the resolved column width at render time
+    /// (fixing audit gap #19).  `None` for plain/styled cells.
+    pub(crate) renderable_arc: Option<RenderableArc>,
+    /// Effective left-padding width for `Renderable` cells (columns of spaces to
+    /// prepend to every rendered line so the widget's geometry matches the plain-
+    /// cell path which embeds padding in the `Text`).  Zero for plain/styled cells.
+    pub(crate) eff_left_pad: usize,
+    /// Effective right-padding width for `Renderable` cells.  Zero for plain/styled.
+    pub(crate) eff_right_pad: usize,
     pub(crate) vertical: VerticalAlign,
 }
 
@@ -795,13 +808,14 @@ impl Table {
         // Slow path — builds the cells. Internal callers in `gilt_console`
         // should use [`Self::measure_column_with_cells`] to avoid the rebuild.
         let cells = self.get_cells(console, column.index, column);
-        self.measure_with_cells(options, column, padding_width, &cells)
+        self.measure_with_cells(console, options, column, padding_width, &cells)
     }
 
     /// Measure a column using pre-built `CellInfo`s. Avoids the second
     /// `get_cells` pass that the public [`measure_column`] would do.
     fn measure_column_with_cells(
         &self,
+        console: &Console,
         options: &ConsoleOptions,
         column: &Column,
         cells: &[CellInfo],
@@ -815,13 +829,19 @@ impl Table {
             return Measurement::new(fixed_width + padding_width, fixed_width + padding_width)
                 .with_maximum(max_width);
         }
-        self.measure_with_cells(options, column, padding_width, cells)
+        self.measure_with_cells(console, options, column, padding_width, cells)
     }
 
     /// Shared measurement body for both [`measure_column`] and
     /// [`measure_column_with_cells`].
+    ///
+    /// For `CellContent::Renderable` cells (those carrying a `renderable_arc`)
+    /// the measurement is obtained via `gilt_measure` so that the widget's own
+    /// sizing logic (e.g. a `Panel`'s content-fit mode) is honoured.
+    /// For plain/styled cells the no-arg `Text::measure()` is used as before.
     fn measure_with_cells(
         &self,
+        console: &Console,
         options: &ConsoleOptions,
         column: &Column,
         padding_width: usize,
@@ -831,7 +851,12 @@ impl Table {
         let mut min_w = 0usize;
         let mut max_w = 0usize;
         for cell in cells {
-            let m = cell.renderable.measure();
+            let m = if let Some(ref arc) = cell.renderable_arc {
+                // Renderable cell: delegate to the widget's own measure.
+                arc.gilt_measure(console, options)
+            } else {
+                cell.renderable.measure()
+            };
             if m.minimum + padding_width > min_w {
                 min_w = m.minimum + padding_width;
             }
@@ -872,6 +897,9 @@ impl Table {
             cells.push(CellInfo {
                 style: header_style,
                 renderable: text,
+                renderable_arc: None,
+                eff_left_pad: 0,
+                eff_right_pad: 0,
                 vertical: column.vertical,
             });
         }
@@ -880,10 +908,19 @@ impl Table {
             .get_style(&column.style)
             .unwrap_or_else(|_| Style::null());
         for cell_content in &column.cells {
-            let text = cell_content.resolve(console);
+            // For Renderable cells keep the Arc so the render loop can later
+            // render it at the resolved column width (audit gap #19 fix).
+            // For Plain/Styled, pre-resolve to Text as before.
+            let (text, arc) = match cell_content {
+                CellContent::Renderable(r) => (Text::empty(), Some(Arc::clone(r))),
+                _ => (cell_content.resolve(console), None),
+            };
             cells.push(CellInfo {
                 style: cell_style.clone(),
                 renderable: text,
+                renderable_arc: arc,
+                eff_left_pad: 0,
+                eff_right_pad: 0,
                 vertical: column.vertical,
             });
         }
@@ -899,6 +936,9 @@ impl Table {
             cells.push(CellInfo {
                 style: footer_style,
                 renderable: text,
+                renderable_arc: None,
+                eff_left_pad: 0,
+                eff_right_pad: 0,
                 vertical: column.vertical,
             });
         }
@@ -937,12 +977,20 @@ impl Table {
                     let _ = (first_row, last_row);
                 }
 
-                // Apply padding by modifying the text
-                if left > 0 {
-                    cell.renderable.pad_left(left, ' ');
-                }
-                if right > 0 {
-                    cell.renderable.pad_right(right, ' ');
+                if cell.renderable_arc.is_some() {
+                    // Renderable cells: record the effective padding so the render
+                    // loop can apply it as space columns around the widget output,
+                    // matching exactly the geometry of the plain-cell path.
+                    cell.eff_left_pad = left;
+                    cell.eff_right_pad = right;
+                } else {
+                    // Plain/styled cells: embed padding as spaces in the Text.
+                    if left > 0 {
+                        cell.renderable.pad_left(left, ' ');
+                    }
+                    if right > 0 {
+                        cell.renderable.pad_right(right, ' ');
+                    }
                 }
                 // Top/bottom padding handled by adding blank lines during rendering
                 // (not modifying the Text itself here -- they become extra row height)
@@ -971,13 +1019,14 @@ impl Table {
             .enumerate()
             .map(|(i, col)| self.get_cells(console, i, col))
             .collect();
-        self.calculate_column_widths_with_cells(options, &column_cells)
+        self.calculate_column_widths_with_cells(console, options, &column_cells)
     }
 
     /// Internal: same as [`calculate_column_widths`] but uses pre-built
     /// per-column cells, avoiding a second round of `get_cells` calls.
     pub(crate) fn calculate_column_widths_with_cells(
         &self,
+        console: &Console,
         options: &ConsoleOptions,
         column_cells: &[Vec<CellInfo>],
     ) -> Vec<usize> {
@@ -987,7 +1036,7 @@ impl Table {
         let width_ranges: Vec<Measurement> = columns
             .iter()
             .enumerate()
-            .map(|(i, col)| self.measure_column_with_cells(options, col, &column_cells[i]))
+            .map(|(i, col)| self.measure_column_with_cells(console, options, col, &column_cells[i]))
             .collect();
 
         let mut widths: Vec<usize> = width_ranges
@@ -1068,7 +1117,12 @@ impl Table {
                 .zip(columns.iter())
                 .enumerate()
                 .map(|(i, (&w, col))| {
-                    self.measure_column_with_cells(&options.update_width(w), col, &column_cells[i])
+                    self.measure_column_with_cells(
+                        console,
+                        &options.update_width(w),
+                        col,
+                        &column_cells[i],
+                    )
                 })
                 .collect();
             widths = new_ranges
@@ -1345,24 +1399,83 @@ impl Table {
                     continue;
                 };
 
-                let render_options = options.with_updates(&ConsoleOptionsUpdates {
-                    width: Some(width),
-                    justify: Some(Some(column.justify)),
-                    no_wrap: Some(column.no_wrap),
-                    overflow: Some(Some(column.overflow)),
-                    height: Some(None),
-                    highlight: Some(Some(column.highlight)),
-                    ..Default::default()
-                });
-
                 let cell_combined_style = cell.style.clone() + row_style.clone();
-                let mut lines = console.render_lines(
-                    &cell.renderable,
-                    Some(&render_options),
-                    Some(&cell_combined_style),
-                    true,
-                    false,
-                );
+
+                // Renderable cells (audit gap #19): render at INNER content width
+                // (= column width minus the cell's left/right padding), then prepend/
+                // append the padding spaces on every line.  This matches the geometry
+                // of the plain-cell path, which embeds padding in the Text object.
+                let mut lines = if let Some(ref arc) = cell.renderable_arc {
+                    let lpad = cell.eff_left_pad;
+                    let rpad = cell.eff_right_pad;
+                    let inner_width = width.saturating_sub(lpad + rpad).max(1);
+                    let inner_opts = options.with_updates(&ConsoleOptionsUpdates {
+                        width: Some(inner_width),
+                        justify: Some(Some(column.justify)),
+                        no_wrap: Some(column.no_wrap),
+                        overflow: Some(Some(column.overflow)),
+                        height: Some(None),
+                        highlight: Some(Some(column.highlight)),
+                        ..Default::default()
+                    });
+                    let inner_lines = console.render_lines(
+                        arc.as_ref(),
+                        Some(&inner_opts),
+                        Some(&cell_combined_style),
+                        true,
+                        false,
+                    );
+                    // Apply left/right padding spaces to every line.
+                    if lpad == 0 && rpad == 0 {
+                        inner_lines
+                    } else {
+                        let left_seg = if lpad > 0 {
+                            Some(Segment::styled(
+                                &" ".repeat(lpad),
+                                cell_combined_style.clone(),
+                            ))
+                        } else {
+                            None
+                        };
+                        let right_seg = if rpad > 0 {
+                            Some(Segment::styled(
+                                &" ".repeat(rpad),
+                                cell_combined_style.clone(),
+                            ))
+                        } else {
+                            None
+                        };
+                        inner_lines
+                            .into_iter()
+                            .map(|mut line| {
+                                if let Some(ref ls) = left_seg {
+                                    line.insert(0, ls.clone());
+                                }
+                                if let Some(ref rs) = right_seg {
+                                    line.push(rs.clone());
+                                }
+                                line
+                            })
+                            .collect()
+                    }
+                } else {
+                    let render_options = options.with_updates(&ConsoleOptionsUpdates {
+                        width: Some(width),
+                        justify: Some(Some(column.justify)),
+                        no_wrap: Some(column.no_wrap),
+                        overflow: Some(Some(column.overflow)),
+                        height: Some(None),
+                        highlight: Some(Some(column.highlight)),
+                        ..Default::default()
+                    });
+                    console.render_lines(
+                        &cell.renderable,
+                        Some(&render_options),
+                        Some(&cell_combined_style),
+                        true,
+                        false,
+                    )
+                };
 
                 // Apply top/bottom cell padding (rich parity: emit blank lines).
                 let (pad_top, _pad_right, pad_bottom, _pad_left) = self.padding;
@@ -1617,6 +1730,7 @@ impl Table {
             .map(|(i, col)| self.get_cells(console, i, col))
             .collect();
         let col_widths = self.calculate_column_widths_with_cells(
+            console,
             &options.update_width(max_width.saturating_sub(extra_width)),
             &column_cells,
         );
@@ -1628,6 +1742,7 @@ impl Table {
             .enumerate()
             .map(|(i, col)| {
                 self.measure_column_with_cells(
+                    console,
                     &options.update_width(total_max),
                     col,
                     &column_cells[i],
@@ -1903,6 +2018,131 @@ mod renderable_cell_tests {
             output.contains('─') || output.contains('│') || output.contains('╭'),
             "expected panel border chars in output, got: {output:?}"
         );
+    }
+
+    /// Bug #19 regression: a Renderable cell (Panel) must be rendered at the
+    /// COLUMN width, not at the console's default width (80).
+    ///
+    /// Before the fix: Panel rendered at 80 cols → top border was ~80 `─` chars
+    /// → the table re-wrapped that flat text to the 24-col column, destroying
+    /// the geometry (truncated border, misaligned corners).
+    ///
+    /// After the fix: Panel rendered at column width (24) → top border is
+    /// exactly 24 chars wide and the corner characters are both intact.
+    #[test]
+    fn renderable_cell_panel_renders_at_column_width_not_default() {
+        // 24-wide column (no table box, no padding for simplicity).
+        let col_width = 24usize;
+        let mut table = Table::new(&["Widget"]);
+        table.box_chars = None;
+        table.show_header = false;
+        table.padding = (0, 0, 0, 0);
+        table.columns[0].width = Some(col_width);
+
+        let panel = Panel::new(Text::new("inner", Style::null()));
+        let cell: Arc<dyn Renderable + Send + Sync> = Arc::new(panel);
+        table.add_row_renderable(vec![cell]);
+
+        let output = render(&table);
+
+        // The top border of a Panel at width 24 is: "╭" + 22×"─" + "╮"
+        // That exact string must appear in the output.
+        let expected_top = format!("╭{}╮", "─".repeat(col_width - 2));
+        assert!(
+            output.contains(&expected_top),
+            "expected panel top border '{expected_top}' in output; got:\n{output}"
+        );
+
+        // Also verify the bottom border is correct width.
+        let expected_bot = format!("╰{}╯", "─".repeat(col_width - 2));
+        assert!(
+            output.contains(&expected_bot),
+            "expected panel bottom border '{expected_bot}' in output; got:\n{output}"
+        );
+    }
+
+    /// Regression for the geometry bug introduced by the first audit-gap-19 fix:
+    /// a Renderable cell was rendered at the FULL column allocation (content +
+    /// padding) while a plain cell had padding embedded as spaces in its Text,
+    /// so both occupied `column_width` chars — but the renderable content started
+    /// at column 0 while the plain content started at column `left_pad`. This
+    /// caused the column borders to appear at different visual positions across rows.
+    ///
+    /// Fix: render the Renderable at `inner_width = column_width - left_pad -
+    /// right_pad` and then prepend/append space segments, matching the plain-cell
+    /// geometry exactly.
+    ///
+    /// This test uses a 1-column borderless table with DEFAULT Table::new()
+    /// padding (0,1,0,1) and one plain row + one renderable row.  It asserts
+    /// that every non-empty line in the rendered output has the same total visual
+    /// width — i.e. the column edges align.
+    /// Regression for the geometry bug introduced by the first audit-gap-19 fix:
+    /// a Renderable cell was rendered at the FULL column allocation (content +
+    /// padding) while a plain cell had padding embedded as spaces in its Text,
+    /// so both occupied `column_width` chars — but the renderable content started
+    /// at column 0 while the plain content started at column `left_pad`. This
+    /// caused the column borders to appear at different visual positions across rows.
+    ///
+    /// Fix: render the Renderable at `inner_width = column_width - left_pad -
+    /// right_pad` and then prepend/append space segments, matching the plain-cell
+    /// geometry exactly.
+    ///
+    /// This test uses a 1-column borderless table with DEFAULT Table::new()
+    /// padding (0,1,0,1) and one plain row + one renderable row.  It asserts
+    /// that every non-empty line in the rendered output has the same total visual
+    /// width — i.e. the column edges align.
+    #[test]
+    fn renderable_cell_aligns_with_plain_cell_under_nonzero_padding() {
+        use crate::utils::cells::cell_len;
+
+        // Default padding (0, right=1, 0, left=1) — this is what Table::new() uses.
+        // `column.width` is the CONTENT width; the full column allocation is
+        // content_width + left_pad + right_pad = 10 + 1 + 1 = 12.
+        let content_width = 10usize;
+        let left_pad = 1usize;
+        let right_pad = 1usize;
+        let expected_total_width = content_width + left_pad + right_pad; // 12
+
+        let mut table = Table::new(&["Col"]);
+        table.box_chars = None;
+        table.show_header = false;
+        // padding = (top, right, bottom, left) — Table::new default is (0,1,0,1)
+        assert_eq!(
+            table.padding,
+            (0, 1, 0, 1),
+            "test relies on default padding"
+        );
+        table.columns[0].width = Some(content_width);
+
+        // Row 0: plain text cell
+        table.add_row(&["hello"]);
+        // Row 1: renderable cell (Arc<Text>)
+        let cell: Arc<dyn Renderable + Send + Sync> = Arc::new(Text::new("world", Style::null()));
+        table.add_row_renderable(vec![cell]);
+
+        let output = render(&table);
+
+        // Every non-empty line must be exactly `expected_total_width` visual chars wide.
+        let line_widths: Vec<usize> = output
+            .lines()
+            .filter(|l| !l.is_empty())
+            .map(|l| cell_len(l))
+            .collect();
+
+        for (i, &w) in line_widths.iter().enumerate() {
+            assert_eq!(
+                w,
+                expected_total_width,
+                "line {i} has width {w}, expected {expected_total_width}; \
+                output (each line repr'd with delimiters):\n{}",
+                output
+                    .lines()
+                    .enumerate()
+                    .map(|(n, l)| format!("  [{n}] |{l}|"))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            );
+        }
     }
 
     #[test]
