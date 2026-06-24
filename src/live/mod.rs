@@ -274,6 +274,15 @@ impl Live {
         }
     }
 
+    // -- Identity -----------------------------------------------------------
+
+    /// Stable per-instance identity derived from the address of the shared
+    /// state `Arc`. Unique for the lifetime of this `Live` because the `Arc`
+    /// allocation lives as long as `self` (and any joined refresh thread).
+    fn live_id(&self) -> usize {
+        Arc::as_ptr(&self.state) as usize
+    }
+
     // -- Lifecycle ----------------------------------------------------------
 
     /// Start the live display.
@@ -297,6 +306,9 @@ impl Live {
         {
             let mut s = self.state.lock().unwrap();
             s.console.show_cursor(false);
+            // Register this Live on the console's nesting stack so callers can
+            // query how many Live displays are active and which one is on top.
+            s.console.push_live(self.live_id());
             if s.screen {
                 s.console.set_alt_screen(true);
             }
@@ -382,7 +394,9 @@ impl Live {
             }
         }
 
-        // Restore terminal state.
+        // Deregister this Live from the console's nesting stack, then restore
+        // the terminal state.
+        s.console.pop_live();
         s.console.show_cursor(true);
         if s.screen {
             s.console.set_alt_screen(false);
@@ -2092,5 +2106,73 @@ mod tests {
     fn new_live_is_not_paused() {
         let live = Live::new(Text::empty());
         assert!(!live.is_paused());
+    }
+
+    // -- Task 6.2: console live-stack (#26) ------------------------------------
+
+    /// After `start`, `console.live_depth()` must be 1; after `stop`, 0.
+    #[test]
+    fn live_stack_depth_start_stop() {
+        let mut live = Live::new(Text::new("depth", Style::null()))
+            .with_console(test_console())
+            .with_auto_refresh(false);
+
+        assert_eq!(
+            live.state.lock().unwrap().console.live_depth(),
+            0,
+            "depth before start must be 0"
+        );
+
+        live.start();
+        assert_eq!(
+            live.state.lock().unwrap().console.live_depth(),
+            1,
+            "depth after start must be 1"
+        );
+
+        live.stop();
+        assert_eq!(
+            live.state.lock().unwrap().console.live_depth(),
+            0,
+            "depth after stop must be 0"
+        );
+    }
+
+    /// `start` → `pause` → `resume` → `stop`: depth is 1 throughout
+    /// pause/resume, 0 only after stop. Pause must NOT pop; resume must NOT push.
+    #[test]
+    fn live_stack_depth_pause_resume_invariant() {
+        let mut live = Live::new(Text::new("pause_depth", Style::null()))
+            .with_console(test_console())
+            .with_auto_refresh(false);
+
+        live.start();
+        assert_eq!(
+            live.state.lock().unwrap().console.live_depth(),
+            1,
+            "depth after start must be 1"
+        );
+
+        live.refresh(); // give pause something to erase
+        live.pause();
+        assert_eq!(
+            live.state.lock().unwrap().console.live_depth(),
+            1,
+            "depth after pause must still be 1 (pause must NOT pop)"
+        );
+
+        live.resume();
+        assert_eq!(
+            live.state.lock().unwrap().console.live_depth(),
+            1,
+            "depth after resume must still be 1 (resume must NOT push)"
+        );
+
+        live.stop();
+        assert_eq!(
+            live.state.lock().unwrap().console.live_depth(),
+            0,
+            "depth after stop must be 0"
+        );
     }
 }
