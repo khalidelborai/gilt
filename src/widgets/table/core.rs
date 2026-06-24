@@ -1265,7 +1265,10 @@ impl Table {
         let num_rows = column_cells.iter().map(|c| c.len()).max().unwrap_or(0);
         let num_cols = column_cells.len();
 
-        // Get box (with substitution)
+        // Get box (with substitution).
+        // rich parity: legacy_windows subs are gated by safe (Box.substitute
+        // only applies them when safe=True). The outer guard `ascii_only || safe`
+        // mirrors that — substitute is only called when at least one mode is active.
         let the_box: Option<&BoxChars> = self.box_chars.map(|b| {
             let safe = self.safe_box.unwrap_or(true);
             let ascii_only = options.ascii_only();

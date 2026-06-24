@@ -276,9 +276,14 @@ impl BoxChars {
     ///   that supports Unicode but not all box styles.  When `true` (and
     ///   `ascii_only` is false), applies the rich legacy-Windows safe
     ///   substitutions: ROUNDED/HEAVY/HEAVY_EDGE/HEAVY_HEAD→SQUARE,
-    ///   MINIMAL_HEAVY_HEAD/SIMPLE_HEAVY→MINIMAL/SIMPLE,
-    ///   DOUBLE/DOUBLE_EDGE→SQUARE.  Boxes that are already "safe" are
-    ///   returned unchanged.
+    ///   MINIMAL_HEAVY_HEAD→MINIMAL, SIMPLE_HEAVY→SIMPLE.  Boxes that are
+    ///   already "safe" (SQUARE, MINIMAL, SIMPLE, ASCII boxes) are returned
+    ///   unchanged.
+    ///
+    /// **Important**: `legacy_windows` substitution is gated by the caller's
+    /// `safe_box` flag (rich parity — rich only applies legacy substitutions
+    /// when `safe=True`).  Callers must pass `legacy_windows=true` only when
+    /// `safe_box` is also enabled; see Panel::gilt_console and Table::render.
     ///
     /// If neither flag is set, or the box is already ASCII, returns `self`.
     pub fn substitute(&self, ascii_only: bool, legacy_windows: bool) -> &BoxChars {
@@ -291,8 +296,9 @@ impl BoxChars {
             return &ASCII;
         }
         if legacy_windows && !self.ascii {
-            // Apply rich's legacy-Windows safe substitutions.
-            // Fingerprint: (top_left, head_row_horizontal)
+            // Apply rich's LEGACY_WINDOWS_SUBSTITUTIONS table exactly
+            // (research_doc/12-panel-and-box.md §"Box Substitution").
+            // Fingerprint: (top_left, head_row_horizontal[, head_row_cross])
             return match (self.top_left, self.head_row_horizontal) {
                 // ROUNDED: ╭─  → SQUARE
                 ('\u{256D}', '\u{2500}') => &SQUARE,
@@ -302,13 +308,12 @@ impl BoxChars {
                 ('\u{250F}', '\u{2500}') => &SQUARE,
                 // HEAVY_HEAD: ┏━ with mixed cross ╇  → SQUARE
                 ('\u{250F}', '\u{2501}') if self.head_row_cross == '\u{2547}' => &SQUARE,
-                // MINIMAL_HEAVY_HEAD: ·━ with ┿  → MINIMAL
+                // MINIMAL_HEAVY_HEAD: space, ━, cross=┿  → MINIMAL
                 (' ', '\u{2501}') if self.head_row_cross == '\u{253F}' => &MINIMAL,
-                // SIMPLE_HEAVY: ·━ otherwise  → SIMPLE
+                // SIMPLE_HEAVY: space, ━, otherwise  → SIMPLE
                 (' ', '\u{2501}') => &SIMPLE,
-                // DOUBLE / DOUBLE_EDGE: ╔═  → SQUARE
-                ('\u{2554}', '\u{2550}') => &SQUARE,
-                // All other boxes are considered safe on legacy-Windows.
+                // All other boxes (DOUBLE, DOUBLE_EDGE, SQUARE, MINIMAL, SIMPLE,
+                // HORIZONTALS, etc.) are considered safe on legacy-Windows.
                 _ => self,
             };
         }
@@ -720,12 +725,13 @@ mod tests {
     }
 
     #[test]
-    fn test_substitute_legacy_windows_double_to_square() {
-        // DOUBLE → SQUARE
+    fn test_substitute_legacy_windows_double_unchanged() {
+        // DOUBLE is NOT in rich's LEGACY_WINDOWS_SUBSTITUTIONS table
+        // (research_doc/12-panel-and-box.md) — it should pass through unchanged.
         let b = DOUBLE.substitute(false, true);
         assert_eq!(
-            b.top_left, '┌',
-            "DOUBLE should map to SQUARE on legacy-windows"
+            b.top_left, '╔',
+            "DOUBLE is safe on legacy-windows and should be returned unchanged"
         );
     }
 
@@ -851,6 +857,51 @@ mod tests {
         assert_eq!(b.head_row_horizontal, '-');
         assert_eq!(b.head_row_cross, '|');
         assert!(b.ascii);
+    }
+
+    /// RowLevel::Mid must use SPACE as the horizontal fill, not `row_horizontal`.
+    ///
+    /// The `mid` line (line4) in rich's box format is a content/blank row:
+    /// its horizontal position is the IGNORED `_` char (always ' ') not a
+    /// separator character.  Regression test pinning Item 4 of batch 7.11.
+    /// Reference: research_doc/12-panel-and-box.md §"Box Class Structure".
+    #[test]
+    fn get_row_mid_uses_space_fill_not_horizontal_char() {
+        // SQUARE: row_horizontal='─', but Mid fill must be ' '
+        let row = SQUARE.get_row(&[5, 3], RowLevel::Mid, true);
+        // Should be: │     │   │  (mid_left + spaces + mid_vertical + spaces + mid_right)
+        assert!(
+            !row.contains('─'),
+            "RowLevel::Mid must not use row_horizontal '─'; got: {:?}",
+            row
+        );
+        assert!(
+            row.starts_with('│'),
+            "RowLevel::Mid must start with mid_left; got: {:?}",
+            row
+        );
+        assert!(
+            row.ends_with('│'),
+            "RowLevel::Mid must end with mid_right; got: {:?}",
+            row
+        );
+        // All interior chars must be spaces or mid_vertical
+        let interior: Vec<char> = row.chars().skip(1).take(row.chars().count() - 2).collect();
+        for &ch in &interior {
+            assert!(
+                ch == ' ' || ch == '│',
+                "RowLevel::Mid interior must contain only spaces and mid_vertical; got '{}'",
+                ch
+            );
+        }
+
+        // HEAVY: row_horizontal='━', Mid fill must still be ' '
+        let heavy_row = HEAVY.get_row(&[4], RowLevel::Mid, true);
+        assert!(
+            !heavy_row.contains('━'),
+            "RowLevel::Mid must not use row_horizontal '━' for HEAVY box; got: {:?}",
+            heavy_row
+        );
     }
 
     #[test]

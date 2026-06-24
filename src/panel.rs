@@ -374,6 +374,12 @@ impl Renderable for Panel {
     fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         // Apply box substitution (ascii_only / safe_box), matching rich behaviour.
         // Item 2 (P2): inherit safe_box from console when not overridden locally.
+        //
+        // rich parity: `legacy_windows` substitutions are gated by `safe`
+        // (rich's `Box.substitute` only applies legacy subs when `safe=True`).
+        // We pass `legacy_windows` to `substitute()` so it can apply the table,
+        // but the outer guard `ascii_only || safe` ensures substitute is only
+        // called when at least one substitution mode is active.
         let safe = self.safe_box.unwrap_or(console.safe_box());
         let ascii_only = options.ascii_only();
         let legacy_windows = options.legacy_windows;
@@ -1620,5 +1626,50 @@ mod tests {
         // would otherwise also be set.  This test confirms no panic and
         // that the output is non-empty.
         assert!(!text.is_empty(), "Panel output must be non-empty");
+    }
+
+    /// IMPORTANT 2 (review): title with its own bgcolor — border bg is the FLOOR,
+    /// the title's own bg wins via compositing order (border_bg + seg_style).
+    ///
+    /// When both the border_style and the title text carry a background colour,
+    /// the title's own bgcolor must be preserved (rhs wins in `base + rhs`).
+    #[test]
+    fn panel_title_own_bgcolor_wins_over_border_bg() {
+        let console = Console::builder()
+            .width(40)
+            .force_terminal(true)
+            .no_color(false)
+            .markup(false)
+            .build();
+        // border has blue bg; title text has green bg — green must win.
+        let border_style = Style::parse("on blue");
+        let title_style = Style::parse("on green");
+        let panel = Panel::new(Text::new("body", Style::null()))
+            .with_title(Text::new("T", title_style))
+            .with_border_style(border_style);
+        let opts = console.options();
+        let segments = panel.gilt_console(&console, &opts);
+
+        // Find the title text segment (contains "T" with surrounding spaces from pad(1))
+        let title_seg = segments
+            .iter()
+            .find(|s| s.text.contains('T') && !s.text.contains('╭') && s.text != "\n");
+        assert!(
+            title_seg.is_some(),
+            "Title text segment must be present in segments"
+        );
+        let seg = title_seg.unwrap();
+        let bg = seg.style.as_ref().and_then(|s| s.bgcolor());
+        assert!(
+            bg.is_some(),
+            "Title segment must have a bgcolor when title carries 'on green'"
+        );
+        // The bg should NOT be blue (border); it should be green (title's own).
+        let bg_debug = format!("{:?}", bg.unwrap());
+        assert!(
+            !bg_debug.to_lowercase().contains("blue"),
+            "Title's own bgcolor (green) must override border bgcolor (blue); got: {}",
+            bg_debug
+        );
     }
 }
