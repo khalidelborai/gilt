@@ -188,7 +188,7 @@ impl Pretty {
     ///
     /// When set, arrays and objects in JSON (or collection items in Debug
     /// output) are truncated after `max_length` items, with a
-    /// `... +N more` indicator appended.
+    /// `... +N` indicator appended.
     #[must_use]
     pub fn with_max_length(mut self, max_length: usize) -> Self {
         self.max_length = Some(max_length);
@@ -272,12 +272,28 @@ impl Pretty {
         self
     }
 
-    /// Re-format the Pretty from a Debug value, applying `max_length` and
-    /// `max_string` parameters.
+    /// Re-format the Pretty from a Debug value, applying `max_length`,
+    /// `max_string`, `max_depth`, and `expand_all` parameters.
+    ///
+    /// When `expand_all` is `false` (the default), the compact single-line
+    /// `{:?}` form is used if the result fits within 88 characters; otherwise
+    /// the alternate pretty-print `{:#?}` form is used.  When `expand_all` is
+    /// `true`, `{:#?}` is always used regardless of length.
     #[must_use]
     pub fn rebuild_debug<T: std::fmt::Debug>(mut self, value: &T) -> Self {
-        let formatted = format!("{:#?}", value);
-        let processed = apply_debug_params(&formatted, self.max_length, self.max_string);
+        let formatted = if self.expand_all {
+            format!("{:#?}", value)
+        } else {
+            // Try compact form first; fall back to pretty if it's too wide.
+            let compact = format!("{:?}", value);
+            if compact.len() <= 88 {
+                compact
+            } else {
+                format!("{:#?}", value)
+            }
+        };
+        let processed =
+            apply_debug_params(&formatted, self.max_length, self.max_string, self.max_depth);
         let hl = ReprHighlighter::new();
         self.text = hl.apply(&processed);
         self
@@ -289,17 +305,21 @@ impl Pretty {
     ///
     /// For each line, leading spaces are inspected. At every `indent_size`
     /// boundary within the leading whitespace, the space character is replaced
-    /// with a vertical bar (`│`) styled with dim text.
-    fn apply_indent_guides(&self) -> Text {
+    /// with a vertical bar (`│`) styled with the `"repr.indent"` theme style
+    /// (or `dim green` as the fallback).
+    fn apply_indent_guides(&self, console: Option<&Console>) -> Text {
         if !self.indent_guides {
             return self.text.clone();
         }
 
-        // Cache the parsed style across calls — was re-parsing on every render.
-        static GUIDE_STYLE: std::sync::LazyLock<Style> =
+        // Cache the fallback style across calls — was re-parsing on every render.
+        static GUIDE_STYLE_DEFAULT: std::sync::LazyLock<Style> =
             std::sync::LazyLock::new(|| Style::parse("dim green"));
+        let guide_style = console
+            .and_then(|c| c.get_style("repr.indent").ok())
+            .unwrap_or_else(|| GUIDE_STYLE_DEFAULT.clone());
         self.text
-            .with_indent_guides(Some(self.indent_size), '\u{2502}', GUIDE_STYLE.clone())
+            .with_indent_guides(Some(self.indent_size), '\u{2502}', guide_style)
     }
 
     // -- Measurement --------------------------------------------------------
@@ -310,11 +330,42 @@ impl Pretty {
     }
 }
 
+// ---------------------------------------------------------------------------
+// pretty_repr free function
+// ---------------------------------------------------------------------------
+
+/// Render any [`std::fmt::Debug`] value as a pretty-printed string.
+///
+/// Constructs a [`Pretty`] widget from the debug representation and renders it
+/// at the given `max_width`. Returns the rendered string without a trailing
+/// newline.
+///
+/// # Examples
+///
+/// ```
+/// use gilt::utils::pretty::pretty_repr;
+///
+/// let s = pretty_repr(&vec![1, 2, 3], 80);
+/// assert!(s.contains('1'));
+/// assert!(!s.ends_with('\n'));
+/// ```
+pub fn pretty_repr<T: std::fmt::Debug>(value: &T, max_width: usize) -> String {
+    let mut console = Console::builder()
+        .width(max_width)
+        .force_terminal(true)
+        .no_color(true)
+        .build();
+    console.begin_capture();
+    console.print(&Pretty::from_debug(value));
+    let output = console.end_capture();
+    output.trim_end_matches('\n').to_string()
+}
+
 // -- Renderable implementation ----------------------------------------------
 
 impl Renderable for Pretty {
     fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
-        let mut text = self.apply_indent_guides();
+        let mut text = self.apply_indent_guides(Some(console));
 
         if self.no_wrap {
             text.no_wrap = Some(true);
@@ -436,9 +487,11 @@ fn format_json_array(arr: &[serde_json::Value], depth: usize, opts: JsonFmtOpts)
     } else {
         // P2/P3 parity+perf: compare cell width (not raw byte count) against
         // render context max_width (not a hardcoded 80).
-        // For ASCII JSON the byte length equals the cell width, so this is exact.
-        let compact_len: usize =
-            items.iter().map(|s| s.len()).sum::<usize>() + items.len().saturating_sub(1) * 2; // ", " separators
+        let compact_len: usize = items
+            .iter()
+            .map(|s| crate::utils::cells::cell_len(s))
+            .sum::<usize>()
+            + items.len().saturating_sub(1) * 2; // ", " separators
         compact_len > max_width || items.iter().any(|s| s.contains('\n'))
     };
 
@@ -450,13 +503,13 @@ fn format_json_array(arr: &[serde_json::Value], depth: usize, opts: JsonFmtOpts)
             .map(|item| format!("{}{}", indent, item))
             .collect();
         if truncated_count > 0 {
-            parts.push(format!("{}... +{} more", indent, truncated_count));
+            parts.push(format!("{}... +{}", indent, truncated_count));
         }
         format!("[\n{}\n{}]", parts.join(",\n"), closing_indent)
     } else {
         let mut result = items.join(", ");
         if truncated_count > 0 {
-            result.push_str(&format!(", ... +{} more", truncated_count));
+            result.push_str(&format!(", ... +{}", truncated_count));
         }
         format!("[{}]", result)
     }
@@ -497,8 +550,11 @@ fn format_json_object(
         true
     } else {
         // P2/P3 parity+perf: compare cell width against render context max_width
-        let compact_len: usize =
-            items.iter().map(|s| s.len()).sum::<usize>() + items.len().saturating_sub(1) * 2; // ", " separators
+        let compact_len: usize = items
+            .iter()
+            .map(|s| crate::utils::cells::cell_len(s))
+            .sum::<usize>()
+            + items.len().saturating_sub(1) * 2; // ", " separators
         compact_len > max_width || items.iter().any(|s| s.contains('\n'))
     };
 
@@ -510,13 +566,13 @@ fn format_json_object(
             .map(|item| format!("{}{}", indent, item))
             .collect();
         if truncated_count > 0 {
-            parts.push(format!("{}... +{} more", indent, truncated_count));
+            parts.push(format!("{}... +{}", indent, truncated_count));
         }
         format!("{{\n{}\n{}}}", parts.join(",\n"), closing_indent)
     } else {
         let mut result = items.join(", ");
         if truncated_count > 0 {
-            result.push_str(&format!(", ... +{} more", truncated_count));
+            result.push_str(&format!(", ... +{}", truncated_count));
         }
         format!("{{{}}}", result)
     }
@@ -573,15 +629,18 @@ fn escape_json_string(s: &str) -> String {
 // Debug formatting with parameters
 // ---------------------------------------------------------------------------
 
-/// Apply `max_length` and `max_string` to a Debug-formatted string.
+/// Apply `max_length`, `max_string`, `max_depth`, and `expand_all` to a
+/// Debug-formatted string.
 ///
 /// This works by post-processing the already-formatted debug string:
 /// - `max_string`: truncates quoted string literals
 /// - `max_length`: truncates items in bracket/brace-delimited collections
+/// - `max_depth`: replaces nested content beyond depth limit with `{...}`/`[...]`
 fn apply_debug_params(
     formatted: &str,
     max_length: Option<usize>,
     max_string: Option<usize>,
+    max_depth: Option<usize>,
 ) -> String {
     let mut result = formatted.to_string();
     if let Some(max_s) = max_string {
@@ -589,6 +648,60 @@ fn apply_debug_params(
     }
     if let Some(max_l) = max_length {
         result = truncate_debug_collections(&result, max_l);
+    }
+    if let Some(max_d) = max_depth {
+        result = apply_max_depth_debug(&result, max_d);
+    }
+    result
+}
+
+/// Prune nested braces/brackets beyond `max_depth` in a Debug-formatted string.
+///
+/// Scans the string tracking brace/bracket nesting depth. When depth exceeds
+/// `max_depth`, the contents of that bracket are replaced with `...`.
+fn apply_max_depth_debug(s: &str, max_depth: usize) -> String {
+    let mut result = String::with_capacity(s.len());
+    let chars: Vec<char> = s.chars().collect();
+    let len = chars.len();
+    let mut i = 0;
+    let mut depth = 0usize;
+
+    while i < len {
+        let ch = chars[i];
+        match ch {
+            '{' | '[' => {
+                result.push(ch);
+                if depth >= max_depth {
+                    // Replace the contents with '...' and find the matching close
+                    result.push_str("...");
+                    let close = if ch == '{' { '}' } else { ']' };
+                    let mut inner_depth = 1usize;
+                    i += 1;
+                    while i < len && inner_depth > 0 {
+                        if chars[i] == '{' || chars[i] == '[' {
+                            inner_depth += 1;
+                        } else if chars[i] == '}' || chars[i] == ']' {
+                            inner_depth -= 1;
+                        }
+                        i += 1;
+                    }
+                    result.push(close);
+                    // Adjust: we already incremented i past the close above.
+                    // But depth doesn't change since we consumed without nesting.
+                    continue;
+                } else {
+                    depth += 1;
+                }
+            }
+            '}' | ']' => {
+                result.push(ch);
+                depth = depth.saturating_sub(1);
+            }
+            _ => {
+                result.push(ch);
+            }
+        }
+        i += 1;
     }
     result
 }
@@ -658,14 +771,26 @@ fn truncate_debug_collections(s: &str, max_length: usize) -> String {
     truncate_multiline_collection(&lines, max_length)
 }
 
-/// Truncate items in a single-line collection like `[1, 2, 3, 4, 5]`.
+/// Truncate items in a single-line collection like `[1, 2, 3, 4, 5]` or
+/// `{a: 1, b: 2, c: 3}` (brace collections from Debug output).
 fn truncate_inline_collection(s: &str, max_length: usize) -> String {
+    // Try bracket `[...]` first
     if let Some(start) = s.find('[') {
         if let Some(end) = s.rfind(']') {
             if start < end {
                 let inner = &s[start + 1..end];
                 let truncated = truncate_comma_items(inner, max_length);
                 return format!("{}[{}]{}", &s[..start], truncated, &s[end + 1..]);
+            }
+        }
+    }
+    // Try brace `{...}` (Debug collections like `{field: val, ...}`)
+    if let Some(start) = s.find('{') {
+        if let Some(end) = s.rfind('}') {
+            if start < end {
+                let inner = &s[start + 1..end];
+                let truncated = truncate_comma_items(inner, max_length);
+                return format!("{}{{{}}}{}", &s[..start], truncated, &s[end + 1..]);
             }
         }
     }
@@ -681,7 +806,7 @@ fn truncate_comma_items(inner: &str, max_length: usize) -> String {
     }
     let kept: Vec<&str> = items[..max_length].to_vec();
     let remaining = total - max_length;
-    format!("{}, ... +{} more", kept.join(", "), remaining)
+    format!("{}, ... +{}", kept.join(", "), remaining)
 }
 
 /// Truncate items in a multi-line Debug collection.
@@ -715,7 +840,7 @@ fn truncate_multiline_collection(lines: &[&str], max_length: usize) -> String {
             if skipped_count > 0 {
                 let indent_len = line.len() - line.trim_start().len();
                 let pad = " ".repeat(indent_len + 4);
-                result.push(format!("{}... +{} more,", pad, skipped_count));
+                result.push(format!("{}... +{},", pad, skipped_count));
             }
             depth += opens - closes;
             if depth <= 0 {

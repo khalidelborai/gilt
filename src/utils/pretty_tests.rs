@@ -139,7 +139,7 @@ fn test_from_json_highlighting() {
 fn test_indent_guides_applied() {
     let input = "root\n    child\n        grandchild";
     let pretty = Pretty::from_str(input).with_indent_size(4);
-    let guided = pretty.apply_indent_guides();
+    let guided = pretty.apply_indent_guides(None);
     let plain = guided.plain().to_string();
     // Indent guides should insert the vertical bar character
     assert!(
@@ -153,7 +153,7 @@ fn test_indent_guides_applied() {
 fn test_indent_guides_custom_size() {
     let input = "root\n  child\n    grandchild";
     let pretty = Pretty::from_str(input).with_indent_size(2);
-    let guided = pretty.apply_indent_guides();
+    let guided = pretty.apply_indent_guides(None);
     let plain = guided.plain().to_string();
     assert!(
         plain.contains('\u{2502}'),
@@ -166,7 +166,7 @@ fn test_indent_guides_custom_size() {
 fn test_indent_guides_disabled() {
     let input = "root\n    child\n        grandchild";
     let pretty = Pretty::from_str(input).with_indent_guides(false);
-    let guided = pretty.apply_indent_guides();
+    let guided = pretty.apply_indent_guides(None);
     let plain = guided.plain().to_string();
     // No indent guide characters should be present
     assert!(
@@ -180,7 +180,7 @@ fn test_indent_guides_disabled() {
 fn test_indent_guides_no_indentation() {
     let input = "line one\nline two\nline three";
     let pretty = Pretty::from_str(input);
-    let guided = pretty.apply_indent_guides();
+    let guided = pretty.apply_indent_guides(None);
     let plain = guided.plain().to_string();
     // No leading spaces, so no guides
     assert!(
@@ -194,7 +194,7 @@ fn test_indent_guides_no_indentation() {
 fn test_indent_guides_multi_level() {
     let input = "a\n    b\n        c\n            d";
     let pretty = Pretty::from_str(input).with_indent_size(4);
-    let guided = pretty.apply_indent_guides();
+    let guided = pretty.apply_indent_guides(None);
     let lines: Vec<&str> = guided.plain().lines().collect();
     // Line "    b" should have 1 guide at position 0
     assert_eq!(
@@ -374,10 +374,10 @@ fn test_max_length_truncates_array() {
     assert!(plain.contains('1'), "should contain 1: {}", plain);
     assert!(plain.contains('2'), "should contain 2: {}", plain);
     assert!(plain.contains('3'), "should contain 3: {}", plain);
-    // Should have truncation indicator
+    // Should have truncation indicator (no " more" suffix — rich parity)
     assert!(
-        plain.contains("+7 more"),
-        "should contain '+7 more' truncation indicator: {}",
+        plain.contains("+7"),
+        "should contain '+7' truncation indicator: {}",
         plain
     );
 }
@@ -414,10 +414,10 @@ fn test_max_length_truncates_object() {
         .with_max_length(2)
         .rebuild_json(&json, 80);
     let plain = pretty.text.plain().to_string();
-    // Should have truncation indicator for the remaining 3 items
+    // Should have truncation indicator for the remaining 3 items (no " more" suffix)
     assert!(
-        plain.contains("+3 more"),
-        "should contain '+3 more' truncation indicator: {}",
+        plain.contains("+3"),
+        "should contain '+3' truncation indicator: {}",
         plain
     );
 }
@@ -564,10 +564,10 @@ fn test_all_params_combined() {
         plain
     );
 
-    // max_length=3: should show truncation for remaining 2 items
+    // max_length=3: should show truncation for remaining 2 items (no " more" suffix)
     assert!(
-        plain.contains("+2 more"),
-        "should contain '+2 more' for max_length truncation: {}",
+        plain.contains("+2"),
+        "should contain '+2' for max_length truncation: {}",
         plain
     );
 
@@ -590,9 +590,9 @@ fn test_max_length_with_nested_arrays() {
         .rebuild_json(&json, 80);
     let plain = pretty.text.plain().to_string();
 
-    // The nested array should also be truncated
+    // The nested array should also be truncated (no " more" suffix)
     assert!(
-        plain.contains("+6 more"),
+        plain.contains("+6"),
         "nested array should be truncated: {}",
         plain
     );
@@ -1136,4 +1136,258 @@ mod from_serde_tests {
             "output: {output}"
         );
     }
+}
+
+// ---------------------------------------------------------------------------
+// Item 1: pretty_repr function
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_pretty_repr_returns_string() {
+    let result = super::pretty_repr(&vec![1, 2, 3], 80);
+    assert!(result.contains('1'));
+    assert!(result.contains('2'));
+    assert!(result.contains('3'));
+    // No trailing newline
+    assert!(
+        !result.ends_with('\n'),
+        "pretty_repr should not end with newline: {:?}",
+        result
+    );
+}
+
+#[test]
+fn test_pretty_repr_primitive() {
+    let result = super::pretty_repr(&42i32, 80);
+    assert_eq!(result, "42");
+}
+
+#[test]
+fn test_pretty_repr_respects_max_width() {
+    // A vec of many items; the output should use the width parameter
+    let result = super::pretty_repr(&vec![1, 2, 3], 40);
+    assert!(result.contains('1'));
+}
+
+// ---------------------------------------------------------------------------
+// Item 3: max_depth on Debug path
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_rebuild_debug_max_depth_prunes_nested_struct() {
+    #[derive(Debug)]
+    #[allow(dead_code)]
+    struct Inner {
+        value: i32,
+    }
+    #[derive(Debug)]
+    #[allow(dead_code)]
+    struct Outer {
+        inner: Inner,
+    }
+    let value = Outer {
+        inner: Inner { value: 99 },
+    };
+    let pretty = Pretty::from_debug(&value)
+        .with_max_depth(0)
+        .rebuild_debug(&value);
+    let plain = pretty.text.plain().to_string();
+    // At max_depth=0, the inner struct content should be replaced
+    assert!(
+        !plain.contains("99"),
+        "inner value should be hidden at max_depth=0: {}",
+        plain
+    );
+}
+
+#[test]
+fn test_rebuild_debug_max_depth_none_shows_all() {
+    #[derive(Debug)]
+    #[allow(dead_code)]
+    struct Inner {
+        value: i32,
+    }
+    #[derive(Debug)]
+    #[allow(dead_code)]
+    struct Outer {
+        inner: Inner,
+    }
+    let value = Outer {
+        inner: Inner { value: 42 },
+    };
+    let pretty = Pretty::from_debug(&value).rebuild_debug(&value); // no max_depth
+    let plain = pretty.text.plain().to_string();
+    assert!(
+        plain.contains("42"),
+        "without max_depth all content should be visible: {}",
+        plain
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Item 4: expand_all on Debug path (compact vs pretty format)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_rebuild_debug_expand_all_false_uses_compact_for_small() {
+    // A small value that fits on one line should use compact {:?} form when
+    // expand_all is false.
+    let value = vec![1i32, 2, 3];
+    let pretty = Pretty::from_debug(&value)
+        .with_expand_all(false)
+        .rebuild_debug(&value);
+    let plain = pretty.text.plain().to_string();
+    // Compact form should be single-line
+    assert!(
+        !plain.contains('\n'),
+        "small value with expand_all=false should be compact (single-line): {:?}",
+        plain
+    );
+}
+
+#[test]
+fn test_rebuild_debug_expand_all_true_always_expanded() {
+    // expand_all=true should force pretty-print format (multi-line for structs)
+    #[derive(Debug)]
+    #[allow(dead_code)]
+    struct Foo {
+        a: i32,
+        b: i32,
+    }
+    let value = Foo { a: 1, b: 2 };
+    let pretty = Pretty::from_debug(&value)
+        .with_expand_all(true)
+        .rebuild_debug(&value);
+    let plain = pretty.text.plain().to_string();
+    assert!(
+        plain.contains('\n'),
+        "expand_all=true should produce multi-line output: {:?}",
+        plain
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Item 5: brace truncation in truncate_inline_collection
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_truncate_inline_brace_collection() {
+    // A debug output like "{a: 1, b: 2, c: 3}" should be truncatable with {...}
+    let s = "{a: 1, b: 2, c: 3}";
+    let result = super::truncate_inline_collection(s, 2);
+    assert!(
+        result.contains("a: 1"),
+        "first item should be present: {}",
+        result
+    );
+    assert!(
+        result.contains("b: 2"),
+        "second item should be present: {}",
+        result
+    );
+    assert!(
+        !result.contains("c: 3"),
+        "third item should be truncated: {}",
+        result
+    );
+    assert!(
+        result.contains("+1"),
+        "truncation indicator should be present: {}",
+        result
+    );
+}
+
+#[test]
+fn test_truncate_inline_brace_no_truncation_needed() {
+    let s = "{a: 1, b: 2}";
+    let result = super::truncate_inline_collection(s, 5);
+    // No truncation: original should be returned
+    assert_eq!(
+        result, s,
+        "no truncation should return original: {}",
+        result
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Item 6: Console::pprint (in console_render.rs) - test via integration
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_console_pprint_produces_output() {
+    let mut console = Console::builder()
+        .width(80)
+        .force_terminal(true)
+        .no_color(true)
+        .markup(false)
+        .build();
+    console.begin_capture();
+    console.pprint(&vec![1, 2, 3]);
+    let output = console.end_capture();
+    assert!(
+        output.contains('1'),
+        "pprint output should contain value: {}",
+        output
+    );
+}
+
+#[test]
+fn test_console_pprint_primitive() {
+    let mut console = Console::builder()
+        .width(80)
+        .force_terminal(true)
+        .no_color(true)
+        .markup(false)
+        .build();
+    console.begin_capture();
+    console.pprint(&42i32);
+    let output = console.end_capture();
+    assert!(
+        output.contains("42"),
+        "pprint should render the value: {}",
+        output
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Item 7: cell_len for width threshold (verified indirectly via behavior)
+// ---------------------------------------------------------------------------
+
+#[cfg(feature = "json")]
+#[test]
+fn test_cell_len_width_threshold_ascii_json() {
+    // For ASCII JSON, cell_len == byte len, so behavior should be identical.
+    // Verify that a short array fits within 80-char width and stays compact.
+    let json: serde_json::Value = serde_json::from_str("[1, 2]").unwrap();
+    let pretty = Pretty::from_json(&json)
+        .with_expand_all(false)
+        .rebuild_json(&json, 80);
+    let plain = pretty.text.plain().to_string();
+    // Should be compact (single-line) since [1, 2] fits in 80 chars
+    assert!(
+        !plain.contains('\n'),
+        "short ASCII JSON should stay compact: {}",
+        plain
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Item 8: apply_indent_guides uses console style (verified via existing guides)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_apply_indent_guides_with_console() {
+    // The gilt_console method should still render indent guides correctly
+    let console = make_console();
+    let opts = console.options();
+    let input = "root\n    child\n        grandchild";
+    let pretty = Pretty::from_str(input).with_indent_size(4);
+    let segments = pretty.gilt_console(&console, &opts);
+    let combined: String = segments.iter().map(|s| s.text.as_str()).collect();
+    // Guide characters should still appear
+    assert!(
+        combined.contains('\u{2502}'),
+        "indent guides should appear when rendered via gilt_console: {}",
+        combined
+    );
 }

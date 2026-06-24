@@ -457,6 +457,26 @@ impl Console {
         }
     }
 
+    /// Pretty-print a value implementing [`std::fmt::Debug`] to the console.
+    ///
+    /// Constructs a [`Pretty`] widget from the debug representation and prints it.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    ///
+    /// let mut console = Console::builder().width(80).no_color(true).build();
+    /// console.begin_capture();
+    /// console.pprint(&vec![1, 2, 3]);
+    /// let output = console.end_capture();
+    /// assert!(output.contains('1'));
+    /// ```
+    pub fn pprint<T: std::fmt::Debug>(&mut self, value: &T) {
+        use crate::utils::pretty::Pretty;
+        self.print(&Pretty::from_debug(value));
+    }
+
     /// Inspect a value, printing its type, debug representation, and optional docs.
     ///
     /// Renders the value inside a styled panel using the [`Inspect`](crate::inspect::Inspect) widget.
