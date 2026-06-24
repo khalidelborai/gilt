@@ -752,6 +752,18 @@ impl Progress {
         self.live.update_renderable(table_text, false);
     }
 
+    // -- Test-only helpers -------------------------------------------------
+
+    /// Return the depth of the console live-stack for the internal `Live`.
+    ///
+    /// After `start()` the depth is 1; after `stop()` it is 0.  Used by
+    /// unit tests to verify that `Progress` registers on (and deregisters
+    /// from) the console's live-nesting stack via its embedded `Live`.
+    #[cfg(test)]
+    pub(crate) fn live_stack_depth(&self) -> usize {
+        self.live.console().live_depth()
+    }
+
     // -- Rendering ----------------------------------------------------------
 
     /// Build a text representation of the progress table.
@@ -1318,5 +1330,116 @@ mod tests {
             "taskbar normal state should appear in output; got {:?}",
             output
         );
+    }
+
+    // -- Task 6.3: Progress live-stack registration (#27) ------------------
+
+    /// After `progress.start()` the internal live's console must have depth 1;
+    /// after `progress.stop()` it must return to 0.
+    ///
+    /// This is a characterization/regression guard: task 6.2 wired
+    /// `Live::start`/`stop` to call `push_live`/`pop_live`, and `Progress`
+    /// delegates directly to `self.live.start()`/`self.live.stop()`, so the
+    /// depth invariant is satisfied for free from 6.2.  These tests lock in
+    /// that contract so any future regression is caught immediately.
+    #[test]
+    fn progress_live_stack_depth_start_stop() {
+        let console = Console::builder()
+            .force_terminal(false)
+            .no_color(true)
+            .build();
+        let mut p = Progress::new(Progress::default_columns())
+            .with_console(console)
+            .with_auto_refresh(false)
+            .with_disable(false);
+
+        assert_eq!(p.live_stack_depth(), 0, "depth before start must be 0");
+
+        p.start();
+        assert_eq!(
+            p.live_stack_depth(),
+            1,
+            "depth after start must be 1 (push_live fired via Live::start)"
+        );
+
+        p.stop();
+        assert_eq!(
+            p.live_stack_depth(),
+            0,
+            "depth after stop must be 0 (pop_live fired via Live::stop)"
+        );
+    }
+
+    /// Two `Progress` instances on *separate* consoles must not interfere:
+    /// both can start, advance, and stop without panic or cross-contamination
+    /// of live-stack state.
+    #[test]
+    fn two_progress_separate_consoles_no_interference() {
+        let make_p = || {
+            Progress::new(Progress::default_columns())
+                .with_console(
+                    Console::builder()
+                        .force_terminal(false)
+                        .no_color(true)
+                        .build(),
+                )
+                .with_auto_refresh(false)
+                .with_disable(false)
+        };
+
+        let mut p1 = make_p();
+        let mut p2 = make_p();
+
+        p1.start();
+        p2.start();
+
+        let t1 = p1.add_task("task1", Some(10.0));
+        let t2 = p2.add_task("task2", Some(10.0));
+
+        p1.advance(t1, 5.0);
+        p2.advance(t2, 3.0);
+
+        // Each console's live-stack must be depth 1 independently.
+        assert_eq!(
+            p1.live_stack_depth(),
+            1,
+            "p1 depth should be 1 while running"
+        );
+        assert_eq!(
+            p2.live_stack_depth(),
+            1,
+            "p2 depth should be 1 while running"
+        );
+
+        p1.stop();
+        assert_eq!(p1.live_stack_depth(), 0, "p1 depth should be 0 after stop");
+        assert_eq!(
+            p2.live_stack_depth(),
+            1,
+            "p2 depth should still be 1 (separate console)"
+        );
+
+        p2.stop();
+        assert_eq!(p2.live_stack_depth(), 0, "p2 depth should be 0 after stop");
+    }
+
+    /// When `disable = true`, `start` and `stop` are no-ops so the live-stack
+    /// depth remains 0 throughout.
+    #[test]
+    fn progress_disabled_depth_stays_zero() {
+        let console = Console::builder()
+            .force_terminal(false)
+            .no_color(true)
+            .build();
+        let mut p = Progress::new(Progress::default_columns())
+            .with_console(console)
+            .with_auto_refresh(false)
+            .with_disable(true);
+
+        p.start();
+        assert_eq!(p.live_stack_depth(), 0, "disabled: start must not push");
+
+        p.stop();
+        assert_eq!(p.live_stack_depth(), 0, "disabled: stop must not pop");
     }
 }
