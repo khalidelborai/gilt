@@ -496,6 +496,33 @@ impl Table {
         let index = self.columns.len();
         let column = Column {
             header: header.to_string(),
+            header_text: None,
+            footer: footer.to_string(),
+            header_style: opts.header_style.unwrap_or_default(),
+            footer_style: opts.footer_style.unwrap_or_default(),
+            style: opts.style.unwrap_or_default(),
+            justify: opts.justify.unwrap_or(JustifyMethod::Left),
+            vertical: opts.vertical.unwrap_or(VerticalAlign::Top),
+            overflow: opts.overflow.unwrap_or(OverflowMethod::Ellipsis),
+            width: opts.width,
+            min_width: opts.min_width,
+            max_width: opts.max_width,
+            ratio: opts.ratio,
+            no_wrap: opts.no_wrap,
+            highlight: opts.highlight.unwrap_or(self.highlight),
+            index,
+            cells: Vec::new(),
+        };
+        self.columns.push(column);
+    }
+
+    /// Add a column with a pre-styled `Text` header.
+    pub fn add_column_text(&mut self, header_text: Text, footer: &str, opts: ColumnOptions) {
+        let plain = header_text.plain().to_string();
+        let index = self.columns.len();
+        let column = Column {
+            header: plain,
+            header_text: Some(header_text),
             footer: footer.to_string(),
             header_style: opts.header_style.unwrap_or_default(),
             footer_style: opts.footer_style.unwrap_or_default(),
@@ -893,7 +920,11 @@ impl Table {
                 + console
                     .get_style(&column.header_style)
                     .unwrap_or_else(|_| Style::null());
-            let text = console.render_str(&column.header, None, None, None);
+            let text = if let Some(ref ht) = column.header_text {
+                ht.clone()
+            } else {
+                console.render_str(&column.header, None, None, None)
+            };
             cells.push(CellInfo {
                 style: header_style,
                 renderable: text,

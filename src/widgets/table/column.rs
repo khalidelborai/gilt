@@ -1,6 +1,6 @@
 //! Column and column options types for the table module.
 
-use crate::text::{JustifyMethod, OverflowMethod};
+use crate::text::{JustifyMethod, OverflowMethod, Text};
 use crate::utils::align_widget::VerticalAlign;
 use crate::widgets::table::CellContent;
 
@@ -9,6 +9,8 @@ use crate::widgets::table::CellContent;
 pub struct Column {
     /// Renderable header text.
     pub header: String,
+    /// Pre-styled header text, overrides `header` string when set.
+    pub header_text: Option<Text>,
     /// Renderable footer text.
     pub footer: String,
     /// Style for the header.
@@ -51,6 +53,7 @@ impl Column {
     pub fn copy(&self) -> Column {
         Column {
             header: self.header.clone(),
+            header_text: self.header_text.clone(),
             footer: self.footer.clone(),
             header_style: self.header_style.clone(),
             footer_style: self.footer_style.clone(),
@@ -74,6 +77,7 @@ impl Default for Column {
     fn default() -> Self {
         Column {
             header: String::new(),
+            header_text: None,
             footer: String::new(),
             header_style: String::new(),
             footer_style: String::new(),

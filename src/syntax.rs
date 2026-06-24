@@ -490,6 +490,16 @@ impl Syntax {
         text
     }
 
+    /// Highlight a single inline code string and return styled Text spans.
+    /// Used by the markdown renderer for inline `code` with a lexer set.
+    pub fn highlight_inline(code: &str, lexer_name: &str, theme_name: &str) -> Text {
+        let syn = Syntax::new(code, lexer_name).with_theme(theme_name);
+        let mut t = syn.highlight_code(code);
+        // Drop trailing newline that highlight_code may append.
+        t.remove_suffix("\n");
+        t
+    }
+
     /// Get the background style from the theme.
     fn get_background_style(&self) -> Style {
         if let Some(ref bg) = self.background_color {

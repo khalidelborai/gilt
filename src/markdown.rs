@@ -15,6 +15,7 @@ use crate::segment::Segment;
 use crate::style::{Style, StyleStack};
 use crate::table::Table;
 use crate::text::{JustifyMethod, Text};
+use crate::widgets::table::ColumnOptions;
 
 // ---------------------------------------------------------------------------
 // Markdown struct
@@ -95,8 +96,8 @@ struct ListContext {
 #[derive(Debug, Clone)]
 struct TableContext {
     alignments: Vec<Alignment>,
-    /// Plain-text column headers (used for `Table::new` which takes `&[&str]`).
-    header_cells: Vec<String>,
+    /// Styled column headers (preserves inline bold/italic from markdown).
+    header_cells: Vec<Text>,
     /// Current row's cells as styled `Text` objects (preserves inline styles).
     current_row: Vec<Text>,
     /// Completed data rows as styled `Text` objects.
@@ -154,6 +155,10 @@ impl Renderable for Markdown {
         // Track if we need a newline before the next block element
         let mut needs_newline = false;
 
+        // Image alt-text tracking: len of text_buffer after emoji prefix is appended.
+        let mut image_text_start: usize = 0;
+        let mut in_image = false;
+
         // Enable all pulldown-cmark extensions
         let mut md_options = Options::empty();
         md_options.insert(Options::ENABLE_TABLES);
@@ -197,7 +202,26 @@ impl Renderable for Markdown {
                     let heading_opts =
                         options.update_width(width.saturating_sub(blockquote_depth * 4));
                     let heading_segs = text_buffer.gilt_console(console, &heading_opts);
-                    segments.extend(heading_segs);
+                    if blockquote_depth > 0 {
+                        let bq_style = console
+                            .get_style("markdown.block_quote")
+                            .unwrap_or_else(|_| Style::null());
+                        let indent: String =
+                            std::iter::repeat_n(' ', blockquote_depth.saturating_sub(1) * 4)
+                                .collect();
+                        let bq_prefix = format!("{}\u{258C} ", indent);
+                        segments.push(Segment::styled(&bq_prefix, bq_style.clone()));
+                        for seg in &heading_segs {
+                            if seg.text == "\n" {
+                                segments.push(Segment::line());
+                                segments.push(Segment::styled(&bq_prefix, bq_style.clone()));
+                            } else {
+                                segments.push(seg.clone());
+                            }
+                        }
+                    } else {
+                        segments.extend(heading_segs);
+                    }
                     segments.push(Segment::line());
 
                     // Add underline rule for h1 and h2
@@ -323,6 +347,23 @@ impl Renderable for Markdown {
 
                 // -- Inline code --------------------------------------------
                 Event::Code(text) => {
+                    #[cfg(feature = "syntax")]
+                    {
+                        if let Some(ref lexer_name) = self.inline_code_lexer {
+                            let theme = self
+                                .inline_code_theme
+                                .as_deref()
+                                .unwrap_or(&self.code_theme);
+                            let highlighted =
+                                crate::syntax::Syntax::highlight_inline(&text, lexer_name, theme);
+                            if in_table_cell {
+                                cell_text.append_text(&highlighted);
+                            } else {
+                                text_buffer.append_text(&highlighted);
+                            }
+                            continue;
+                        }
+                    }
                     let code_style = console
                         .get_style("markdown.code")
                         .unwrap_or_else(|_| Style::parse("bold cyan on black"));
@@ -375,9 +416,23 @@ impl Renderable for Markdown {
                     link_url = Some(dest_url.to_string());
                     // P2 parity: prepend 🌆 emoji prefix for images
                     text_buffer.append_str("\u{1F306} ", None);
+                    // Track where alt text starts so we can detect empty alt.
+                    image_text_start = text_buffer.len();
+                    in_image = true;
                 }
                 Event::End(TagEnd::Image) => {
                     let _ = style_stack.pop();
+                    // Item 7: if no alt text was accumulated, fall back to the filename.
+                    if in_image && text_buffer.len() == image_text_start {
+                        if let Some(ref url) = link_url {
+                            let fallback = url_to_filename(url);
+                            let link_style = console
+                                .get_style("markdown.link")
+                                .unwrap_or_else(|_| Style::parse("bright_blue"));
+                            text_buffer.append_str(&fallback, Some(link_style));
+                        }
+                    }
+                    in_image = false;
                     // P1 parity: same as links — show URL inline only when hyperlinks==false
                     if !self.hyperlinks {
                         if let Some(ref url) = link_url {
@@ -417,17 +472,16 @@ impl Renderable for Markdown {
                         // P1 parity: use Syntax renderable when feature is enabled and
                         // language is known; fall back to plain Panel otherwise.
                         #[cfg(feature = "syntax")]
-                        {
+                        let block_segs = {
                             let used_lang = lang.as_deref().unwrap_or("text");
                             let syn = crate::syntax::Syntax::new(trimmed, used_lang)
                                 .with_theme(&self.code_theme)
                                 .with_word_wrap(true)
                                 .with_padding(crate::syntax::PaddingSpec::Uniform(1));
-                            let syn_segs = syn.gilt_console(console, options);
-                            segments.extend(syn_segs);
-                        }
+                            syn.gilt_console(console, options)
+                        };
                         #[cfg(not(feature = "syntax"))]
-                        {
+                        let block_segs = {
                             let code_style = console
                                 .get_style("markdown.code_block")
                                 .unwrap_or_else(|_| Style::parse("cyan on black"));
@@ -436,8 +490,28 @@ impl Renderable for Markdown {
                                 .with_box_chars(&HEAVY)
                                 .with_style(code_style)
                                 .with_expand(true);
-                            let panel_segs = panel.gilt_console(console, options);
-                            segments.extend(panel_segs);
+                            panel.gilt_console(console, options)
+                        };
+
+                        if blockquote_depth > 0 {
+                            let bq_style = console
+                                .get_style("markdown.block_quote")
+                                .unwrap_or_else(|_| Style::null());
+                            let indent: String =
+                                std::iter::repeat_n(' ', blockquote_depth.saturating_sub(1) * 4)
+                                    .collect();
+                            let bq_prefix = format!("{}\u{258C} ", indent);
+                            segments.push(Segment::styled(&bq_prefix, bq_style.clone()));
+                            for seg in &block_segs {
+                                if seg.text == "\n" {
+                                    segments.push(Segment::line());
+                                    segments.push(Segment::styled(&bq_prefix, bq_style.clone()));
+                                } else {
+                                    segments.push(seg.clone());
+                                }
+                            }
+                        } else {
+                            segments.extend(block_segs);
                         }
 
                         needs_newline = true;
@@ -493,7 +567,13 @@ impl Renderable for Markdown {
                             let num_style = console
                                 .get_style("markdown.item.number")
                                 .unwrap_or_else(|_| Style::parse("cyan"));
-                            let prefix = format!("{}{}. ", indent, ctx.item_number);
+                            let num_digits = count_digits(ctx.item_number);
+                            let prefix = format!(
+                                "{}{:>width$}. ",
+                                indent,
+                                ctx.item_number,
+                                width = num_digits
+                            );
                             segments.push(Segment::styled(&prefix, num_style));
                             ctx.item_number += 1;
                         } else {
@@ -565,13 +645,8 @@ impl Renderable for Markdown {
                     if let Some(ref mut ctx) = table_ctx {
                         // pulldown-cmark may not emit TableRow for the header,
                         // so save any accumulated cells as header_cells here.
-                        // Extract plain text — Table::new takes &[&str].
                         if !ctx.current_row.is_empty() {
-                            ctx.header_cells = ctx
-                                .current_row
-                                .iter()
-                                .map(|t| t.plain().to_string())
-                                .collect();
+                            ctx.header_cells = ctx.current_row.clone();
                             ctx.current_row.clear();
                         }
                         ctx.in_head = false;
@@ -587,8 +662,7 @@ impl Renderable for Markdown {
                     if let Some(ref mut ctx) = table_ctx {
                         let row = ctx.current_row.clone();
                         if ctx.in_head {
-                            // Header cells stored as plain text for Table::new.
-                            ctx.header_cells = row.iter().map(|t| t.plain().to_string()).collect();
+                            ctx.header_cells = row;
                         } else {
                             ctx.rows.push(row);
                         }
@@ -624,7 +698,26 @@ impl Renderable for Markdown {
                         .unwrap_or_else(|_| Style::parse("dim"));
                     let rule = Rule::new().with_style(hr_style).with_end("");
                     let rule_segs = rule.gilt_console(console, options);
-                    segments.extend(rule_segs);
+                    if blockquote_depth > 0 {
+                        let bq_style = console
+                            .get_style("markdown.block_quote")
+                            .unwrap_or_else(|_| Style::null());
+                        let indent: String =
+                            std::iter::repeat_n(' ', blockquote_depth.saturating_sub(1) * 4)
+                                .collect();
+                        let bq_prefix = format!("{}\u{258C} ", indent);
+                        segments.push(Segment::styled(&bq_prefix, bq_style.clone()));
+                        for seg in &rule_segs {
+                            if seg.text == "\n" {
+                                segments.push(Segment::line());
+                                segments.push(Segment::styled(&bq_prefix, bq_style.clone()));
+                            } else {
+                                segments.push(seg.clone());
+                            }
+                        }
+                    } else {
+                        segments.extend(rule_segs);
+                    }
                     segments.push(Segment::line());
                     needs_newline = true;
                 }
@@ -649,12 +742,21 @@ impl Renderable for Markdown {
                         continue;
                     }
 
-                    // Apply current style stack
+                    // Apply current style stack; add OSC-8 link when hyperlinks=true.
                     let current_style = style_stack.current().clone();
-                    if current_style.is_null() {
+                    let effective_style = if self.hyperlinks {
+                        if let Some(ref url) = link_url {
+                            current_style + Style::with_link(url)
+                        } else {
+                            current_style
+                        }
+                    } else {
+                        current_style
+                    };
+                    if effective_style.is_null() {
                         text_buffer.append_str(&text, None);
                     } else {
-                        text_buffer.append_str(&text, Some(current_style));
+                        text_buffer.append_str(&text, Some(effective_style));
                     }
                 }
 
@@ -726,22 +828,14 @@ impl Renderable for Markdown {
 
 /// Build and render a gilt `Table` from accumulated table context data.
 fn render_table(console: &Console, options: &ConsoleOptions, ctx: &TableContext) -> Vec<Segment> {
-    let headers: Vec<&str> = ctx.header_cells.iter().map(|s| s.as_str()).collect();
-    let mut table = Table::new(&headers);
+    // Build table with no headers — we add styled header columns individually.
+    let mut table = Table::new(&[]);
 
     // P2 parity: rich uses box.SIMPLE (no outer border, header separator only)
     table = table.with_box_chars(Some(&SIMPLE));
 
-    // Apply alignment from markdown
-    for (i, alignment) in ctx.alignments.iter().enumerate() {
-        if i < table.columns.len() {
-            table.columns[i].justify = match alignment {
-                Alignment::None | Alignment::Left => JustifyMethod::Left,
-                Alignment::Center => JustifyMethod::Center,
-                Alignment::Right => JustifyMethod::Right,
-            };
-        }
-    }
+    // Item 4 parity: rich markdown tables use no edge padding and collapse inter-column padding.
+    table = table.with_pad_edge(false).with_collapse_padding(true);
 
     // Apply markdown table styles
     let border_style_name = "markdown.table.border";
@@ -749,6 +843,23 @@ fn render_table(console: &Console, options: &ConsoleOptions, ctx: &TableContext)
 
     let header_style_name = "markdown.table.header";
     table.header_style = header_style_name.to_string();
+
+    // Add columns with styled Text headers (Item 5 parity).
+    for (i, header_text) in ctx.header_cells.iter().enumerate() {
+        let justify = ctx.alignments.get(i).map(|a| match a {
+            Alignment::None | Alignment::Left => JustifyMethod::Left,
+            Alignment::Center => JustifyMethod::Center,
+            Alignment::Right => JustifyMethod::Right,
+        });
+        table.add_column_text(
+            header_text.clone(),
+            "",
+            ColumnOptions {
+                justify,
+                ..Default::default()
+            },
+        );
+    }
 
     // Add data rows — use add_row_text to preserve inline styles (e.g. `code`).
     for row in &ctx.rows {
@@ -773,6 +884,36 @@ impl std::fmt::Display for Markdown {
         console.print(self);
         let output = console.end_capture();
         write!(f, "{}", output.trim_end_matches('\n'))
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/// Count the number of decimal digits in `n` (minimum 1).
+fn count_digits(n: u64) -> usize {
+    if n == 0 {
+        return 1;
+    }
+    let mut d = 0usize;
+    let mut x = n;
+    while x > 0 {
+        d += 1;
+        x /= 10;
+    }
+    d
+}
+
+/// Extract filename stem from a URL for use as image alt-text fallback.
+fn url_to_filename(url: &str) -> String {
+    let path = url.split('?').next().unwrap_or(url);
+    let path = path.split('#').next().unwrap_or(path);
+    let last = path.rsplit('/').next().unwrap_or(path);
+    if let Some(dot_pos) = last.rfind('.') {
+        last[..dot_pos].to_string()
+    } else {
+        last.to_string()
     }
 }
 

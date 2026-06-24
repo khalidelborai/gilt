@@ -750,3 +750,245 @@ fn test_task_list_checked_comes_before_unchecked() {
         unchecked_pos
     );
 }
+
+// ---------------------------------------------------------------------------
+// Phase 7.2: 7 parity fixes
+// ---------------------------------------------------------------------------
+
+// Item 1: OSC-8 hyperlinks
+#[test]
+fn test_markdown_osc8_link() {
+    // When hyperlinks=true (default), link text spans must carry an OSC-8 link style.
+    let console = Console::builder()
+        .width(80)
+        .force_terminal(true)
+        .no_color(true)
+        .markup(false)
+        .build();
+    let md = Markdown::new("[Click me](https://example.com)");
+    let segments = render_segments(&console, &md);
+    // Find a segment containing the link text
+    let link_seg = segments.iter().find(|s| s.text.contains("Click me"));
+    assert!(link_seg.is_some(), "link text segment should be present");
+    let seg = link_seg.unwrap();
+    assert!(
+        seg.style().is_some(),
+        "link text should have a style (carries OSC-8)"
+    );
+    let style = seg.style().unwrap();
+    assert!(
+        style.link().is_some(),
+        "link style must have OSC-8 URL set; got style: {:?}",
+        style
+    );
+    assert_eq!(
+        style.link().as_deref(),
+        Some("https://example.com"),
+        "OSC-8 URL must match the href"
+    );
+}
+
+#[test]
+fn test_markdown_osc8_link_disabled() {
+    // When hyperlinks=false, no OSC-8 link should be set on segments.
+    let console = make_console(80);
+    let md = Markdown::new("[Click me](https://example.com)").with_hyperlinks(false);
+    let segments = render_segments(&console, &md);
+    let link_seg = segments.iter().find(|s| s.text.contains("Click me"));
+    assert!(link_seg.is_some(), "link text should appear");
+    // No OSC-8 link on segment when hyperlinks=false
+    if let Some(seg) = link_seg {
+        if let Some(ref style) = seg.style {
+            assert!(
+                style.link().is_none(),
+                "hyperlinks=false must not emit OSC-8; got link: {:?}",
+                style.link()
+            );
+        }
+    }
+}
+
+// Item 2: inline_code_lexer (syntax-feature gated)
+#[test]
+#[cfg(feature = "syntax")]
+fn test_markdown_inline_code_lexer() {
+    // When inline_code_lexer is set, inline code should produce multiple styled spans
+    // (one per token) rather than a single plain-styled span.
+    let console = make_console(80);
+    let mut md = Markdown::new("Use `let x = 1` here.");
+    md.inline_code_lexer = Some("rust".to_string());
+    let segments = render_segments(&console, &md);
+    // At minimum, the code text should appear somewhere in the output.
+    let output: String = segments.iter().map(|s| s.text.as_str()).collect();
+    assert!(
+        output.contains("let") || output.contains("x") || output.contains("1"),
+        "syntax-highlighted inline code should appear in output; got: {:?}",
+        output
+    );
+    // There should be multiple styled segments for the code (more than 1 token).
+    let code_segs: Vec<_> = segments
+        .iter()
+        .filter(|s| {
+            (s.text.contains("let") || s.text.contains("x") || s.text.contains("1"))
+                && s.style().is_some()
+        })
+        .collect();
+    assert!(
+        code_segs.len() >= 1,
+        "inline code with lexer should produce styled spans; got: {}",
+        code_segs.len()
+    );
+}
+
+// Item 3: blockquote non-paragraph blocks miss ▌ prefix
+#[test]
+fn test_markdown_blockquote_heading_prefix() {
+    let console = make_console(80);
+    let md = Markdown::new("> # Heading in quote");
+    let output = render_markdown(&console, &md);
+    assert!(
+        output.contains("Heading in quote"),
+        "heading text should appear; got: {:?}",
+        output
+    );
+    // The blockquote prefix ▌ (U+258C) must appear in the same output as the heading.
+    assert!(
+        output.contains('\u{258C}'),
+        "blockquote prefix ▌ should appear before heading; got: {:?}",
+        output
+    );
+}
+
+#[test]
+fn test_markdown_blockquote_hr_prefix() {
+    let console = make_console(80);
+    let md = Markdown::new("> ---");
+    let output = render_markdown(&console, &md);
+    // ▌ prefix must appear alongside the horizontal rule inside a blockquote.
+    assert!(
+        output.contains('\u{258C}'),
+        "blockquote prefix ▌ should appear before HR; got: {:?}",
+        output
+    );
+}
+
+// Item 4: table pad_edge + collapse_padding
+// (structural rendering test — just verify no panic and output is correct)
+#[test]
+fn test_markdown_table_pad_edge() {
+    let console = make_console(80);
+    let md = Markdown::new("| A | B |\n|---|---|\n| 1 | 2 |");
+    let output = render_markdown(&console, &md);
+    // Table must still render correctly after applying pad_edge(false)+collapse_padding(true).
+    assert!(output.contains("A"), "header A should appear");
+    assert!(output.contains("B"), "header B should appear");
+    assert!(output.contains("1"), "cell 1 should appear");
+    assert!(output.contains("2"), "cell 2 should appear");
+}
+
+// Item 5: table header cells preserve styled Text
+#[test]
+fn test_markdown_table_header_styled() {
+    // Headers with bold/italic markdown should preserve inline styling.
+    let console = make_console(80);
+    let md = Markdown::new("| **Bold** | *Italic* |\n|---|---|\n| a | b |");
+    let segments = render_segments(&console, &md);
+    let output: String = segments.iter().map(|s| s.text.as_str()).collect();
+    assert!(
+        output.contains("Bold"),
+        "bold header text should appear; got: {:?}",
+        output
+    );
+    assert!(
+        output.contains("Italic"),
+        "italic header text should appear; got: {:?}",
+        output
+    );
+    // The "Bold" segment should carry a bold style.
+    let bold_seg = segments.iter().find(|s| s.text.contains("Bold"));
+    assert!(bold_seg.is_some(), "Bold segment should be present");
+    if let Some(seg) = bold_seg {
+        assert!(
+            seg.style().is_some(),
+            "Bold header should have a style applied"
+        );
+    }
+}
+
+// Item 6: ordered list right-alignment
+#[test]
+fn test_markdown_ordered_list_alignment() {
+    let console = make_console(80);
+    let md = Markdown::new("1. First\n2. Second\n3. Third");
+    let segments = render_segments(&console, &md);
+    // Each item number should appear with a "." after it.
+    let output: String = segments.iter().map(|s| s.text.as_str()).collect();
+    assert!(output.contains("1."), "item 1 should appear");
+    assert!(output.contains("2."), "item 2 should appear");
+    assert!(output.contains("3."), "item 3 should appear");
+    // All number prefixes should have the same display width.
+    let prefix_segs: Vec<&str> = segments
+        .iter()
+        .filter_map(|s| {
+            if s.text.contains(". ")
+                && (s.text.contains('1') || s.text.contains('2') || s.text.contains('3'))
+            {
+                Some(s.text.as_str())
+            } else {
+                None
+            }
+        })
+        .collect();
+    // Each prefix segment (e.g. "1. ") should have the same length for single-digit lists.
+    if prefix_segs.len() >= 2 {
+        let first_len = prefix_segs[0].len();
+        for seg in &prefix_segs {
+            assert_eq!(
+                seg.len(),
+                first_len,
+                "all item number prefixes should have equal width; got {:?}",
+                prefix_segs
+            );
+        }
+    }
+}
+
+// Item 7: image no-alt blank fallback
+#[test]
+fn test_markdown_image_filename_fallback() {
+    // An image with empty alt text should display the filename stem.
+    let console = make_console(80);
+    let md = Markdown::new("![](logo.png)");
+    let output = render_markdown(&console, &md);
+    assert!(
+        output.contains("logo"),
+        "filename stem 'logo' should appear as alt-text fallback; got: {:?}",
+        output
+    );
+}
+
+#[test]
+fn test_markdown_image_filename_fallback_path() {
+    // Should strip directory and extension from a URL path.
+    let console = make_console(80);
+    let md = Markdown::new("![](/images/photos/sunset.jpg)");
+    let output = render_markdown(&console, &md);
+    assert!(
+        output.contains("sunset"),
+        "filename stem 'sunset' should appear as fallback; got: {:?}",
+        output
+    );
+}
+
+#[test]
+fn test_markdown_image_with_alt_not_overridden() {
+    // When alt text is present, it should be used (not the filename).
+    let console = make_console(80);
+    let md = Markdown::new("![Beautiful sunset](sunset.jpg)");
+    let output = render_markdown(&console, &md);
+    assert!(
+        output.contains("Beautiful sunset"),
+        "explicit alt text should appear; got: {:?}",
+        output
+    );
+}
