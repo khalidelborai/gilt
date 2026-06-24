@@ -316,8 +316,8 @@ impl Renderable for Columns {
         let mut sorted_widths = renderable_widths.clone();
         sorted_widths.sort_unstable_by(|a, b| b.cmp(a)); // descending
         let col_maxima: usize = sorted_widths.iter().take(column_count).sum();
-        let maximum = (col_maxima + width_padding * (column_count.saturating_sub(1)))
-            .min(max_width);
+        let maximum =
+            (col_maxima + width_padding * (column_count.saturating_sub(1))).min(max_width);
 
         Measurement::new(minimum, maximum)
     }
@@ -1002,7 +1002,11 @@ mod tests {
         let opts = console.options();
         let cols = Columns::new();
         let m = cols.gilt_measure(&console, &opts);
-        assert_eq!(m, Measurement::new(0, 0), "Empty Columns must return (0, 0)");
+        assert_eq!(
+            m,
+            Measurement::new(0, 0),
+            "Empty Columns must return (0, 0)"
+        );
     }
 
     #[test]
@@ -1029,10 +1033,7 @@ mod tests {
         cols.add_renderable("bbb");
         let m = cols.gilt_measure(&console, &opts);
         assert_eq!(m.minimum, 3, "minimum should be widest single item (3)");
-        assert_eq!(
-            m.maximum, 7,
-            "maximum should be sum(3+3) + 1*(2-1) = 7"
-        );
+        assert_eq!(m.maximum, 7, "maximum should be sum(3+3) + 1*(2-1) = 7");
     }
 
     #[test]
@@ -1056,14 +1057,10 @@ mod tests {
         let console = make_console(80);
         let opts = console.options();
         let mut cols = Columns::new().with_padding((0, 0, 0, 0));
-        cols.add_renderable("a");      // 1
-        cols.add_renderable("bb");     // 2
+        cols.add_renderable("a"); // 1
+        cols.add_renderable("bb"); // 2
         cols.add_renderable("ccccc"); // 5
         let m = cols.gilt_measure(&console, &opts);
-        assert_eq!(
-            m.minimum,
-            5,
-            "minimum should equal widest single item (5)"
-        );
+        assert_eq!(m.minimum, 5, "minimum should equal widest single item (5)");
     }
 }

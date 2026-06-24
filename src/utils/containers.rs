@@ -534,8 +534,7 @@ mod tests {
         let m_standalone = r.measure();
         let m_trait = r.gilt_measure(&console, &opts);
         assert_eq!(
-            m_trait,
-            m_standalone,
+            m_trait, m_standalone,
             "Renderables::gilt_measure must delegate to Renderables::measure"
         );
     }
@@ -548,8 +547,7 @@ mod tests {
         let m_standalone = r.measure();
         let m_trait = r.gilt_measure(&console, &opts);
         assert_eq!(
-            m_trait,
-            m_standalone,
+            m_trait, m_standalone,
             "Renderables::gilt_measure (empty) must delegate to Renderables::measure"
         );
     }

@@ -561,8 +561,7 @@ mod tests {
         let m_standalone = bar.measure(&console, &opts);
         let m_trait = bar.gilt_measure(&console, &opts);
         assert_eq!(
-            m_trait,
-            m_standalone,
+            m_trait, m_standalone,
             "Bar::gilt_measure (fixed width) must delegate to Bar::measure"
         );
     }
@@ -575,8 +574,7 @@ mod tests {
         let m_standalone = bar.measure(&console, &opts);
         let m_trait = bar.gilt_measure(&console, &opts);
         assert_eq!(
-            m_trait,
-            m_standalone,
+            m_trait, m_standalone,
             "Bar::gilt_measure (no fixed width) must delegate to Bar::measure"
         );
     }

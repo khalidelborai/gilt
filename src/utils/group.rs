@@ -440,8 +440,7 @@ mod tests {
         let m_standalone = group.measure(&console, &opts);
         let m_trait = group.gilt_measure(&console, &opts);
         assert_eq!(
-            m_trait,
-            m_standalone,
+            m_trait, m_standalone,
             "Group::gilt_measure (non-fit) must delegate to Group::measure"
         );
     }
@@ -458,8 +457,7 @@ mod tests {
         let m_standalone = group.measure(&console, &opts);
         let m_trait = group.gilt_measure(&console, &opts);
         assert_eq!(
-            m_trait,
-            m_standalone,
+            m_trait, m_standalone,
             "Group::gilt_measure (fit) must delegate to Group::measure"
         );
     }

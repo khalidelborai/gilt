@@ -278,8 +278,7 @@ mod tests {
         let m_standalone = styled.measure();
         let m_trait = styled.gilt_measure(&console, &opts);
         assert_eq!(
-            m_trait,
-            m_standalone,
+            m_trait, m_standalone,
             "Styled::gilt_measure must delegate to Styled::measure"
         );
     }
@@ -293,8 +292,7 @@ mod tests {
         let m_standalone = styled.measure();
         let m_trait = styled.gilt_measure(&console, &opts);
         assert_eq!(
-            m_trait,
-            m_standalone,
+            m_trait, m_standalone,
             "Styled::gilt_measure multiline must delegate to Styled::measure"
         );
     }

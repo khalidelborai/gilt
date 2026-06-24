@@ -1127,9 +1127,10 @@ mod tests {
         let opts = console.options();
         let mut tree = Tree::new(Text::new("parent", Style::null()));
         let child = tree.add(Text::new("child", Style::null()));
-        child
-            .children
-            .push(Tree::new(Text::new("a long grandchild label", Style::null())));
+        child.children.push(Tree::new(Text::new(
+            "a long grandchild label",
+            Style::null(),
+        )));
         assert_eq!(
             tree.gilt_measure(&console, &opts),
             tree.measure(&console, &opts),

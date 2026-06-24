@@ -385,8 +385,7 @@ mod tests {
         let m_standalone = c.measure(&console, &opts);
         let m_trait = c.gilt_measure(&console, &opts);
         assert_eq!(
-            m_trait,
-            m_standalone,
+            m_trait, m_standalone,
             "Constrain::gilt_measure must delegate to Constrain::measure"
         );
     }
@@ -400,8 +399,7 @@ mod tests {
         let m_standalone = c.measure(&console, &opts);
         let m_trait = c.gilt_measure(&console, &opts);
         assert_eq!(
-            m_trait,
-            m_standalone,
+            m_trait, m_standalone,
             "Constrain::gilt_measure (no width) must delegate to Constrain::measure"
         );
     }

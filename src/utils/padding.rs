@@ -425,12 +425,16 @@ mod tests {
         let console = make_console(80);
         let opts = console.options();
         let text = Text::new("Hello", Style::null());
-        let padding = Padding::new(text, PaddingDimensions::Full(0, 2, 0, 2), Style::null(), false);
+        let padding = Padding::new(
+            text,
+            PaddingDimensions::Full(0, 2, 0, 2),
+            Style::null(),
+            false,
+        );
         let m_standalone = padding.measure(&console, &opts);
         let m_trait = padding.gilt_measure(&console, &opts);
         assert_eq!(
-            m_trait,
-            m_standalone,
+            m_trait, m_standalone,
             "Padding::gilt_measure must delegate to Padding::measure"
         );
     }
@@ -444,8 +448,7 @@ mod tests {
         let m_standalone = padding.measure(&console, &opts);
         let m_trait = padding.gilt_measure(&console, &opts);
         assert_eq!(
-            m_trait,
-            m_standalone,
+            m_trait, m_standalone,
             "Padding::gilt_measure expand must delegate to Padding::measure"
         );
     }
