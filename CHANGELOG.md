@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-Parity 2.0 — closing verified gaps against Python `rich` (see `.review/parity-audit-2026-06-24.md`). Phase 1: correctness fixes. Phase 2: render-time theme resolution. Phase 3: measurement protocol. Phase 4: container generalization.
+Parity 2.0 — closing verified gaps against Python `rich` (see `.review/parity-audit-2026-06-24.md`). Phase 1: correctness fixes. Phase 2: render-time theme resolution. Phase 3: measurement protocol. Phase 4: container generalization. Phase 5: export correctness.
 
 ### Added
 
@@ -20,6 +20,7 @@ Parity 2.0 — closing verified gaps against Python `rich` (see `.review/parity-
 
 ### Changed (Breaking)
 
+- **`Console::save_html` / `save_svg` gain forwarding parameters** — `save_html(path, theme, clear, inline_styles, code_format)` and `save_svg(path, title, theme, clear, unique_id, code_format)` (were `save_html(path)` / `save_svg(path, title)`). The five `export_*` methods now **panic** (assert) if called without `record` mode (matching rich's `assert self.record`), instead of silently returning an empty string — their `String` return types are unchanged.
 - **Container content fields are now `RenderableArc` instead of `Text`** — `Panel.content`, `Tree.label`, `Align.content`, `Padding.content`, `Constrain.renderable`, `Styled.renderable`, and `Group`/`Renderables` items (`Vec<RenderableArc>`). Constructing via `Text`/`&str` still compiles, but **direct field reads that called `Text` methods** (e.g. `panel.content.plain()`) no longer compile — access through the `Renderable` trait or downcast the `Arc`. `Group::new`/`fit` take `Vec<RenderableArc>` (new `Group::push` / `Renderables::append` accept `impl Renderable`). These structs lost their derived `Debug` (now a manual impl printing `"<renderable>"`); `Clone` is preserved (cheap `Arc` clone).
 - **`Panel::from_renderable` takes an owned `R`** (was `&R`); **`Styled::measure` takes `(&Console, &ConsoleOptions)`** (was no-arg).
 - **`Console::measure` now dispatches through `Renderable::gilt_measure`** instead of always rendering (#2, #11). For widgets with a measure override this skips the render. The empty-content case for the *default* (un-overridden) path now returns `(0, max_width)` instead of `(0, 0)` (#3), matching rich; `Text("")` still measures `(0, 0)` via its own override.
@@ -30,6 +31,7 @@ Parity 2.0 — closing verified gaps against Python `rich` (see `.review/parity-
 ### Fixed
 
 - **`export_*` methods panic when `record` mode is off** (#f) — previously returned an empty string silently; now `assert!(self.record, "export requires record mode — build the Console with .record(true)")` fires on all five base export methods (`export_text`, `export_html`, `export_html_opts`, `export_svg`, `export_svg_opts`), matching Python rich's `assert self.record`. Return types are unchanged (non-breaking for callers with record enabled).
+- **SVG/HTML export correctness** (audit §3.10): SVG lines are cropped to the console width (#22); `reverse` swaps the background-rect fill and `dim` blends the foreground toward the theme background when a segment has no background (#23); per-line `<clipPath>` defs are emitted; traffic-light chrome geometry matches rich; all-space segments no longer emit `<text>`; class-mode HTML anchors are now wrapped *inside* the styled span. `save_html`/`save_svg` forward `theme`/`clear`/`inline_styles`/`unique_id`/`code_format`. _Deferred:_ wiring the per-line clip-paths to their `<text>` elements.
 - **`save_html` / `save_svg` forward export parameters** (#e, #g) — `save_html(path)` is now `save_html(path, theme, clear, inline_styles, code_format)` and `save_svg(path, title)` is now `save_svg(path, title, theme, clear, unique_id, code_format)`. Both delegate to the underlying `export_*_opts` / `export_svg` methods. **Breaking:** existing call sites must add the new parameters.
 - **Nested widgets in `Table` cells render at the column width** (#19) — a `CellContent::Renderable` (e.g. a `Panel`) was previously pre-rendered at the console's default width and re-wrapped, destroying its geometry; it now renders at the resolved column width with correct padding/alignment.
 - **Measurement protocol (#2, #3, #4, #11, #14)** — see Added/Changed above; `Console::measure` no longer bypasses per-widget measurement, and the empty/Align width contracts now match rich.
