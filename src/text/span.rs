@@ -11,7 +11,7 @@ use crate::style::Style;
 /// A span associates a [`Style`] with a half-open character range `[start, end)`.
 /// The optional `meta` field carries arbitrary string key/value metadata (e.g. from
 /// `[@key=val]...[/]` markup tags).  Two spans are equal only when their `meta` also
-/// compares equal; the manual `Hash` impl still hashes only `start`, `end`, and `style`
+/// compares equal; the manual `Hash` impl still hashes only `start`, `end`, `style`, and `style_name`
 /// so that meta-only differences may collide (which is permitted by the `Hash` contract).
 ///
 /// The optional `style_name` field carries a theme token (e.g. `"warning"`,
