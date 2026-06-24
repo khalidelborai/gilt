@@ -1375,6 +1375,106 @@ impl Text {
             return segments;
         }
 
+        // Fast path: no span carries a theme name → keep the zero-clone hot path
+        // unchanged.  This covers the vast majority of render() call sites.
+        if !self.spans.iter().any(|s| s.style_name().is_some()) {
+            // Sweep-line algorithm (zero-clone path)
+            // Build events: (offset, is_leaving, span_index)
+            // span_index 0 is self.style (always active), 1..n are spans
+            let mut events: Vec<(usize, bool, usize)> = Vec::new();
+            for (i, span) in self.spans.iter().enumerate() {
+                events.push((span.start, false, i + 1)); // entering
+                events.push((span.end, true, i + 1)); // leaving
+            }
+            events.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.cmp(&b.1)));
+
+            let text_len = self.len();
+            let mut segments = Vec::new();
+            let mut active_spans: Vec<usize> = vec![0]; // 0 = base style always active
+            let mut last_offset = 0;
+
+            // Style map: index 0 = base style, index 1..n = span styles
+            // T2/T3: zero-clone — references straight into span storage.
+            let style_map: Vec<&Style> = {
+                let mut v: Vec<&Style> = vec![&self.style];
+                for span in &self.spans {
+                    v.push(&span.style);
+                }
+                v
+            };
+
+            for &(offset, is_leaving, style_id) in &events {
+                let offset = min(offset, text_len);
+                if offset > last_offset {
+                    // Emit segment for [last_offset, offset)
+                    let slice = char_slice(&self.text, last_offset, offset);
+                    if !slice.is_empty() {
+                        // T2/T3: avoid the per-event Vec<Style> alloc and the
+                        // per-element style.clone() inside Style::combine — pass
+                        // references straight from style_map via combine_refs.
+                        let combined =
+                            Style::combine_refs(active_spans.iter().map(|&id| style_map[id]));
+                        let style = if combined.is_null() {
+                            None
+                        } else {
+                            Some(combined)
+                        };
+                        segments.push(Segment::new(slice, style, None));
+                    }
+                }
+                last_offset = offset;
+
+                if is_leaving {
+                    if let Some(pos) = active_spans.iter().position(|&x| x == style_id) {
+                        active_spans.remove(pos);
+                    }
+                } else {
+                    active_spans.push(style_id);
+                }
+            }
+
+            // Emit remaining text (T2/T3: same combine_refs optimisation)
+            if last_offset < text_len {
+                let slice = char_slice(&self.text, last_offset, text_len);
+                if !slice.is_empty() {
+                    let combined =
+                        Style::combine_refs(active_spans.iter().map(|&id| style_map[id]));
+                    let style = if combined.is_null() {
+                        None
+                    } else {
+                        Some(combined)
+                    };
+                    segments.push(Segment::new(slice, style, None));
+                }
+            }
+
+            // Append end segment
+            if !self.end.is_empty() {
+                segments.push(Segment::new(&self.end, None, None));
+            }
+
+            return segments;
+        }
+
+        // Named-span branch: resolve each span's style upfront into an owned
+        // Vec<Style>.  Named spans are looked up via DEFAULT_STYLES; ordinary
+        // spans are cloned as-is.  This vec must outlive style_map and the
+        // entire sweep-line loop below.
+        let resolved_styles: Vec<Style> = self
+            .spans
+            .iter()
+            .map(|span| {
+                if let Some(name) = span.style_name() {
+                    DEFAULT_STYLES
+                        .get(name)
+                        .cloned()
+                        .unwrap_or_else(Style::null)
+                } else {
+                    span.style.clone()
+                }
+            })
+            .collect();
+
         // Sweep-line algorithm
         // Build events: (offset, is_leaving, span_index)
         // span_index 0 is self.style (always active), 1..n are spans
@@ -1390,11 +1490,13 @@ impl Text {
         let mut active_spans: Vec<usize> = vec![0]; // 0 = base style always active
         let mut last_offset = 0;
 
-        // Style map: index 0 = base style, index 1..n = span styles
+        // Style map: index 0 = base style, index 1..n = resolved span styles.
+        // All references point into either &self.style or &resolved_styles[i],
+        // both of which outlive this function.
         let style_map: Vec<&Style> = {
             let mut v: Vec<&Style> = vec![&self.style];
-            for span in &self.spans {
-                v.push(&span.style);
+            for rs in &resolved_styles {
+                v.push(rs);
             }
             v
         };
@@ -2174,5 +2276,60 @@ mod tests {
         // "repr.frobnicator" is in neither DEFAULT_STYLES nor parseable as a style literal
         let count = text.highlight_regex_with_groups(&re, "repr.");
         assert_eq!(count, 0, "unknown group name should produce no span");
+    }
+
+    // --- Task 2.6: standalone render() resolves named spans via DEFAULT_STYLES ---
+
+    /// A Text whose span carries a theme name should have that name resolved
+    /// via DEFAULT_STYLES when rendered without a Console.
+    #[test]
+    fn standalone_render_resolves_named_span_against_default_styles() {
+        let mut text = Text::new("42", Style::null());
+        text.spans_mut().push(Span::named(0, 2, "repr.number"));
+        let segs = text.render();
+        let seg = segs.iter().find(|s| s.text.contains("42")).unwrap();
+        let st = seg.style().unwrap();
+        assert_eq!(st.bold(), Some(true));
+        assert!(st.color().is_some_and(|c| c.name().contains("cyan")));
+    }
+
+    /// An unknown theme name in a standalone render() should produce a null
+    /// style segment without panic (graceful degradation).
+    #[test]
+    fn standalone_render_unknown_named_span_renders_null_without_panic() {
+        let mut text = Text::new("x", Style::null());
+        text.spans_mut().push(Span::named(0, 1, "does.not.exist"));
+        let segs = text.render();
+        assert!(
+            segs.iter().any(|s| s.text.contains('x')),
+            "must produce a segment containing 'x' without panic"
+        );
+        // The unknown name resolves to null style, so the segment has no style.
+        let seg = segs.iter().find(|s| s.text.contains('x')).unwrap();
+        assert!(
+            seg.style().is_none(),
+            "unknown named span should resolve to null (no style)"
+        );
+    }
+
+    /// Non-named spans must still use the zero-clone fast path after Task 2.6.
+    /// render_themed() on those spans must equal render() (the fast-path gate).
+    #[test]
+    fn standalone_render_non_named_spans_unchanged_zero_clone() {
+        // Ordinary spans: render() must equal render_themed() (fast path delegate)
+        use crate::console::Console;
+        let console = Console::builder().build();
+
+        let mut text = Text::new("hello world", Style::null());
+        text.spans_mut().push(Span::new(0, 5, Style::parse("bold")));
+        text.spans_mut()
+            .push(Span::new(6, 11, Style::parse("italic")));
+
+        // No named spans → fast path in render() → identical to render_themed()
+        assert_eq!(
+            text.render(),
+            text.render_themed(&console),
+            "non-named spans: render() must equal render_themed() (fast-path gate)"
+        );
     }
 }
