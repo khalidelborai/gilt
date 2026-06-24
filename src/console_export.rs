@@ -80,23 +80,23 @@ pub(super) fn build_svg_chrome(
     )
     .unwrap();
 
-    // Window control dots
+    // Window control dots (Fix h: r=7, cx=26/48/70, cy=22)
     let dot_colors = ["#ff5f57", "#febc2e", "#28c840"];
+    let dot_cx = [26.0_f64, 48.0, 70.0];
     for (i, color) in dot_colors.iter().enumerate() {
-        let cx = 16.0 + (i as f64) * 22.0;
         writeln!(
             chrome,
-            "    <circle cx=\"{:.0}\" cy=\"18\" r=\"5\" fill=\"{}\"/>",
-            cx, color
+            "    <circle cx=\"{:.0}\" cy=\"22\" r=\"7\" fill=\"{}\"/>",
+            dot_cx[i], color
         )
         .unwrap();
     }
 
-    // Title text
+    // Title text — y adjusted to sit below the larger dots
     if !title.is_empty() {
         writeln!(
             chrome,
-            "    <text class=\"{}-title\" fill=\"{}\" x=\"{}\" y=\"23\" \
+            "    <text class=\"{}-title\" fill=\"{}\" x=\"{}\" y=\"30\" \
              text-anchor=\"middle\">{}</text>",
             unique_id,
             theme.foreground_color.hex(),
@@ -110,6 +110,10 @@ pub(super) fn build_svg_chrome(
 }
 
 /// Build the SVG text content from segments, cropping each line to `width` cells.
+///
+/// Returns `(matrix, backgrounds, styles, lines_defs)`.
+/// `terminal_pixel_width` is the full pixel width of the terminal viewport, used
+/// to generate per-line `<clipPath>` rectangles in `lines_defs`.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn build_svg_text(
     buffer: &[Segment],
@@ -120,11 +124,12 @@ pub(super) fn build_svg_text(
     line_height: f64,
     padding_top: f64,
     padding_left: f64,
+    terminal_pixel_width: f64,
 ) -> (String, String, String, String) {
     let mut matrix = String::new();
     let mut backgrounds = String::new();
     let mut styles = String::new();
-    let lines_defs = String::new();
+    let mut lines_defs = String::new();
 
     let mut style_cache: Vec<(String, String)> = Vec::new();
     let mut y = padding_top + line_height;
@@ -133,15 +138,33 @@ pub(super) fn build_svg_text(
     // Split and crop each line to the console width (rich parity: split_and_crop_lines).
     let line_segments = Segment::split_and_crop_lines(buffer, width, None, false, false);
 
-    for line in &line_segments {
+    for (line_idx, line) in line_segments.iter().enumerate() {
+        // Fix c: emit a <clipPath> for each rendered line.
+        let clip_y = line_idx as f64 * line_height + padding_top;
+        writeln!(
+            lines_defs,
+            "    <clipPath id=\"{unique_id}-line-{line_idx}\">\
+             <rect x=\"0\" y=\"{clip_y:.1}\" width=\"{terminal_pixel_width:.1}\" \
+             height=\"{line_height:.1}\"/></clipPath>",
+        )
+        .unwrap();
+
         x = padding_left;
         for seg in line {
             if seg.is_control() {
                 continue;
             }
             let text = &seg.text;
-            let escaped = svg_escape(text);
             let text_width = cell_len(text) as f64 * char_width;
+
+            // Fix i: skip <text> emission for all-space, null-style segments —
+            // but still advance x so following segments are correctly positioned.
+            if seg.style.is_none() && text.chars().all(|c| c == ' ') {
+                x += text_width;
+                continue;
+            }
+
+            let escaped = svg_escape(text);
 
             if let Some(ref style) = seg.style {
                 // Compute effective fg/bg color references, applying `reverse` swap.
@@ -769,6 +792,7 @@ impl Console {
             line_height,
             padding_top,
             padding_left,
+            terminal_width,
         );
 
         // Pre-format numeric values into a shared buffer to avoid per-replace allocations.
@@ -911,6 +935,7 @@ impl Console {
             line_height,
             padding_top,
             padding_left,
+            terminal_width,
         );
 
         // Build base SVG from standard template

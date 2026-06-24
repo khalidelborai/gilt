@@ -3117,6 +3117,7 @@ fn test_svg_bg_rect_uses_swapped_color_when_reverse() {
         14.0,
         40.0,
         14.0,
+        300.0,
     );
     // After reverse swap, the bg rect should be filled with the original *fg*
     // color (#ffffff), NOT the original bg (#000000).
@@ -3157,6 +3158,7 @@ fn test_svg_dim_no_bg_blends_toward_theme_bg() {
         14.0,
         40.0,
         14.0,
+        300.0,
     );
     // The text fill or CSS class for this segment must reflect the blended color
     // (#888888), not the original fg (#c8c8c8).
@@ -3167,5 +3169,131 @@ fn test_svg_dim_no_bg_blends_toward_theme_bg() {
     assert!(
         !matrix.contains("#c8c8c8"),
         "dim with no bg must NOT emit raw fg; got:\n{matrix}"
+    );
+}
+
+// -- Fix c: per-line clip-paths -----------------------------------------
+
+/// Fix c: `build_svg_text` must populate `lines_defs` with one `<clipPath>` per
+/// rendered line.  A two-line export must have `{id}-line-0` and `{id}-line-1`.
+#[test]
+fn test_svg_per_line_clip_paths() {
+    use crate::console::console_export::build_svg_text;
+    use crate::segment::Segment;
+    use crate::terminal_theme::SVG_EXPORT_THEME;
+
+    // Two newline-delimited lines
+    let line1 = Segment::text("line one\n");
+    let line2 = Segment::text("line two\n");
+    let segs = vec![line1, line2];
+
+    let terminal_pixel_width = 300.0_f64;
+    let (_, _, _, lines_defs) = build_svg_text(
+        &segs,
+        40,
+        &SVG_EXPORT_THEME,
+        "testid",
+        7.0,
+        14.0,
+        40.0,
+        8.0,
+        terminal_pixel_width,
+    );
+
+    assert!(
+        lines_defs.contains("testid-line-0"),
+        "lines_defs must contain a clip-path for line 0; got:\n{lines_defs}"
+    );
+    assert!(
+        lines_defs.contains("testid-line-1"),
+        "lines_defs must contain a clip-path for line 1; got:\n{lines_defs}"
+    );
+    assert!(
+        lines_defs.contains("<clipPath"),
+        "lines_defs must contain <clipPath elements; got:\n{lines_defs}"
+    );
+}
+
+// -- Fix h: traffic-light chrome geometry -------------------------------
+
+/// Fix h: `build_svg_chrome` must emit the corrected dot geometry:
+/// `r="7"`, `cx="26"`, `cx="48"`, `cx="70"`, `cy="22"`.
+#[test]
+fn test_svg_chrome_traffic_light_geometry() {
+    use crate::console::console_export::build_svg_chrome;
+    use crate::terminal_theme::SVG_EXPORT_THEME;
+
+    let chrome = build_svg_chrome(600.0, 400.0, &SVG_EXPORT_THEME, "Test", "testid");
+
+    assert!(
+        chrome.contains("r=\"7\""),
+        "chrome must use r=7 for traffic-light dots; got:\n{chrome}"
+    );
+    assert!(
+        chrome.contains("cx=\"26\""),
+        "chrome must use cx=26 for first dot; got:\n{chrome}"
+    );
+    assert!(
+        chrome.contains("cx=\"48\""),
+        "chrome must use cx=48 for second dot; got:\n{chrome}"
+    );
+    assert!(
+        chrome.contains("cx=\"70\""),
+        "chrome must use cx=70 for third dot; got:\n{chrome}"
+    );
+    assert!(
+        chrome.contains("cy=\"22\""),
+        "chrome must use cy=22 for traffic-light dots; got:\n{chrome}"
+    );
+}
+
+// -- Fix i: skip all-space null-style segments --------------------------
+
+/// Fix i: a segment whose text is entirely spaces and whose style is `None`
+/// must NOT emit a `<text>` element (but x must still advance so following
+/// segments stay correctly positioned).
+#[test]
+fn test_svg_space_segment_no_text_element() {
+    use crate::console::console_export::build_svg_text;
+    use crate::segment::Segment;
+    use crate::style::Style;
+    use crate::terminal_theme::SVG_EXPORT_THEME;
+
+    // Segment 1: all spaces with no style (None)
+    let space_seg = Segment::text("   "); // 3 spaces, no style
+                                          // Segment 2: real text with a style so we can verify x advanced
+    let real_seg = Segment::styled("X", Style::parse("bold"));
+    let segs = vec![space_seg, real_seg];
+
+    let terminal_pixel_width = 300.0_f64;
+    let (matrix, _, _, _) = build_svg_text(
+        &segs,
+        40,
+        &SVG_EXPORT_THEME,
+        "testid",
+        7.0,
+        14.0,
+        40.0,
+        8.0,
+        terminal_pixel_width,
+    );
+
+    // The spaces segment must not produce a <text> element.
+    // We count occurrences: only the real_seg ("X") should produce one.
+    let text_elem_count = matrix.matches("<text").count();
+    assert_eq!(
+        text_elem_count, 1,
+        "only the non-space segment should emit a <text> element; got:\n{matrix}"
+    );
+    // The real segment must still appear
+    assert!(
+        matrix.contains(">X<"),
+        "real segment 'X' must appear in matrix; got:\n{matrix}"
+    );
+    // x position of X must be > padding_left (8.0) because the 3-space seg advanced x
+    // 3 spaces × 7.0 char_width = 21.0, so x = 8.0 + 21.0 = 29.0
+    assert!(
+        matrix.contains("x=\"29.0\""),
+        "x position of 'X' must be 29.0 (spaces advanced x); got:\n{matrix}"
     );
 }
