@@ -29,7 +29,8 @@ use tracing_subscriber::registry::LookupSpan;
 
 use crate::console::Console;
 use crate::style::Style;
-use crate::text::Text;
+use crate::text::{JustifyMethod, Text};
+use crate::widgets::table::Table;
 
 // ---------------------------------------------------------------------------
 // Field visitor — collects structured fields from a tracing event
@@ -224,7 +225,7 @@ impl GiltLayer {
         Text::styled_with(&joined, style)
     }
 
-    /// Compose all columns into a single line and print via the console.
+    /// Compose all columns into a grid row and print via the console.
     fn emit<S: Subscriber + for<'a> LookupSpan<'a>>(
         &self,
         event: &Event<'_>,
@@ -235,23 +236,23 @@ impl GiltLayer {
         event.record(&mut visitor);
 
         let metadata = event.metadata();
-        let mut parts = Text::new("", Style::null());
+        let mut cells: Vec<Text> = Vec::new();
+        let mut headers: Vec<&str> = Vec::new();
 
         // Time column
         if self.show_time {
-            let time_text = Self::render_time();
-            parts.append_text(&time_text);
-            parts.append_str(" ", None);
+            cells.push(Self::render_time());
+            headers.push("");
         }
 
         // Level column
         if self.show_level {
-            let level_text = Self::render_level(metadata.level());
-            parts.append_text(&level_text);
-            parts.append_str(" ", None);
+            cells.push(Self::render_level(metadata.level()));
+            headers.push("");
         }
 
-        // Span path (if enabled and spans exist)
+        // Span path (if enabled and spans exist) — prepended to message cell
+        let mut message_cell = Text::new("", Style::null());
         if self.show_span_path {
             if let Some(scope) = ctx.event_scope(event) {
                 let span_names: Vec<&str> = scope.from_root().map(|s| s.name()).collect();
@@ -259,36 +260,57 @@ impl GiltLayer {
                     let path = span_names.join(":");
                     let span_style = Style::parse("italic cyan");
                     let span_text = Text::styled_with(&path, span_style);
-                    parts.append_text(&span_text);
-                    parts.append_str(" ", None);
+                    message_cell.append_text(&span_text);
+                    message_cell.append_str(" ", None);
                 }
             }
         }
 
         // Message
         let message = visitor.message.unwrap_or_default();
-        parts.append_str(&message, None);
+        message_cell.append_str(&message, None);
 
-        // Structured fields
+        // Structured fields appended into message cell
         if !visitor.fields.is_empty() {
-            parts.append_str(" ", None);
+            message_cell.append_str(" ", None);
             let fields_text = Self::render_fields(&visitor.fields);
-            parts.append_text(&fields_text);
+            message_cell.append_text(&fields_text);
         }
+
+        cells.push(message_cell);
+        headers.push("");
 
         // Target column
-        if self.show_target {
+        let has_target = if self.show_target {
             let target = metadata.target();
             if !target.is_empty() {
-                parts.append_str(" ", None);
-                let target_text = Self::render_target(target);
-                parts.append_text(&target_text);
+                cells.push(Self::render_target(target));
+                headers.push("");
+                true
+            } else {
+                false
             }
+        } else {
+            false
+        };
+
+        let mut grid = Table::grid(&headers);
+        // Match rich LogRender: padding=(0,1) between columns, no left pad,
+        // expand to full width so target column lands at a fixed right edge.
+        grid.padding = (0, 1, 0, 0);
+        grid.set_expand(true);
+
+        // Right-justify the target column so it is flush with the terminal right edge.
+        if has_target && !grid.columns.is_empty() {
+            let last = grid.columns.len() - 1;
+            grid.columns[last].justify = JustifyMethod::Right;
         }
+
+        grid.add_row_text(&cells);
 
         // Print via console
         if let Ok(mut console) = self.console.lock() {
-            console.print(&parts);
+            console.print(&grid);
         }
     }
 }

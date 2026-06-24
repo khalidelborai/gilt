@@ -13,7 +13,8 @@ use crate::error::traceback::Traceback;
 use crate::highlighter::{Highlighter, ReprHighlighter};
 use crate::markup;
 use crate::style::Style;
-use crate::text::Text;
+use crate::text::{JustifyMethod, Text};
+use crate::widgets::table::Table;
 
 // ---------------------------------------------------------------------------
 // Default keywords (HTTP verbs, matching Python's RichHandler.KEYWORDS)
@@ -263,22 +264,8 @@ impl RichHandler {
         Text::styled_with(&path_str, dim_style)
     }
 
-    /// Compose all columns into a single line and print it.
+    /// Compose all columns into a grid row and print it.
     fn emit(&self, record: &log::Record) {
-        let mut parts = Text::new("", Style::null());
-
-        if self.show_time {
-            let time_text = self.render_time_with_omit();
-            parts.append_text(&time_text);
-            parts.append_str(" ", None);
-        }
-
-        if self.show_level {
-            let level_text = self.render_level(record.level());
-            parts.append_text(&level_text);
-            parts.append_str(" ", None);
-        }
-
         // Traceback path: when enabled and the message is multi-line (the
         // common Display form for error chains via `{:#}`), render it through
         // a Panel-wrapped Traceback so the call/error chain is styled.
@@ -289,23 +276,48 @@ impl RichHandler {
             // Traceback renders the full chain.
             let tb = Traceback::from_panic(&msg_str, "");
             if let Ok(mut console) = self.console.lock() {
-                console.print(&parts);
                 console.print(&tb);
             }
             return;
         }
 
-        let message_text = self.render_message(record);
-        parts.append_text(&message_text);
+        let mut cells: Vec<Text> = Vec::new();
+        let mut headers: Vec<&str> = Vec::new();
 
-        if self.show_path {
-            let path_text = self.render_path_with_link(record);
-            parts.append_str(" ", None);
-            parts.append_text(&path_text);
+        if self.show_time {
+            cells.push(self.render_time_with_omit());
+            headers.push("");
         }
 
+        if self.show_level {
+            cells.push(self.render_level(record.level()));
+            headers.push("");
+        }
+
+        cells.push(self.render_message(record));
+        headers.push("");
+
+        if self.show_path {
+            cells.push(self.render_path_with_link(record));
+            headers.push("");
+        }
+
+        let mut grid = Table::grid(&headers);
+        // Match rich LogRender: padding=(0,1) between columns, no left pad,
+        // expand to full width so path column lands at a fixed right edge.
+        grid.padding = (0, 1, 0, 0);
+        grid.set_expand(true);
+
+        // Right-justify the path column so it is flush with the terminal right edge.
+        if self.show_path && !grid.columns.is_empty() {
+            let last = grid.columns.len() - 1;
+            grid.columns[last].justify = JustifyMethod::Right;
+        }
+
+        grid.add_row_text(&cells);
+
         if let Ok(mut console) = self.console.lock() {
-            console.print(&parts);
+            console.print(&grid);
         }
     }
 
@@ -1025,5 +1037,86 @@ mod tests {
         assert!(handler.keywords.contains(&"POST".to_string()));
         assert!(handler.keywords.contains(&"PUT".to_string()));
         assert!(handler.keywords.contains(&"DELETE".to_string()));
+    }
+
+    // -- Grid alignment: columns must be stable across different message lengths --
+
+    /// Discriminating test: the PATH column MUST start at the same byte offset on
+    /// both lines even when message lengths differ. Under the old flat-concat emit,
+    /// path position = time(8) + sp(1) + level(8) + sp(1) + msg_len + sp(1), so
+    /// "msg_len" is variable and the path drifts. With Table::grid the message
+    /// column is padded to the widest cell, so path is always at the same offset.
+    ///
+    /// To verify RED: temporarily replace the `Table::grid` emit body with flat
+    /// Text concat (see inline comment) and observe the assertion fail with two
+    /// different offsets; restore to confirm GREEN.
+    #[test]
+    fn grid_alignment_path_column_stable_despite_variable_message_length() {
+        let console = Console::builder()
+            .width(120)
+            .no_color(true)
+            .record(true)
+            .markup(false)
+            .build();
+        // show_time=false so only level + message + path — isolates the message-
+        // length effect on path position without the fixed-width time prefix.
+        let handler = RichHandler::new()
+            .with_console(console)
+            .with_show_time(false)
+            .with_show_level(true)
+            .with_show_path(true)
+            .with_omit_repeated_times(false)
+            .with_enable_link_path(false) // plain "module:line" form for easy find()
+            .with_keywords(vec![]);
+
+        // Short message → path follows closely under flat concat.
+        // Long message  → path would be pushed further right under flat concat.
+        let messages = ["A", "a much longer message here"];
+        let module = "mymod";
+        let line = 7u32;
+
+        for msg in &messages {
+            let msg_str = msg.to_string();
+            let args = format_args!("{}", msg_str);
+            let record = log::Record::builder()
+                .args(args)
+                .level(log::Level::Info)
+                .module_path(Some(module))
+                .line(Some(line))
+                .build();
+            handler.emit(&record);
+            drop(msg_str);
+        }
+
+        let mut console = handler.console.lock().unwrap();
+        let output = console.export_text(true, false);
+        drop(console);
+
+        let lines: Vec<&str> = output.lines().filter(|l| !l.is_empty()).collect();
+        assert!(
+            lines.len() >= 2,
+            "expected at least 2 non-empty lines, got:\n{}",
+            output
+        );
+
+        // Find the path token "mymod:7" on each line.
+        let path_token = "mymod:7";
+        let off0 = lines[0]
+            .find(path_token)
+            .unwrap_or_else(|| panic!("'{}' not found in first line: {:?}", path_token, lines[0]));
+        let off1 = lines[1]
+            .find(path_token)
+            .unwrap_or_else(|| panic!("'{}' not found in second line: {:?}", path_token, lines[1]));
+
+        // Under flat concat these differ: off0 ≈ 8+1+1+1 = 11, off1 ≈ 8+1+26+1 = 36.
+        // Under Table::grid the message column is padded to max-message width, so
+        // both offsets equal the same value.
+        assert_eq!(
+            off0, off1,
+            "PATH column drifted (bug #28): offset {} vs {} — flat-concat regressed.\n\
+             Line 0 (short msg):  {:?}\n\
+             Line 1 (long  msg):  {:?}",
+            off0, off1, lines[0], lines[1]
+        );
     }
 }
