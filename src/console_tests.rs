@@ -287,12 +287,26 @@ fn test_use_theme_guard_pops_on_drop() {
     styles.insert("my_guard_style".to_string(), Style::parse("bold green"));
     let custom = Theme::new(Some(styles), true);
     {
-        let _guard = console.use_theme(custom, true);
-        // While guard is live, style is resolvable via get_style.
-        // (Cannot access theme_stack directly while mutable borrow is held.)
-        // We verify indirectly: get_style succeeds for the pushed style.
+        let guard = console.use_theme(custom, true);
+        // Call console methods through the guard via Deref/DerefMut —
+        // theme is active while the guard is alive.
+        let resolved = guard
+            .get_style("my_guard_style")
+            .expect("style resolves inside guard scope");
+        // Verify the pushed style is reachable through the guard — check that it
+        // has bold and green colour set (the two attributes we pushed).
+        assert_eq!(resolved.bold(), Some(true), "resolved style has bold set");
+        assert!(
+            resolved.color().is_some(),
+            "resolved style has a foreground color (green)"
+        );
+        // Base default styles are still reachable (inherit=true).
+        assert!(
+            guard.get_style("bold").is_ok(),
+            "inherited default style visible through guard"
+        );
     }
-    // After drop, the pushed style is gone from the theme stack.
+    // After guard drops, pop_theme was called — pushed style is gone from the theme stack.
     assert!(console.theme_stack.get("my_guard_style").is_none());
 }
 

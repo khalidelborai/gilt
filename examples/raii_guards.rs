@@ -17,12 +17,10 @@ fn main() {
     // ========================================================================
     // 1. use_theme — RAII ThemeGuard
     //
-    // use_theme pushes a theme and returns a ThemeGuard.  When the guard drops
-    // (end of scope), pop_theme is called automatically.  Because the guard
-    // holds an exclusive `&mut Console`, you cannot call console methods inside
-    // the same scope while the guard is alive — hold the guard in a block and
-    // do your themed rendering before or after, or use push_theme/pop_theme for
-    // interleaved rendering (see section 4 below).
+    // use_theme pushes a theme and returns a ThemeGuard that implements
+    // Deref<Target=Console> and DerefMut.  Call any Console method directly
+    // through the guard while the theme is active.  The theme is popped
+    // automatically when the guard drops at the end of its scope.
     // ========================================================================
     console.rule(Some("use_theme (ThemeGuard)"));
 
@@ -30,11 +28,14 @@ fn main() {
     custom_styles.insert("info".to_string(), Style::parse("bold magenta on grey15"));
     let custom_theme = Theme::new(Some(custom_styles), true);
 
-    // Push via RAII guard — theme is automatically popped when guard drops.
-    let _guard = console.use_theme(custom_theme, true);
-    drop(_guard); // explicit drop; in real code let the block scope handle it
+    {
+        // Push via RAII guard.  Render through the guard — theme is active here.
+        let mut guard = console.use_theme(custom_theme, true);
+        guard.print_text("\nInside ThemeGuard scope (custom theme active):");
+        guard.print_text("  [info]'info' is bold magenta on grey15[/info]");
+    } // guard drops here → pop_theme called automatically
 
-    console.print_text("Theme guard was active and has now been automatically popped.");
+    console.print_text("\nAfter ThemeGuard scope (theme restored):");
     console.print_text("  [info]'info' is back to the default style[/info]");
 
     // ========================================================================

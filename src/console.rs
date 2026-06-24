@@ -446,6 +446,19 @@ impl Drop for ThemeGuard<'_> {
     }
 }
 
+impl std::ops::Deref for ThemeGuard<'_> {
+    type Target = Console;
+    fn deref(&self) -> &Console {
+        self.console
+    }
+}
+
+impl std::ops::DerefMut for ThemeGuard<'_> {
+    fn deref_mut(&mut self) -> &mut Console {
+        self.console
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Console
 // ---------------------------------------------------------------------------
@@ -1126,7 +1139,11 @@ impl Console {
         let _ = self.theme_stack.pop_theme();
     }
 
-    /// Push `theme` and return a guard that pops it on drop.
+    /// Push `theme` and return a [`ThemeGuard`] that pops it on drop.
+    ///
+    /// The guard implements [`Deref`](std::ops::Deref) and
+    /// [`DerefMut`](std::ops::DerefMut) targeting `Console`, so you can call
+    /// any `Console` method through it without dropping the guard first.
     ///
     /// ```
     /// use gilt::console::Console;
@@ -1136,9 +1153,11 @@ impl Console {
     /// let mut console = Console::new();
     /// let mut styles = HashMap::new();
     /// styles.insert("info".to_string(), gilt::style::Style::parse("bold cyan"));
+    /// let theme = Theme::new(Some(styles), true);
     /// {
-    ///     let _guard = console.use_theme(Theme::new(Some(styles), true), true);
-    ///     // "info" resolves to bold cyan here
+    ///     let mut guard = console.use_theme(theme, true);
+    ///     // Call console methods directly through the guard.
+    ///     assert!(guard.get_style("info").is_ok());
     /// } // guard drops → pop_theme called automatically
     /// ```
     pub fn use_theme(&mut self, theme: Theme, inherit: bool) -> ThemeGuard<'_> {
