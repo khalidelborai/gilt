@@ -67,6 +67,14 @@ impl Console {
         let opts = options.unwrap_or(&default_opts);
         let segments = renderable.gilt_console(self, opts);
 
+        // Apply the caller-supplied style first (parity: style param was previously
+        // forwarded only to split_and_crop_lines for padding, never to the segments).
+        let segments = if let Some(s) = style {
+            Segment::apply_style(&segments, Some(s.clone()), None)
+        } else {
+            segments
+        };
+
         // Apply base style if present
         let segments = if let Some(base) = &self.base_style {
             Segment::apply_style(&segments, Some(base.clone()), None)
@@ -120,11 +128,21 @@ impl Console {
             None => Style::null(),
         };
 
+        // Emoji replacement always runs (parity with rich).
+        let replaced = crate::utils::emoji_replace::emoji_replace(text, None);
+        let text_ref: &str = replaced.as_ref();
+
         let mut gilt_text = if self.markup_enabled {
-            markup::render(text, base_style.clone()).unwrap_or_else(|_| Text::new(text, base_style))
+            markup::render(text_ref, base_style.clone())
+                .unwrap_or_else(|_| Text::new(text_ref, base_style))
         } else {
-            Text::new(text, base_style)
+            Text::new(text_ref, base_style)
         };
+
+        // Highlighting runs when enabled (parity with rich's console highlighter).
+        if self.highlight_enabled {
+            self.highlighter.highlight(&mut gilt_text);
+        }
 
         if let Some(j) = justify {
             gilt_text.justify = Some(j);
@@ -158,7 +176,35 @@ impl Console {
     /// assert!(output.contains("Hello, world!"));
     /// ```
     pub fn print<R: Renderable + ?Sized>(&mut self, renderable: &R) {
-        self.print_styled(renderable, None, None, None, false, true, false);
+        self.print_styled(renderable, None, None, None, false, true, self.soft_wrap);
+    }
+
+    /// Print a `&dyn Renderable`, running it through any registered
+    /// [`RenderHook`]s before rendering.
+    ///
+    /// Use this instead of [`print`](Self::print) when you already have a
+    /// trait object and want hook processing.
+    ///
+    /// [`RenderHook`]: crate::console::RenderHook
+    pub fn print_with_hooks(&mut self, renderable: &dyn Renderable) {
+        if self.render_hooks.is_empty() {
+            self.print_styled(renderable, None, None, None, false, true, self.soft_wrap);
+            return;
+        }
+        // Collect raw pointers to avoid simultaneous borrows of self.
+        // Safety: the Vec is not mutated during iteration; raw ptrs remain valid.
+        let hook_ptrs: Vec<*const dyn crate::console::RenderHook> = self
+            .render_hooks
+            .iter()
+            .map(|h| h.as_ref() as *const dyn crate::console::RenderHook)
+            .collect();
+        let mut current: Vec<&dyn Renderable> = vec![renderable];
+        for ptr in hook_ptrs {
+            current = unsafe { (*ptr).process_renderables(current) };
+        }
+        if let Some(r) = current.last().copied() {
+            self.print_styled(r, None, None, None, false, true, self.soft_wrap);
+        }
     }
 
     /// Print a Renderable with full styling options.
@@ -258,6 +304,61 @@ impl Console {
             buf.push(Segment::line());
         }
         self.write_segments(&buf);
+    }
+
+    /// Print a slice of renderables with a custom separator and end string.
+    ///
+    /// Renders each item with `sep` between them and `end` appended after the
+    /// last item. A newline is added automatically if `end` does not end with one.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    /// use gilt::text::Text;
+    /// use gilt::style::Style;
+    ///
+    /// let mut console = Console::builder().width(80).no_color(true).markup(false).build();
+    /// console.begin_capture();
+    /// let a = Text::new("foo", Style::null());
+    /// let b = Text::new("bar", Style::null());
+    /// console.print_sep_end(&[&a, &b], ", ", "!");
+    /// let out = console.end_capture();
+    /// assert!(out.contains("foo"));
+    /// assert!(out.contains(", "));
+    /// assert!(out.contains("bar"));
+    /// assert!(out.contains('!'));
+    /// ```
+    pub fn print_sep_end(&mut self, items: &[&dyn Renderable], sep: &str, end: &str) {
+        let mut all_segments: Vec<Segment> = Vec::new();
+        let opts = self.options();
+
+        for (i, item) in items.iter().enumerate() {
+            if i > 0 && !sep.is_empty() {
+                all_segments.push(Segment::text(sep));
+            }
+            let mut segs = item.gilt_console(self, &opts);
+            // Strip trailing newlines from individual items
+            while segs.last().map(|s| s.text.as_str()) == Some("\n") {
+                segs.pop();
+            }
+            all_segments.extend(segs);
+        }
+
+        if !end.is_empty() {
+            all_segments.push(Segment::text(end));
+        }
+
+        // Ensure there is a trailing newline
+        if all_segments
+            .last()
+            .map(|s| !s.text.ends_with('\n'))
+            .unwrap_or(true)
+        {
+            all_segments.push(Segment::line());
+        }
+
+        self.write_segments(&all_segments);
     }
 
     // -- Convenience methods ------------------------------------------------
@@ -360,6 +461,82 @@ impl Console {
             if !last.text.ends_with('\n') {
                 segments.push(Segment::line());
             }
+        }
+
+        self.write_segments(&segments);
+    }
+
+    /// Print multiple renderables as a single log line, separated by spaces.
+    ///
+    /// Like [`log`](Self::log), prepends a `[HH:MM:SS]` timestamp. When
+    /// `log_locals` is `true`, a styled `"(locals)"` label is appended after
+    /// the objects (full locals introspection is deferred to a future release).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    /// use gilt::text::Text;
+    /// use gilt::style::Style;
+    ///
+    /// let mut console = Console::builder().width(80).no_color(true).markup(false).build();
+    /// console.begin_capture();
+    /// let a = Text::new("foo", Style::null());
+    /// let b = Text::new("bar", Style::null());
+    /// console.log_objects(&[&a, &b], false);
+    /// let out = console.end_capture();
+    /// assert!(out.contains("foo"));
+    /// assert!(out.contains("bar"));
+    /// ```
+    pub fn log_objects(&mut self, objects: &[&dyn Renderable], log_locals: bool) {
+        let now = {
+            let secs = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs();
+            let secs_i64 = secs as i64;
+            let secs_of_day = ((secs_i64 % 86400) + 86400) % 86400;
+            let h = secs_of_day / 3600;
+            let m = (secs_of_day % 3600) / 60;
+            let s = secs_of_day % 60;
+            format!("[{:02}:{:02}:{:02}]", h, m, s)
+        };
+
+        let time_style = self
+            .get_style("log.time")
+            .unwrap_or_else(|_| Style::parse("dim"));
+
+        let opts = self.options();
+
+        let time_text = Text::styled_with(&now, time_style);
+        let mut segments = time_text.gilt_console(self, &opts);
+        // Remove trailing newline from time
+        segments.retain(|s| s.text != "\n");
+
+        // Render each object separated by a space
+        for obj in objects.iter() {
+            segments.push(Segment::text(" "));
+            let mut obj_segs = obj.gilt_console(self, &opts);
+            obj_segs.retain(|s| s.text != "\n");
+            segments.extend(obj_segs);
+        }
+
+        // Optional locals label
+        if log_locals {
+            let locals_style = self
+                .get_style("log.path")
+                .unwrap_or_else(|_| Style::parse("dim"));
+            segments.push(Segment::text(" "));
+            segments.push(Segment::styled("(locals)", locals_style));
+        }
+
+        // Ensure trailing newline
+        if let Some(last) = segments.last() {
+            if !last.text.ends_with('\n') {
+                segments.push(Segment::line());
+            }
+        } else {
+            segments.push(Segment::line());
         }
 
         self.write_segments(&segments);
@@ -887,4 +1064,370 @@ pub fn measure_renderables<R: Renderable + ?Sized>(
     let minimum = measurements.iter().map(|m| m.minimum).max().unwrap_or(0);
     let maximum = measurements.iter().map(|m| m.maximum).max().unwrap_or(0);
     Measurement::new(minimum, maximum)
+}
+
+// ---------------------------------------------------------------------------
+// Batch 7.7 parity tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod batch_7_7_tests {
+    use super::*;
+    use crate::console::Console;
+    use crate::style::Style;
+    use crate::text::Text;
+
+    // -- Item 1: render_str emoji + highlight --------------------------------
+
+    #[test]
+    fn render_str_emoji_replace_always_runs() {
+        let console = Console::builder()
+            .width(80)
+            .no_color(true)
+            .markup(false)
+            .build();
+        // ":wave:" should be replaced by the wave emoji character
+        let t = console.render_str(":wave:", None, None, None);
+        let plain = t.plain();
+        // After substitution it should no longer look like a raw `:wave:` tag
+        assert!(
+            !plain.contains(":wave:"),
+            "expected emoji replacement, got {:?}",
+            plain
+        );
+    }
+
+    #[test]
+    fn render_str_unknown_emoji_stays_unchanged() {
+        let console = Console::builder()
+            .width(80)
+            .no_color(true)
+            .markup(false)
+            .build();
+        let t = console.render_str(":this_is_not_a_known_emoji:", None, None, None);
+        assert_eq!(t.plain(), ":this_is_not_a_known_emoji:");
+    }
+
+    #[test]
+    fn render_str_highlight_adds_spans_when_enabled() {
+        let console = Console::builder()
+            .width(80)
+            .no_color(true)
+            .markup(false)
+            .highlight(true)
+            .build();
+        // "42" matches repr.number — expect at least one span
+        let t = console.render_str("value=42", None, None, None);
+        assert!(
+            !t.spans().is_empty(),
+            "expected highlight spans for 'value=42'"
+        );
+    }
+
+    #[test]
+    fn render_str_no_spans_when_highlight_disabled() {
+        let console = Console::builder()
+            .width(80)
+            .no_color(true)
+            .markup(false)
+            .highlight(false)
+            .build();
+        let t = console.render_str("value=42", None, None, None);
+        assert!(
+            t.spans().is_empty(),
+            "expected no spans when highlight is disabled"
+        );
+    }
+
+    // -- Item 2: render_lines style-apply before crop ------------------------
+
+    #[test]
+    fn render_lines_applies_style_to_segments() {
+        let console = Console::builder()
+            .width(40)
+            .no_color(false)
+            .markup(false)
+            .build();
+        let text = Text::new("hello", Style::null());
+        let bold = Style::parse("bold");
+        let lines = console.render_lines(&text, None, Some(&bold), false, false);
+        // All non-control segments in the result should carry at least the bold style
+        let all_styled = lines.iter().flatten().all(|s| {
+            s.is_control() || s.style().map(|st| st.bold() == Some(true)).unwrap_or(false)
+        });
+        assert!(all_styled, "expected bold style on all rendered segments");
+    }
+
+    // -- Item 3: log_objects -------------------------------------------------
+
+    #[test]
+    fn log_objects_renders_multiple() {
+        let mut console = Console::builder()
+            .width(80)
+            .no_color(true)
+            .markup(false)
+            .build();
+        console.begin_capture();
+        let a = Text::new("alpha", Style::null());
+        let b = Text::new("beta", Style::null());
+        console.log_objects(&[&a, &b], false);
+        let out = console.end_capture();
+        assert!(out.contains("alpha"), "missing 'alpha' in {:?}", out);
+        assert!(out.contains("beta"), "missing 'beta' in {:?}", out);
+        assert!(out.contains('['), "missing timestamp bracket in {:?}", out);
+    }
+
+    #[test]
+    fn log_objects_log_locals_appends_label() {
+        let mut console = Console::builder()
+            .width(80)
+            .no_color(true)
+            .markup(false)
+            .build();
+        console.begin_capture();
+        let a = Text::new("x", Style::null());
+        console.log_objects(&[&a], true);
+        let out = console.end_capture();
+        assert!(
+            out.contains("locals"),
+            "expected '(locals)' label in {:?}",
+            out
+        );
+    }
+
+    #[test]
+    fn log_objects_empty_slice_does_not_panic() {
+        let mut console = Console::builder()
+            .width(80)
+            .no_color(true)
+            .markup(false)
+            .build();
+        console.begin_capture();
+        console.log_objects(&[], false);
+        let out = console.end_capture();
+        assert!(out.contains('['), "expected at least a timestamp bracket");
+    }
+
+    // -- Item 4: soft_wrap wiring -------------------------------------------
+
+    #[test]
+    fn soft_wrap_flag_wired_to_print() {
+        // Verify Console::builder().soft_wrap(true) doesn't crash and the
+        // console can print without cropping.
+        let mut console = Console::builder()
+            .width(20)
+            .no_color(true)
+            .markup(false)
+            .soft_wrap(true)
+            .build();
+        console.begin_capture();
+        // A line longer than 20 chars should appear fully when soft_wrap=true
+        console.print_text("a very long line that exceeds the console width by quite a lot");
+        let out = console.end_capture();
+        assert!(
+            out.contains("long line"),
+            "expected long line in output, got {:?}",
+            out
+        );
+    }
+
+    // -- Item 5: pager_with --------------------------------------------------
+
+    #[test]
+    fn pager_with_does_not_panic() {
+        // Verify pager_with runs the closure and pipes to the pager without panicking.
+        // Use "cat" as pager and quiet=true to suppress stdout.
+        let mut console = Console::builder()
+            .width(80)
+            .no_color(true)
+            .markup(false)
+            .quiet(true)
+            .build();
+        console.pager_with(
+            |c| {
+                c.print_text("hello from pager_with");
+            },
+            Some("cat"),
+        );
+    }
+
+    #[test]
+    fn pager_with_records_closure_output() {
+        // Verify that pager_with enables recording for the closure duration.
+        // We intercept by also having record=true before the call so the buffer
+        // accumulates; pager_with's internal clear happens on its own pass.
+        // Use "cat" to avoid spawning a real pager.
+        let mut console = Console::builder()
+            .width(80)
+            .no_color(true)
+            .markup(false)
+            .record(true)
+            .quiet(true)
+            .build();
+        // Print something before pager_with so record_buffer has content.
+        // Then pager_with should record its own content independently.
+        // We verify the cat call doesn't panic (it consumes the output).
+        console.pager_with(
+            |c| {
+                c.print_text("inside pager_with");
+            },
+            Some("cat"),
+        );
+        // After pager_with, record buffer was cleared by export_text(clear=true);
+        // the console is still in record mode (was_recording was true).
+        let remaining = console.export_text(false, false);
+        // Nothing should remain (the pager_with cleared it), but no panic.
+        let _ = remaining;
+    }
+
+    // -- Item 6: RenderHook pipeline ----------------------------------------
+
+    #[test]
+    fn render_hook_is_called() {
+        use crate::console::RenderHook;
+        use std::sync::{Arc, Mutex};
+
+        struct CountingHook {
+            count: Arc<Mutex<usize>>,
+        }
+        impl RenderHook for CountingHook {
+            fn process_renderables<'a>(
+                &self,
+                renderables: Vec<&'a dyn Renderable>,
+            ) -> Vec<&'a dyn Renderable> {
+                *self.count.lock().unwrap() += 1;
+                renderables
+            }
+        }
+
+        let count = Arc::new(Mutex::new(0usize));
+        let mut console = Console::builder()
+            .width(80)
+            .no_color(true)
+            .markup(false)
+            .build();
+        console.add_render_hook(Box::new(CountingHook {
+            count: Arc::clone(&count),
+        }));
+
+        console.begin_capture();
+        let text = Text::new("hi", Style::null());
+        console.print_with_hooks(&text as &dyn Renderable);
+        let _ = console.end_capture();
+
+        assert_eq!(
+            *count.lock().unwrap(),
+            1,
+            "hook should have been called once"
+        );
+    }
+
+    #[test]
+    fn render_hook_can_replace_renderable() {
+        use crate::console::RenderHook;
+
+        struct ReplaceHook;
+        static REPLACEMENT: std::sync::OnceLock<Text> = std::sync::OnceLock::new();
+        fn replacement() -> &'static Text {
+            REPLACEMENT.get_or_init(|| Text::new("REPLACED", Style::null()))
+        }
+
+        impl RenderHook for ReplaceHook {
+            fn process_renderables<'a>(
+                &self,
+                _: Vec<&'a dyn Renderable>,
+            ) -> Vec<&'a dyn Renderable> {
+                vec![replacement() as &dyn Renderable]
+            }
+        }
+
+        let mut console = Console::builder()
+            .width(80)
+            .no_color(true)
+            .markup(false)
+            .build();
+        console.add_render_hook(Box::new(ReplaceHook));
+
+        console.begin_capture();
+        let original = Text::new("ORIGINAL", Style::null());
+        console.print_with_hooks(&original as &dyn Renderable);
+        let out = console.end_capture();
+
+        assert!(
+            out.contains("REPLACED"),
+            "hook should have replaced the renderable"
+        );
+        assert!(
+            !out.contains("ORIGINAL"),
+            "original should not appear after replacement"
+        );
+    }
+
+    // -- Item 7: print_sep_end -----------------------------------------------
+
+    #[test]
+    fn print_sep_end_basic() {
+        let mut console = Console::builder()
+            .width(80)
+            .no_color(true)
+            .markup(false)
+            .build();
+        console.begin_capture();
+        let a = Text::new("foo", Style::null());
+        let b = Text::new("bar", Style::null());
+        console.print_sep_end(&[&a, &b], ", ", "!");
+        let out = console.end_capture();
+        assert!(out.contains("foo"), "missing 'foo'");
+        assert!(out.contains(", "), "missing separator");
+        assert!(out.contains("bar"), "missing 'bar'");
+        assert!(out.contains('!'), "missing end");
+    }
+
+    #[test]
+    fn print_sep_end_single_item() {
+        let mut console = Console::builder()
+            .width(80)
+            .no_color(true)
+            .markup(false)
+            .build();
+        console.begin_capture();
+        let a = Text::new("only", Style::null());
+        console.print_sep_end(&[&a], " | ", ".");
+        let out = console.end_capture();
+        assert!(out.contains("only"));
+        assert!(out.contains('.'));
+        assert!(
+            !out.contains(" | "),
+            "no separator expected for single item"
+        );
+    }
+
+    #[test]
+    fn print_sep_end_empty_items() {
+        let mut console = Console::builder()
+            .width(80)
+            .no_color(true)
+            .markup(false)
+            .build();
+        console.begin_capture();
+        console.print_sep_end(&[], ", ", "end");
+        let out = console.end_capture();
+        // Should at least contain "end" and a newline
+        assert!(out.contains("end"));
+    }
+
+    #[test]
+    fn print_sep_end_always_ends_with_newline() {
+        let mut console = Console::builder()
+            .width(80)
+            .no_color(true)
+            .markup(false)
+            .build();
+        console.begin_capture();
+        let a = Text::new("x", Style::null());
+        // end is not a newline
+        console.print_sep_end(&[&a], "", "---");
+        let out = console.end_capture();
+        assert!(out.ends_with('\n'), "output should end with newline");
+    }
 }

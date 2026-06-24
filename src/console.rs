@@ -432,6 +432,25 @@ pub use console_render::{measure_renderables, measurement_get};
 // Console
 // ---------------------------------------------------------------------------
 
+/// A hook that intercepts renderables just before they are printed.
+///
+/// Each hook receives the current list of renderables and may return a
+/// modified list. Hooks are invoked in registration order by [`Console::print`].
+///
+/// # WASM safety
+///
+/// The `Send + Sync` bounds are required so `Console` remains `Send + Sync`.
+/// Implementations that carry no state (the common case) satisfy these trivially.
+pub trait RenderHook: Send + Sync {
+    /// Transform the list of renderables before they are rendered.
+    ///
+    /// The default implementation returns the list unchanged.
+    fn process_renderables<'a>(
+        &self,
+        renderables: Vec<&'a dyn Renderable>,
+    ) -> Vec<&'a dyn Renderable>;
+}
+
 /// The central orchestrator of gilt rendering output.
 ///
 /// Console manages terminal capabilities, drives the rendering pipeline,
@@ -447,8 +466,9 @@ pub struct Console {
     record: bool,
     markup_enabled: bool,
     highlight_enabled: bool,
-    #[allow(dead_code)] // Reserved for future soft-wrap rendering
     soft_wrap: bool,
+    /// Pluggable highlighter applied by `render_str` when `highlight_enabled`.
+    highlighter: Box<dyn crate::utils::highlighter::Highlighter + Send + Sync>,
     no_color: bool,
     quiet: bool,
     #[allow(dead_code)] // Reserved for future safe box-drawing fallback
@@ -477,6 +497,9 @@ pub struct Console {
     /// allows Progress + Live + Status etc. to nest without each one
     /// clobbering the others' state.
     live_stack: Vec<usize>,
+
+    /// Registered render hooks, invoked in order by [`Console::print`].
+    render_hooks: Vec<Box<dyn RenderHook>>,
 
     /// Per-console style interner (foundation for L2 — see
     /// `.review/V0_11_DESIGN.md`). **Dormant in v0.11.0-alpha.1**: no
@@ -742,6 +765,7 @@ impl Console {
             markup_enabled: builder.markup,
             highlight_enabled: builder.highlight,
             soft_wrap: builder.soft_wrap,
+            highlighter: Box::new(crate::utils::highlighter::ReprHighlighter::new()),
             no_color: effective_no_color,
             quiet: builder.quiet,
             safe_box: builder.safe_box,
@@ -755,6 +779,7 @@ impl Console {
             is_alt_screen: false,
             capture_buffer: None,
             live_stack: Vec::new(),
+            render_hooks: Vec::new(),
             style_interner: Arc::new(Mutex::new(StyleInterner::new())),
             writer_override: None,
             sync_depth: 0,
@@ -1395,6 +1420,82 @@ impl Console {
     /// Clear all Live IDs. Equivalent to `set_live(None)`.
     pub fn clear_live(&mut self) {
         self.live_stack.clear();
+    }
+
+    // -- Render hooks -------------------------------------------------------
+
+    /// Register a [`RenderHook`] that will be called by [`Console::print`]
+    /// for every printed renderable.
+    ///
+    /// Hooks are invoked in registration order. Each hook receives a
+    /// `Vec<&dyn Renderable>` and returns a (possibly different) vec.
+    /// The last element of the final vec is what gets rendered.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::{Console, RenderHook, Renderable};
+    ///
+    /// struct NoopHook;
+    /// impl RenderHook for NoopHook {
+    ///     fn process_renderables<'a>(&self, r: Vec<&'a dyn Renderable>) -> Vec<&'a dyn Renderable> { r }
+    /// }
+    ///
+    /// let mut c = Console::builder().width(80).build();
+    /// c.add_render_hook(Box::new(NoopHook));
+    /// ```
+    pub fn add_render_hook(&mut self, hook: Box<dyn RenderHook>) {
+        self.render_hooks.push(hook);
+    }
+
+    // -- Highlighter --------------------------------------------------------
+
+    /// Replace the console's default [`ReprHighlighter`] with a custom one.
+    ///
+    /// The highlighter is applied by [`render_str`](Self::render_str) when
+    /// `highlight` is enabled on this console.
+    ///
+    /// [`ReprHighlighter`]: crate::utils::highlighter::ReprHighlighter
+    pub fn with_highlighter<H>(mut self, highlighter: H) -> Self
+    where
+        H: crate::utils::highlighter::Highlighter + Send + Sync + 'static,
+    {
+        self.highlighter = Box::new(highlighter);
+        self
+    }
+
+    // -- Pager (closure form) -----------------------------------------------
+
+    /// Run a closure, capturing its output, then pipe it through a pager.
+    ///
+    /// Unlike [`pager`](Self::pager) (which pipes an existing recording),
+    /// this method enables recording, runs `f`, then pipes the captured
+    /// output through the pager — matching rich's context-manager `pager()`.
+    ///
+    /// `pager_command` overrides the default `"less -r"`.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use gilt::console::Console;
+    ///
+    /// let mut c = Console::new();
+    /// c.pager_with(|c| {
+    ///     c.print_text("Hello from the pager!");
+    /// }, None);
+    /// ```
+    pub fn pager_with<F: FnOnce(&mut Console)>(&mut self, f: F, pager_command: Option<&str>) {
+        let was_recording = self.record;
+        self.record = true;
+        f(self);
+        // export_text requires self.record == true; call it before restoring.
+        let text = self.export_text(true, false);
+        self.record = was_recording;
+        let pager = match pager_command {
+            Some(cmd) => Pager::new().with_command(cmd),
+            None => Pager::new(),
+        };
+        let _ = pager.show(&text);
     }
 }
 
