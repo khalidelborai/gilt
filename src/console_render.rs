@@ -544,17 +544,47 @@ impl Console {
     /// Export recorded output as HTML and save it to a file.
     ///
     /// Requires `record` mode to be enabled when the Console was created.
-    pub fn save_html(&mut self, path: &str) -> Result<(), std::io::Error> {
-        let html = self.export_html(None, false, true);
+    pub fn save_html(
+        &mut self,
+        path: &str,
+        theme: Option<&crate::terminal_theme::TerminalTheme>,
+        clear: bool,
+        inline_styles: bool,
+        code_format: Option<&str>,
+    ) -> Result<(), std::io::Error> {
+        use crate::export_format::HtmlExportOptions;
+        let opts = HtmlExportOptions::default()
+            .clear(clear)
+            .inline_styles(inline_styles);
+        let opts = if let Some(cf) = code_format {
+            opts.code_format(cf)
+        } else {
+            opts
+        };
+        let html = self.export_html_opts(theme, &opts);
         std::fs::write(path, html)
     }
 
     /// Export recorded output as SVG and save it to a file.
     ///
     /// Requires `record` mode to be enabled when the Console was created.
-    pub fn save_svg(&mut self, path: &str, title: Option<&str>) -> Result<(), std::io::Error> {
+    ///
+    /// Note: `code_format` is not supported by `export_svg`/`SvgExportOptions`;
+    /// it is accepted for API symmetry with `save_html` but currently ignored.
+    pub fn save_svg(
+        &mut self,
+        path: &str,
+        title: Option<&str>,
+        theme: Option<&crate::terminal_theme::TerminalTheme>,
+        clear: bool,
+        unique_id: Option<&str>,
+        code_format: Option<&str>,
+    ) -> Result<(), std::io::Error> {
+        // code_format is not supported by export_svg/SvgExportOptions; it is accepted
+        // for API symmetry with save_html but currently ignored.
+        let _ = code_format;
         let t = title.unwrap_or("gilt");
-        let svg = self.export_svg(t, None, false, None, 0.61);
+        let svg = self.export_svg(t, theme, clear, unique_id, 0.61);
         std::fs::write(path, svg)
     }
 

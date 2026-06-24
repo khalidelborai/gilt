@@ -1099,7 +1099,7 @@ fn test_save_html_to_file() {
     let path = dir.join("gilt_test_save_html.html");
     let path_str = path.to_str().unwrap();
 
-    let result = console.save_html(path_str);
+    let result = console.save_html(path_str, None, false, true, None);
     assert!(result.is_ok());
 
     let contents = std::fs::read_to_string(&path).unwrap();
@@ -1126,7 +1126,7 @@ fn test_save_svg_to_file() {
     let path = dir.join("gilt_test_save_svg.svg");
     let path_str = path.to_str().unwrap();
 
-    let result = console.save_svg(path_str, Some("Test Title"));
+    let result = console.save_svg(path_str, Some("Test Title"), None, false, None, None);
     assert!(result.is_ok());
 
     let contents = std::fs::read_to_string(&path).unwrap();

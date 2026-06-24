@@ -1200,7 +1200,7 @@ fn test_save_html_to_file() {
     let path = dir.join("gilt_test_save.html");
     let path_str = path.to_str().unwrap();
 
-    let result = console.save_html(path_str);
+    let result = console.save_html(path_str, None, false, true, None);
     assert!(result.is_ok());
 
     let contents = std::fs::read_to_string(&path).unwrap();
@@ -1227,7 +1227,7 @@ fn test_save_svg_to_file() {
     let path = dir.join("gilt_test_save.svg");
     let path_str = path.to_str().unwrap();
 
-    let result = console.save_svg(path_str, Some("Test Title"));
+    let result = console.save_svg(path_str, Some("Test Title"), None, false, None, None);
     assert!(result.is_ok());
 
     let contents = std::fs::read_to_string(&path).unwrap();
@@ -1255,7 +1255,7 @@ fn test_save_svg_default_title() {
     let path = dir.join("gilt_test_save_default.svg");
     let path_str = path.to_str().unwrap();
 
-    let result = console.save_svg(path_str, None);
+    let result = console.save_svg(path_str, None, None, false, None, None);
     assert!(result.is_ok());
 
     let contents = std::fs::read_to_string(&path).unwrap();
@@ -2570,6 +2570,10 @@ fn task2_scoped_record_subsequent_print_not_accumulated() {
     let _ = console.end_capture();
 
     // The record_buffer should NOT contain "outside" because record=false was restored.
+    // Since export_text now panics when record=false (Task 5.1 guard), we verify
+    // by re-enabling record and exporting — the buffer should be empty (only then
+    // enabling record doesn't retroactively capture past prints).
+    console.record = true;
     let export = console.export_text(false, false);
     assert!(
         !export.contains("outside"),
@@ -2996,4 +3000,74 @@ fn into_renderable_arc_clone_is_cheap() {
     let arc = into_renderable_arc(Text::new("cheap clone", Style::null()));
     let arc2 = arc.clone();
     assert!(Arc::ptr_eq(&arc, &arc2), "clone should be a ref-count bump");
+}
+
+// -- Task 5.1: record guard tests ------------------------------------------
+
+#[test]
+#[should_panic(expected = "record")]
+fn test_export_text_panics_without_record() {
+    let mut console = Console::builder()
+        .width(80)
+        .no_color(true)
+        .markup(false)
+        .build(); // record NOT enabled
+                  // Must panic with "record" in the message
+    let _ = console.export_text(false, false);
+}
+
+#[test]
+#[should_panic(expected = "record")]
+fn test_export_html_panics_without_record() {
+    let mut console = Console::builder().width(80).markup(false).build();
+    let _ = console.export_html(None, false, true);
+}
+
+#[test]
+#[should_panic(expected = "record")]
+fn test_export_svg_panics_without_record() {
+    let mut console = Console::builder().width(40).markup(false).build();
+    let _ = console.export_svg("Test", None, false, None, 0.61);
+}
+
+#[test]
+fn test_save_html_forwards_params() {
+    let mut console = Console::builder()
+        .width(80)
+        .record(true)
+        .markup(false)
+        .build();
+    console.print(&Text::new("param test", Style::null()));
+    let dir = std::env::temp_dir();
+    let path = dir.join("gilt_task51_save_html.html");
+    let path_str = path.to_str().unwrap();
+    // inline_styles=true means spans get style="" instead of class=""
+    let result = console.save_html(path_str, None, false, true, None);
+    assert!(result.is_ok());
+    let contents = std::fs::read_to_string(&path).unwrap();
+    assert!(contents.contains("<!DOCTYPE html>"));
+    assert!(contents.contains("param test"));
+    let _ = std::fs::remove_file(&path);
+}
+
+#[test]
+fn test_save_svg_forwards_unique_id() {
+    let mut console = Console::builder()
+        .width(40)
+        .record(true)
+        .no_color(true)
+        .markup(false)
+        .build();
+    console.print(&Text::new("uid test", Style::null()));
+    let dir = std::env::temp_dir();
+    let path = dir.join("gilt_task51_save_svg.svg");
+    let path_str = path.to_str().unwrap();
+    let result = console.save_svg(path_str, None, None, false, Some("myid"), None);
+    assert!(result.is_ok());
+    let contents = std::fs::read_to_string(&path).unwrap();
+    assert!(
+        contents.contains("myid"),
+        "SVG should contain the forwarded unique_id"
+    );
+    let _ = std::fs::remove_file(&path);
 }

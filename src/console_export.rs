@@ -319,6 +319,10 @@ impl Console {
     /// assert!(exported.contains("Export me"));
     /// ```
     pub fn export_text(&mut self, clear: bool, styles: bool) -> String {
+        assert!(
+            self.record,
+            "export requires record mode — build the Console with .record(true)"
+        );
         let buffer = self.record_buffer.clone();
         if clear {
             self.record_buffer.clear();
@@ -367,6 +371,10 @@ impl Console {
         clear: bool,
         inline_styles: bool,
     ) -> String {
+        assert!(
+            self.record,
+            "export requires record mode — build the Console with .record(true)"
+        );
         let theme = theme.unwrap_or(&DEFAULT_TERMINAL_THEME);
         // Finding #9: iterate by reference; only copy out when clear is needed.
         let buffer_ref: &[Segment];
@@ -512,6 +520,10 @@ impl Console {
         theme: Option<&TerminalTheme>,
         opts: &HtmlExportOptions,
     ) -> String {
+        assert!(
+            self.record,
+            "export requires record mode — build the Console with .record(true)"
+        );
         let theme = theme.unwrap_or(&DEFAULT_TERMINAL_THEME);
 
         // Optionally clear (same logic as export_html)
@@ -656,6 +668,10 @@ impl Console {
         unique_id: Option<&str>,
         font_aspect_ratio: f64,
     ) -> String {
+        assert!(
+            self.record,
+            "export requires record mode — build the Console with .record(true)"
+        );
         let theme = theme.unwrap_or(&SVG_EXPORT_THEME);
 
         // Finding #9: avoid cloning the whole buffer.
@@ -815,6 +831,10 @@ impl Console {
         theme: Option<&TerminalTheme>,
         opts: &SvgExportOptions,
     ) -> String {
+        assert!(
+            self.record,
+            "export requires record mode — build the Console with .record(true)"
+        );
         use crate::utils::control::base64_encode;
 
         let theme = theme.unwrap_or(&SVG_EXPORT_THEME);
