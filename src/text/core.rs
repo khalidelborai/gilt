@@ -1224,6 +1224,133 @@ impl Text {
 
     // -- Rendering ----------------------------------------------------------
 
+    /// Render the text into a list of [`Segment`]s, resolving any named (theme) spans
+    /// through `console`'s active theme stack at render time.
+    ///
+    /// This is the themed analogue of [`render`](Self::render).  It mirrors the same
+    /// sweep-line algorithm, but for each span that carries a `style_name` (created
+    /// via [`Span::named`]) the style is resolved at call time via
+    /// [`Console::get_style`], falling back to [`Style::null`] for unknown names.
+    /// Ordinary spans (no `style_name`) are used as-is, byte-identical to `render()`.
+    ///
+    /// **Performance:** when no span carries a theme name (the common case —
+    /// table cells, panel content, every Live frame) this delegates directly to
+    /// [`render()`](Self::render), adding only a single linear scan of the spans
+    /// vec and zero heap allocations.  The upfront `Vec<Style>` collect is only
+    /// paid when at least one named span is present.
+    ///
+    /// **Borrow-checker note (named-span branch):** resolved styles are collected
+    /// into an owned `Vec<Style>` *before* building the `style_map` slice, so that
+    /// the resolved `Style` values outlive the entire sweep-line loop.  Do not
+    /// refactor this into a lazy iterator — the borrow-checker will reject it.
+    pub fn render_themed(&self, console: &crate::console::Console) -> Vec<Segment> {
+        if self.spans.is_empty() {
+            let style = if self.style.is_null() {
+                None
+            } else {
+                Some(self.style.clone())
+            };
+            let mut segments = vec![Segment::new(&self.text, style.clone(), None)];
+            if !self.end.is_empty() {
+                segments.push(Segment::new(&self.end, style.clone(), None));
+            }
+            return segments;
+        }
+
+        // Fast path: no span carries a theme name → delegate to render() with
+        // zero extra allocations or Style::clone() calls.  This covers the vast
+        // majority of render_themed() call sites (widget layer, Live frames,
+        // every call via gilt_console on ordinary Text).
+        if !self.spans.iter().any(|s| s.style_name().is_some()) {
+            return self.render();
+        }
+
+        // Named-span branch: resolve each span's style upfront into an owned
+        // Vec<Style>.  Named spans are looked up through the console's theme
+        // stack; ordinary spans are cloned as-is.  This vec must outlive the
+        // style_map slice and the entire sweep-line loop below.
+        let resolved_styles: Vec<Style> = self
+            .spans
+            .iter()
+            .map(|span| {
+                if let Some(name) = span.style_name() {
+                    console.get_style(name).unwrap_or_else(|_| Style::null())
+                } else {
+                    span.style.clone()
+                }
+            })
+            .collect();
+
+        // Sweep-line algorithm (mirrors render() exactly, using resolved_styles).
+        let mut events: Vec<(usize, bool, usize)> = Vec::new();
+        for (i, span) in self.spans.iter().enumerate() {
+            events.push((span.start, false, i + 1)); // entering
+            events.push((span.end, true, i + 1)); // leaving
+        }
+        events.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.cmp(&b.1)));
+
+        let text_len = self.len();
+        let mut segments = Vec::new();
+        let mut active_spans: Vec<usize> = vec![0]; // 0 = base style always active
+        let mut last_offset = 0;
+
+        // Style map: index 0 = base style, index 1..n = resolved span styles.
+        // All references point into either &self.style or &resolved_styles[i],
+        // both of which outlive this function.
+        let style_map: Vec<&Style> = {
+            let mut v: Vec<&Style> = vec![&self.style];
+            for rs in &resolved_styles {
+                v.push(rs);
+            }
+            v
+        };
+
+        for &(offset, is_leaving, style_id) in &events {
+            let offset = min(offset, text_len);
+            if offset > last_offset {
+                let slice = char_slice(&self.text, last_offset, offset);
+                if !slice.is_empty() {
+                    let combined =
+                        Style::combine_refs(active_spans.iter().map(|&id| style_map[id]));
+                    let style = if combined.is_null() {
+                        None
+                    } else {
+                        Some(combined)
+                    };
+                    segments.push(Segment::new(slice, style, None));
+                }
+            }
+            last_offset = offset;
+
+            if is_leaving {
+                if let Some(pos) = active_spans.iter().position(|&x| x == style_id) {
+                    active_spans.remove(pos);
+                }
+            } else {
+                active_spans.push(style_id);
+            }
+        }
+
+        if last_offset < text_len {
+            let slice = char_slice(&self.text, last_offset, text_len);
+            if !slice.is_empty() {
+                let combined = Style::combine_refs(active_spans.iter().map(|&id| style_map[id]));
+                let style = if combined.is_null() {
+                    None
+                } else {
+                    Some(combined)
+                };
+                segments.push(Segment::new(slice, style, None));
+            }
+        }
+
+        if !self.end.is_empty() {
+            segments.push(Segment::new(&self.end, None, None));
+        }
+
+        segments
+    }
+
     /// Render the text into a list of [`Segment`]s, each carrying a combined style.
     ///
     /// Uses a sweep-line algorithm to merge overlapping spans into non-overlapping
@@ -1872,6 +1999,96 @@ mod tests {
         // bold should still be present
         assert_eq!(text.style().bold(), Some(true));
         assert_eq!(text.style().link(), Some("https://example.com"));
+    }
+
+    // -- render_themed tests ------------------------------------------------
+
+    /// Task 2.3: Named span "warning" → bold red is resolved through the
+    /// console's theme at render time.
+    #[test]
+    fn theme_name_span_resolved_at_render_time() {
+        use crate::color::theme::Theme;
+        use crate::console::Console;
+        use std::collections::HashMap;
+
+        let mut styles = HashMap::new();
+        styles.insert("warning".to_string(), Style::parse("bold red"));
+        let theme = Theme::new(Some(styles), true);
+        let console = Console::builder().theme(theme).no_color(false).build();
+
+        // render_str with markup=true produces a named span for "warning"
+        let text = console.render_str("[warning]x[/warning]", None, None, None);
+        assert_eq!(
+            text.spans()[0].style_name(),
+            Some("warning"),
+            "span should carry the theme name"
+        );
+
+        let segments = text.render_themed(&console);
+        let x_seg = segments
+            .iter()
+            .find(|s| s.text.contains('x'))
+            .expect("must find the 'x' segment");
+        let st = x_seg.style().expect("'x' segment must have a style");
+        assert_eq!(st.bold(), Some(true), "expected bold from theme");
+        assert!(
+            st.color().is_some_and(|c| c.name().contains("red")),
+            "expected red foreground from theme, got: {:?}",
+            st.color().map(|c| c.name().into_owned())
+        );
+    }
+
+    /// Task 2.3: Unknown theme name falls back to null style — no panic.
+    #[test]
+    fn render_themed_fallback_to_null_for_unknown_name() {
+        use crate::console::Console;
+
+        let console = Console::builder().build();
+        let mut text = Text::new("x", Style::null());
+        text.spans_mut().push(Span::named(0, 1, "does.not.exist"));
+        let segs = text.render_themed(&console);
+        assert!(
+            segs.iter().any(|s| s.text.contains('x')),
+            "must produce a segment containing 'x' without panic"
+        );
+    }
+
+    /// Task 2.3: A Text with no named spans takes the fast path and produces
+    /// segments byte-identical to render() — zero extra allocs/clones.
+    ///
+    /// This exercises the common case: table cells, panel content, every Live
+    /// frame.  The fast path delegates directly to render() when no span carries
+    /// a style_name, skipping the upfront Vec<Style> collect entirely.
+    #[test]
+    fn render_themed_no_named_spans_matches_render() {
+        use crate::console::Console;
+
+        let console = Console::builder().build();
+
+        // Single ordinary span — the most common case.
+        let mut text = Text::new("hello world", Style::null());
+        text.spans_mut().push(Span::new(0, 5, Style::parse("bold")));
+        assert_eq!(
+            text.render(),
+            text.render_themed(&console),
+            "single ordinary span: render_themed must equal render()"
+        );
+
+        // Multiple overlapping ordinary spans — previously each would have been
+        // cloned into the upfront Vec<Style>; fast path avoids all of that.
+        let mut text2 = Text::new("hello world", Style::null());
+        text2
+            .spans_mut()
+            .push(Span::new(0, 5, Style::parse("bold")));
+        text2.spans_mut().push(Span::new(2, 8, Style::parse("red")));
+        text2
+            .spans_mut()
+            .push(Span::new(6, 11, Style::parse("italic")));
+        assert_eq!(
+            text2.render(),
+            text2.render_themed(&console),
+            "multiple overlapping ordinary spans: render_themed must equal render()"
+        );
     }
 
     /// A Console with a theme entry "highlight" → bold red; a Text whose span

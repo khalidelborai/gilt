@@ -288,7 +288,7 @@ impl Renderable for Text {
         Some(h)
     }
 
-    fn gilt_console(&self, _console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
+    fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         let mut text = self.clone();
         if let Some(justify) = &options.justify {
             text.justify = Some(*justify);
@@ -297,7 +297,7 @@ impl Renderable for Text {
             text.overflow = Some(*overflow);
         }
         if options.no_wrap == Some(true) || options.overflow == Some(OverflowMethod::Ignore) {
-            text.render()
+            text.render_themed(console)
         } else {
             let tab_size = text.tab_size.unwrap_or(8);
             let lines = text.wrap(
@@ -309,9 +309,9 @@ impl Renderable for Text {
             );
             let mut segments = Vec::new();
             for line in lines.iter() {
-                // Each line's render() already appends its `end` ("\n"),
+                // Each line's render_themed() already appends its `end` ("\n"),
                 // so no extra Segment::line() is needed between lines.
-                segments.extend(line.render());
+                segments.extend(line.render_themed(console));
             }
             segments
         }
