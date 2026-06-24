@@ -127,6 +127,10 @@ impl Tree {
     /// Add a child node and return a mutable reference to it.
     ///
     /// Accepts any type that implements [`Renderable`] as the label.
+    /// The child inherits `style`, `guide_style`, and `highlight` from the parent,
+    /// and defaults to `expanded: true`.
+    ///
+    /// To override any of these per-node, use [`add_with`](Self::add_with).
     pub fn add(&mut self, label: impl Renderable + Send + Sync + 'static) -> &mut Tree {
         self.children.push(Tree {
             label: std::sync::Arc::new(label),
@@ -136,6 +140,56 @@ impl Tree {
             expanded: true,
             hide_root: false,
             highlight: self.highlight,
+        });
+        self.children
+            .last_mut()
+            .expect("children is non-empty after push")
+    }
+
+    /// Add a child node with per-node style overrides.
+    ///
+    /// Rich parity: Python's `Tree.add(label, *, style, guide_style, expand, highlight)`.
+    ///
+    /// Each `Option` parameter:
+    /// - `Some(value)` — use the given value for this node.
+    /// - `None` — inherit from the parent (same behaviour as [`add`](Self::add)).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::tree::Tree;
+    /// use gilt::style::Style;
+    /// use gilt::text::Text;
+    ///
+    /// let mut tree = Tree::new(Text::new("root", Style::null()))
+    ///     .with_style(Style::parse("bold"))
+    ///     .with_guide_style(Style::parse("red"));
+    ///
+    /// // Child uses its own style, inherits guide_style and highlight from parent.
+    /// tree.add_with(
+    ///     Text::new("child", Style::null()),
+    ///     Some(Style::parse("italic")), // override style
+    ///     None,                         // inherit guide_style ("red")
+    ///     Some(false),                  // collapsed
+    ///     None,                         // inherit highlight
+    /// );
+    /// ```
+    pub fn add_with(
+        &mut self,
+        label: impl Renderable + Send + Sync + 'static,
+        style: Option<Style>,
+        guide_style: Option<Style>,
+        expanded: Option<bool>,
+        highlight: Option<bool>,
+    ) -> &mut Tree {
+        self.children.push(Tree {
+            label: std::sync::Arc::new(label),
+            style: style.unwrap_or_else(|| self.style.clone()),
+            guide_style: guide_style.unwrap_or_else(|| self.guide_style.clone()),
+            children: Vec::new(),
+            expanded: expanded.unwrap_or(true),
+            hide_root: false,
+            highlight: highlight.unwrap_or(self.highlight),
         });
         self.children
             .last_mut()
@@ -250,13 +304,29 @@ impl Renderable for Tree {
         let legacy_windows = options.legacy_windows;
         let newline = Segment::line();
 
+        // P3 parity (Item 4): resolve default theme styles for the root node.
+        // If the root has a null style, fall back to the console's "tree" and
+        // "tree.line" theme entries.  Use local variables — do NOT mutate self.
+        let root_style = if self.style.is_null() {
+            console.get_style("tree").unwrap_or_else(|_| Style::null())
+        } else {
+            self.style.clone()
+        };
+        let root_guide_style = if self.guide_style.is_null() {
+            console
+                .get_style("tree.line")
+                .unwrap_or_else(|_| Style::null())
+        } else {
+            self.guide_style.clone()
+        };
+
         // Stack-based DFS (porting Python's stack/iterator approach).
         //
         // `levels` holds the guide segment for each depth level.
         // The stack holds iterators over children at each level.
         let mut levels: Vec<Segment> = vec![make_guide(
             CONTINUE,
-            &self.guide_style,
+            &root_guide_style,
             ascii_only,
             legacy_windows,
         )];
@@ -266,8 +336,8 @@ impl Renderable for Tree {
         // `style_stack` accumulates combined node styles top-down so that each
         // label is rendered with the fully-resolved ancestor style.
         // `guide_style_stack` accumulates guide styles the same way.
-        let mut style_stack = StyleStack::new(self.style.clone());
-        let mut guide_style_stack = StyleStack::new(self.guide_style.clone());
+        let mut style_stack = StyleStack::new(root_style);
+        let mut guide_style_stack = StyleStack::new(root_guide_style);
 
         // Push the root as a single-element "children" iterator.
         let root_slice = std::slice::from_ref(self);
@@ -361,12 +431,41 @@ impl Renderable for Tree {
                 // the guide characters, and strip the guide-line style as a
                 // post_style so it does not bleed into label rendering.
                 let prefix_bg = node_style.background_style();
-                // `post_style` strips node_guide_style from the guide segments
-                // so guide-line decorations don't leak onto the label area.
-                // Rich uses `remove_guide_styles` (the negation of guide style
-                // attributes); we mirror this by passing guide_style as the
-                // post-style so guide-specific attributes are overridden.
-                let prefix_post = node_guide_style.clone();
+                // `prefix_post` is the `remove_guide_styles` negating style
+                // (rich parity): it has the same attribute bits SET as the guide
+                // style, but all values set to false, so any guide-specific
+                // decorations (bold, italic, underline, …) are turned off in the
+                // post_style pass rather than being additively layered on.
+                // fg color, bgcolor, and link are left as None — we negate only
+                // boolean attribute bits, matching rich's `remove_guide_styles`.
+                let prefix_post = {
+                    let mut neg = Style::null();
+                    if node_guide_style.bold().is_some() {
+                        neg.set_bold(Some(false));
+                    }
+                    if node_guide_style.dim().is_some() {
+                        neg.set_dim(Some(false));
+                    }
+                    if node_guide_style.italic().is_some() {
+                        neg.set_italic(Some(false));
+                    }
+                    if node_guide_style.underline().is_some() {
+                        neg.set_underline(Some(false));
+                    }
+                    if node_guide_style.blink().is_some() {
+                        neg.set_blink(Some(false));
+                    }
+                    if node_guide_style.reverse().is_some() {
+                        neg.set_reverse(Some(false));
+                    }
+                    if node_guide_style.conceal().is_some() {
+                        neg.set_conceal(Some(false));
+                    }
+                    if node_guide_style.strike().is_some() {
+                        neg.set_strike(Some(false));
+                    }
+                    neg
+                };
                 let has_prefix_style = !prefix_bg.is_null() || !prefix_post.is_null();
 
                 // Build current_prefix once; mutated after the first line only.
@@ -435,12 +534,14 @@ impl Renderable for Tree {
                 );
 
                 // Add a new level for the children.
-                let child_guide_style = &node.guide_style;
+                // Use `node_guide_style` (the fully-resolved guide style from the
+                // stack) so that theme defaults from `root_guide_style` propagate
+                // into child-level guide characters.
                 let child_count = node.children.len();
                 let guide_type = if child_count == 1 { END } else { FORK };
                 levels.push(make_guide(
                     guide_type,
-                    child_guide_style,
+                    &node_guide_style,
                     ascii_only,
                     legacy_windows,
                 ));
@@ -1234,6 +1335,274 @@ mod tests {
             !debug_str.contains("debug_test"),
             "Debug impl should NOT print the label content: {}",
             debug_str
+        );
+    }
+
+    // -- Item 1: add_with() companion method ------------------------------------
+
+    /// add_with() with explicit style overrides must use the provided style,
+    /// not inherit from the parent.
+    #[test]
+    fn test_add_with_style_override() {
+        let parent_style = Style::parse("bold");
+        let child_style = Style::parse("italic");
+        let mut tree = Tree::new(Text::new("root", Style::null())).with_style(parent_style.clone());
+        tree.add_with(
+            Text::new("child", Style::null()),
+            Some(child_style.clone()),
+            None,
+            None,
+            None,
+        );
+        assert_eq!(
+            tree.children[0].style, child_style,
+            "add_with() style override should be used, not inherited from parent"
+        );
+    }
+
+    /// add_with() with None style must inherit from parent (same as add()).
+    #[test]
+    fn test_add_with_style_inherits_when_none() {
+        let parent_style = Style::parse("bold");
+        let mut tree = Tree::new(Text::new("root", Style::null())).with_style(parent_style.clone());
+        tree.add_with(Text::new("child", Style::null()), None, None, None, None);
+        assert_eq!(
+            tree.children[0].style, parent_style,
+            "add_with() with None style should inherit parent's style"
+        );
+    }
+
+    /// add_with() with explicit guide_style must use the provided guide_style.
+    #[test]
+    fn test_add_with_guide_style_override() {
+        let parent_guide = Style::parse("red");
+        let child_guide = Style::parse("blue");
+        let mut tree =
+            Tree::new(Text::new("root", Style::null())).with_guide_style(parent_guide.clone());
+        tree.add_with(
+            Text::new("child", Style::null()),
+            None,
+            Some(child_guide.clone()),
+            None,
+            None,
+        );
+        assert_eq!(
+            tree.children[0].guide_style, child_guide,
+            "add_with() guide_style override should be used"
+        );
+    }
+
+    /// add_with() with explicit expanded=false must not be expanded.
+    #[test]
+    fn test_add_with_expanded_override() {
+        let mut tree = Tree::new(Text::new("root", Style::null()));
+        tree.add_with(
+            Text::new("child", Style::null()),
+            None,
+            None,
+            Some(false),
+            None,
+        );
+        assert!(
+            !tree.children[0].expanded,
+            "add_with() expanded=false should set node to not expanded"
+        );
+    }
+
+    /// add_with() with expanded=None must default to true.
+    #[test]
+    fn test_add_with_expanded_defaults_true() {
+        let mut tree = Tree::new(Text::new("root", Style::null()));
+        tree.add_with(Text::new("child", Style::null()), None, None, None, None);
+        assert!(
+            tree.children[0].expanded,
+            "add_with() with expanded=None should default to true"
+        );
+    }
+
+    /// add_with() with highlight=Some(true) must set highlight on the child.
+    #[test]
+    fn test_add_with_highlight_override() {
+        let mut tree = Tree::new(Text::new("root", Style::null())); // parent highlight=false
+        tree.add_with(
+            Text::new("child", Style::null()),
+            None,
+            None,
+            None,
+            Some(true),
+        );
+        assert!(
+            tree.children[0].highlight,
+            "add_with() highlight=Some(true) should enable highlight"
+        );
+    }
+
+    /// add_with() with highlight=None must inherit from parent.
+    #[test]
+    fn test_add_with_highlight_inherits_when_none() {
+        let mut tree = Tree::new(Text::new("root", Style::null())).with_highlight(true);
+        tree.add_with(Text::new("child", Style::null()), None, None, None, None);
+        assert!(
+            tree.children[0].highlight,
+            "add_with() with highlight=None should inherit parent's highlight"
+        );
+    }
+
+    // -- Item 2: remove_guide_styles — negating style, not additive -------------
+
+    /// Guide-style bold must NOT appear on the label segments.
+    /// When guide_style is "bold", the label segments must not be bold — the
+    /// negating remove_guide_styles style should strip the bold attribute.
+    #[test]
+    fn test_guide_style_bold_not_on_label() {
+        let console = Console::builder()
+            .width(80)
+            .markup(false)
+            .highlight(false)
+            .force_terminal(true)
+            .build();
+        let opts = console.options();
+
+        // Tree with bold guide_style; label has no explicit style.
+        let mut tree =
+            Tree::new(Text::new("root", Style::null())).with_guide_style(Style::parse("bold"));
+        tree.add(Text::new("child", Style::null()));
+
+        let segments = tree.gilt_console(&console, &opts);
+
+        // Find label segments that contain "child" text.
+        let child_label_segs: Vec<&Segment> = segments
+            .iter()
+            .filter(|s| !s.is_control() && s.text.contains("child"))
+            .collect();
+
+        assert!(
+            !child_label_segs.is_empty(),
+            "Expected segments containing 'child'"
+        );
+
+        // None of the label segments should have bold set to true.
+        let has_bold = child_label_segs.iter().any(|s| {
+            s.style
+                .as_ref()
+                .map(|st| st.bold() == Some(true))
+                .unwrap_or(false)
+        });
+        assert!(
+            !has_bold,
+            "Child label segments must NOT be bold when guide_style has bold; \
+             guide bold should be negated so it doesn't bleed into labels. \
+             Segments: {:?}",
+            child_label_segs
+        );
+    }
+
+    // -- Item 4: Default tree/tree.line theme styles ----------------------------
+
+    /// When tree style is null and a "tree" theme style is installed,
+    /// the rendered output should reflect that theme style.
+    #[test]
+    fn test_default_tree_theme_style_applied() {
+        use crate::theme::Theme;
+        use std::collections::HashMap;
+
+        // Build a console with a custom theme that maps "tree" -> "bold".
+        let mut console = Console::builder()
+            .width(80)
+            .markup(false)
+            .highlight(false)
+            .force_terminal(true)
+            .build();
+
+        // Install "tree" -> "bold" into the theme.
+        let mut styles = HashMap::new();
+        styles.insert("tree".to_string(), Style::parse("bold"));
+        let theme = Theme::new(Some(styles), true);
+        console.push_theme(theme, true);
+
+        // Tree with null style — should pick up theme "tree" as base style.
+        let tree = Tree::new(Text::new("root", Style::null()));
+        let opts = console.options();
+        let segments = tree.gilt_console(&console, &opts);
+
+        // The label "root" should appear with bold style from the theme.
+        let root_segs: Vec<&Segment> = segments
+            .iter()
+            .filter(|s| !s.is_control() && s.text.contains("root"))
+            .collect();
+
+        assert!(!root_segs.is_empty(), "Expected segments containing 'root'");
+
+        let has_bold = root_segs.iter().any(|s| {
+            s.style
+                .as_ref()
+                .map(|st| st.bold() == Some(true))
+                .unwrap_or(false)
+        });
+        assert!(
+            has_bold,
+            "Root label segments should carry bold from the 'tree' theme style; \
+             segments: {:?}",
+            root_segs
+        );
+    }
+
+    /// When tree guide_style is null and "tree.line" theme style is installed,
+    /// guide segments should carry that theme style.
+    #[test]
+    fn test_default_tree_line_theme_style_applied() {
+        use crate::theme::Theme;
+        use std::collections::HashMap;
+
+        let mut console = Console::builder()
+            .width(80)
+            .markup(false)
+            .highlight(false)
+            .force_terminal(true)
+            .build();
+
+        // Install "tree.line" -> "red" into the theme.
+        let mut styles = HashMap::new();
+        styles.insert("tree.line".to_string(), Style::parse("red"));
+        let theme = Theme::new(Some(styles), true);
+        console.push_theme(theme, true);
+
+        // Tree with null guide_style — should pick up theme "tree.line".
+        let mut tree = Tree::new(Text::new("root", Style::null()));
+        tree.add(Text::new("child", Style::null()));
+        let opts = console.options();
+        let segments = tree.gilt_console(&console, &opts);
+
+        // Guide segments contain guide chars (like └──).
+        let guide_segs: Vec<&Segment> = segments
+            .iter()
+            .filter(|s| {
+                !s.is_control()
+                    && (s.text.contains('\u{2514}')
+                        || s.text.contains('\u{251c}')
+                        || s.text.contains('\u{2502}')
+                        || s.text.contains("`-- ")
+                        || s.text.contains("+-- "))
+            })
+            .collect();
+
+        assert!(
+            !guide_segs.is_empty(),
+            "Expected at least one guide segment in output"
+        );
+
+        // At least one guide segment should carry a red foreground from the theme.
+        let has_red = guide_segs.iter().any(|s| {
+            s.style
+                .as_ref()
+                .map(|st| st.color().is_some())
+                .unwrap_or(false)
+        });
+        assert!(
+            has_red,
+            "Guide segments should carry the 'tree.line' red theme style; \
+             segments: {:?}",
+            guide_segs
         );
     }
 }
