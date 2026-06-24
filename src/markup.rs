@@ -223,10 +223,20 @@ pub fn render(markup: &str, style: Style) -> Result<Text, MarkupError> {
                                 ));
                             }
                         } else {
-                            let tag_style = resolve_tag_style(&open_tag);
                             let end = text.len();
                             if end > start {
-                                text.spans_mut().push(Span::new(start, end, tag_style));
+                                match try_resolve_literal_style(&open_tag) {
+                                    Some(style) => {
+                                        text.spans_mut().push(Span::new(start, end, style));
+                                    }
+                                    None => {
+                                        text.spans_mut().push(Span::named(
+                                            start,
+                                            end,
+                                            &open_tag.name,
+                                        ));
+                                    }
+                                }
                             }
                         }
                     } else {
@@ -260,10 +270,20 @@ pub fn render(markup: &str, style: Style) -> Result<Text, MarkupError> {
                                 ));
                             }
                         } else {
-                            let tag_style = resolve_tag_style(&open_tag);
                             let end = text.len();
                             if end > start {
-                                text.spans_mut().push(Span::new(start, end, tag_style));
+                                match try_resolve_literal_style(&open_tag) {
+                                    Some(style) => {
+                                        text.spans_mut().push(Span::new(start, end, style));
+                                    }
+                                    None => {
+                                        text.spans_mut().push(Span::named(
+                                            start,
+                                            end,
+                                            &open_tag.name,
+                                        ));
+                                    }
+                                }
                             }
                         }
                     } else {
@@ -296,8 +316,15 @@ pub fn render(markup: &str, style: Style) -> Result<Text, MarkupError> {
                 text.spans_mut()
                     .push(Span::with_meta(start, end, Style::null(), Some(meta_arc)));
             } else {
-                let tag_style = resolve_tag_style(&open_tag);
-                text.spans_mut().push(Span::new(start, end, tag_style));
+                match try_resolve_literal_style(&open_tag) {
+                    Some(style) => {
+                        text.spans_mut().push(Span::new(start, end, style));
+                    }
+                    None => {
+                        text.spans_mut()
+                            .push(Span::named(start, end, &open_tag.name));
+                    }
+                }
             }
         }
     }
@@ -342,18 +369,33 @@ fn parse_meta_tag(tag: &Tag) -> Arc<HashMap<String, String>> {
     Arc::new(map)
 }
 
-/// Resolve a tag to a `Style`.
+/// Try to resolve a tag as a literal style.
 ///
-/// Uses `Style::parse` on the tag's string representation.  If parsing fails
-/// (e.g. it's a theme name like "warning"), falls back to `Style::null()`.
-/// Theme resolution will be added when Console is implemented.
-fn resolve_tag_style(tag: &Tag) -> Style {
+/// Returns `Some(style)` when `Style::parse_strict` succeeds (e.g. `"bold"`,
+/// `"red"`, `"link=url"`).  Returns `None` when the tag is a theme/class name
+/// that could not be parsed as a literal style (e.g. `"warning"`,
+/// `"repr.number"`).  In the `None` case the caller should create a named span
+/// via [`Span::named`] so the theme token is preserved for later resolution.
+///
+/// # LIMITATION: parse-first classification
+///
+/// Tags are classified as "literal style" vs "theme name" solely by whether
+/// `Style::parse_strict` succeeds.  This means a theme token that happens to
+/// share a name with a valid style keyword (e.g. a future theme that overrides
+/// `red` or `bold`) would be silently treated as the literal style — its name
+/// would be dropped and it would **not** resolve against the console theme.
+///
+/// Today this is not a problem: all registered gilt theme names (`warning`,
+/// `repr.number`, `repr.bool_true`, etc.) are dotted or non-style-word names
+/// that `parse_strict` rejects, so there is no collision with the literal-style
+/// namespace.
+///
+/// Full rich parity — resolving every tag against the active theme first, then
+/// falling back to literal-style parsing — is a deferred enhancement tracked
+/// under the Task 2.3+ theme-resolution work.
+fn try_resolve_literal_style(tag: &Tag) -> Option<Style> {
     let tag_str = tag.to_string();
-    Style::parse_strict(&tag_str).unwrap_or_else(|_| {
-        // Tag is probably a theme/class name (e.g. "warning", "repr.number").
-        // Console will resolve these via its Theme; for now use null style.
-        Style::null()
-    })
+    Style::parse_strict(&tag_str).ok()
 }
 
 // ---------------------------------------------------------------------------
@@ -653,15 +695,44 @@ mod tests {
 
     #[test]
     fn test_render_theme_name_fallback() {
-        // Unknown style name (e.g. "warning") falls back to null style.
+        // Theme names like "repr.number" cannot be parsed as literal styles, so
+        // they are now preserved as named spans (style_name = Some("repr.number"))
+        // instead of being silently collapsed to null-style anonymous spans.
+        // The theme will be resolved against the active Console theme at render
+        // time (Task 2.3); this test verifies the name is preserved (not dropped).
         let result = render("[repr.number]42[/repr.number]", Style::null()).unwrap();
         assert_eq!(result.plain(), "42");
-        // Should have one span with null style (theme not resolved yet).
-        // The span will exist but will be null since Style::parse fails for
-        // theme names.
-        // Actually, null-style spans are still inserted since we don't know
-        // if they'll be resolved later by Console.
         assert_eq!(result.spans().len(), 1);
+        let span = &result.spans()[0];
+        assert!(
+            span.style.is_null(),
+            "theme-name span must have null resolved style"
+        );
+        assert_eq!(span.style_name(), Some("repr.number"));
+    }
+
+    // -- Task 2.2 tests: named spans for theme tags ----------------------------
+
+    #[test]
+    fn theme_tag_span_carries_name() {
+        let result = render("[warning]hello[/warning]", Style::null()).unwrap();
+        assert_eq!(result.plain(), "hello");
+        let span = &result.spans()[0];
+        assert!(span.style.is_null());
+        assert_eq!(span.style_name(), Some("warning"));
+    }
+
+    #[test]
+    fn literal_style_tag_has_no_style_name() {
+        let result = render("[bold]hello[/bold]", Style::null()).unwrap();
+        assert_eq!(result.spans()[0].style, Style::parse("bold"));
+        assert_eq!(result.spans()[0].style_name(), None);
+    }
+
+    #[test]
+    fn repr_number_tag_carries_name() {
+        let result = render("[repr.number]42[/repr.number]", Style::null()).unwrap();
+        assert_eq!(result.spans()[0].style_name(), Some("repr.number"));
     }
 
     #[test]
