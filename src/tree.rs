@@ -2,10 +2,12 @@
 //!
 
 use crate::cells::cell_len;
-use crate::console::{Console, ConsoleOptions, Renderable};
+use crate::console::{Console, ConsoleOptions, Renderable, RenderableArc};
 use crate::measure::Measurement;
 use crate::segment::Segment;
 use crate::style::{Style, StyleStack};
+// Text is only used in the #[cfg(test)] module below.
+#[cfg(test)]
 use crate::text::Text;
 
 // ---------------------------------------------------------------------------
@@ -70,10 +72,10 @@ fn make_guide(index: usize, style: &Style, ascii_only: bool, legacy_windows: boo
 // ---------------------------------------------------------------------------
 
 /// A tree widget that renders a hierarchical structure with guide characters.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Tree {
-    /// The node's display text.
-    pub label: Text,
+    /// The node's label — any renderable widget (Text, Panel, Rule, …).
+    pub label: RenderableArc,
     /// Node style.
     pub style: Style,
     /// Guide line style.
@@ -88,11 +90,31 @@ pub struct Tree {
     pub highlight: bool,
 }
 
+// Manual Debug — RenderableArc (Arc<dyn Renderable + Send + Sync>) doesn't
+// implement Debug, so we print a placeholder for the label field.
+impl std::fmt::Debug for Tree {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Tree")
+            .field("label", &"<renderable>")
+            .field("style", &self.style)
+            .field("guide_style", &self.guide_style)
+            .field("children", &self.children)
+            .field("expanded", &self.expanded)
+            .field("hide_root", &self.hide_root)
+            .field("highlight", &self.highlight)
+            .finish()
+    }
+}
+
 impl Tree {
     /// Create a new tree node with the given label.
-    pub fn new(label: Text) -> Self {
+    ///
+    /// Accepts any type that implements [`Renderable`] — [`Text`], [`Panel`],
+    /// [`Rule`], another [`Tree`], etc.  The value is stored as a
+    /// [`RenderableArc`] (reference-counted, cheaply cloned).
+    pub fn new(label: impl Renderable + Send + Sync + 'static) -> Self {
         Tree {
-            label,
+            label: std::sync::Arc::new(label),
             style: Style::null(),
             guide_style: Style::null(),
             children: Vec::new(),
@@ -103,9 +125,11 @@ impl Tree {
     }
 
     /// Add a child node and return a mutable reference to it.
-    pub fn add(&mut self, label: Text) -> &mut Tree {
+    ///
+    /// Accepts any type that implements [`Renderable`] as the label.
+    pub fn add(&mut self, label: impl Renderable + Send + Sync + 'static) -> &mut Tree {
         self.children.push(Tree {
-            label,
+            label: std::sync::Arc::new(label),
             style: self.style.clone(),
             guide_style: self.guide_style.clone(),
             children: Vec::new(),
@@ -155,9 +179,9 @@ impl Tree {
 
     /// Measure this tree: compute minimum and maximum widths.
     ///
-    /// Uses [`Text::measure`] so that minimum and maximum can differ when a
-    /// label contains wrappable whitespace (P1 parity, finding #1).
-    pub fn measure(&self, _console: &Console, _options: &ConsoleOptions) -> Measurement {
+    /// Uses `Renderable::gilt_measure` on each node's label so that any widget
+    /// type (Text, Panel, Rule, …) is measured correctly (P1 parity, finding #1).
+    pub fn measure(&self, console: &Console, options: &ConsoleOptions) -> Measurement {
         let mut minimum: usize = 0;
         let mut maximum: usize = 0;
 
@@ -167,6 +191,8 @@ impl Tree {
             min: &mut usize,
             max: &mut usize,
             hide_root: bool,
+            console: &Console,
+            options: &ConsoleOptions,
         ) {
             let effective_level = if hide_root {
                 level.saturating_sub(1)
@@ -174,20 +200,28 @@ impl Tree {
                 level
             };
             let indent = effective_level * 4;
-            // P1 parity: use Text::measure() so min and max can differ.
-            let label_m = tree.label.measure();
+            // Use gilt_measure on the RenderableArc so any widget type is measured.
+            let label_m = tree.label.gilt_measure(console, options);
             if !(level == 0 && hide_root) {
                 *min = (*min).max(label_m.minimum + indent);
                 *max = (*max).max(label_m.maximum + indent);
             }
             if tree.expanded {
                 for child in &tree.children {
-                    measure_recursive(child, level + 1, min, max, hide_root);
+                    measure_recursive(child, level + 1, min, max, hide_root, console, options);
                 }
             }
         }
 
-        measure_recursive(self, 0, &mut minimum, &mut maximum, self.hide_root);
+        measure_recursive(
+            self,
+            0,
+            &mut minimum,
+            &mut maximum,
+            self.hide_root,
+            console,
+            options,
+        );
         Measurement::new(minimum, maximum)
     }
 }
@@ -307,7 +341,8 @@ impl Renderable for Tree {
             // style (rich parity: "Styled(node.label, style)"), we first render
             // the label normally, then apply `node_style` over every segment via
             // `Segment::apply_style`.  We do this line-by-line after the render.
-            let raw_lines = console.render_lines(&node.label, Some(&child_opts), None, pad, false);
+            let raw_lines =
+                console.render_lines(node.label.as_ref(), Some(&child_opts), None, pad, false);
             let rendered_lines: Vec<Vec<Segment>> = if node_style.is_null() {
                 raw_lines
             } else {
@@ -682,7 +717,22 @@ mod tests {
             .push(Tree::new(Text::new("grandchild", Style::null())));
         assert_eq!(tree.children.len(), 1);
         assert_eq!(tree.children[0].children.len(), 1);
-        assert_eq!(tree.children[0].children[0].label.plain(), "grandchild");
+        // label is now RenderableArc — verify the grandchild renders its text.
+        let console = test_console(80);
+        let opts = console.options();
+        let segs = tree.children[0].children[0]
+            .label
+            .gilt_console(&console, &opts);
+        let text: String = segs
+            .iter()
+            .filter(|s| !s.is_control())
+            .map(|s| s.text.as_str())
+            .collect();
+        assert!(
+            text.contains("grandchild"),
+            "grandchild label should render its text: {:?}",
+            text
+        );
     }
 
     // -- 13. Deep nesting (3+ levels) --
@@ -1135,6 +1185,55 @@ mod tests {
             tree.gilt_measure(&console, &opts),
             tree.measure(&console, &opts),
             "Tree::gilt_measure nested must delegate to Tree::measure"
+        );
+    }
+
+    // -- Task 4.3: RenderableArc label tests ----------------------------------
+
+    /// Tree::new must accept a Panel as the root label (any Renderable).
+    #[test]
+    fn tree_new_accepts_panel_label() {
+        use crate::panel::Panel;
+        let label = Panel::new(Text::new("root panel", Style::null()));
+        let tree = Tree::new(label);
+        let output = render_tree(&tree, 80);
+        assert!(
+            output.contains("root panel"),
+            "Panel label text should appear in tree output: {:?}",
+            output
+        );
+    }
+
+    /// tree.add must accept a Rule as the child label.
+    #[test]
+    fn tree_add_accepts_rule_label() {
+        use crate::rule::Rule;
+        let mut tree = Tree::new(Text::new("root", Style::null()));
+        tree.add(Rule::with_title("divider"));
+        let output = render_tree(&tree, 40);
+        // Rule renders a horizontal line; the tree should not panic and should
+        // include at least the root label.
+        assert!(
+            output.contains("root"),
+            "Root label should appear in output: {:?}",
+            output
+        );
+    }
+
+    /// Debug output for Tree should print "<renderable>" for the label field.
+    #[test]
+    fn tree_debug_impl() {
+        let tree = Tree::new(Text::new("debug_test", Style::null()));
+        let debug_str = format!("{:?}", tree);
+        assert!(
+            debug_str.contains("<renderable>"),
+            "Debug impl should print '<renderable>' for label: {}",
+            debug_str
+        );
+        assert!(
+            !debug_str.contains("debug_test"),
+            "Debug impl should NOT print the label content: {}",
+            debug_str
         );
     }
 }
