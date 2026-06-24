@@ -7,10 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-Parity 2.0 — closing verified gaps against Python `rich` (see `.review/parity-audit-2026-06-24.md`). Phase 1: correctness fixes.
+Parity 2.0 — closing verified gaps against Python `rich` (see `.review/parity-audit-2026-06-24.md`). Phase 1: correctness fixes. Phase 2: render-time theme resolution.
+
+### Added
+
+- **`Span::named(start, end, name)`** — a span that defers style resolution to render time (carries a `style_name: Option<String>` instead of an eager `Style`).
+- **`Text::render_themed(&Console)`** — resolves theme-named spans against the active console theme stack at render time (with a fast-path that delegates to `render()` when no span is named, preserving the zero-clone hot path).
+
+### Changed (Breaking)
+
+- **`Span` gains a `style_name: Option<String>` field** and its equality now includes it. Struct-literal construction (`Span { .. }`) must migrate to `Span::new(..)` or `Span::named(..)`.
+- **`Renderable for Text` (and `Rule`/`Panel` title, `Progress`, `Spinner`) now use the Console theme** when rendering, so theme-named content that previously rendered unstyled now carries the themed style.
 
 ### Fixed
 
+- **Theme-named markup tags resolve at render time (#5, #6).** `[warning]`, `[repr.number]`, etc. previously collapsed to `Style::null()` at parse time (the theme name was lost); they now carry the name and resolve against the Console theme (or `DEFAULT_STYLES` with no console). _Known limitation:_ a single-word theme name that also parses as a literal style token (e.g. an overridden `red`) is still treated as a literal — full render-time resolution of every tag is a deferred enhancement.
+- **`highlight_regex_with_groups` resolves group-name styles via `DEFAULT_STYLES`** (#7), not only `parse_strict` — so names like `repr.number` highlight correctly.
+- **`RegexHighlighter` emits theme-overridable named spans** (#37) — a console theme override of a group style (e.g. `repr.number → italic yellow`) now wins at render time.
 - **Color downgrade now applied at render time (P0).** `Style::render` previously emitted truecolor SGR (`38;2;r;g;b`) regardless of the console's color system; on a 16-color (`Standard`) or 256-color (`EightBit`) terminal that produced escapes the terminal can't render correctly. Each of `color`/`bgcolor`/`underline_color` is now downgraded to the console's `color_system` before emission, matching rich's `_make_ansi_codes`.
 - **`Color::downgrade` is now an identity when the color is already at (or below) the target system**, instead of re-matching through a palette (which could shift an index, e.g. `Standard(8)` → `Standard(7)`).
 - **`MONOKAI`, `DIMMED_MONOKAI`, and `NIGHT_OWLISH` terminal themes** now have 8 normal + 8 bright ANSI colors (were 9 + 7), fixing corrupted ANSI 8–15 in HTML/SVG export.
