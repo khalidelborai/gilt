@@ -351,8 +351,9 @@ impl Renderable for Panel {
         let mut child_width = if self.expand {
             max_width.saturating_sub(2)
         } else {
-            // Fit mode: measure the content
-            let content_width = self.content.cell_len();
+            // Fit mode: size to the longest rendered line, not the total char count.
+            // Text::measure().maximum uses lines().map(cell_len).max() — the correct metric.
+            let content_width = self.content.measure().maximum;
             content_width + horizontal_padding
         };
 
@@ -1245,5 +1246,29 @@ mod tests {
         let panel = Panel::new(Text::new("Hello", Style::null()));
         // Should not panic at width=0 (may produce empty output)
         let _output = render_panel(&console, &panel);
+    }
+
+    // ── Audit #17: fit mode must size to the longest line, not total chars ──
+
+    #[test]
+    fn panel_fit_uses_longest_line_not_total_chars() {
+        // Content: "abc\nde" — longest line = 3 cells, total chars = 5 (+ newline = 6).
+        // Fit panel interior = longest_line (3) + left_pad (1) + right_pad (1) = 5.
+        // Total panel width  = interior (5) + left_border (1) + right_border (1) = 7.
+        let console = make_console(80);
+        let panel = Panel::fit(Text::new("abc\nde", Style::null()));
+        let output = render_panel(&console, &panel);
+        let lines = content_lines(&output);
+        let expected_width = 3 + 2 + 2; // longest_line + padding(1+1) + borders(1+1)
+        for line in &lines {
+            assert_eq!(
+                cell_len(line),
+                expected_width,
+                "fit panel width must track longest line (3)+padding+borders={}; got {} for '{}'",
+                expected_width,
+                cell_len(line),
+                line
+            );
+        }
     }
 }
