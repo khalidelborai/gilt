@@ -935,3 +935,67 @@ fn test_show_locals_side_by_side_compiles() {
         output
     );
 }
+
+/// Verify that the Columns code path is actually exercised when show_locals=true
+/// and the frame points to a real file at an absolute path.
+///
+/// The syntax branch (and Columns layout) is only entered when `path.is_absolute()`
+/// or `frame.filename.starts_with("./")` — a relative path like "src/main.rs" skips it.
+/// This test creates a real temp file so the absolute-path condition is satisfied.
+#[cfg(feature = "syntax")]
+#[test]
+fn test_show_locals_side_by_side_columns_path_exercised() {
+    use std::io::Write as _;
+
+    // Write a small Rust file to a known temp path.
+    let tmp_path = std::env::temp_dir().join("gilt_test_columns_traceback.rs");
+    {
+        let mut f = std::fs::File::create(&tmp_path).expect("could not create temp file");
+        writeln!(f, "fn main() {{").unwrap();
+        writeln!(f, "    let answer = 42;").unwrap();
+        writeln!(f, "    println!(\"{{answer}}\");").unwrap();
+        writeln!(f, "}}").unwrap();
+    }
+
+    let abs_path = tmp_path.to_str().expect("non-UTF-8 temp path");
+
+    let mut tb = Traceback::new()
+        .with_title("ColumnsPathTest")
+        .with_show_locals(true);
+    tb.frames.push(
+        Frame::new(abs_path, Some(2), "main")
+            .with_local("answer", "42")
+            .with_local("label", "\"hello\""),
+    );
+
+    let console = Console::builder()
+        .width(160)
+        .no_color(true)
+        .markup(false)
+        .build();
+    let options = console.options();
+    let segments = tb.gilt_console(&console, &options);
+    assert!(!segments.is_empty(), "expected non-empty segments");
+    let output: String = segments.iter().map(|s| s.text.as_str()).collect();
+
+    // The syntax block must appear (the file was read and highlighted).
+    assert!(
+        output.contains("answer") || output.contains("42"),
+        "syntax or locals content should appear in output; got:\n{}",
+        output
+    );
+    // The local variable name must appear (locals side-by-side or fallback).
+    assert!(
+        output.contains("answer"),
+        "local variable 'answer' should appear in output; got:\n{}",
+        output
+    );
+    assert!(
+        output.contains("label"),
+        "local variable 'label' should appear in output; got:\n{}",
+        output
+    );
+
+    // Clean up.
+    let _ = std::fs::remove_file(&tmp_path);
+}

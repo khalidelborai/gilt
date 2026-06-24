@@ -1002,33 +1002,22 @@ impl Renderable for Traceback {
 
         let mut result = panel.gilt_console(console, &panel_opts);
 
-        // Item 2 (ExceptionGroup): render each sub-exception as a nested panel.
+        // Item 2 (ExceptionGroup): render each sub-exception appended after the main panel.
+        // Each sub already renders as its own red-bordered Panel (via its own gilt_console call),
+        // so we only prepend a yellow "Exception N of M:" label — no extra Panel wrapper.
         if !self.sub_exceptions.is_empty() {
             let total = self.sub_exceptions.len();
             for (idx, sub) in self.sub_exceptions.iter().enumerate() {
-                // Build nested panel title e.g. "Exception 1 of 3"
-                let nested_title =
-                    Text::styled(format!("Exception {} of {}", idx + 1, total), "bold yellow");
-                // Render the sub-exception into its own segments, then wrap in a Panel.
+                // Prepend a styled label line: "Exception N of M:"
+                let label = format!("Exception {} of {}:", idx + 1, total);
+                let label_text = Text::styled(label, "bold yellow");
+                let label_segs = label_text.gilt_console(console, &panel_opts);
+                result.extend(label_segs);
+                // Append a newline segment after the label.
+                result.push(Segment::new("\n", None, None));
+                // Render the sub-exception directly (it produces its own Panel).
                 let sub_segs = sub.gilt_console(console, &panel_opts);
-                // Collect sub segments as plain text parts.
-                let mut sub_parts: Vec<TextPart> = Vec::new();
-                for seg in &sub_segs {
-                    match seg.style() {
-                        Some(s) if !s.is_null() => {
-                            sub_parts.push(TextPart::Styled(seg.text.to_string(), s.clone()));
-                        }
-                        _ => {
-                            sub_parts.push(TextPart::Raw(seg.text.to_string()));
-                        }
-                    }
-                }
-                let sub_content = Text::assemble(&sub_parts, Style::null());
-                let nested_panel = Panel::new(sub_content)
-                    .with_title(nested_title)
-                    .with_border_style(Style::parse("yellow"))
-                    .with_expand(true);
-                result.extend(nested_panel.gilt_console(console, &panel_opts));
+                result.extend(sub_segs);
             }
         }
 
