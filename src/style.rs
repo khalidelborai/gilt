@@ -609,18 +609,25 @@ impl Style {
             });
         }
 
-        // Add color codes
+        // Add color codes — downgrade to the console's color system first so
+        // that a truecolor Style on a Standard/EightBit console emits the
+        // correct SGR form instead of raw `38;2;r;g;b`.
+        // `color_system` is guaranteed `Some` here (the early-return at line 563
+        // handles the `None` case).
+        let sys = color_system.expect("color_system is Some past the early return");
         if let Some(color) = &self.color {
-            color.write_ansi_codes(true, &mut sgr);
+            color.downgrade(sys).write_ansi_codes(true, &mut sgr);
         }
 
         if let Some(bgcolor) = &self.bgcolor {
-            bgcolor.write_ansi_codes(false, &mut sgr);
+            bgcolor.downgrade(sys).write_ansi_codes(false, &mut sgr);
         }
 
         // Underline color (SGR 58;5;N or 58;2;R;G;B)
         if let Some(ul_color) = &self.underline_color {
-            ul_color.write_underline_color_codes(&mut sgr);
+            ul_color
+                .downgrade(sys)
+                .write_underline_color_codes(&mut sgr);
         }
 
         // Pre-size: text + SGR opener (~5 + sgr) + reset (~4) + slack.

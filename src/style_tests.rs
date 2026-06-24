@@ -1024,3 +1024,26 @@ fn test_style_fg_bg_chain() {
     assert!(s.color().is_some());
     assert!(s.bgcolor().is_some());
 }
+
+#[test]
+fn render_downgrades_color_to_console_system() {
+    // A truecolor style rendered for a Standard (16-color) console must emit a
+    // 16-color SGR (30-37/90-97), never a truecolor "38;2;r;g;b".
+    let st = Style::parse("#ff0000"); // bright red truecolor fg
+    let out = st.render("X", Some(ColorSystem::Standard));
+    assert!(
+        !out.contains("38;2;"),
+        "must not emit truecolor on Standard: {out:?}"
+    );
+    assert!(out.contains("\x1b["), "must still emit an SGR: {out:?}");
+    // EightBit console -> 256-color form, not truecolor.
+    let out8 = st.render("X", Some(ColorSystem::EightBit));
+    assert!(
+        !out8.contains("38;2;"),
+        "must not emit truecolor on EightBit: {out8:?}"
+    );
+    assert!(
+        out8.contains("38;5;"),
+        "EightBit fg should use 38;5;N: {out8:?}"
+    );
+}
