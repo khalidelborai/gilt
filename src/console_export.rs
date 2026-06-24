@@ -464,22 +464,39 @@ impl Console {
                 let css = style.get_html_style(Some(theme));
                 let inner: String;
                 if css.is_empty() {
-                    inner = escaped.into_owned();
+                    // No CSS — just emit raw text, wrapping in anchor if needed.
+                    if let Some(url) = link_url {
+                        write!(code, "<a href=\"{}\">{}</a>", html_escape(&url), escaped).unwrap();
+                    } else {
+                        code.push_str(&escaped);
+                    }
+                    continue;
                 } else if inline_styles {
-                    inner = format!("<span style=\"{}\">{}</span>", css, escaped);
+                    // Inline mode: anchor wraps span (#7 behaviour, unchanged).
+                    let span = format!("<span style=\"{}\">{}</span>", css, escaped);
+                    if let Some(url) = link_url {
+                        write!(code, "<a href=\"{}\">{}</a>", html_escape(&url), span).unwrap();
+                    } else {
+                        code.push_str(&span);
+                    }
+                    continue;
                 } else {
-                    // Use class-based styles
+                    // Class mode (#j): span wraps anchor — matches rich.
                     let class_name =
                         find_or_insert_class(&mut style_cache, &mut stylesheet, style, &css);
-                    inner = format!("<span class=\"{}\">{}</span>", class_name, escaped);
+                    if let Some(url) = link_url {
+                        inner = format!(
+                            "<span class=\"{}\"><a href=\"{}\">{}</a></span>",
+                            class_name,
+                            html_escape(&url),
+                            escaped
+                        );
+                    } else {
+                        inner = format!("<span class=\"{}\">{}</span>", class_name, escaped);
+                    }
                 }
 
-                // Wrap in <a href> if there is a link (finding #7).
-                if let Some(url) = link_url {
-                    write!(code, "<a href=\"{}\">{}</a>", html_escape(&url), inner).unwrap();
-                } else {
-                    code.push_str(&inner);
-                }
+                code.push_str(&inner);
             } else {
                 code.push_str(&escaped);
             }
@@ -612,20 +629,39 @@ impl Console {
                 let css = style.get_html_style(Some(theme));
                 let inner: String;
                 if css.is_empty() {
-                    inner = escaped.into_owned();
+                    // No CSS — just emit raw text, wrapping in anchor if needed.
+                    if let Some(url) = link_url {
+                        write!(code, "<a href=\"{}\">{}</a>", html_escape(&url), escaped).unwrap();
+                    } else {
+                        code.push_str(&escaped);
+                    }
+                    continue;
                 } else if opts.inline_styles {
-                    inner = format!("<span style=\"{}\">{}</span>", css, escaped);
+                    // Inline mode: anchor wraps span (unchanged).
+                    let span = format!("<span style=\"{}\">{}</span>", css, escaped);
+                    if let Some(url) = link_url {
+                        write!(code, "<a href=\"{}\">{}</a>", html_escape(&url), span).unwrap();
+                    } else {
+                        code.push_str(&span);
+                    }
+                    continue;
                 } else {
+                    // Class mode (#j): span wraps anchor — matches rich.
                     let class_name =
                         find_or_insert_class(&mut style_cache, &mut stylesheet, style, &css);
-                    inner = format!("<span class=\"{}\">{}</span>", class_name, escaped);
+                    if let Some(url) = link_url {
+                        inner = format!(
+                            "<span class=\"{}\"><a href=\"{}\">{}</a></span>",
+                            class_name,
+                            html_escape(&url),
+                            escaped
+                        );
+                    } else {
+                        inner = format!("<span class=\"{}\">{}</span>", class_name, escaped);
+                    }
                 }
 
-                if let Some(url) = link_url {
-                    write!(code, "<a href=\"{}\">{}</a>", html_escape(&url), inner).unwrap();
-                } else {
-                    code.push_str(&inner);
-                }
+                code.push_str(&inner);
             } else {
                 code.push_str(&escaped);
             }

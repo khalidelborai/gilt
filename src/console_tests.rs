@@ -1857,6 +1857,71 @@ fn test_export_html_emits_anchor_for_link() {
     assert!(html.contains("click me"), "should have link text");
 }
 
+// -- #j: class-mode HTML export — span wraps anchor, not anchor wraps span --
+
+/// In class mode (`inline_styles = false`), a styled+linked segment must produce
+/// `<span class="..."><a href="...">text</a></span>` — the span (carrying the style
+/// class) wraps the anchor, matching rich's behaviour.
+#[test]
+fn test_export_html_class_mode_span_wraps_anchor() {
+    let mut console = Console::builder()
+        .width(80)
+        .record(true)
+        .markup(false)
+        .build();
+    // bold + link — forces both a non-empty CSS class and an anchor.
+    console.record_buffer.push(crate::segment::Segment::styled(
+        "click me",
+        Style::parse("bold link https://example.com"),
+    ));
+    let html = console.export_html(None, false, false); // inline_styles = false → class mode
+                                                        // span must appear BEFORE the anchor in the output.
+    let span_pos = html
+        .find("<span class=")
+        .expect("should have <span class= in class mode");
+    let a_pos = html
+        .find("<a href=")
+        .expect("should have <a href= in class mode");
+    assert!(
+        span_pos < a_pos,
+        "class mode: span must wrap anchor (span before a), but got span@{span_pos} a@{a_pos}\n{html}"
+    );
+    // Closing tags must be </a></span>.
+    assert!(
+        html.contains("</a></span>"),
+        "class mode: closing order must be </a></span>\n{html}"
+    );
+    assert!(html.contains("click me"), "link text must appear");
+}
+
+/// Same check via `export_html_opts`.
+#[test]
+fn test_export_html_opts_class_mode_span_wraps_anchor() {
+    use crate::export_format::HtmlExportOptions;
+    let mut console = Console::builder()
+        .width(80)
+        .record(true)
+        .markup(false)
+        .build();
+    console.record_buffer.push(crate::segment::Segment::styled(
+        "opts link",
+        Style::parse("bold link https://opts.example.com"),
+    ));
+    let opts = HtmlExportOptions::default().inline_styles(false);
+    let html = console.export_html_opts(None, &opts);
+    let span_pos = html.find("<span class=").expect("should have <span class=");
+    let a_pos = html.find("<a href=").expect("should have <a href=");
+    assert!(
+        span_pos < a_pos,
+        "export_html_opts class mode: span must wrap anchor\n{html}"
+    );
+    assert!(
+        html.contains("</a></span>"),
+        "export_html_opts class mode: closing order must be </a></span>\n{html}"
+    );
+    assert!(html.contains("opts link"), "link text must appear");
+}
+
 // -- Finding #11: SVG export derives unique id from content hash ---------
 
 /// Finding #11: SVG export derives a content-unique id from an FNV-1a hash
