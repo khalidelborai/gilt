@@ -2135,7 +2135,10 @@ mod tests {
         let re = regex::Regex::new(r"(?P<number>\d+)").unwrap();
         let mut text = Text::new("count=42", Style::null());
         let count = text.highlight_regex_with_groups(&re, "repr.");
-        assert_eq!(count, 1, "repr.number exists in DEFAULT_STYLES → count must be 1");
+        assert_eq!(
+            count, 1,
+            "repr.number exists in DEFAULT_STYLES → count must be 1"
+        );
         // span covering "42" should carry repr.number = bold not-italic cyan
         let plain = text.plain().to_string();
         let s = text
@@ -2143,13 +2146,21 @@ mod tests {
             .iter()
             .find(|sp| {
                 let b = |n: usize| {
-                    plain.char_indices().nth(n).map(|(i, _)| i).unwrap_or(plain.len())
+                    plain
+                        .char_indices()
+                        .nth(n)
+                        .map(|(i, _)| i)
+                        .unwrap_or(plain.len())
                 };
                 &plain[b(sp.start)..b(sp.end)] == "42"
             })
             .expect("expected a span covering '42'");
         assert_eq!(s.style.bold(), Some(true), "repr.number should be bold");
-        assert_eq!(s.style.italic(), Some(false), "repr.number should be not italic");
+        assert_eq!(
+            s.style.italic(),
+            Some(false),
+            "repr.number should be not italic"
+        );
         assert!(
             s.style.color().is_some_and(|c| c.name().contains("cyan")),
             "repr.number should have cyan foreground"

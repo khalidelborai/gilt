@@ -328,7 +328,7 @@ fn align_title_segments(
 // ---------------------------------------------------------------------------
 
 impl Renderable for Panel {
-    fn gilt_console(&self, _console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
+    fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         // Apply box substitution (ascii_only / safe_box), matching rich behaviour.
         let safe = self.safe_box.unwrap_or(true);
         let ascii_only = options.ascii_only();
@@ -414,7 +414,7 @@ impl Renderable for Panel {
             // Strip trailing newline that Text::split("\n", true, true) embeds
             // in each line's plain text during wrap().
             line.remove_suffix("\n");
-            let line_segments = line.render();
+            let line_segments = line.render_themed(console);
             // Apply content style if set
             let styled = if !self.style.is_null() {
                 Segment::apply_style(&line_segments, Some(self.style.clone()), None)

@@ -36,18 +36,24 @@ fn combine_regex(patterns: &[&str]) -> String {
 /// default styles map for name resolution instead of `Style::parse()`.
 fn highlight_with_groups(text: &mut Text, pattern: &Regex, style_prefix: &str) -> usize {
     // T12: avoid the full text clone (was `text.plain().to_string()`) and
-    // the per-match O(prefix) char-counting. Collect (style, byte_start,
+    // the per-match O(prefix) char-counting. Collect (name, byte_start,
     // byte_end) tuples while borrowing immutably, then apply via the
     // single-pass byte→char index after the iterator drops.
-    let mut pending: Vec<(Style, usize, usize)> = Vec::new();
+    //
+    // Task 2.5: when the resolved key exists in DEFAULT_STYLES, push a
+    // *named* span (Span::named) instead of eagerly resolving the style.
+    // This lets the render pipeline resolve the style against the active
+    // theme at render time (via Text::render_themed), making every
+    // RegexHighlighter group style theme-overridable.
+    let mut pending: Vec<(String, usize, usize)> = Vec::new();
     {
         let plain = text.plain();
         for captures in pattern.captures_iter(plain) {
             for name in pattern.capture_names().flatten() {
                 if let Some(mat) = captures.name(name) {
                     let style_name = format!("{}{}", style_prefix, name);
-                    if let Some(style) = DEFAULT_STYLES.get(&style_name) {
-                        pending.push((style.clone(), mat.start(), mat.end()));
+                    if DEFAULT_STYLES.contains_key(&style_name) {
+                        pending.push((style_name, mat.start(), mat.end()));
                     }
                 }
             }
@@ -65,8 +71,9 @@ fn highlight_with_groups(text: &mut Text, pattern: &Regex, style_prefix: &str) -
     }
     b2c[plain.len()] = char_idx;
     let count = pending.len();
-    for (style, bs, be) in pending {
-        text.stylize(style, b2c[bs], Some(b2c[be]));
+    for (style_name, bs, be) in pending {
+        text.spans_mut()
+            .push(Span::named(b2c[bs], b2c[be], style_name));
     }
     count
 }
@@ -913,6 +920,48 @@ mod tests {
         let hl = ISO8601Highlighter::new();
         let text = hl.apply("2024-01-15T17:21:59.123Z");
         assert!(!text.spans().is_empty());
+    }
+
+    // -- named spans (Task 2.5) -------------------------------------------
+
+    #[test]
+    fn highlight_with_groups_produces_named_spans() {
+        let re = regex::Regex::new(r"(?P<number>\d+)").unwrap();
+        let mut text = Text::new("x=42", Style::null());
+        let hl = RegexHighlighter {
+            highlights: vec![re],
+            base_style: "repr.".to_string(),
+        };
+        hl.highlight(&mut text);
+        assert!(text
+            .spans()
+            .iter()
+            .any(|s| s.style_name() == Some("repr.number")));
+    }
+
+    #[test]
+    fn highlight_with_groups_themed_render_resolves_override() {
+        let mut styles = std::collections::HashMap::new();
+        styles.insert("repr.number".to_string(), Style::parse("italic yellow"));
+        let theme = crate::color::theme::Theme::new(Some(styles), true);
+        let console = crate::console::Console::builder()
+            .theme(theme)
+            .no_color(false)
+            .build();
+        let re = regex::Regex::new(r"(?P<number>\d+)").unwrap();
+        let hl = RegexHighlighter {
+            highlights: vec![re],
+            base_style: "repr.".to_string(),
+        };
+        let text = hl.apply("val=99");
+        let seg = text
+            .render_themed(&console)
+            .into_iter()
+            .find(|s| s.text.contains("99"))
+            .unwrap();
+        let st = seg.style().unwrap();
+        assert_eq!(st.italic(), Some(true));
+        assert!(st.color().is_some_and(|c| c.name().contains("yellow")));
     }
 
     // -- combine_regex ------------------------------------------------------
