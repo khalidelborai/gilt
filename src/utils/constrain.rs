@@ -67,6 +67,8 @@ impl Constrain {
             self.renderable
                 .gilt_measure(console, &constrained)
                 .with_maximum(constrained.max_width)
+                // belt-and-suspenders: gilt_measure may return a width > constrained.max_width
+                // for some Renderable types; clamp again to options.max_width as the final gate.
                 .with_maximum(options.max_width)
         } else {
             self.renderable

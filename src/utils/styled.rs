@@ -1,6 +1,6 @@
 //! Apply a style to a renderable.
 //!
-//! renderable (`Text`) together with an additional `Style` that is applied
+//! renderable together with an additional `Style` that is applied
 //! on top of whatever styles the renderable already carries.
 
 use std::fmt;
