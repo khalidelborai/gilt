@@ -36,6 +36,10 @@ impl Styled {
 }
 
 impl Renderable for Styled {
+    fn gilt_measure(&self, _console: &Console, _options: &ConsoleOptions) -> Measurement {
+        self.measure()
+    }
+
     fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         let rendered_segments = self.renderable.gilt_console(console, options);
         Segment::apply_style(&rendered_segments, Some(self.style.clone()), None)
@@ -261,5 +265,37 @@ mod tests {
         let cloned = styled.clone();
         assert_eq!(cloned.renderable.plain(), "clone me");
         assert_eq!(cloned.style, styled.style);
+    }
+
+    // -- gilt_measure override -----------------------------------------------
+
+    #[test]
+    fn styled_gilt_measure_matches_standalone() {
+        let console = Console::builder().width(80).markup(false).build();
+        let opts = console.options();
+        let text = Text::new("Hello, World!", Style::null());
+        let styled = Styled::new(text, Style::parse("bold"));
+        let m_standalone = styled.measure();
+        let m_trait = styled.gilt_measure(&console, &opts);
+        assert_eq!(
+            m_trait,
+            m_standalone,
+            "Styled::gilt_measure must delegate to Styled::measure"
+        );
+    }
+
+    #[test]
+    fn styled_gilt_measure_multiline_matches_standalone() {
+        let console = Console::builder().width(80).markup(false).build();
+        let opts = console.options();
+        let text = Text::new("short\na somewhat longer line", Style::null());
+        let styled = Styled::new(text, Style::parse("red on blue"));
+        let m_standalone = styled.measure();
+        let m_trait = styled.gilt_measure(&console, &opts);
+        assert_eq!(
+            m_trait,
+            m_standalone,
+            "Styled::gilt_measure multiline must delegate to Styled::measure"
+        );
     }
 }

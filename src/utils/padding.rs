@@ -131,6 +131,10 @@ impl Padding {
 }
 
 impl Renderable for Padding {
+    fn gilt_measure(&self, console: &Console, options: &ConsoleOptions) -> Measurement {
+        self.measure(console, options)
+    }
+
     fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         let mut segments = Vec::new();
 
@@ -412,5 +416,37 @@ mod tests {
         assert_ne!(PaddingDimensions::Uniform(1), PaddingDimensions::Uniform(2));
         assert_eq!(PaddingDimensions::Pair(1, 2), PaddingDimensions::Pair(1, 2));
         assert_ne!(PaddingDimensions::Pair(1, 2), PaddingDimensions::Pair(2, 1));
+    }
+
+    // -- gilt_measure override -----------------------------------------------
+
+    #[test]
+    fn padding_gilt_measure_matches_standalone() {
+        let console = make_console(80);
+        let opts = console.options();
+        let text = Text::new("Hello", Style::null());
+        let padding = Padding::new(text, PaddingDimensions::Full(0, 2, 0, 2), Style::null(), false);
+        let m_standalone = padding.measure(&console, &opts);
+        let m_trait = padding.gilt_measure(&console, &opts);
+        assert_eq!(
+            m_trait,
+            m_standalone,
+            "Padding::gilt_measure must delegate to Padding::measure"
+        );
+    }
+
+    #[test]
+    fn padding_gilt_measure_expand_matches_standalone() {
+        let console = make_console(80);
+        let opts = console.options();
+        let text = Text::new("Hello World", Style::null());
+        let padding = Padding::new(text, PaddingDimensions::Uniform(1), Style::null(), true);
+        let m_standalone = padding.measure(&console, &opts);
+        let m_trait = padding.gilt_measure(&console, &opts);
+        assert_eq!(
+            m_trait,
+            m_standalone,
+            "Padding::gilt_measure expand must delegate to Padding::measure"
+        );
     }
 }

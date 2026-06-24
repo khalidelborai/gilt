@@ -170,6 +170,10 @@ impl Align {
 }
 
 impl Renderable for Align {
+    fn gilt_measure(&self, console: &Console, options: &ConsoleOptions) -> Measurement {
+        self.measure(console, options)
+    }
+
     fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         let width = self.width.unwrap_or(options.max_width);
         let pad_style = self.style.clone().unwrap_or_else(Style::null);
@@ -534,5 +538,37 @@ mod tests {
         for seg in padding_segments {
             assert!(seg.style().is_some());
         }
+    }
+
+    // -- gilt_measure override -----------------------------------------------
+
+    #[test]
+    fn align_gilt_measure_matches_standalone() {
+        let console = make_console(80);
+        let opts = console.options();
+        let text = Text::new("Hello", Style::null());
+        let align = Align::left(text);
+        let m_standalone = align.measure(&console, &opts);
+        let m_trait = align.gilt_measure(&console, &opts);
+        assert_eq!(
+            m_trait,
+            m_standalone,
+            "Align::gilt_measure must delegate to Align::measure"
+        );
+    }
+
+    #[test]
+    fn align_center_gilt_measure_matches_standalone() {
+        let console = make_console(80);
+        let opts = console.options();
+        let text = Text::new("Hello World", Style::null());
+        let align = Align::center(text);
+        let m_standalone = align.measure(&console, &opts);
+        let m_trait = align.gilt_measure(&console, &opts);
+        assert_eq!(
+            m_trait,
+            m_standalone,
+            "Align::gilt_measure (center) must delegate to Align::measure"
+        );
     }
 }

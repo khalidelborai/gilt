@@ -123,6 +123,10 @@ impl Group {
 }
 
 impl Renderable for Group {
+    fn gilt_measure(&self, console: &Console, options: &ConsoleOptions) -> Measurement {
+        self.measure(console, options)
+    }
+
     fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         let render_options = if self.fit {
             let measurement = self.measure_renderables(options);
@@ -420,5 +424,43 @@ mod tests {
         });
         assert!(has_bold, "Expected bold segment in output");
         assert!(has_italic, "Expected italic segment in output");
+    }
+
+    // -- gilt_measure override -----------------------------------------------
+
+    #[test]
+    fn group_gilt_measure_non_fit_matches_standalone() {
+        let console = make_console(80);
+        let opts = console.options();
+        let items = vec![
+            Text::new("Short", Style::null()),
+            Text::new("A bit longer text", Style::null()),
+        ];
+        let group = Group::new(items);
+        let m_standalone = group.measure(&console, &opts);
+        let m_trait = group.gilt_measure(&console, &opts);
+        assert_eq!(
+            m_trait,
+            m_standalone,
+            "Group::gilt_measure (non-fit) must delegate to Group::measure"
+        );
+    }
+
+    #[test]
+    fn group_gilt_measure_fit_matches_standalone() {
+        let console = make_console(80);
+        let opts = console.options();
+        let items = vec![
+            Text::new("Hi", Style::null()),
+            Text::new("Hello World", Style::null()),
+        ];
+        let group = Group::fit(items);
+        let m_standalone = group.measure(&console, &opts);
+        let m_trait = group.gilt_measure(&console, &opts);
+        assert_eq!(
+            m_trait,
+            m_standalone,
+            "Group::gilt_measure (fit) must delegate to Group::measure"
+        );
     }
 }

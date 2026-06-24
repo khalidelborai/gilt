@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::console::{Console, ConsoleOptions, Renderable};
+use crate::measure::Measurement;
 use crate::segment::Segment;
 use crate::table::{ColumnOptions, Table};
 use crate::text::{JustifyMethod, Text};
@@ -225,6 +226,102 @@ impl Default for Columns {
 }
 
 impl Renderable for Columns {
+    fn gilt_measure(&self, console: &Console, options: &ConsoleOptions) -> Measurement {
+        // Replicate the same item-width accounting as gilt_console, then
+        // derive minimum and maximum without actually building a Table.
+
+        let renderables: Vec<Text> = if !self.widgets.is_empty() {
+            let mut tmp = Console::default();
+            self.widgets
+                .iter()
+                .map(|w| tmp.render_widget_to_text(w.as_ref()))
+                .collect()
+        } else {
+            self.renderables
+                .iter()
+                .map(|s| console.render_str(s, None, None, None))
+                .collect()
+        };
+
+        if renderables.is_empty() {
+            return Measurement::new(0, 0);
+        }
+
+        let (_top, right, _bottom, left) = self.padding;
+        let width_padding = right.max(left);
+        let max_width = options.max_width;
+
+        // Measure each renderable's maximum width
+        let mut renderable_widths: Vec<usize> =
+            renderables.iter().map(|r| r.measure().maximum).collect();
+
+        // If equal, all widths = max of all
+        if self.equal {
+            let max_w = renderable_widths.iter().copied().max().unwrap_or(0);
+            renderable_widths = vec![max_w; renderable_widths.len()];
+        }
+
+        let mut column_count = renderables.len();
+
+        if let Some(fixed_w) = self.width {
+            let divisor = (fixed_w + width_padding).max(1);
+            column_count = max_width / divisor;
+            if column_count == 0 {
+                column_count = 1;
+            }
+        } else {
+            // Auto-fit: reduce column count until total width fits
+            while column_count > 1 {
+                let mut widths: HashMap<usize, usize> = HashMap::new();
+                let mut column_no: usize = 0;
+                let items = self.iter_renderables(column_count, &renderable_widths, &renderables);
+                let mut fits = true;
+
+                for (renderable_width, _) in &items {
+                    let entry = widths.entry(column_no).or_insert(0);
+                    *entry = (*entry).max(*renderable_width);
+                    let total_width: usize =
+                        widths.values().sum::<usize>() + width_padding * (widths.len() - 1);
+                    if total_width > max_width {
+                        column_count = widths.len() - 1;
+                        fits = false;
+                        break;
+                    }
+                    column_no = (column_no + 1) % column_count;
+                }
+
+                if fits {
+                    break;
+                }
+            }
+        }
+
+        if column_count == 0 {
+            column_count = 1;
+        }
+
+        // minimum = widest single item (what we'd need if forced to 1 column)
+        let minimum = renderable_widths.iter().copied().max().unwrap_or(0);
+
+        // maximum = sum of per-column max widths + inter-column padding,
+        // clamped to options.max_width.
+        //
+        // For the maximum we assume all items fit in `column_count` columns,
+        // so for each column we take the widest item that would land in it.
+        // In the simple (non-column_first) case that is just the widths
+        // distributed round-robin. Rather than re-running iter_renderables
+        // (which pads incomplete rows and depends on column_first ordering),
+        // we compute a conservative but correct upper bound: sum of the
+        // `column_count` largest individual widths plus inter-column padding.
+        let mut sorted_widths = renderable_widths.clone();
+        sorted_widths.sort_unstable_by(|a, b| b.cmp(a)); // descending
+        let col_maxima: usize = sorted_widths.iter().take(column_count).sum();
+        let maximum = (col_maxima + width_padding * (column_count.saturating_sub(1)))
+            .min(max_width);
+
+        Measurement::new(minimum, maximum)
+    }
+
     fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         let renderables: Vec<Text> = if !self.widgets.is_empty() {
             // Share a single capture console across all widgets to avoid
@@ -895,5 +992,78 @@ mod tests {
         let s = format!("{}", cols);
         assert!(!s.is_empty());
         assert!(s.contains("one"));
+    }
+
+    // -- gilt_measure override -----------------------------------------------
+
+    #[test]
+    fn columns_gilt_measure_empty_returns_zero() {
+        let console = make_console(80);
+        let opts = console.options();
+        let cols = Columns::new();
+        let m = cols.gilt_measure(&console, &opts);
+        assert_eq!(m, Measurement::new(0, 0), "Empty Columns must return (0, 0)");
+    }
+
+    #[test]
+    fn columns_gilt_measure_single_item() {
+        let console = make_console(80);
+        let opts = console.options();
+        let mut cols = Columns::new().with_padding((0, 0, 0, 0));
+        cols.add_renderable("hello"); // width 5
+        let m = cols.gilt_measure(&console, &opts);
+        // minimum = maximum = 5 (single item)
+        assert_eq!(m.minimum, 5, "minimum should be 5 for single 'hello'");
+        assert_eq!(m.maximum, 5, "maximum should be 5 for single 'hello'");
+    }
+
+    #[test]
+    fn columns_gilt_measure_multiple_items_fits_on_one_row() {
+        let console = make_console(80);
+        let opts = console.options();
+        // "aaa" = 3, "bbb" = 3, padding (0,1,0,1) -> width_padding = max(1,1) = 1
+        // minimum = 3 (widest single item)
+        // maximum = 3 + 3 + 1*(2-1) = 7 (all fit on one row with 1 inter-col padding)
+        let mut cols = Columns::new().with_padding((0, 1, 0, 1));
+        cols.add_renderable("aaa");
+        cols.add_renderable("bbb");
+        let m = cols.gilt_measure(&console, &opts);
+        assert_eq!(m.minimum, 3, "minimum should be widest single item (3)");
+        assert_eq!(
+            m.maximum, 7,
+            "maximum should be sum(3+3) + 1*(2-1) = 7"
+        );
+    }
+
+    #[test]
+    fn columns_gilt_measure_clamped_to_max_width() {
+        let console = make_console(10);
+        let opts = console.options();
+        // Items individually wider than console
+        let mut cols = Columns::new().with_padding((0, 0, 0, 0));
+        cols.add_renderable("hello world foo bar"); // 19 chars
+        cols.add_renderable("another long item"); // 17 chars
+        let m = cols.gilt_measure(&console, &opts);
+        assert!(
+            m.maximum <= 10,
+            "maximum must be clamped to options.max_width (10), got {}",
+            m.maximum
+        );
+    }
+
+    #[test]
+    fn columns_gilt_measure_minimum_is_widest_single_item() {
+        let console = make_console(80);
+        let opts = console.options();
+        let mut cols = Columns::new().with_padding((0, 0, 0, 0));
+        cols.add_renderable("a");      // 1
+        cols.add_renderable("bb");     // 2
+        cols.add_renderable("ccccc"); // 5
+        let m = cols.gilt_measure(&console, &opts);
+        assert_eq!(
+            m.minimum,
+            5,
+            "minimum should equal widest single item (5)"
+        );
     }
 }

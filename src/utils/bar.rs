@@ -141,6 +141,10 @@ impl fmt::Display for Bar {
 // ---------------------------------------------------------------------------
 
 impl Renderable for Bar {
+    fn gilt_measure(&self, console: &Console, options: &ConsoleOptions) -> Measurement {
+        self.measure(console, options)
+    }
+
     fn gilt_console(&self, _console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         let width = match self.width {
             Some(w) => w.min(options.max_width),
@@ -545,5 +549,35 @@ mod tests {
         assert!(debug.contains("Bar"));
         assert!(debug.contains("100"));
         assert!(debug.contains("50"));
+    }
+
+    // -- gilt_measure override -----------------------------------------------
+
+    #[test]
+    fn bar_gilt_measure_fixed_width_matches_standalone() {
+        let console = Console::builder().width(80).build();
+        let opts = make_options(80);
+        let bar = Bar::new(100.0, 0.0, 50.0).with_width(20);
+        let m_standalone = bar.measure(&console, &opts);
+        let m_trait = bar.gilt_measure(&console, &opts);
+        assert_eq!(
+            m_trait,
+            m_standalone,
+            "Bar::gilt_measure (fixed width) must delegate to Bar::measure"
+        );
+    }
+
+    #[test]
+    fn bar_gilt_measure_no_width_matches_standalone() {
+        let console = Console::builder().width(80).build();
+        let opts = make_options(80);
+        let bar = Bar::new(100.0, 0.0, 50.0);
+        let m_standalone = bar.measure(&console, &opts);
+        let m_trait = bar.gilt_measure(&console, &opts);
+        assert_eq!(
+            m_trait,
+            m_standalone,
+            "Bar::gilt_measure (no fixed width) must delegate to Bar::measure"
+        );
     }
 }

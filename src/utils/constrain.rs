@@ -62,6 +62,10 @@ impl Constrain {
 }
 
 impl Renderable for Constrain {
+    fn gilt_measure(&self, console: &Console, options: &ConsoleOptions) -> Measurement {
+        self.measure(console, options)
+    }
+
     fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         match self.width {
             None => self.renderable.gilt_console(console, options),
@@ -368,5 +372,37 @@ mod tests {
         let content_lines: Vec<&str> = output.split('\n').filter(|l| !l.is_empty()).collect();
         assert_eq!(content_lines.len(), 1);
         assert_eq!(content_lines[0], "Hello");
+    }
+
+    // -- gilt_measure override -----------------------------------------------
+
+    #[test]
+    fn constrain_gilt_measure_matches_standalone() {
+        let console = make_console(80);
+        let opts = console.options();
+        let text = Text::new("Hello, world!", Style::null());
+        let c = Constrain::new(text, Some(5));
+        let m_standalone = c.measure(&console, &opts);
+        let m_trait = c.gilt_measure(&console, &opts);
+        assert_eq!(
+            m_trait,
+            m_standalone,
+            "Constrain::gilt_measure must delegate to Constrain::measure"
+        );
+    }
+
+    #[test]
+    fn constrain_gilt_measure_no_width_matches_standalone() {
+        let console = make_console(80);
+        let opts = console.options();
+        let text = Text::new("Hello", Style::null());
+        let c = Constrain::new(text, None);
+        let m_standalone = c.measure(&console, &opts);
+        let m_trait = c.gilt_measure(&console, &opts);
+        assert_eq!(
+            m_trait,
+            m_standalone,
+            "Constrain::gilt_measure (no width) must delegate to Constrain::measure"
+        );
     }
 }

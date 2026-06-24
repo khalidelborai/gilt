@@ -65,6 +65,10 @@ impl Renderables {
 }
 
 impl Renderable for Renderables {
+    fn gilt_measure(&self, _console: &Console, _options: &ConsoleOptions) -> Measurement {
+        self.measure()
+    }
+
     fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         let mut segments = Vec::new();
         for item in &self.items {
@@ -513,5 +517,40 @@ mod tests {
         let first = lines[0].plain().to_string();
         assert_eq!(lines[0].cell_len(), 10);
         assert!(first.starts_with("hello"));
+    }
+
+    // -- gilt_measure override -----------------------------------------------
+
+    #[test]
+    fn renderables_gilt_measure_matches_standalone() {
+        let console = make_console();
+        let opts = console.options();
+        let items = vec![
+            Text::new("Hello", Style::null()),
+            Text::new("Hello, World!", Style::null()),
+            Text::new("Hi", Style::null()),
+        ];
+        let r = Renderables::new(items);
+        let m_standalone = r.measure();
+        let m_trait = r.gilt_measure(&console, &opts);
+        assert_eq!(
+            m_trait,
+            m_standalone,
+            "Renderables::gilt_measure must delegate to Renderables::measure"
+        );
+    }
+
+    #[test]
+    fn renderables_gilt_measure_empty_matches_standalone() {
+        let console = make_console();
+        let opts = console.options();
+        let r = Renderables::new(vec![]);
+        let m_standalone = r.measure();
+        let m_trait = r.gilt_measure(&console, &opts);
+        assert_eq!(
+            m_trait,
+            m_standalone,
+            "Renderables::gilt_measure (empty) must delegate to Renderables::measure"
+        );
     }
 }
