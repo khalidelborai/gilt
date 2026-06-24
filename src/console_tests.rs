@@ -2947,3 +2947,53 @@ fn test_console_measure_empty_default_renderable_returns_zero_max_width() {
         "empty default-measure maximum should be max_width (#3 fix)"
     );
 }
+
+// ---------------------------------------------------------------------------
+// Task 4.1: RenderableArc alias + into_renderable_arc helper
+// ---------------------------------------------------------------------------
+
+/// RenderableArc is Clone — cloning bumps the ref-count (no deep copy).
+#[test]
+fn renderable_arc_is_cloneable() {
+    use std::sync::Arc;
+    let arc: RenderableArc = Arc::new(Text::new("hello", Style::null()));
+    let arc2 = arc.clone();
+    // Both point to the same allocation.
+    assert!(Arc::ptr_eq(&arc, &arc2));
+}
+
+/// into_renderable_arc wraps a Text and the resulting arc renders non-empty output.
+#[test]
+fn into_renderable_arc_wraps_text_and_renders() {
+    let t = Text::new("world", Style::null());
+    let arc = into_renderable_arc(t);
+    let console = Console::builder()
+        .width(80)
+        .no_color(true)
+        .markup(false)
+        .build();
+    let opts = console.options();
+    let segments = arc.gilt_console(&console, &opts);
+    assert!(
+        !segments.is_empty(),
+        "into_renderable_arc should produce renderable segments"
+    );
+    let text: String = segments
+        .iter()
+        .filter(|s| !s.is_control())
+        .map(|s| s.text.as_str())
+        .collect();
+    assert!(
+        text.contains("world"),
+        "rendered text should contain 'world', got: {text:?}"
+    );
+}
+
+/// into_renderable_arc returns a clone-able arc.
+#[test]
+fn into_renderable_arc_clone_is_cheap() {
+    use std::sync::Arc;
+    let arc = into_renderable_arc(Text::new("cheap clone", Style::null()));
+    let arc2 = arc.clone();
+    assert!(Arc::ptr_eq(&arc, &arc2), "clone should be a ref-count bump");
+}

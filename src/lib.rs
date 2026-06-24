@@ -778,6 +778,7 @@ pub mod breadcrumbs;
 pub mod canvas;
 pub mod columns;
 pub mod console;
+pub use console::{into_renderable_arc, RenderableArc};
 pub mod console_caps;
 pub mod csv_table;
 pub mod diff;

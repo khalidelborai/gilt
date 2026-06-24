@@ -370,6 +370,41 @@ impl Renderable for String {
     }
 }
 
+// ---------------------------------------------------------------------------
+// RenderableArc — shared-ownership, type-erased renderable
+// ---------------------------------------------------------------------------
+
+/// Shared-ownership, type-erased renderable.  Cheap to clone (ref-counted).
+///
+/// This is the container/composition trait-object type used by [`Layout`] and
+/// [`Live`] — naming it avoids repeating the full `Arc<dyn Renderable + Send +
+/// Sync>` spelling throughout the codebase.
+///
+/// [`Layout`]: crate::layout::Layout
+/// [`Live`]: crate::live
+pub type RenderableArc = std::sync::Arc<dyn Renderable + Send + Sync>;
+
+/// Wrap any [`Renderable`] into a [`RenderableArc`].
+///
+/// This is a convenience function that boxes any `Renderable + Send + Sync`
+/// value into a reference-counted trait object.
+///
+/// # Example
+///
+/// ```rust
+/// use gilt::console::{into_renderable_arc, Console, ConsoleOptions};
+/// use gilt::text::Text;
+///
+/// let arc = into_renderable_arc(Text::new("hello"));
+/// let arc2 = arc.clone(); // cheap ref-count bump
+/// let console = Console::new();
+/// let opts = ConsoleOptions::default();
+/// assert!(!arc2.gilt_console(&console, &opts).is_empty());
+/// ```
+pub fn into_renderable_arc<R: Renderable + Send + Sync + 'static>(r: R) -> RenderableArc {
+    std::sync::Arc::new(r)
+}
+
 // ConsoleBuilder moved to console_builder.rs (v1.2 Phase 3 split).
 #[path = "console_builder.rs"]
 mod console_builder;
