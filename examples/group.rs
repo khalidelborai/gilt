@@ -20,7 +20,7 @@ fn main() {
 
     console.print(&Rule::with_title("Group — Direct Rendering"));
 
-    let items = vec![
+    let items: Vec<gilt::RenderableArc> = vec![
         Arc::new(Text::from_markup("[bold blue]Hello[/bold blue] from item one").unwrap()),
         Arc::new(Text::from_markup("[bold red]World[/bold red] from item two").unwrap()),
         Arc::new(Text::from_markup("[bold green]Goodbye[/bold green] from item three").unwrap()),
@@ -50,7 +50,7 @@ fn main() {
 
     console.print(&Rule::with_title("Fit Group"));
 
-    let items2 = vec![
+    let items2: Vec<gilt::RenderableArc> = vec![
         Arc::new(Text::from_markup("[bold magenta]Short").unwrap()),
         Arc::new(Text::from_markup("[dim]A slightly longer line here").unwrap()),
     ];

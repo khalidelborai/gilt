@@ -392,13 +392,14 @@ pub type RenderableArc = std::sync::Arc<dyn Renderable + Send + Sync>;
 /// # Example
 ///
 /// ```rust
-/// use gilt::console::{into_renderable_arc, Console, ConsoleOptions};
+/// use gilt::console::{into_renderable_arc, Console};
+/// use gilt::style::Style;
 /// use gilt::text::Text;
 ///
-/// let arc = into_renderable_arc(Text::new("hello"));
+/// let arc = into_renderable_arc(Text::new("hello", Style::null()));
 /// let arc2 = arc.clone(); // cheap ref-count bump
 /// let console = Console::new();
-/// let opts = ConsoleOptions::default();
+/// let opts = console.options();
 /// assert!(!arc2.gilt_console(&console, &opts).is_empty());
 /// ```
 pub fn into_renderable_arc<R: Renderable + Send + Sync + 'static>(r: R) -> RenderableArc {

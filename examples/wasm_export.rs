@@ -21,7 +21,7 @@ fn main() {
 
     // Build a small dashboard.
     console.print(
-        &Panel::from_renderable(&{
+        &Panel::from_renderable({
             let mut t = Table::new(&["Service", "Status", "Latency"]);
             t.add_row(&["api", "[bold green]healthy[/]", "[dim]43ms[/]"]);
             t.add_row(&["worker", "[bold green]healthy[/]", "[dim]120ms[/]"]);

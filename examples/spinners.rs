@@ -15,7 +15,7 @@ fn main() {
     names.sort();
     let spinners: Vec<Spinner> = names.iter().filter_map(|n| Spinner::new(n).ok()).collect();
     let panel = Panel::from_renderable(
-        &Columns::from_renderables(spinners)
+        Columns::from_renderables(spinners)
             .with_column_first(true)
             .with_expand(true),
     )
