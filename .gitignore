@@ -1,4 +1,5 @@
 /target
+/rust_out
 
 # macOS
 .DS_Store
