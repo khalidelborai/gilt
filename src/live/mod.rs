@@ -577,8 +577,10 @@ impl Live {
 
         // ── Phase 2: render + emit (brief lock) ──────────────────────────────
         if is_screen {
-            // Screen/alt-screen mode: render the content to Text via the live
-            // console first (so width/theme are correct), then wrap in Screen.
+            // Screen/alt-screen mode: wrap the renderable directly in Screen so
+            // segments (with their styles/SGR) are preserved all the way to the
+            // terminal.  The old path flattened styled segments to a plain String
+            // first, stripping all ANSI escapes (bug #25).
             let mut s = state.lock().unwrap();
             s.live_render.set_renderable(content.clone());
             s.live_render.vertical_overflow = vertical_overflow;
@@ -588,26 +590,7 @@ impl Live {
             // instead of appending below the previous frame.
             let home_ctrl = crate::control::Control::home();
             s.console.control(&home_ctrl);
-            // Convert the renderable to Text via the live console (use
-            // render_lines so the result is correct even when quiet=true).
-            let opts = s.console.options();
-            let lines = s
-                .console
-                .render_lines(content.as_ref(), Some(&opts), None, false, false);
-            let mut flat = String::new();
-            let line_count = lines.len();
-            for (i, line) in lines.iter().enumerate() {
-                for seg in line {
-                    if !seg.is_control() {
-                        flat.push_str(&seg.text);
-                    }
-                }
-                if i + 1 < line_count {
-                    flat.push('\n');
-                }
-            }
-            let text = Text::new(&flat, crate::style::Style::null());
-            let screen = Screen::new(text);
+            let screen = Screen::from_arc(content.clone());
             s.console.print(&screen);
             s.console.end_synchronized();
         } else {

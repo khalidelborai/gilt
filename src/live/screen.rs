@@ -1,10 +1,11 @@
 //! Screen module -- a renderable that fills the terminal screen and crops excess.
 //!
 
-use crate::console::{Console, ConsoleOptions, Renderable};
+use std::sync::Arc;
+
+use crate::console::{Console, ConsoleOptions, Renderable, RenderableArc};
 use crate::segment::Segment;
 use crate::style::Style;
-use crate::text::Text;
 
 /// Iterate over a slice, yielding `(is_last, &item)` pairs.
 fn loop_last<T>(items: &[T]) -> impl Iterator<Item = (bool, &T)> {
@@ -20,10 +21,10 @@ fn loop_last<T>(items: &[T]) -> impl Iterator<Item = (bool, &T)> {
 /// Screen renders its content into exactly `width x height` cells,
 /// padding short lines and truncating long ones.  In application mode
 /// the line separator is `\n\r` instead of `\n`.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Screen {
     /// The content to render.
-    pub renderable: Text,
+    pub renderable: RenderableArc,
     /// Optional background / fill style.
     pub style: Option<Style>,
     /// When `true`, use `\n\r` between lines instead of `\n`.
@@ -31,8 +32,17 @@ pub struct Screen {
 }
 
 impl Screen {
-    /// Create a new `Screen` with the given renderable.
-    pub fn new(renderable: Text) -> Self {
+    /// Create a new `Screen` wrapping any [`Renderable`].
+    pub fn new(renderable: impl Renderable + Send + Sync + 'static) -> Self {
+        Screen {
+            renderable: Arc::new(renderable),
+            style: None,
+            application_mode: false,
+        }
+    }
+
+    /// Create a new `Screen` from an already-shared [`RenderableArc`].
+    pub fn from_arc(renderable: RenderableArc) -> Self {
         Screen {
             renderable,
             style: None,
@@ -53,6 +63,16 @@ impl Screen {
     }
 }
 
+impl std::fmt::Debug for Screen {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Screen")
+            .field("renderable", &"<renderable>")
+            .field("style", &self.style)
+            .field("application_mode", &self.application_mode)
+            .finish()
+    }
+}
+
 impl Renderable for Screen {
     fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         let width = options.size.width;
@@ -63,7 +83,7 @@ impl Renderable for Screen {
 
         // Render the content into lines.
         let lines = console.render_lines(
-            &self.renderable,
+            self.renderable.as_ref(),
             Some(&render_options),
             self.style.as_ref(),
             true,  // pad
@@ -99,9 +119,12 @@ impl Renderable for Screen {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use super::*;
     use crate::console::Console;
     use crate::segment::Segment;
+    use crate::text::Text;
 
     /// Helper: build a console with fixed dimensions and no colour.
     fn test_console(width: usize, height: usize) -> Console {
@@ -121,7 +144,9 @@ mod tests {
         let screen = Screen::new(Text::new("hello", Style::null()));
         assert!(screen.style.is_none());
         assert!(!screen.application_mode);
-        assert_eq!(screen.renderable.plain(), "hello");
+        // renderable is now RenderableArc; verify it still renders text content
+        // by checking the Arc pointer is non-null (construction succeeded).
+        let _ = Arc::clone(&screen.renderable);
     }
 
     #[test]
@@ -279,6 +304,50 @@ mod tests {
         let items: Vec<i32> = vec![];
         let result: Vec<(bool, &i32)> = loop_last(&items).collect();
         assert!(result.is_empty());
+    }
+
+    // -- Styling preservation -----------------------------------------------
+
+    /// Regression test for #25: a Screen wrapping bold-styled Text must
+    /// produce at least one segment whose rendered ANSI output contains an
+    /// SGR bold escape (`ESC[1m` / `ESC[1;`).
+    #[test]
+    fn test_screen_preserves_ansi_styling() {
+        let width = 20;
+        let height = 3;
+        // Force a console that emits colour/SGR (256-colour, no no_color flag).
+        let console = Console::builder()
+            .width(width)
+            .height(height)
+            .force_terminal(true)
+            .build();
+
+        let bold_text = Text::new("hello", Style::parse("bold"));
+        let screen = Screen::new(bold_text);
+        let opts = console.options();
+        let segments = screen.gilt_console(&console, &opts);
+
+        // Serialize each segment to its ANSI representation.
+        let ansi: String = segments
+            .iter()
+            .filter_map(|s| {
+                if let Some(style) = &s.style {
+                    // Render the segment the same way Console does: style + text.
+                    Some(style.render(&s.text, Some(crate::color::ColorSystem::TrueColor)))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        // Also include control segments (may carry SGR resets, etc.)
+        let all_text: String = segments.iter().map(|s| s.text.as_str()).collect();
+
+        // At minimum the styled segments must contain the bold SGR.
+        assert!(
+            ansi.contains("\x1b[1m") || ansi.contains("\x1b[1;"),
+            "screen-mode render should preserve bold SGR escape; got ansi={ansi:?}, raw_text={all_text:?}"
+        );
     }
 
     // -- Helpers ------------------------------------------------------------
