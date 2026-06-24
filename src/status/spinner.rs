@@ -171,7 +171,7 @@ impl Spinner {
 }
 
 impl Renderable for Spinner {
-    fn gilt_console(&self, _console: &Console, _options: &ConsoleOptions) -> Vec<Segment> {
+    fn gilt_console(&self, console: &Console, _options: &ConsoleOptions) -> Vec<Segment> {
         // We need a mutable self to call render, so we clone and render at time 0.
         let mut spinner_clone = Spinner {
             name: self.name.clone(),
@@ -185,7 +185,7 @@ impl Renderable for Spinner {
             update_speed: self.update_speed,
         };
         let text = spinner_clone.render(0.0);
-        text.render()
+        text.render_themed(console)
     }
 }
 

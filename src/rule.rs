@@ -225,7 +225,7 @@ impl Renderable for Rule {
 
                         // Space + title + space
                         segments.push(Segment::new(" ", None, None));
-                        segments.extend(title_text.render().into_iter().filter(|s| s.text != "\n"));
+                        segments.extend(title_text.render_themed(console).into_iter().filter(|s| s.text != "\n"));
                         segments.push(Segment::new(" ", None, None));
 
                         // Right rule
@@ -252,7 +252,7 @@ impl Renderable for Rule {
                         let rule_width = width.saturating_sub(title_width + 2);
 
                         // Title + space
-                        segments.extend(title_text.render().into_iter().filter(|s| s.text != "\n"));
+                        segments.extend(title_text.render_themed(console).into_iter().filter(|s| s.text != "\n"));
                         segments.push(Segment::new(" ", None, None));
 
                         // Rule line
@@ -286,7 +286,7 @@ impl Renderable for Rule {
                         segments.push(Segment::new(" ", None, None));
 
                         // Title
-                        segments.extend(title_text.render().into_iter().filter(|s| s.text != "\n"));
+                        segments.extend(title_text.render_themed(console).into_iter().filter(|s| s.text != "\n"));
 
                         segments.push(Segment::new(&self.end, None, None));
                     }
@@ -576,5 +576,40 @@ mod tests {
         let rule = Rule::with_title("Section");
         let s = format!("{}", rule);
         assert!(s.contains("Section"));
+    }
+
+    // -- Named span resolution via theme ------------------------------------
+
+    #[test]
+    fn rule_title_resolves_named_span_through_theme() {
+        use crate::color::theme::Theme;
+        use crate::text::Span;
+        use std::collections::HashMap;
+
+        let mut styles = HashMap::new();
+        styles.insert("repr.number".to_string(), Style::parse("italic yellow"));
+        let theme = Theme::new(Some(styles), true);
+        let console = Console::builder()
+            .theme(theme)
+            .width(40)
+            .no_color(false)
+            .build();
+
+        // Build a Text with a named span
+        let mut title = Text::new("42", Style::null());
+        title.spans_mut().push(Span::named(0, 2, "repr.number"));
+
+        let mut rule = Rule::new();
+        rule.title = Some(title);
+        rule = rule.with_characters("-");
+
+        let opts = console.options();
+        let segs = rule.gilt_console(&console, &opts);
+
+        assert!(
+            segs.iter().any(|s| s.style().is_some_and(|st| st.italic() == Some(true))),
+            "rule title named span must resolve to italic via theme; got: {:?}",
+            segs.iter().filter(|s| s.text.contains("42")).collect::<Vec<_>>()
+        );
     }
 }

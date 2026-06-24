@@ -271,6 +271,7 @@ fn align_title_segments(
     align: HorizontalAlign,
     fill_char: char,
     border_style: &Style,
+    console: &Console,
 ) -> Vec<Segment> {
     let mut title_text = title.clone();
 
@@ -291,7 +292,7 @@ fn align_title_segments(
 
     // Render the title into segments (strip trailing newline from Text::render)
     let title_segments: Vec<Segment> = title_text
-        .render()
+        .render_themed(console)
         .into_iter()
         .filter(|s| s.text != "\n")
         .collect();
@@ -450,6 +451,7 @@ impl Renderable for Panel {
                     self.title_align,
                     bx.top,
                     &self.border_style,
+                    console,
                 );
                 segments.extend(title_segs);
 
@@ -530,6 +532,7 @@ impl Renderable for Panel {
                     self.subtitle_align,
                     bx.bottom_char,
                     &self.border_style,
+                    console,
                 );
                 segments.extend(sub_segs);
 

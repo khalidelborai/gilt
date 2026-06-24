@@ -815,9 +815,9 @@ impl Progress {
 }
 
 impl Renderable for Progress {
-    fn gilt_console(&self, _console: &Console, _options: &ConsoleOptions) -> Vec<Segment> {
+    fn gilt_console(&self, console: &Console, _options: &ConsoleOptions) -> Vec<Segment> {
         let text = self.render_tasks_text();
-        text.render()
+        text.render_themed(console)
     }
 }
 
