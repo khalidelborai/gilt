@@ -1929,6 +1929,27 @@ fn test_export_svg_static_unique_id_overrides_hash() {
     );
 }
 
+// -- SVG line-cropping (#22) --------------------------------------------
+
+/// Width-10 console, raw `out()` bypasses crop — SVG must NOT contain the uncropped run.
+#[test]
+fn test_export_svg_lines_cropped_to_width() {
+    let mut console = Console::builder()
+        .width(10)
+        .record(true)
+        .no_color(true)
+        .markup(false)
+        .build();
+    // out() skips the wrap/crop pipeline — the record buffer gets the full 20 X's.
+    // build_svg_text must crop them to width=10.
+    console.out("XXXXXXXXXXXXXXXXXXXX", None); // 20 X's
+    let svg = console.export_svg("Crop", None, false, Some("testid"), 0.61);
+    assert!(
+        !svg.contains("XXXXXXXXXXXXXXXXXXXX"),
+        "SVG must not contain the uncropped 20-char run; got:\n{svg}"
+    );
+}
+
 // -- Console::stderr() smoke test ----------------------------------------
 
 /// Smoke-test: `Console::stderr()` constructs without panicking and routes

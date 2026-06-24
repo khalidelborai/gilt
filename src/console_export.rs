@@ -108,9 +108,11 @@ pub(super) fn build_svg_chrome(
     chrome
 }
 
-/// Build the SVG text content from segments.
+/// Build the SVG text content from segments, cropping each line to `width` cells.
+#[allow(clippy::too_many_arguments)]
 pub(super) fn build_svg_text(
     buffer: &[Segment],
+    width: usize,
     theme: &TerminalTheme,
     unique_id: &str,
     char_width: f64,
@@ -126,35 +128,21 @@ pub(super) fn build_svg_text(
     let mut style_cache: Vec<(String, String)> = Vec::new();
     let mut y = padding_top + line_height;
     let mut x: f64;
-    let mut line_segments: Vec<Vec<(String, Option<Style>)>> = Vec::new();
 
-    // Split buffer into lines
-    let mut current_line: Vec<(String, Option<Style>)> = Vec::new();
-    for seg in buffer {
-        if seg.is_control() {
-            continue;
-        }
-        let parts: Vec<&str> = seg.text.split('\n').collect();
-        for (i, part) in parts.iter().enumerate() {
-            if !part.is_empty() {
-                current_line.push((part.to_string(), seg.style().cloned()));
-            }
-            if i + 1 < parts.len() {
-                line_segments.push(std::mem::take(&mut current_line));
-            }
-        }
-    }
-    if !current_line.is_empty() {
-        line_segments.push(current_line);
-    }
+    // Split and crop each line to the console width (rich parity: split_and_crop_lines).
+    let line_segments = Segment::split_and_crop_lines(buffer, width, None, false, false);
 
     for line in &line_segments {
         x = padding_left;
-        for (text, style) in line {
+        for seg in line {
+            if seg.is_control() {
+                continue;
+            }
+            let text = &seg.text;
             let escaped = svg_escape(text);
             let text_width = cell_len(text) as f64 * char_width;
 
-            if let Some(ref style) = style {
+            if let Some(ref style) = seg.style {
                 // Background
                 if let Some(bgcolor) = style.bgcolor() {
                     let bg_triplet = bgcolor.get_truecolor(Some(theme), false);
@@ -700,34 +688,9 @@ impl Console {
             &derived_id
         };
 
-        // Finding #10: split multi-newline segments into per-line owned Segments.
-        let text_lines: Vec<Vec<Segment>> = {
-            let mut lines: Vec<Vec<Segment>> = Vec::new();
-            let mut current: Vec<Segment> = Vec::new();
-            for seg in buffer_ref {
-                if seg.is_control() {
-                    continue;
-                }
-                if seg.text.contains('\n') {
-                    let parts: Vec<&str> = seg.text.split('\n').collect();
-                    for (i, part) in parts.iter().enumerate() {
-                        if !part.is_empty() {
-                            // Create an owned sub-segment carrying the original style.
-                            current.push(Segment::new(part, seg.style().cloned(), None));
-                        }
-                        if i + 1 < parts.len() {
-                            lines.push(std::mem::take(&mut current));
-                        }
-                    }
-                } else {
-                    current.push(seg.clone());
-                }
-            }
-            if !current.is_empty() {
-                lines.push(current);
-            }
-            lines
-        };
+        // Split and crop to get accurate line count for height calculation.
+        let text_lines =
+            Segment::split_and_crop_lines(buffer_ref, self.width(), None, false, false);
 
         let char_height = 20.0_f64;
         let line_height = char_height * 1.22;
@@ -755,9 +718,9 @@ impl Console {
         // Build the chrome (window decorations)
         let chrome = build_svg_chrome(terminal_width, terminal_height, theme, title, unique_id);
 
-        // Build the text matrix (pass buffer_ref so build_svg_text doesn't need the split lines)
         let (matrix, backgrounds, styles, lines_defs) = build_svg_text(
             buffer_ref,
+            self.width(),
             theme,
             unique_id,
             char_width,
@@ -863,32 +826,9 @@ impl Console {
             &derived_id
         };
 
-        let text_lines: Vec<Vec<Segment>> = {
-            let mut lines: Vec<Vec<Segment>> = Vec::new();
-            let mut current: Vec<Segment> = Vec::new();
-            for seg in buffer_ref {
-                if seg.is_control() {
-                    continue;
-                }
-                if seg.text.contains('\n') {
-                    let parts: Vec<&str> = seg.text.split('\n').collect();
-                    for (i, part) in parts.iter().enumerate() {
-                        if !part.is_empty() {
-                            current.push(Segment::new(part, seg.style().cloned(), None));
-                        }
-                        if i + 1 < parts.len() {
-                            lines.push(std::mem::take(&mut current));
-                        }
-                    }
-                } else {
-                    current.push(seg.clone());
-                }
-            }
-            if !current.is_empty() {
-                lines.push(current);
-            }
-            lines
-        };
+        // Split and crop to get accurate line count for height calculation.
+        let text_lines =
+            Segment::split_and_crop_lines(buffer_ref, self.width(), None, false, false);
 
         let char_height = 20.0_f64;
         let line_height = char_height * 1.22;
@@ -922,6 +862,7 @@ impl Console {
 
         let (matrix, backgrounds, styles, lines_defs) = build_svg_text(
             buffer_ref,
+            self.width(),
             theme,
             unique_id,
             char_width,
