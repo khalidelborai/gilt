@@ -615,11 +615,12 @@ fn truncate_debug_strings(s: &str, max_string: usize) -> String {
                             let kept: String = content.chars().take(max_string).collect();
                             let remaining = char_count - max_string;
                             result.push_str(&kept);
+                            result.push('"');
                             result.push_str(&format!("+{}", remaining));
                         } else {
                             result.push_str(&content);
+                            result.push('"');
                         }
-                        result.push('"');
                         break;
                     }
                     Some((_, '\\')) => {

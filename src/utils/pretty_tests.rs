@@ -626,6 +626,41 @@ fn test_rebuild_debug_max_string() {
     );
 }
 
+// -- Task 1.4: truncate_debug_strings places +N OUTSIDE the closing quote ------
+// rich renders truncated debug strings as "kept"+N not "kept+N".
+// Audit #32: the suffix was being appended before the closing quote.
+
+#[test]
+fn truncate_debug_string_places_suffix_outside_quote() {
+    // Input: a quoted string of 10 chars; max_string = 5 → 5 kept, +5 suffix.
+    // Expected form: "abcde"+5   NOT  "abcde+5"
+    let out = truncate_debug_strings("\"abcdefghij\"", 5);
+    assert!(
+        out.contains("\"+5"),
+        "suffix must be outside the closing quote — got: {out:?}"
+    );
+    assert!(
+        !out.contains("j+"),
+        "suffix must not appear inside the quote — got: {out:?}"
+    );
+    // Also verify the kept portion and the closing structure
+    assert!(out.starts_with("\"abcde\""), "unexpected prefix: {out:?}");
+}
+
+#[test]
+fn truncate_debug_string_short_string_unchanged() {
+    // Strings within the limit must not be touched.
+    let out = truncate_debug_strings("\"hello\"", 10);
+    assert_eq!(out, "\"hello\"", "short string should be unchanged");
+}
+
+#[test]
+fn truncate_debug_string_exact_limit_unchanged() {
+    // String whose length equals max_string must not be truncated.
+    let out = truncate_debug_strings("\"hello\"", 5);
+    assert_eq!(out, "\"hello\"", "string at the limit should be unchanged");
+}
+
 // -- max_depth tests --------------------------------------------------------
 
 #[cfg(feature = "json")]
