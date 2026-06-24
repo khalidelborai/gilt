@@ -191,17 +191,12 @@ impl Console {
             self.print_styled(renderable, None, None, None, false, true, self.soft_wrap);
             return;
         }
-        // Collect raw pointers to avoid simultaneous borrows of self.
-        // Safety: the Vec is not mutated during iteration; raw ptrs remain valid.
-        let hook_ptrs: Vec<*const dyn crate::console::RenderHook> = self
-            .render_hooks
-            .iter()
-            .map(|h| h.as_ref() as *const dyn crate::console::RenderHook)
-            .collect();
+        let hooks = std::mem::take(&mut self.render_hooks);
         let mut current: Vec<&dyn Renderable> = vec![renderable];
-        for ptr in hook_ptrs {
-            current = unsafe { (*ptr).process_renderables(current) };
+        for hook in &hooks {
+            current = hook.process_renderables(current);
         }
+        self.render_hooks = hooks;
         if let Some(r) = current.last().copied() {
             self.print_styled(r, None, None, None, false, true, self.soft_wrap);
         }
