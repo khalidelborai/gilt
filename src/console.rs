@@ -510,7 +510,6 @@ pub struct Console {
     highlighter: Box<dyn crate::utils::highlighter::Highlighter + Send + Sync>,
     no_color: bool,
     quiet: bool,
-    #[allow(dead_code)] // Reserved for future safe box-drawing fallback
     safe_box: bool,
     legacy_windows: bool,
     base_style: Option<Style>,
@@ -1021,6 +1020,16 @@ impl Console {
             crate::color::color_env::TtyOverride::ForceNotTty => false,
             crate::color::color_env::TtyOverride::None => self.is_terminal(),
         }
+    }
+
+    /// Whether safe-box substitution is enabled for this console.
+    ///
+    /// When `true`, non-ASCII box-drawing characters are substituted with
+    /// simpler Unicode equivalents on legacy-Windows terminals, or with ASCII
+    /// when the encoding is not UTF-based.  Widgets that have their own
+    /// `safe_box: Option<bool>` field should use this as the fallback default.
+    pub fn safe_box(&self) -> bool {
+        self.safe_box
     }
 
     /// Whether this is a "dumb" terminal with no styling support.

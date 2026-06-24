@@ -226,12 +226,7 @@ impl BoxChars {
                 self.foot_row_cross,
                 self.foot_row_right,
             ),
-            RowLevel::Mid => (
-                self.mid_left,
-                self.row_horizontal,
-                self.mid_vertical,
-                self.mid_right,
-            ),
+            RowLevel::Mid => (self.mid_left, ' ', self.mid_vertical, self.mid_right),
         };
 
         let cap = widths.iter().sum::<usize>() * 3 + widths.len() + if edge { 2 } else { 0 };
@@ -273,46 +268,51 @@ impl BoxChars {
         s
     }
 
-    /// Return an ASCII-compatible box when `ascii_only` is true and this box
-    /// is not already marked ASCII.
+    /// Return a substituted box for the given terminal capabilities.
     ///
-    /// Matches rich's substitution table: when ascii output is requested and
-    /// the box is not already ASCII, return `&ASCII`.  Within that, rich also
-    /// performs legacy-Windows "safe" substitutions first (ROUNDED→SQUARE,
-    /// MINIMAL_HEAVY_HEAD→MINIMAL, SIMPLE_HEAVY→SIMPLE, HEAVY/HEAVY_EDGE/
-    /// HEAVY_HEAD→SQUARE), but since we only have `ascii_only` as input we
-    /// apply those as a pre-pass and then fall through to `&ASCII` for any
-    /// remaining non-ASCII box.
+    /// - `ascii_only`: encoding is not UTF-based → always returns `&ASCII` for
+    ///   any non-ASCII box (rich parity).
+    /// - `legacy_windows`: the console is running on a legacy Windows terminal
+    ///   that supports Unicode but not all box styles.  When `true` (and
+    ///   `ascii_only` is false), applies the rich legacy-Windows safe
+    ///   substitutions: ROUNDED/HEAVY/HEAVY_EDGE/HEAVY_HEAD→SQUARE,
+    ///   MINIMAL_HEAVY_HEAD/SIMPLE_HEAVY→MINIMAL/SIMPLE,
+    ///   DOUBLE/DOUBLE_EDGE→SQUARE.  Boxes that are already "safe" are
+    ///   returned unchanged.
     ///
-    /// If `ascii_only` is false, or the box is already ASCII, returns `self`.
-    pub fn substitute(&self, ascii_only: bool) -> &BoxChars {
-        if !ascii_only {
-            return self;
+    /// If neither flag is set, or the box is already ASCII, returns `self`.
+    pub fn substitute(&self, ascii_only: bool, legacy_windows: bool) -> &BoxChars {
+        if ascii_only {
+            // Already ASCII — nothing to do.
+            if self.ascii {
+                return self;
+            }
+            // Any non-ASCII box → ASCII (rich parity).
+            return &ASCII;
         }
-        // Already ASCII — nothing to do.
-        if self.ascii {
-            return self;
+        if legacy_windows && !self.ascii {
+            // Apply rich's legacy-Windows safe substitutions.
+            // Fingerprint: (top_left, head_row_horizontal)
+            return match (self.top_left, self.head_row_horizontal) {
+                // ROUNDED: ╭─  → SQUARE
+                ('\u{256D}', '\u{2500}') => &SQUARE,
+                // HEAVY: ┏━ with heavy cross ╋  → SQUARE
+                ('\u{250F}', '\u{2501}') if self.head_row_cross == '\u{254B}' => &SQUARE,
+                // HEAVY_EDGE: ┏─  → SQUARE
+                ('\u{250F}', '\u{2500}') => &SQUARE,
+                // HEAVY_HEAD: ┏━ with mixed cross ╇  → SQUARE
+                ('\u{250F}', '\u{2501}') if self.head_row_cross == '\u{2547}' => &SQUARE,
+                // MINIMAL_HEAVY_HEAD: ·━ with ┿  → MINIMAL
+                (' ', '\u{2501}') if self.head_row_cross == '\u{253F}' => &MINIMAL,
+                // SIMPLE_HEAVY: ·━ otherwise  → SIMPLE
+                (' ', '\u{2501}') => &SIMPLE,
+                // DOUBLE / DOUBLE_EDGE: ╔═  → SQUARE
+                ('\u{2554}', '\u{2550}') => &SQUARE,
+                // All other boxes are considered safe on legacy-Windows.
+                _ => self,
+            };
         }
-        // Apply legacy-Windows safe substitutions first (keeps Unicode but
-        // swaps heavy/rounded for simpler equivalents), then fall through to
-        // ASCII for everything else — matching rich's ascii_only branch which
-        // unconditionally returns ASCII for any non-ASCII box.
-        //
-        // Fingerprint: (top_left, head_row_horizontal)
-        match (self.top_left, self.head_row_horizontal) {
-            // ROUNDED: top_left='╭', head_row_horizontal='─'  → SQUARE (safe sub), then ASCII
-            ('\u{256D}', '\u{2500}') => &ASCII,
-            // MINIMAL_HEAVY_HEAD: top_left=' ', head_row_horizontal='━', cross='┿'
-            (' ', '\u{2501}') if self.head_row_cross == '\u{253F}' => &ASCII,
-            // SIMPLE_HEAVY: top_left=' ', head_row_horizontal='━', cross='━'
-            (' ', '\u{2501}') => &ASCII,
-            // HEAVY / HEAVY_HEAD: top_left='┏', head_row_horizontal='━'
-            ('\u{250F}', '\u{2501}') => &ASCII,
-            // HEAVY_EDGE: top_left='┏', head_row_horizontal='─'
-            ('\u{250F}', '\u{2500}') => &ASCII,
-            // All other non-ASCII boxes → ASCII (rich parity)
-            _ => &ASCII,
-        }
+        self
     }
 
     /// Return a plain-headed variant of this box style.
@@ -633,7 +633,7 @@ mod tests {
 
     #[test]
     fn test_substitute_not_ascii() {
-        let b = SQUARE.substitute(false);
+        let b = SQUARE.substitute(false, false);
         assert_eq!(b.top_left, '┌');
     }
 
@@ -642,40 +642,40 @@ mod tests {
 
     #[test]
     fn test_substitute_rounded_to_ascii() {
-        // was: ROUNDED -> SQUARE; rich: ROUNDED -> ASCII
-        let b = ROUNDED.substitute(true);
+        // ascii_only=true: ROUNDED -> ASCII
+        let b = ROUNDED.substitute(true, false);
         assert_eq!(b.top_left, '+');
         assert!(b.ascii);
     }
 
     #[test]
     fn test_substitute_heavy_to_ascii() {
-        // was: HEAVY -> SQUARE; rich: HEAVY -> ASCII
-        let b = HEAVY.substitute(true);
+        // ascii_only=true: HEAVY -> ASCII
+        let b = HEAVY.substitute(true, false);
         assert_eq!(b.top_left, '+');
         assert!(b.ascii);
     }
 
     #[test]
     fn test_substitute_heavy_edge_to_ascii() {
-        // was: HEAVY_EDGE -> SQUARE; rich: -> ASCII
-        let b = HEAVY_EDGE.substitute(true);
+        // ascii_only=true: HEAVY_EDGE -> ASCII
+        let b = HEAVY_EDGE.substitute(true, false);
         assert_eq!(b.top_left, '+');
         assert!(b.ascii);
     }
 
     #[test]
     fn test_substitute_simple_heavy_to_ascii() {
-        // was: SIMPLE_HEAVY -> SIMPLE; rich: -> ASCII
-        let b = SIMPLE_HEAVY.substitute(true);
+        // ascii_only=true: SIMPLE_HEAVY -> ASCII
+        let b = SIMPLE_HEAVY.substitute(true, false);
         assert_eq!(b.top_left, '+');
         assert!(b.ascii);
     }
 
     #[test]
     fn test_substitute_minimal_heavy_head_to_ascii() {
-        // was: MINIMAL_HEAVY_HEAD -> MINIMAL; rich: -> ASCII
-        let b = MINIMAL_HEAVY_HEAD.substitute(true);
+        // ascii_only=true: MINIMAL_HEAVY_HEAD -> ASCII
+        let b = MINIMAL_HEAVY_HEAD.substitute(true, false);
         assert_eq!(b.top_left, '+');
         assert!(b.ascii);
     }
@@ -683,7 +683,7 @@ mod tests {
     #[test]
     fn test_substitute_square_to_ascii() {
         // SQUARE is not ASCII-flagged; ascii_only -> ASCII
-        let b = SQUARE.substitute(true);
+        let b = SQUARE.substitute(true, false);
         assert_eq!(b.top_left, '+');
         assert!(b.ascii);
     }
@@ -691,7 +691,89 @@ mod tests {
     #[test]
     fn test_substitute_ascii_unchanged() {
         // Already-ASCII boxes must be returned as-is
-        let b = ASCII.substitute(true);
+        let b = ASCII.substitute(true, false);
+        assert_eq!(b.top_left, '+');
+        assert!(b.ascii);
+    }
+
+    // ── legacy_windows substitution tests ───────────────────────────────────
+
+    #[test]
+    fn test_substitute_legacy_windows_rounded_to_square() {
+        // legacy_windows=true, not ascii_only: ROUNDED → SQUARE (simpler Unicode)
+        let b = ROUNDED.substitute(false, true);
+        assert_eq!(
+            b.top_left, '┌',
+            "ROUNDED should map to SQUARE on legacy-windows"
+        );
+        assert!(!b.ascii);
+    }
+
+    #[test]
+    fn test_substitute_legacy_windows_heavy_to_square() {
+        // HEAVY → SQUARE
+        let b = HEAVY.substitute(false, true);
+        assert_eq!(
+            b.top_left, '┌',
+            "HEAVY should map to SQUARE on legacy-windows"
+        );
+    }
+
+    #[test]
+    fn test_substitute_legacy_windows_double_to_square() {
+        // DOUBLE → SQUARE
+        let b = DOUBLE.substitute(false, true);
+        assert_eq!(
+            b.top_left, '┌',
+            "DOUBLE should map to SQUARE on legacy-windows"
+        );
+    }
+
+    #[test]
+    fn test_substitute_legacy_windows_minimal_heavy_head_to_minimal() {
+        // MINIMAL_HEAVY_HEAD → MINIMAL
+        let b = MINIMAL_HEAVY_HEAD.substitute(false, true);
+        // MINIMAL top_left is ' '
+        assert_eq!(
+            b.top_left, ' ',
+            "MINIMAL_HEAVY_HEAD should map to MINIMAL on legacy-windows"
+        );
+        assert_eq!(b.head_row_horizontal, '─');
+    }
+
+    #[test]
+    fn test_substitute_legacy_windows_simple_heavy_to_simple() {
+        // SIMPLE_HEAVY → SIMPLE
+        let b = SIMPLE_HEAVY.substitute(false, true);
+        assert_eq!(
+            b.top_left, ' ',
+            "SIMPLE_HEAVY should map to SIMPLE on legacy-windows"
+        );
+        assert_eq!(b.head_row_horizontal, '─');
+    }
+
+    #[test]
+    fn test_substitute_legacy_windows_square_unchanged() {
+        // SQUARE is already safe on legacy-windows
+        let b = SQUARE.substitute(false, true);
+        assert_eq!(
+            b.top_left, '┌',
+            "SQUARE should be unchanged on legacy-windows"
+        );
+    }
+
+    #[test]
+    fn test_substitute_legacy_windows_ascii_unchanged() {
+        // ASCII box should pass through untouched
+        let b = ASCII.substitute(false, true);
+        assert_eq!(b.top_left, '+');
+        assert!(b.ascii);
+    }
+
+    #[test]
+    fn test_substitute_ascii_overrides_legacy_windows() {
+        // When both ascii_only=true and legacy_windows=true, ascii_only wins
+        let b = ROUNDED.substitute(true, true);
         assert_eq!(b.top_left, '+');
         assert!(b.ascii);
     }

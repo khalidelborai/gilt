@@ -1269,8 +1269,9 @@ impl Table {
         let the_box: Option<&BoxChars> = self.box_chars.map(|b| {
             let safe = self.safe_box.unwrap_or(true);
             let ascii_only = options.ascii_only();
+            let legacy_windows = options.legacy_windows;
             let substituted = if ascii_only || safe {
-                b.substitute(ascii_only)
+                b.substitute(ascii_only, legacy_windows)
             } else {
                 b
             };
