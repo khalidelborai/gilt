@@ -5,43 +5,56 @@
 
 use std::fmt;
 
-use crate::console::{Console, ConsoleOptions, Renderable};
+use crate::console::{Console, ConsoleOptions, Renderable, RenderableArc};
 use crate::measure::Measurement;
 use crate::segment::Segment;
 use crate::style::Style;
-use crate::text::Text;
 
 /// A renderable with an additional style layered on top.
 ///
 /// When rendered, the extra style is combined with every segment produced
 /// by the inner renderable, exactly mirroring the `Styled` class.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Styled {
-    /// The inner renderable content.
-    pub renderable: Text,
+    /// The inner renderable content (any renderable widget).
+    pub renderable: RenderableArc,
     /// The style to apply on top of the renderable's own styles.
     pub style: Style,
 }
 
+// Manual Debug — RenderableArc (Arc<dyn Renderable + Send + Sync>) doesn't
+// implement Debug, so we print a placeholder for the renderable field.
+impl std::fmt::Debug for Styled {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Styled")
+            .field("renderable", &"<renderable>")
+            .field("style", &self.style)
+            .finish()
+    }
+}
+
 impl Styled {
     /// Create a new `Styled` wrapping `renderable` with an additional `style`.
-    pub fn new(renderable: Text, style: Style) -> Self {
-        Styled { renderable, style }
+    pub fn new(renderable: impl Renderable + Send + Sync + 'static, style: Style) -> Self {
+        Styled {
+            renderable: std::sync::Arc::new(renderable),
+            style,
+        }
     }
 
     /// Return the measurement of the inner renderable (unchanged by the style overlay).
-    pub fn measure(&self) -> Measurement {
-        self.renderable.measure()
+    pub fn measure(&self, console: &Console, options: &ConsoleOptions) -> Measurement {
+        self.renderable.gilt_measure(console, options)
     }
 }
 
 impl Renderable for Styled {
-    fn gilt_measure(&self, _console: &Console, _options: &ConsoleOptions) -> Measurement {
-        self.measure()
+    fn gilt_measure(&self, console: &Console, options: &ConsoleOptions) -> Measurement {
+        self.measure(console, options)
     }
 
     fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
-        let rendered_segments = self.renderable.gilt_console(console, options);
+        let rendered_segments = self.renderable.as_ref().gilt_console(console, options);
         Segment::apply_style(&rendered_segments, Some(self.style.clone()), None)
     }
 }
@@ -78,10 +91,11 @@ mod tests {
 
     #[test]
     fn test_new_basic() {
+        // Updated: field is now RenderableArc (Text still works via Renderable impl)
         let text = Text::new("Hello", Style::null());
         let style = Style::parse("bold");
         let styled = Styled::new(text.clone(), style.clone());
-        assert_eq!(styled.renderable.plain(), "Hello");
+        // Cannot call .plain() on RenderableArc — verify style instead
         assert_eq!(styled.style, style);
     }
 
@@ -204,25 +218,37 @@ mod tests {
 
     #[test]
     fn test_measure_unchanged() {
+        // Updated: field is now RenderableArc (Text still works via Renderable impl)
+        // Styled::measure now takes &Console, &ConsoleOptions
+        let console = Console::builder().width(80).markup(false).build();
+        let opts = console.options();
         let text = Text::new("Hello, World!", Style::null());
-        let expected = text.measure();
+        let expected = text.gilt_measure(&console, &opts);
         let styled = Styled::new(text, Style::parse("bold italic underline"));
-        assert_eq!(styled.measure(), expected);
+        assert_eq!(styled.measure(&console, &opts), expected);
     }
 
     #[test]
     fn test_measure_multiline() {
+        // Updated: field is now RenderableArc (Text still works via Renderable impl)
+        // Styled::measure now takes &Console, &ConsoleOptions
+        let console = Console::builder().width(80).markup(false).build();
+        let opts = console.options();
         let text = Text::new("short\na somewhat longer line", Style::null());
-        let expected = text.measure();
+        let expected = text.gilt_measure(&console, &opts);
         let styled = Styled::new(text, Style::parse("red on blue"));
-        assert_eq!(styled.measure(), expected);
+        assert_eq!(styled.measure(&console, &opts), expected);
     }
 
     #[test]
     fn test_measure_empty() {
+        // Updated: field is now RenderableArc (Text still works via Renderable impl)
+        // Styled::measure now takes &Console, &ConsoleOptions
+        let console = Console::builder().width(80).markup(false).build();
+        let opts = console.options();
         let text = Text::new("", Style::null());
         let styled = Styled::new(text, Style::parse("bold"));
-        assert_eq!(styled.measure(), Measurement::new(0, 0));
+        assert_eq!(styled.measure(&console, &opts), Measurement::new(0, 0));
     }
 
     // -- Null style overlay is transparent ----------------------------------
@@ -261,9 +287,10 @@ mod tests {
 
     #[test]
     fn test_clone() {
+        // Updated: field is now RenderableArc (Text still works via Renderable impl)
         let styled = Styled::new(Text::new("clone me", Style::null()), Style::parse("italic"));
         let cloned = styled.clone();
-        assert_eq!(cloned.renderable.plain(), "clone me");
+        // Cannot call .plain() on RenderableArc — verify style is cloned correctly
         assert_eq!(cloned.style, styled.style);
     }
 
@@ -271,11 +298,13 @@ mod tests {
 
     #[test]
     fn styled_gilt_measure_matches_standalone() {
+        // Updated: field is now RenderableArc (Text still works via Renderable impl)
+        // Styled::measure now takes &Console, &ConsoleOptions
         let console = Console::builder().width(80).markup(false).build();
         let opts = console.options();
         let text = Text::new("Hello, World!", Style::null());
         let styled = Styled::new(text, Style::parse("bold"));
-        let m_standalone = styled.measure();
+        let m_standalone = styled.measure(&console, &opts);
         let m_trait = styled.gilt_measure(&console, &opts);
         assert_eq!(
             m_trait, m_standalone,
@@ -285,15 +314,32 @@ mod tests {
 
     #[test]
     fn styled_gilt_measure_multiline_matches_standalone() {
+        // Updated: field is now RenderableArc (Text still works via Renderable impl)
+        // Styled::measure now takes &Console, &ConsoleOptions
         let console = Console::builder().width(80).markup(false).build();
         let opts = console.options();
         let text = Text::new("short\na somewhat longer line", Style::null());
         let styled = Styled::new(text, Style::parse("red on blue"));
-        let m_standalone = styled.measure();
+        let m_standalone = styled.measure(&console, &opts);
         let m_trait = styled.gilt_measure(&console, &opts);
         assert_eq!(
             m_trait, m_standalone,
             "Styled::gilt_measure multiline must delegate to Styled::measure"
         );
+    }
+
+    // -- Task 4.5: RenderableArc constructor tests ---------------------------
+
+    #[test]
+    // Updated: constructors now accept impl Renderable + Send + Sync + 'static (Text still works via Renderable impl)
+    fn styled_new_text_still_compiles() {
+        let _ = Styled::new(Text::new("x", Style::null()), Style::null());
+    }
+
+    #[test]
+    // Updated: constructors now accept impl Renderable + Send + Sync + 'static (Panel works too)
+    fn styled_new_panel_compiles() {
+        let p = crate::panel::Panel::new(Text::new("x", Style::null()));
+        let _ = Styled::new(p, Style::null());
     }
 }

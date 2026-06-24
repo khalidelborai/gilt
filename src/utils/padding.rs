@@ -1,11 +1,10 @@
 //! Padding widget -- adds whitespace around renderable content.
 //!
 
-use crate::console::{Console, ConsoleOptions, Renderable};
+use crate::console::{Console, ConsoleOptions, Renderable, RenderableArc};
 use crate::measure::Measurement;
 use crate::segment::Segment;
 use crate::style::Style;
-use crate::text::Text;
 
 // ---------------------------------------------------------------------------
 // PaddingDimensions
@@ -55,11 +54,11 @@ impl From<(usize, usize, usize, usize)> for PaddingDimensions {
 // Padding
 // ---------------------------------------------------------------------------
 
-/// A renderable that adds whitespace padding around `Text` content.
-#[derive(Debug, Clone)]
+/// A renderable that adds whitespace padding around renderable content.
+#[derive(Clone)]
 pub struct Padding {
-    /// The inner content to pad.
-    pub content: Text,
+    /// The inner content to pad (any renderable widget).
+    pub content: RenderableArc,
     /// Top padding (blank lines above content).
     pub top: usize,
     /// Right padding (spaces after each content line).
@@ -74,6 +73,22 @@ pub struct Padding {
     pub expand: bool,
 }
 
+// Manual Debug — RenderableArc (Arc<dyn Renderable + Send + Sync>) doesn't
+// implement Debug, so we print a placeholder for the content field.
+impl std::fmt::Debug for Padding {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Padding")
+            .field("content", &"<renderable>")
+            .field("top", &self.top)
+            .field("right", &self.right)
+            .field("bottom", &self.bottom)
+            .field("left", &self.left)
+            .field("style", &self.style)
+            .field("expand", &self.expand)
+            .finish()
+    }
+}
+
 impl Padding {
     /// Wrap content in padding with default style and `expand: true`.
     /// `pad` accepts `usize` (uniform), `(v, h)`, or `(t, r, b, l)`. For
@@ -83,15 +98,23 @@ impl Padding {
     /// # use gilt::{padding::Padding, text::Text, style::Style};
     /// let p = Padding::wrap(Text::new("Hello", Style::null()), (2, 4));
     /// ```
-    pub fn wrap(content: Text, pad: impl Into<PaddingDimensions>) -> Self {
+    pub fn wrap(
+        content: impl Renderable + Send + Sync + 'static,
+        pad: impl Into<PaddingDimensions>,
+    ) -> Self {
         Self::new(content, pad.into(), Style::null(), true)
     }
 
     /// Create a new `Padding` around the given content.
-    pub fn new(content: Text, pad: PaddingDimensions, style: Style, expand: bool) -> Self {
+    pub fn new(
+        content: impl Renderable + Send + Sync + 'static,
+        pad: PaddingDimensions,
+        style: Style,
+        expand: bool,
+    ) -> Self {
         let (top, right, bottom, left) = pad.unpack();
         Padding {
-            content,
+            content: std::sync::Arc::new(content),
             top,
             right,
             bottom,
@@ -102,7 +125,7 @@ impl Padding {
     }
 
     /// Convenience: create padding that acts as a left-indent.
-    pub fn indent(content: Text, level: usize) -> Self {
+    pub fn indent(content: impl Renderable + Send + Sync + 'static, level: usize) -> Self {
         Padding::new(
             content,
             PaddingDimensions::Full(0, 0, 0, level),
@@ -112,11 +135,10 @@ impl Padding {
     }
 
     /// Measure the minimum and maximum width requirements.
-    pub fn measure(&self, _console: &Console, options: &ConsoleOptions) -> Measurement {
+    pub fn measure(&self, console: &Console, options: &ConsoleOptions) -> Measurement {
         let max_width = options.max_width.saturating_sub(self.left + self.right);
         let inner_opts = options.update_width(max_width.max(1));
-        // For Text, measure is the cell_len of the content
-        let content_width = self.content.cell_len();
+        let content_width = self.content.gilt_measure(console, &inner_opts).maximum;
         let min_w = content_width + self.left + self.right;
         let max_w = if self.expand {
             options.max_width
@@ -139,10 +161,15 @@ impl Renderable for Padding {
         let mut segments = Vec::new();
 
         // Compute the total available width
+        let inner_width_for_measure = options
+            .max_width
+            .saturating_sub(self.left + self.right)
+            .max(1);
         let width = if self.expand {
             options.max_width
         } else {
-            let content_width = self.content.cell_len();
+            let measure_opts = options.update_width(inner_width_for_measure);
+            let content_width = self.content.gilt_measure(console, &measure_opts).maximum;
             (content_width + self.left + self.right).min(options.max_width)
         };
 
@@ -151,7 +178,8 @@ impl Renderable for Padding {
 
         // Render the content into lines
         let inner_opts = options.update_width(inner_width);
-        let lines = console.render_lines(&self.content, Some(&inner_opts), None, true, false);
+        let lines =
+            console.render_lines(self.content.as_ref(), Some(&inner_opts), None, true, false);
 
         // Left/right padding strings
         let left_pad = " ".repeat(self.left);
@@ -203,6 +231,7 @@ impl Renderable for Padding {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::text::Text;
     use crate::utils::cells::cell_len;
 
     // -- PaddingDimensions --------------------------------------------------
@@ -451,5 +480,25 @@ mod tests {
             m_trait, m_standalone,
             "Padding::gilt_measure expand must delegate to Padding::measure"
         );
+    }
+
+    // -- Task 4.5: RenderableArc constructor tests ---------------------------
+
+    #[test]
+    // Updated: constructors now accept impl Renderable + Send + Sync + 'static (Text still works via Renderable impl)
+    fn padding_new_text_still_compiles() {
+        let _ = Padding::new(
+            Text::new("x", Style::null()),
+            PaddingDimensions::Uniform(0),
+            Style::null(),
+            false,
+        );
+    }
+
+    #[test]
+    // Updated: constructors now accept impl Renderable + Send + Sync + 'static (Panel works too)
+    fn padding_wrap_panel_compiles() {
+        let p = crate::panel::Panel::new(Text::new("x", Style::null()));
+        let _ = Padding::wrap(p, 1usize);
     }
 }

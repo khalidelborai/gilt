@@ -4,11 +4,10 @@
 
 use std::fmt;
 
-use crate::console::{Console, ConsoleOptions, Renderable};
+use crate::console::{Console, ConsoleOptions, Renderable, RenderableArc};
 use crate::measure::Measurement;
 use crate::segment::Segment;
 use crate::style::Style;
-use crate::text::Text;
 
 // ---------------------------------------------------------------------------
 // Alignment enums
@@ -42,10 +41,10 @@ pub enum VerticalAlign {
 
 /// A widget that aligns its content horizontally (and optionally vertically)
 /// within the available console space.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Align {
-    /// The content to align.
-    pub content: Text,
+    /// The content to align (any renderable widget).
+    pub content: RenderableArc,
     /// Horizontal alignment.
     pub align: HorizontalAlign,
     /// Optional style for the padding whitespace.
@@ -60,10 +59,26 @@ pub struct Align {
     pub height: Option<usize>,
 }
 
+// Manual Debug — RenderableArc (Arc<dyn Renderable + Send + Sync>) doesn't
+// implement Debug, so we print a placeholder for the content field.
+impl std::fmt::Debug for Align {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Align")
+            .field("content", &"<renderable>")
+            .field("align", &self.align)
+            .field("style", &self.style)
+            .field("vertical", &self.vertical)
+            .field("pad", &self.pad)
+            .field("width", &self.width)
+            .field("height", &self.height)
+            .finish()
+    }
+}
+
 impl Align {
     /// Create a new `Align` widget.
     pub fn new(
-        content: Text,
+        content: impl Renderable + Send + Sync + 'static,
         align: HorizontalAlign,
         style: Option<Style>,
         vertical: Option<VerticalAlign>,
@@ -72,7 +87,7 @@ impl Align {
         height: Option<usize>,
     ) -> Self {
         Align {
-            content,
+            content: std::sync::Arc::new(content),
             align,
             style,
             vertical,
@@ -83,12 +98,12 @@ impl Align {
     }
 
     /// Left-align content.
-    pub fn left(content: Text) -> Self {
+    pub fn left(content: impl Renderable + Send + Sync + 'static) -> Self {
         Align::new(content, HorizontalAlign::Left, None, None, true, None, None)
     }
 
     /// Center content.
-    pub fn center(content: Text) -> Self {
+    pub fn center(content: impl Renderable + Send + Sync + 'static) -> Self {
         Align::new(
             content,
             HorizontalAlign::Center,
@@ -101,7 +116,7 @@ impl Align {
     }
 
     /// Right-align content.
-    pub fn right(content: Text) -> Self {
+    pub fn right(content: impl Renderable + Send + Sync + 'static) -> Self {
         Align::new(
             content,
             HorizontalAlign::Right,
@@ -114,8 +129,8 @@ impl Align {
     }
 
     /// Measure the minimum and maximum width requirements.
-    pub fn measure(&self, _console: &Console, options: &ConsoleOptions) -> Measurement {
-        let content_width = self.content.cell_len();
+    pub fn measure(&self, console: &Console, options: &ConsoleOptions) -> Measurement {
+        let content_width = self.content.gilt_measure(console, options).maximum;
         let max_width = match self.width {
             Some(w) => w.min(options.max_width),
             None => content_width.min(options.max_width),
@@ -184,8 +199,13 @@ impl Renderable for Align {
 
         // Render content into lines
         let render_opts = options.update_width(width);
-        let mut rendered_lines =
-            console.render_lines(&self.content, Some(&render_opts), None, false, false);
+        let mut rendered_lines = console.render_lines(
+            self.content.as_ref(),
+            Some(&render_opts),
+            None,
+            false,
+            false,
+        );
 
         // Apply horizontal alignment to each line
         for line in rendered_lines.iter_mut() {
@@ -268,6 +288,7 @@ impl fmt::Display for Align {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::text::Text;
     use crate::utils::cells::cell_len;
 
     fn make_console(width: usize) -> Console {
@@ -641,5 +662,20 @@ mod tests {
             m_trait, m_standalone,
             "Align::gilt_measure (center) must delegate to Align::measure"
         );
+    }
+
+    // -- Task 4.5: RenderableArc constructor tests ---------------------------
+
+    #[test]
+    // Updated: constructors now accept impl Renderable + Send + Sync + 'static (Text still works via Renderable impl)
+    fn align_left_text_still_compiles() {
+        let _ = Align::left(Text::new("x", Style::null()));
+    }
+
+    #[test]
+    // Updated: constructors now accept impl Renderable + Send + Sync + 'static (Panel works too)
+    fn align_center_panel_compiles() {
+        let p = crate::panel::Panel::new(Text::new("x", Style::null()));
+        let _ = Align::center(p);
     }
 }

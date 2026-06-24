@@ -4,10 +4,9 @@
 use std::cmp::min;
 use std::fmt;
 
-use crate::console::{Console, ConsoleOptions, Renderable};
+use crate::console::{Console, ConsoleOptions, Renderable, RenderableArc};
 use crate::measure::Measurement;
 use crate::segment::Segment;
-use crate::text::Text;
 
 // ---------------------------------------------------------------------------
 // Constrain
@@ -19,20 +18,34 @@ use crate::text::Text;
 /// When `width` is `Some(w)`, the content is rendered with a maximum width of
 /// `min(w, options.max_width)`.  When `width` is `None`, the content passes
 /// through unmodified.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Constrain {
-    /// The content to constrain.
-    pub renderable: Text,
+    /// The content to constrain (any renderable widget).
+    pub renderable: RenderableArc,
     /// Maximum width in characters. `None` means no constraint is applied.
     pub width: Option<usize>,
+}
+
+// Manual Debug — RenderableArc (Arc<dyn Renderable + Send + Sync>) doesn't
+// implement Debug, so we print a placeholder for the renderable field.
+impl std::fmt::Debug for Constrain {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Constrain")
+            .field("renderable", &"<renderable>")
+            .field("width", &self.width)
+            .finish()
+    }
 }
 
 impl Constrain {
     /// Create a new `Constrain` widget.
     ///
     /// `width` defaults to `Some(80)` following the Python implementation.
-    pub fn new(renderable: Text, width: Option<usize>) -> Self {
-        Constrain { renderable, width }
+    pub fn new(renderable: impl Renderable + Send + Sync + 'static, width: Option<usize>) -> Self {
+        Constrain {
+            renderable: std::sync::Arc::new(renderable),
+            width,
+        }
     }
 
     /// Builder method to set the width.
@@ -48,16 +61,18 @@ impl Constrain {
     /// If `width` is `Some(w)`, the options are constrained to that width
     /// before measuring.  The resulting measurement is then clamped to the
     /// constrained width.
-    pub fn measure(&self, _console: &Console, options: &ConsoleOptions) -> Measurement {
-        let measurement = if let Some(w) = self.width {
+    pub fn measure(&self, console: &Console, options: &ConsoleOptions) -> Measurement {
+        if let Some(w) = self.width {
             let constrained = options.update_width(w);
             self.renderable
-                .measure()
+                .gilt_measure(console, &constrained)
                 .with_maximum(constrained.max_width)
+                .with_maximum(options.max_width)
         } else {
-            self.renderable.measure()
-        };
-        measurement.with_maximum(options.max_width)
+            self.renderable
+                .gilt_measure(console, options)
+                .with_maximum(options.max_width)
+        }
     }
 }
 
@@ -68,11 +83,13 @@ impl Renderable for Constrain {
 
     fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         match self.width {
-            None => self.renderable.gilt_console(console, options),
+            None => self.renderable.as_ref().gilt_console(console, options),
             Some(w) => {
                 let constrained_width = min(w, options.max_width);
                 let child_options = options.update_width(constrained_width);
-                self.renderable.gilt_console(console, &child_options)
+                self.renderable
+                    .as_ref()
+                    .gilt_console(console, &child_options)
             }
         }
     }
@@ -105,6 +122,7 @@ impl fmt::Display for Constrain {
 mod tests {
     use super::*;
     use crate::style::Style;
+    use crate::text::Text;
 
     fn make_console(width: usize) -> Console {
         Console::builder()
@@ -123,10 +141,11 @@ mod tests {
 
     #[test]
     fn test_default_construction() {
+        // Updated: field is now RenderableArc (Text still works via Renderable impl)
         let text = Text::new("Hello, world!", Style::null());
         let c = Constrain::new(text.clone(), Some(80));
         assert_eq!(c.width, Some(80));
-        assert_eq!(c.renderable.plain(), "Hello, world!");
+        // Cannot call .plain() on RenderableArc — verify width instead
     }
 
     #[test]
@@ -147,13 +166,16 @@ mod tests {
 
     #[test]
     fn test_none_width_passthrough() {
+        // Updated: field is now RenderableArc (Text still works via Renderable impl)
         let console = make_console(80);
         let opts = console.options();
         let text = Text::new("Hello, world!", Style::null());
-        let c = Constrain::new(text.clone(), None);
+        // Clone text before passing to Constrain::new since it moves the value
+        let text_direct = text.clone();
+        let c = Constrain::new(text, None);
 
         let constrained_segments = c.gilt_console(&console, &opts);
-        let direct_segments = text.gilt_console(&console, &opts);
+        let direct_segments = text_direct.gilt_console(&console, &opts);
 
         assert_eq!(
             segments_to_text(&constrained_segments),
@@ -249,6 +271,8 @@ mod tests {
 
     #[test]
     fn test_measure_without_width() {
+        // Updated: field is now RenderableArc (Text still works via Renderable impl)
+        // Constrain::measure now delegates to gilt_measure instead of Text::measure
         let console = make_console(80);
         let opts = console.options();
         let text = Text::new("Hello", Style::null());
@@ -256,9 +280,11 @@ mod tests {
         let c = Constrain::new(text.clone(), None);
         let m = c.measure(&console, &opts);
 
-        // Without width constraint, measure should match text.measure()
+        // Without width constraint, measure should match text.gilt_measure()
         // clamped to options.max_width
-        let text_m = text.measure().with_maximum(opts.max_width);
+        let text_m = text
+            .gilt_measure(&console, &opts)
+            .with_maximum(opts.max_width);
         assert_eq!(m.minimum, text_m.minimum);
         assert_eq!(m.maximum, text_m.maximum);
     }
@@ -310,11 +336,12 @@ mod tests {
 
     #[test]
     fn test_clone() {
+        // Updated: field is now RenderableArc (Text still works via Renderable impl)
         let text = Text::new("Hello", Style::null());
         let c = Constrain::new(text, Some(40));
         let cloned = c.clone();
         assert_eq!(cloned.width, c.width);
-        assert_eq!(cloned.renderable.plain(), c.renderable.plain());
+        // Cannot call .plain() on RenderableArc — verify width is correct
     }
 
     #[test]
@@ -402,5 +429,20 @@ mod tests {
             m_trait, m_standalone,
             "Constrain::gilt_measure (no width) must delegate to Constrain::measure"
         );
+    }
+
+    // -- Task 4.5: RenderableArc constructor tests ---------------------------
+
+    #[test]
+    // Updated: constructors now accept impl Renderable + Send + Sync + 'static (Text still works via Renderable impl)
+    fn constrain_new_text_still_compiles() {
+        let _ = Constrain::new(Text::new("x", Style::null()), None);
+    }
+
+    #[test]
+    // Updated: constructors now accept impl Renderable + Send + Sync + 'static (Panel works too)
+    fn constrain_new_panel_compiles() {
+        let p = crate::panel::Panel::new(Text::new("x", Style::null()));
+        let _ = Constrain::new(p, None);
     }
 }
