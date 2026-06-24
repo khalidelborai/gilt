@@ -60,7 +60,7 @@ impl rustyline::Helper for ListCompleter {}
 // ---------------------------------------------------------------------------
 
 /// Callback invoked when a validation error occurs.
-type ValidateErrorHook = Box<dyn Fn(&str)>;
+pub type ValidateErrorHook = Box<dyn Fn(&str)>;
 
 // ---------------------------------------------------------------------------
 // Helper: print an error using the prompt.invalid theme style
@@ -68,12 +68,13 @@ type ValidateErrorHook = Box<dyn Fn(&str)>;
 
 /// Print an error message using the `prompt.invalid` theme style (red by default).
 ///
-/// Falls back to `bold red` if the theme key is not found, matching the prior
-/// hardcoded markup `[bold red]...[/]`.
+/// Falls back to `Style::parse("red")` — matching the theme default for
+/// `prompt.invalid` — when the theme key is not present. Under normal
+/// operation the key is always found, so this branch is unreachable.
 fn print_invalid_error(console: &mut Console, msg: &str) {
     let style = console
         .get_style("prompt.invalid")
-        .unwrap_or_else(|_| Style::parse("bold red"));
+        .unwrap_or_else(|_| Style::parse("red"));
     let t = Text::new(msg, style);
     console.print(&t);
 }
@@ -493,6 +494,11 @@ impl Prompt {
         editor.set_helper(Some(helper));
 
         loop {
+            // Item 6: call pre_prompt hook before each iteration.
+            if let Some(ref hook) = self.pre_prompt {
+                hook();
+            }
+
             let prompt = self.make_prompt();
             let prompt_str = prompt.plain().to_string();
 
@@ -557,6 +563,11 @@ impl Prompt {
         };
 
         loop {
+            // Item 6: call pre_prompt hook before each iteration.
+            if let Some(ref hook) = self.pre_prompt {
+                hook();
+            }
+
             print!("{}", ansi_prompt);
             let _ = io::stdout().flush();
 
@@ -634,23 +645,49 @@ pub fn confirm_with_input_and_default<R: BufRead>(
     default: Option<bool>,
     input: &mut R,
 ) -> bool {
-    // Item 8: use styled markup for the choices display.
-    // The uppercase letter (the default) is bolded.
-    // The outer [] are literal brackets (not markup tags) so they are escaped
-    // using Text-based approach to avoid markup parsing issues.
-    let choices_display = match default {
-        Some(true) => "[Y/n]",
-        Some(false) => "[y/N]",
-        None => "[y/n]",
+    // Item 8: render choices through the styled pipeline so the default
+    // letter is bold.  Build the ANSI prompt string once before the loop
+    // using a capture console so the bold escape is embedded in the output.
+    let mut render_console = Console::new();
+    let ansi_full_prompt: String = {
+        render_console.begin_capture();
+        // Render the static question text first.
+        let question_text = crate::markup::render(prompt, crate::style::Style::null())
+            .unwrap_or_else(|_| Text::new(prompt, crate::style::Style::null()));
+        render_console.print(&question_text);
+        // Strip the trailing newline so we can concatenate the choices on
+        // the same line.
+        let question_captured = render_console.end_capture();
+        let question_part = question_captured
+            .strip_suffix('\n')
+            .unwrap_or(&question_captured)
+            .to_string();
+
+        // Build the choices Text with the default letter bold-styled.
+        let choices_markup = match default {
+            Some(true) => "[bold]Y[/bold]/n",
+            Some(false) => "y/[bold]N[/bold]",
+            None => "y/n",
+        };
+        render_console.begin_capture();
+        let choices_text = crate::markup::render(choices_markup, crate::style::Style::null())
+            .unwrap_or_else(|_| Text::new(choices_markup, crate::style::Style::null()));
+        render_console.print(&choices_text);
+        let choices_captured = render_console.end_capture();
+        let choices_part = choices_captured
+            .strip_suffix('\n')
+            .unwrap_or(&choices_captured)
+            .to_string();
+
+        format!("{} [{}]: ", question_part, choices_part)
     };
 
-    let full_prompt = format!("{} {}: ", prompt, choices_display);
     // Error messages are routed through a stderr console so they pick up
     // gilt styling when stderr is a terminal.
     let mut err_console = Console::stderr();
 
     loop {
-        print!("{}", full_prompt);
+        print!("{}", ansi_full_prompt);
         let _ = io::stdout().flush();
 
         let mut line = String::new();

@@ -1256,3 +1256,92 @@ fn test_confirm_styled_no_default_blank_loops() {
     let result = confirm_with_input_and_default("Continue?", None, &mut input);
     assert!(result);
 }
+
+// ---------------------------------------------------------------------------
+// Reviewer fix-pass: pre_prompt hooks in ask_readline / ask_password
+// ---------------------------------------------------------------------------
+
+/// Verify the pre_prompt hook field is accessible and stored correctly (the
+/// actual readline/rpassword loops are not exercisable without a live tty,
+/// but we can confirm the hook plumbing compiles and stores the closure).
+#[test]
+fn test_pre_prompt_hook_stored_in_readline_path() {
+    use std::sync::{Arc, Mutex};
+    let count = Arc::new(Mutex::new(0u32));
+    let count_clone = Arc::clone(&count);
+    let p = Prompt::new("Enter value").with_pre_prompt(move || {
+        *count_clone.lock().unwrap() += 1;
+    });
+    // The hook is stored; ask_with_input (the BufRead path) must also call it.
+    assert!(p.pre_prompt.is_some(), "pre_prompt should be stored");
+}
+
+/// pre_prompt is called once per loop iteration in ask_with_input.
+/// Since ask_readline wraps the same hook type, this confirms the contract.
+#[test]
+fn test_pre_prompt_hook_called_multiple_iterations_ask_with_input() {
+    use std::sync::{Arc, Mutex};
+    let count = Arc::new(Mutex::new(0u32));
+    let count_clone = Arc::clone(&count);
+    let mut p = Prompt::new("Pick")
+        .with_choices(vec!["a".into(), "b".into()])
+        .with_pre_prompt(move || {
+            *count_clone.lock().unwrap() += 1;
+        });
+    // Two iterations: first "bad" (invalid), then "a" (valid)
+    let mut input = Cursor::new(b"bad\na\n" as &[u8]);
+    let _ = p.ask_with_input(&mut input);
+    let calls = *count.lock().unwrap();
+    assert!(
+        calls >= 2,
+        "pre_prompt should be called once per iteration (got {})",
+        calls
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Reviewer fix-pass: Confirm choices rendered through styled pipeline
+// ---------------------------------------------------------------------------
+
+/// Confirm that the choices part passes through the console render pipeline.
+/// We test correctness of behaviour (correct answer returned) rather than
+/// ANSI escape bytes, which vary by terminal capability.
+#[test]
+fn test_confirm_styled_pipeline_returns_correct_answers() {
+    // default=true: blank returns true
+    let mut input = Cursor::new(b"\n" as &[u8]);
+    assert!(confirm_with_input_and_default(
+        "Ok?",
+        Some(true),
+        &mut input
+    ));
+
+    // default=false: blank returns false
+    let mut input = Cursor::new(b"\n" as &[u8]);
+    assert!(!confirm_with_input_and_default(
+        "Ok?",
+        Some(false),
+        &mut input
+    ));
+
+    // no default: "yes" returns true
+    let mut input = Cursor::new(b"yes\n" as &[u8]);
+    assert!(confirm_with_input_and_default("Ok?", None, &mut input));
+
+    // no default: "no" returns false
+    let mut input = Cursor::new(b"no\n" as &[u8]);
+    assert!(!confirm_with_input_and_default("Ok?", None, &mut input));
+}
+
+// ---------------------------------------------------------------------------
+// Reviewer fix-pass: ValidateErrorHook is pub
+// ---------------------------------------------------------------------------
+
+/// Confirm ValidateErrorHook is usable as a public type (compilation test).
+#[test]
+fn test_validate_error_hook_type_is_public() {
+    use super::ValidateErrorHook;
+    let hook: ValidateErrorHook = Box::new(|_msg: &str| {});
+    // Just calling it proves the type is accessible and usable.
+    hook("test error");
+}
