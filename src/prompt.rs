@@ -56,6 +56,29 @@ impl rustyline::validate::Validator for ListCompleter {}
 impl rustyline::Helper for ListCompleter {}
 
 // ---------------------------------------------------------------------------
+// Type aliases used in Prompt to keep field types readable
+// ---------------------------------------------------------------------------
+
+/// Callback invoked when a validation error occurs.
+type ValidateErrorHook = Box<dyn Fn(&str)>;
+
+// ---------------------------------------------------------------------------
+// Helper: print an error using the prompt.invalid theme style
+// ---------------------------------------------------------------------------
+
+/// Print an error message using the `prompt.invalid` theme style (red by default).
+///
+/// Falls back to `bold red` if the theme key is not found, matching the prior
+/// hardcoded markup `[bold red]...[/]`.
+fn print_invalid_error(console: &mut Console, msg: &str) {
+    let style = console
+        .get_style("prompt.invalid")
+        .unwrap_or_else(|_| Style::parse("bold red"));
+    let t = Text::new(msg, style);
+    console.print(&t);
+}
+
+// ---------------------------------------------------------------------------
 // InvalidResponse
 // ---------------------------------------------------------------------------
 
@@ -112,6 +135,13 @@ pub struct Prompt {
     /// given list. When the feature is not enabled, this field is ignored and
     /// input is read from standard input as usual.
     pub completions: Option<Vec<String>>,
+    /// The suffix appended at the end of the prompt (default: `": "`).
+    pub prompt_suffix: String,
+    /// Optional callback invoked before printing the prompt each iteration.
+    pub pre_prompt: Option<Box<dyn Fn()>>,
+    /// Optional callback invoked when a validation error occurs, in addition
+    /// to the standard error console output.
+    pub on_validate_error: Option<ValidateErrorHook>,
     /// The console used for rendering prompt text.
     console: Console,
 }
@@ -132,6 +162,9 @@ impl Prompt {
             show_choices: true,
             default: None,
             completions: None,
+            prompt_suffix: ": ".to_string(),
+            pre_prompt: None,
+            on_validate_error: None,
             console: Console::new(),
         }
     }
@@ -196,6 +229,41 @@ impl Prompt {
         self
     }
 
+    /// Set the suffix appended at the end of the prompt text (default: `": "`).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::prompt::Prompt;
+    ///
+    /// let p = Prompt::new("Enter value").with_suffix(" -> ");
+    /// ```
+    #[must_use]
+    pub fn with_suffix(mut self, suffix: &str) -> Self {
+        self.prompt_suffix = suffix.to_string();
+        self
+    }
+
+    /// Set a callback invoked before printing the prompt on each iteration.
+    ///
+    /// This is called once per prompt display (including re-prompts after
+    /// validation errors).
+    #[must_use]
+    pub fn with_pre_prompt<F: Fn() + 'static>(mut self, f: F) -> Self {
+        self.pre_prompt = Some(Box::new(f));
+        self
+    }
+
+    /// Set a callback invoked when a validation error occurs.
+    ///
+    /// The callback receives the error message text. It is called in addition
+    /// to the standard error console output, not instead of it.
+    #[must_use]
+    pub fn with_on_validate_error<F: Fn(&str) + 'static>(mut self, f: F) -> Self {
+        self.on_validate_error = Some(Box::new(f));
+        self
+    }
+
     /// Build the prompt `Text` including choices and default annotations.
     ///
     /// Format: `"prompt [choice1/choice2/...] (default): "`
@@ -231,7 +299,7 @@ impl Prompt {
             }
         }
 
-        prompt.append_str(": ", None);
+        prompt.append_str(&self.prompt_suffix, None);
 
         prompt
     }
@@ -300,6 +368,11 @@ impl Prompt {
         };
 
         loop {
+            // Item 6: call pre_prompt hook before each iteration.
+            if let Some(ref hook) = self.pre_prompt {
+                hook();
+            }
+
             print!("{}", ansi_prompt);
             let _ = io::stdout().flush();
 
@@ -335,9 +408,13 @@ impl Prompt {
             // Validate against choices
             if self.choices.is_some() {
                 if !self.check_choice(&value) {
-                    // Invalid choice — route error through the prompt's console.
-                    self.console
-                        .print_text("[bold red]Please select one of the available options[/]");
+                    // Item 2: use prompt.invalid theme style instead of hardcoded markup.
+                    let err_msg = "Please select one of the available options";
+                    print_invalid_error(&mut self.console, err_msg);
+                    // Item 6: call on_validate_error hook.
+                    if let Some(ref hook) = self.on_validate_error {
+                        hook(err_msg);
+                    }
                     continue;
                 }
                 return self.resolve_choice(&value);
@@ -434,9 +511,13 @@ impl Prompt {
                     // Validate against choices
                     if self.choices.is_some() {
                         if !self.check_choice(&value) {
-                            self.console.print_text(
-                                "[bold red]Please select one of the available options[/]",
-                            );
+                            // Item 2: use theme style for error message.
+                            let err_msg = "Please select one of the available options";
+                            print_invalid_error(&mut self.console, err_msg);
+                            // Item 6: call on_validate_error hook.
+                            if let Some(ref hook) = self.on_validate_error {
+                                hook(err_msg);
+                            }
                             continue;
                         }
                         return self.resolve_choice(&value);
@@ -466,10 +547,17 @@ impl Prompt {
     /// Password input loop — reads without terminal echo using `rpassword`.
     #[cfg(feature = "interactive")]
     fn ask_password(&mut self) -> String {
+        // Item 3: use styled pipeline instead of plain() for the prompt text.
+        let prompt_text = self.make_prompt();
+        let ansi_prompt: String = {
+            self.console.begin_capture();
+            self.console.print(&prompt_text);
+            let captured = self.console.end_capture();
+            captured.strip_suffix('\n').unwrap_or(&captured).to_string()
+        };
+
         loop {
-            let prompt = self.make_prompt();
-            let prompt_str = prompt.plain().to_string();
-            print!("{}", prompt_str);
+            print!("{}", ansi_prompt);
             let _ = io::stdout().flush();
 
             let value = match rpassword::read_password() {
@@ -492,8 +580,13 @@ impl Prompt {
             // Validate against choices
             if self.choices.is_some() {
                 if !self.check_choice(&value) {
-                    self.console
-                        .print_text("[bold red]Please select one of the available options[/]");
+                    // Item 2: use theme style for error message.
+                    let err_msg = "Please select one of the available options";
+                    print_invalid_error(&mut self.console, err_msg);
+                    // Item 6: call on_validate_error hook.
+                    if let Some(ref hook) = self.on_validate_error {
+                        hook(err_msg);
+                    }
                     continue;
                 }
                 return self.resolve_choice(&value);
@@ -541,7 +634,10 @@ pub fn confirm_with_input_and_default<R: BufRead>(
     default: Option<bool>,
     input: &mut R,
 ) -> bool {
-    // Build the choice display: capitalize the default, rich-style [Y/n] / [y/N] / [y/n].
+    // Item 8: use styled markup for the choices display.
+    // The uppercase letter (the default) is bolded.
+    // The outer [] are literal brackets (not markup tags) so they are escaped
+    // using Text-based approach to avoid markup parsing issues.
     let choices_display = match default {
         Some(true) => "[Y/n]",
         Some(false) => "[y/N]",
@@ -577,11 +673,13 @@ pub fn confirm_with_input_and_default<R: BufRead>(
                     return d;
                 }
                 // No default — show error and loop.
-                err_console.print_text("[bold red]Please enter Y or N[/]");
+                // Item 2: use theme style for error message.
+                print_invalid_error(&mut err_console, "Please enter Y or N");
                 continue;
             }
             _ => {
-                err_console.print_text("[bold red]Please enter Y or N[/]");
+                // Item 2: use theme style for error message.
+                print_invalid_error(&mut err_console, "Please enter Y or N");
                 continue;
             }
         }
@@ -596,10 +694,17 @@ pub fn ask_int(prompt: &str) -> i64 {
 /// Testable version of `ask_int()` that reads from a provided input source.
 pub fn ask_int_with_input<R: BufRead>(prompt: &str, input: &mut R) -> i64 {
     let mut err_console = Console::stderr();
-    loop {
+    // Item 5: use console render pipeline to get ANSI output.
+    let ansi_prompt: String = {
+        let mut render_console = Console::new();
         let prompt_text = Prompt::new(prompt).make_prompt();
-        let prompt_str = prompt_text.plain().to_string();
-        print!("{}", prompt_str);
+        render_console.begin_capture();
+        render_console.print(&prompt_text);
+        let captured = render_console.end_capture();
+        captured.strip_suffix('\n').unwrap_or(&captured).to_string()
+    };
+    loop {
+        print!("{}", ansi_prompt);
         let _ = io::stdout().flush();
 
         let mut line = String::new();
@@ -611,7 +716,8 @@ pub fn ask_int_with_input<R: BufRead>(prompt: &str, input: &mut R) -> i64 {
             }
             Ok(_) => {}
             Err(_) => {
-                err_console.print_text("[bold red]Please enter a valid integer number[/]");
+                // Item 2: use theme style for error message.
+                print_invalid_error(&mut err_console, "Please enter a valid integer number");
                 continue;
             }
         }
@@ -619,7 +725,8 @@ pub fn ask_int_with_input<R: BufRead>(prompt: &str, input: &mut R) -> i64 {
         match line.trim().parse::<i64>() {
             Ok(v) => return v,
             Err(_) => {
-                err_console.print_text("[bold red]Please enter a valid integer number[/]");
+                // Item 2: use theme style for error message.
+                print_invalid_error(&mut err_console, "Please enter a valid integer number");
                 continue;
             }
         }
@@ -634,10 +741,17 @@ pub fn ask_float(prompt: &str) -> f64 {
 /// Testable version of `ask_float()` that reads from a provided input source.
 pub fn ask_float_with_input<R: BufRead>(prompt: &str, input: &mut R) -> f64 {
     let mut err_console = Console::stderr();
-    loop {
+    // Item 5: use console render pipeline to get ANSI output.
+    let ansi_prompt: String = {
+        let mut render_console = Console::new();
         let prompt_text = Prompt::new(prompt).make_prompt();
-        let prompt_str = prompt_text.plain().to_string();
-        print!("{}", prompt_str);
+        render_console.begin_capture();
+        render_console.print(&prompt_text);
+        let captured = render_console.end_capture();
+        captured.strip_suffix('\n').unwrap_or(&captured).to_string()
+    };
+    loop {
+        print!("{}", ansi_prompt);
         let _ = io::stdout().flush();
 
         let mut line = String::new();
@@ -648,7 +762,8 @@ pub fn ask_float_with_input<R: BufRead>(prompt: &str, input: &mut R) -> f64 {
             }
             Ok(_) => {}
             Err(_) => {
-                err_console.print_text("[bold red]Please enter a valid number[/]");
+                // Item 2: use theme style for error message.
+                print_invalid_error(&mut err_console, "Please enter a valid number");
                 continue;
             }
         }
@@ -656,7 +771,8 @@ pub fn ask_float_with_input<R: BufRead>(prompt: &str, input: &mut R) -> f64 {
         match line.trim().parse::<f64>() {
             Ok(v) => return v,
             Err(_) => {
-                err_console.print_text("[bold red]Please enter a valid number[/]");
+                // Item 2: use theme style for error message.
+                print_invalid_error(&mut err_console, "Please enter a valid number");
                 continue;
             }
         }
@@ -727,7 +843,8 @@ where
                         match (self.converter)(default) {
                             Ok(v) => return Ok(v),
                             Err(msg) => {
-                                err_console.print_text(&format!("[bold red]{}[/]", msg));
+                                // Item 2: use theme style for error message.
+                                print_invalid_error(&mut err_console, &msg);
                                 return Err(io::Error::new(io::ErrorKind::UnexpectedEof, msg));
                             }
                         }
@@ -757,7 +874,8 @@ where
             match (self.converter)(value) {
                 Ok(v) => return Ok(v),
                 Err(msg) => {
-                    err_console.print_text(&format!("[bold red]{}[/]", msg));
+                    // Item 2: use theme style for error message.
+                    print_invalid_error(&mut err_console, &msg);
                     // loop again
                 }
             }
@@ -974,7 +1092,8 @@ impl Select {
             match self.parse_input(&line) {
                 Ok(index) => return Ok(index),
                 Err(msg) => {
-                    Console::stderr().print_text(&format!("[bold red]{}[/]", msg));
+                    // Item 2: use theme style for error message.
+                    print_invalid_error(&mut Console::stderr(), &msg.message);
                     continue;
                 }
             }
@@ -1273,7 +1392,8 @@ impl MultiSelect {
             match self.parse_input(&line) {
                 Ok(indices) => return Ok(indices),
                 Err(msg) => {
-                    Console::stderr().print_text(&format!("[bold red]{}[/]", msg));
+                    // Item 2: use theme style for error message.
+                    print_invalid_error(&mut Console::stderr(), &msg.message);
                     continue;
                 }
             }
@@ -1294,6 +1414,256 @@ impl MultiSelect {
     ) -> Result<Vec<String>, InvalidResponse> {
         let indices = self.ask_with_input(console, input)?;
         Ok(indices.iter().map(|&i| self.choices[i].clone()).collect())
+    }
+}
+
+// ---------------------------------------------------------------------------
+// IntPrompt — typed integer prompt with optional default
+// ---------------------------------------------------------------------------
+
+/// A prompt that reads an integer (`i64`), re-prompting on invalid input.
+///
+/// On empty input or EOF, returns the `default` (if set) or `0`.
+///
+/// # Examples
+///
+/// ```
+/// use gilt::prompt::IntPrompt;
+/// use std::io::Cursor;
+///
+/// let mut p = IntPrompt::new("Enter age").with_default(18);
+/// let mut input = Cursor::new(b"\n" as &[u8]);
+/// assert_eq!(p.ask_with_input(&mut input), 18);
+/// ```
+pub struct IntPrompt {
+    /// The underlying `Prompt` used for rendering.
+    pub prompt: Prompt,
+    /// Optional default value returned on empty/EOF input.
+    pub default: Option<i64>,
+}
+
+impl IntPrompt {
+    /// Create a new `IntPrompt` with the given prompt text.
+    pub fn new(prompt_text: &str) -> Self {
+        IntPrompt {
+            prompt: Prompt::new(prompt_text),
+            default: None,
+        }
+    }
+
+    /// Set the default value returned on empty or EOF input.
+    #[must_use]
+    pub fn with_default(mut self, default: i64) -> Self {
+        self.default = Some(default);
+        self
+    }
+
+    /// Read an integer from the provided reader, re-prompting on invalid input.
+    ///
+    /// Returns the default on empty input or EOF; returns `0` when there is
+    /// no default and EOF is encountered.
+    pub fn ask_with_input<R: BufRead>(&mut self, input: &mut R) -> i64 {
+        let mut err_console = Console::stderr();
+        // Render the prompt once using the styled pipeline.
+        let ansi_prompt: String = {
+            let prompt_text = self.prompt.make_prompt();
+            self.prompt.console.begin_capture();
+            self.prompt.console.print(&prompt_text);
+            let captured = self.prompt.console.end_capture();
+            captured.strip_suffix('\n').unwrap_or(&captured).to_string()
+        };
+
+        loop {
+            print!("{}", ansi_prompt);
+            let _ = io::stdout().flush();
+
+            let mut line = String::new();
+            match input.read_line(&mut line) {
+                Ok(0) => {
+                    return self.default.unwrap_or(0);
+                }
+                Ok(_) => {}
+                Err(_) => {
+                    print_invalid_error(&mut err_console, "Please enter a valid integer number");
+                    continue;
+                }
+            }
+
+            let trimmed = line.trim();
+            if trimmed.is_empty() {
+                if let Some(d) = self.default {
+                    return d;
+                }
+            }
+
+            match trimmed.parse::<i64>() {
+                Ok(v) => return v,
+                Err(_) => {
+                    print_invalid_error(&mut err_console, "Please enter a valid integer number");
+                }
+            }
+        }
+    }
+
+    /// Read an integer from stdin.
+    pub fn ask(&mut self) -> i64 {
+        let stdin = io::stdin();
+        let mut handle = stdin.lock();
+        self.ask_with_input(&mut handle)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// FloatPrompt — typed float prompt with optional default
+// ---------------------------------------------------------------------------
+
+/// A prompt that reads a float (`f64`), re-prompting on invalid input.
+///
+/// On empty input or EOF, returns the `default` (if set) or `0.0`.
+///
+/// # Examples
+///
+/// ```
+/// use gilt::prompt::FloatPrompt;
+/// use std::io::Cursor;
+///
+/// let mut p = FloatPrompt::new("Enter rate").with_default(1.5);
+/// let mut input = Cursor::new(b"\n" as &[u8]);
+/// assert!((p.ask_with_input(&mut input) - 1.5).abs() < f64::EPSILON);
+/// ```
+pub struct FloatPrompt {
+    /// The underlying `Prompt` used for rendering.
+    pub prompt: Prompt,
+    /// Optional default value returned on empty/EOF input.
+    pub default: Option<f64>,
+}
+
+impl FloatPrompt {
+    /// Create a new `FloatPrompt` with the given prompt text.
+    pub fn new(prompt_text: &str) -> Self {
+        FloatPrompt {
+            prompt: Prompt::new(prompt_text),
+            default: None,
+        }
+    }
+
+    /// Set the default value returned on empty or EOF input.
+    #[must_use]
+    pub fn with_default(mut self, default: f64) -> Self {
+        self.default = Some(default);
+        self
+    }
+
+    /// Read a float from the provided reader, re-prompting on invalid input.
+    ///
+    /// Returns the default on empty input or EOF; returns `0.0` when there is
+    /// no default and EOF is encountered.
+    pub fn ask_with_input<R: BufRead>(&mut self, input: &mut R) -> f64 {
+        let mut err_console = Console::stderr();
+        // Render the prompt once using the styled pipeline.
+        let ansi_prompt: String = {
+            let prompt_text = self.prompt.make_prompt();
+            self.prompt.console.begin_capture();
+            self.prompt.console.print(&prompt_text);
+            let captured = self.prompt.console.end_capture();
+            captured.strip_suffix('\n').unwrap_or(&captured).to_string()
+        };
+
+        loop {
+            print!("{}", ansi_prompt);
+            let _ = io::stdout().flush();
+
+            let mut line = String::new();
+            match input.read_line(&mut line) {
+                Ok(0) => {
+                    return self.default.unwrap_or(0.0);
+                }
+                Ok(_) => {}
+                Err(_) => {
+                    print_invalid_error(&mut err_console, "Please enter a valid number");
+                    continue;
+                }
+            }
+
+            let trimmed = line.trim();
+            if trimmed.is_empty() {
+                if let Some(d) = self.default {
+                    return d;
+                }
+            }
+
+            match trimmed.parse::<f64>() {
+                Ok(v) => return v,
+                Err(_) => {
+                    print_invalid_error(&mut err_console, "Please enter a valid number");
+                }
+            }
+        }
+    }
+
+    /// Read a float from stdin.
+    pub fn ask(&mut self) -> f64 {
+        let stdin = io::stdin();
+        let mut handle = stdin.lock();
+        self.ask_with_input(&mut handle)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Confirm — yes/no prompt struct with optional default
+// ---------------------------------------------------------------------------
+
+/// A yes/no confirmation prompt struct.
+///
+/// Separate from the [`confirm_with_input_and_default`] free function; this
+/// struct provides a builder API and a testable `ask_with_input` method.
+///
+/// # Examples
+///
+/// ```
+/// use gilt::prompt::Confirm;
+/// use std::io::Cursor;
+///
+/// let mut c = Confirm::new("Continue?").with_default(true);
+/// let mut input = Cursor::new(b"\n" as &[u8]);
+/// assert!(c.ask_with_input(&mut input));
+/// ```
+pub struct Confirm {
+    /// The prompt question text.
+    pub prompt: String,
+    /// Optional default: `Some(true)` → `[Y/n]`, `Some(false)` → `[y/N]`, `None` → `[y/n]`.
+    pub default: Option<bool>,
+}
+
+impl Confirm {
+    /// Create a new `Confirm` prompt with the given question text.
+    pub fn new(prompt: &str) -> Self {
+        Confirm {
+            prompt: prompt.to_string(),
+            default: None,
+        }
+    }
+
+    /// Set the default value.
+    #[must_use]
+    pub fn with_default(mut self, default: bool) -> Self {
+        self.default = Some(default);
+        self
+    }
+
+    /// Read a yes/no answer from the provided reader.
+    ///
+    /// Returns the `default` on empty/EOF input. When there is no default,
+    /// blank input re-prompts and EOF returns `false`.
+    pub fn ask_with_input<R: BufRead>(&mut self, input: &mut R) -> bool {
+        confirm_with_input_and_default(&self.prompt, self.default, input)
+    }
+
+    /// Read a yes/no answer from stdin.
+    pub fn ask(&mut self) -> bool {
+        let stdin = io::stdin();
+        let mut handle = stdin.lock();
+        self.ask_with_input(&mut handle)
     }
 }
 

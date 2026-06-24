@@ -417,6 +417,41 @@ impl Console {
         Ok(buf)
     }
 
+    /// Display a prompt and read a line of input from an optional stream.
+    ///
+    /// When `stream` is `Some`, reads from that stream (useful for testing).
+    /// When `stream` is `None`, reads from stdin (same as [`input`](Console::input)).
+    /// Returns the input line with trailing newline stripped.
+    pub fn input_with_stream(
+        &mut self,
+        prompt: &str,
+        stream: Option<&mut dyn std::io::BufRead>,
+    ) -> Result<String, std::io::Error> {
+        // Render and print the prompt (without trailing newline)
+        let text = self.render_str(prompt, None, None, None);
+        let mut segments = text.gilt_console(self, &self.options());
+        segments.retain(|s| s.text != "\n");
+        self.write_segments(&segments);
+
+        let mut buf = String::new();
+        match stream {
+            Some(reader) => {
+                reader.read_line(&mut buf)?;
+            }
+            None => {
+                std::io::stdin().read_line(&mut buf)?;
+            }
+        }
+        // Strip the trailing newline
+        if buf.ends_with('\n') {
+            buf.pop();
+            if buf.ends_with('\r') {
+                buf.pop();
+            }
+        }
+        Ok(buf)
+    }
+
     /// Display a prompt and read a line of password input from stdin.
     ///
     /// Like [`input`](Console::input), but terminal echo is disabled so the

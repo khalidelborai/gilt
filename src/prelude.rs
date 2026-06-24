@@ -45,7 +45,7 @@ pub use crate::bar::Bar;
 pub use crate::json::Json;
 pub use crate::layout::Layout;
 pub use crate::live::Live;
-pub use crate::prompt::{MultiSelect, Prompt, Select};
+pub use crate::prompt::{Confirm, FloatPrompt, IntPrompt, MultiSelect, Prompt, Select};
 pub use crate::status::Status;
 
 // Markup

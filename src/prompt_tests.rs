@@ -998,3 +998,261 @@ fn test_typed_prompt_custom_converter() {
     let v = tp.ask_with_input(&mut input).unwrap();
     assert!(v);
 }
+
+// ---------------------------------------------------------------------------
+// Phase 7 Batch 7.5 — P2/P3 parity items
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Item 1: IntPrompt, FloatPrompt, Confirm structs
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_int_prompt_valid_input() {
+    let mut p = IntPrompt::new("Enter integer");
+    let mut input = Cursor::new(b"42\n" as &[u8]);
+    let result = p.ask_with_input(&mut input);
+    assert_eq!(result, 42);
+}
+
+#[test]
+fn test_int_prompt_default_on_empty() {
+    let mut p = IntPrompt::new("Enter integer").with_default(99);
+    let mut input = Cursor::new(b"\n" as &[u8]);
+    let result = p.ask_with_input(&mut input);
+    assert_eq!(result, 99);
+}
+
+#[test]
+fn test_int_prompt_default_on_eof() {
+    let mut p = IntPrompt::new("Enter integer").with_default(7);
+    let mut input = Cursor::new(b"" as &[u8]);
+    let result = p.ask_with_input(&mut input);
+    assert_eq!(result, 7);
+}
+
+#[test]
+fn test_int_prompt_no_default_eof_returns_zero() {
+    let mut p = IntPrompt::new("Enter integer");
+    let mut input = Cursor::new(b"" as &[u8]);
+    let result = p.ask_with_input(&mut input);
+    assert_eq!(result, 0);
+}
+
+#[test]
+fn test_int_prompt_invalid_then_valid() {
+    let mut p = IntPrompt::new("Enter integer");
+    let mut input = Cursor::new(b"abc\n5\n" as &[u8]);
+    let result = p.ask_with_input(&mut input);
+    assert_eq!(result, 5);
+}
+
+#[test]
+fn test_float_prompt_valid_input() {
+    let mut p = FloatPrompt::new("Enter float");
+    let mut input = Cursor::new(b"3.14\n" as &[u8]);
+    let result = p.ask_with_input(&mut input);
+    assert!((result - 3.14).abs() < f64::EPSILON);
+}
+
+#[test]
+fn test_float_prompt_default_on_empty() {
+    let mut p = FloatPrompt::new("Enter float").with_default(2.71);
+    let mut input = Cursor::new(b"\n" as &[u8]);
+    let result = p.ask_with_input(&mut input);
+    assert!((result - 2.71).abs() < f64::EPSILON);
+}
+
+#[test]
+fn test_float_prompt_default_on_eof() {
+    let mut p = FloatPrompt::new("Enter float").with_default(1.5);
+    let mut input = Cursor::new(b"" as &[u8]);
+    let result = p.ask_with_input(&mut input);
+    assert!((result - 1.5).abs() < f64::EPSILON);
+}
+
+#[test]
+fn test_float_prompt_no_default_eof_returns_zero() {
+    let mut p = FloatPrompt::new("Enter float");
+    let mut input = Cursor::new(b"" as &[u8]);
+    let result = p.ask_with_input(&mut input);
+    assert!((result - 0.0).abs() < f64::EPSILON);
+}
+
+#[test]
+fn test_confirm_struct_yes() {
+    let mut c = Confirm::new("Continue?");
+    let mut input = Cursor::new(b"y\n" as &[u8]);
+    let result = c.ask_with_input(&mut input);
+    assert!(result);
+}
+
+#[test]
+fn test_confirm_struct_no() {
+    let mut c = Confirm::new("Continue?");
+    let mut input = Cursor::new(b"n\n" as &[u8]);
+    let result = c.ask_with_input(&mut input);
+    assert!(!result);
+}
+
+#[test]
+fn test_confirm_struct_default_true_on_empty() {
+    let mut c = Confirm::new("Continue?").with_default(true);
+    let mut input = Cursor::new(b"\n" as &[u8]);
+    let result = c.ask_with_input(&mut input);
+    assert!(result);
+}
+
+#[test]
+fn test_confirm_struct_default_false_on_empty() {
+    let mut c = Confirm::new("Continue?").with_default(false);
+    let mut input = Cursor::new(b"\n" as &[u8]);
+    let result = c.ask_with_input(&mut input);
+    assert!(!result);
+}
+
+#[test]
+fn test_confirm_struct_default_on_eof() {
+    let mut c = Confirm::new("Continue?").with_default(true);
+    let mut input = Cursor::new(b"" as &[u8]);
+    let result = c.ask_with_input(&mut input);
+    assert!(result);
+}
+
+#[test]
+fn test_confirm_struct_no_default_eof_returns_false() {
+    let mut c = Confirm::new("Continue?");
+    let mut input = Cursor::new(b"" as &[u8]);
+    let result = c.ask_with_input(&mut input);
+    assert!(!result);
+}
+
+// ---------------------------------------------------------------------------
+// Item 4: Console::input with optional stream parameter
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_console_input_with_stream() {
+    let mut console = Console::builder().quiet(true).build();
+    let mut stream = Cursor::new(b"hello\n" as &[u8]);
+    let result = console.input_with_stream("Test prompt", Some(&mut stream));
+    assert_eq!(result.unwrap(), "hello");
+}
+
+#[test]
+fn test_console_input_stream_strips_newline() {
+    let mut console = Console::builder().quiet(true).build();
+    let mut stream = Cursor::new(b"world\n" as &[u8]);
+    let result = console.input_with_stream("Prompt", Some(&mut stream));
+    assert_eq!(result.unwrap(), "world");
+}
+
+#[test]
+fn test_console_input_stream_eof_returns_empty() {
+    let mut console = Console::builder().quiet(true).build();
+    let mut stream = Cursor::new(b"" as &[u8]);
+    let result = console.input_with_stream("Prompt", Some(&mut stream));
+    assert_eq!(result.unwrap(), "");
+}
+
+// ---------------------------------------------------------------------------
+// Item 6: Prompt pre_prompt and on_validate_error hooks
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_pre_prompt_hook_called() {
+    use std::sync::{Arc, Mutex};
+    let called = Arc::new(Mutex::new(false));
+    let called_clone = Arc::clone(&called);
+    let mut p = Prompt::new("Pick")
+        .with_choices(vec!["a".into(), "b".into()])
+        .with_pre_prompt(move || {
+            *called_clone.lock().unwrap() = true;
+        });
+    let mut input = Cursor::new(b"a\n" as &[u8]);
+    let _ = p.ask_with_input(&mut input);
+    assert!(
+        *called.lock().unwrap(),
+        "pre_prompt hook should have been called"
+    );
+}
+
+#[test]
+fn test_on_validate_error_hook_called_on_invalid_choice() {
+    use std::sync::{Arc, Mutex};
+    let errors = Arc::new(Mutex::new(vec![]));
+    let errors_clone = Arc::clone(&errors);
+    let mut p = Prompt::new("Pick")
+        .with_choices(vec!["a".into(), "b".into()])
+        .with_on_validate_error(move |msg: &str| {
+            errors_clone.lock().unwrap().push(msg.to_string());
+        });
+    // "bad" is invalid, "a" is valid
+    let mut input = Cursor::new(b"bad\na\n" as &[u8]);
+    let _ = p.ask_with_input(&mut input);
+    let errs = errors.lock().unwrap();
+    assert!(
+        !errs.is_empty(),
+        "on_validate_error should have been called"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Item 7: Prompt prompt_suffix and with_suffix builder
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_prompt_default_suffix_is_colon_space() {
+    let p = Prompt::new("Enter value");
+    let text = p.make_prompt();
+    let plain = text.plain().to_string();
+    assert!(plain.ends_with(": "), "default suffix should be ': '");
+}
+
+#[test]
+fn test_prompt_custom_suffix() {
+    let p = Prompt::new("Enter value").with_suffix(" -> ");
+    let text = p.make_prompt();
+    let plain = text.plain().to_string();
+    assert!(plain.ends_with(" -> "), "custom suffix should be ' -> '");
+}
+
+#[test]
+fn test_prompt_suffix_field_default() {
+    let p = Prompt::new("test");
+    assert_eq!(p.prompt_suffix, ": ");
+}
+
+#[test]
+fn test_prompt_suffix_field_custom() {
+    let p = Prompt::new("test").with_suffix("? ");
+    assert_eq!(p.prompt_suffix, "? ");
+}
+
+// ---------------------------------------------------------------------------
+// Item 8: confirm_with_input_and_default styled choices display
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_confirm_styled_default_true_choices_uppercase_y() {
+    // When default=true, prompt should show Y (uppercase) as the default
+    // The function should still behave correctly
+    let mut input = Cursor::new(b"y\n" as &[u8]);
+    let result = confirm_with_input_and_default("Continue?", Some(true), &mut input);
+    assert!(result);
+}
+
+#[test]
+fn test_confirm_styled_default_false_choices_uppercase_n() {
+    let mut input = Cursor::new(b"n\n" as &[u8]);
+    let result = confirm_with_input_and_default("Continue?", Some(false), &mut input);
+    assert!(!result);
+}
+
+#[test]
+fn test_confirm_styled_no_default_blank_loops() {
+    // With no default, blank should prompt again; next "y" should succeed
+    let mut input = Cursor::new(b"\ny\n" as &[u8]);
+    let result = confirm_with_input_and_default("Continue?", None, &mut input);
+    assert!(result);
+}
