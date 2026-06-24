@@ -234,6 +234,33 @@ fn standalone_render_resolves_named_span_against_default_styles() {
 
 ---
 
+### Task 2.7: sweep widget `gilt_console` to use `render_themed(console)`
+
+**Files:** Modify `src/rule.rs` (title render ~228/255/289), `src/panel.rs` (`align_title_segments` ~294 — thread a `console` param; callers ~447/527 have it), `src/progress/core.rs` (~820), `src/status/spinner.rs` (~188), and `src/syntax.rs` (un-prefix `_console` at ~773 and thread to `render_syntax` ~685/707 where feasible). Tests: inline per widget.
+
+**Why:** these `Renderable::gilt_console` impls receive `console: &Console` but call `text.render()` (discarding it), so theme-named spans (markup theme tags, RegexHighlighter group styles) render UNSTYLED there. Convert to `render_themed(console)`, threading the console parameter where a helper currently lacks it.
+
+- [ ] **Step 1 — failing test (per widget that has a console):** build a Console whose theme maps a name (e.g. `repr.number` -> `italic yellow`); construct the widget with a `Text` carrying a `Span::named(.., "repr.number")` (or markup `[repr.number]`); render the widget through the console; assert the relevant segment carries the themed style (italic yellow), not null/default. Start with `Rule` (clearest: has a title Text + console). Example:
+```rust
+#[test]
+fn rule_title_resolves_named_span_through_theme() {
+    let mut styles = std::collections::HashMap::new();
+    styles.insert("repr.number".to_string(), Style::parse("italic yellow"));
+    let theme = crate::color::theme::Theme::new(Some(styles), true);
+    let console = Console::builder().theme(theme).width(40).no_color(false).build();
+    let mut title = Text::new("42", Style::null());
+    title.spans_mut().push(crate::text::Span::named(0, 2, "repr.number"));
+    let rule = Rule::new().with_title(title); // adapt to real Rule API
+    let segs = console.render(&rule, None);
+    assert!(segs.iter().any(|s| s.style().is_some_and(|st| st.italic()==Some(true))),
+            "rule title named span must resolve to italic via theme");
+}
+```
+- [ ] **Step 2 — run, expect FAIL** (sites use `.render()`, span renders null).
+- [ ] **Step 3 — implement:** at each site, replace `text.render()` with `text.render_themed(console)`; for `align_title_segments` add a `console: &Console` parameter and pass it from the two call sites; for `syntax.rs` un-prefix `_console` and thread it into `render_syntax` (skip if a path genuinely has no console — note it).
+- [ ] **Step 4 — run, expect PASS;** full `cargo nextest run --lib` + triage any snapshot changes (theme-named content now styled is the correct new behavior).
+- [ ] **Step 5 — commit:** `fix(render): resolve named spans via render_themed in Rule/Panel-title/Progress/Spinner/Syntax (#6 cross-cutting)`
+
 ### Phase 2 gate
 - [ ] full `cargo nextest run --lib` + `cargo test --doc` green
 - [ ] clippy `--all-features -D warnings` + fmt clean
