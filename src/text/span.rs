@@ -13,6 +13,13 @@ use crate::style::Style;
 /// `[@key=val]...[/]` markup tags).  Two spans are equal only when their `meta` also
 /// compares equal; the manual `Hash` impl still hashes only `start`, `end`, and `style`
 /// so that meta-only differences may collide (which is permitted by the `Hash` contract).
+///
+/// The optional `style_name` field carries a theme token (e.g. `"warning"`,
+/// `"repr.number"`) for deferred resolution — the name is kept alongside (or instead of)
+/// a resolved [`Style`] so the render pipeline can resolve it against the active theme
+/// at the last moment.  Named spans are created with [`Span::named`] /
+/// [`Span::named_with_meta`]; unnamed spans (created with [`Span::new`] /
+/// [`Span::with_meta`]) leave this field as `None`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Span {
     /// Start character offset (inclusive).
@@ -27,6 +34,12 @@ pub struct Span {
     /// When present, the `Arc` allows the same metadata to be shared across cloned spans
     /// without copying the `HashMap`.
     pub meta: Option<Arc<HashMap<String, String>>>,
+    /// Optional theme token (e.g. `"warning"`, `"repr.number"`) for deferred resolution.
+    ///
+    /// When `Some`, the span carries a symbolic style name that the render pipeline can
+    /// resolve against the active theme at render time.  `None` for all ordinary spans
+    /// created with [`Span::new`] or [`Span::with_meta`].
+    pub style_name: Option<String>,
 }
 
 impl Span {
@@ -37,6 +50,7 @@ impl Span {
             end,
             style,
             meta: None,
+            style_name: None,
         }
     }
 
@@ -54,7 +68,51 @@ impl Span {
             end,
             style,
             meta,
+            style_name: None,
         }
+    }
+
+    /// Create a named span covering `[start, end)` with a deferred theme token.
+    ///
+    /// The resolved `style` is left as [`Style::null()`]; the pipeline resolves the
+    /// name against the active theme at render time.
+    pub fn named(start: usize, end: usize, name: impl Into<String>) -> Self {
+        Span {
+            start,
+            end,
+            style: Style::null(),
+            meta: None,
+            style_name: Some(name.into()),
+        }
+    }
+
+    /// Create a named span with explicit metadata.
+    ///
+    /// Combines [`Span::named`] with the `meta` field from [`Span::with_meta`].
+    pub fn named_with_meta(
+        start: usize,
+        end: usize,
+        name: impl Into<String>,
+        meta: Option<Arc<HashMap<String, String>>>,
+    ) -> Self {
+        Span {
+            start,
+            end,
+            style: Style::null(),
+            meta,
+            style_name: Some(name.into()),
+        }
+    }
+
+    /// Return the theme token for this span, if it was created with [`Span::named`].
+    pub fn style_name(&self) -> Option<&str> {
+        self.style_name.as_deref()
+    }
+
+    /// Return `true` if this span carries a deferred theme name (i.e. was created with
+    /// [`Span::named`] or [`Span::named_with_meta`]).
+    pub fn is_named(&self) -> bool {
+        self.style_name.is_some()
     }
 
     /// Return `true` if the span covers zero or negative characters.
@@ -67,43 +125,59 @@ impl Span {
     /// Otherwise returns (left, Some(right)).
     ///
     /// Both halves inherit `self.meta` via `Arc::clone` (zero allocation).
+    /// `style_name` is also cloned into both halves.
     pub fn split(&self, offset: usize) -> (Span, Option<Span>) {
         if offset < self.start || offset >= self.end {
             return (self.clone(), None);
         }
-        let left = Span::with_meta(self.start, offset, self.style.clone(), self.meta.clone());
-        let right = Span::with_meta(offset, self.end, self.style.clone(), self.meta.clone());
+        let left = Span {
+            start: self.start,
+            end: offset,
+            style: self.style.clone(),
+            meta: self.meta.clone(),
+            style_name: self.style_name.clone(),
+        };
+        let right = Span {
+            start: offset,
+            end: self.end,
+            style: self.style.clone(),
+            meta: self.meta.clone(),
+            style_name: self.style_name.clone(),
+        };
         (left, Some(right))
     }
 
-    /// Shift span by `offset` positions.  Metadata is preserved.
+    /// Shift span by `offset` positions.  Metadata and `style_name` are preserved.
     pub fn move_span(&self, offset: usize) -> Span {
-        Span::with_meta(
-            self.start.saturating_add(offset),
-            self.end.saturating_add(offset),
-            self.style.clone(),
-            self.meta.clone(),
-        )
+        Span {
+            start: self.start.saturating_add(offset),
+            end: self.end.saturating_add(offset),
+            style: self.style.clone(),
+            meta: self.meta.clone(),
+            style_name: self.style_name.clone(),
+        }
     }
 
-    /// Crop the end to `min(offset, self.end)`.  Metadata is preserved.
+    /// Crop the end to `min(offset, self.end)`.  Metadata and `style_name` are preserved.
     pub fn right_crop(&self, offset: usize) -> Span {
-        Span::with_meta(
-            self.start,
-            std::cmp::min(offset, self.end),
-            self.style.clone(),
-            self.meta.clone(),
-        )
+        Span {
+            start: self.start,
+            end: std::cmp::min(offset, self.end),
+            style: self.style.clone(),
+            meta: self.meta.clone(),
+            style_name: self.style_name.clone(),
+        }
     }
 
-    /// Extend end by `cells`.  Metadata is preserved.
+    /// Extend end by `cells`.  Metadata and `style_name` are preserved.
     pub fn extend(&self, cells: usize) -> Span {
-        Span::with_meta(
-            self.start,
-            self.end + cells,
-            self.style.clone(),
-            self.meta.clone(),
-        )
+        Span {
+            start: self.start,
+            end: self.end + cells,
+            style: self.style.clone(),
+            meta: self.meta.clone(),
+            style_name: self.style_name.clone(),
+        }
     }
 }
 
@@ -120,7 +194,7 @@ impl Ord for Span {
 }
 
 impl std::hash::Hash for Span {
-    /// Hashes only `start`, `end`, and `style`.
+    /// Hashes `start`, `end`, `style`, and `style_name`.
     ///
     /// `meta` is intentionally excluded: `HashMap` is not `Hash`, and the
     /// contract only requires that equal values produce the same hash — spans
@@ -129,6 +203,7 @@ impl std::hash::Hash for Span {
         self.start.hash(state);
         self.end.hash(state);
         self.style.hash(state);
+        self.style_name.hash(state);
     }
 }
 
@@ -219,5 +294,37 @@ mod tests {
         let cropped = s.right_crop(5);
         assert!(cropped.meta.is_some());
         assert_eq!(cropped.end, 5);
+    }
+
+    #[test]
+    fn named_span_carries_style_name() {
+        let s = Span::named(0, 5, "warning");
+        assert_eq!(s.style_name(), Some("warning"));
+        assert!(s.is_named());
+        assert!(
+            s.style.is_null(),
+            "named span has null resolved style initially"
+        );
+    }
+
+    #[test]
+    fn regular_span_has_no_style_name() {
+        let s = Span::new(0, 5, Style::parse("bold"));
+        assert_eq!(s.style_name(), None);
+        assert!(!s.is_named());
+    }
+
+    #[test]
+    fn named_span_split_preserves_name() {
+        let (left, right) = Span::named(0, 6, "repr.number").split(3);
+        assert_eq!(left.style_name(), Some("repr.number"));
+        assert_eq!(right.unwrap().style_name(), Some("repr.number"));
+    }
+
+    #[test]
+    fn named_span_move_preserves_name() {
+        let moved = Span::named(0, 3, "repr.bool_true").move_span(10);
+        assert_eq!(moved.style_name(), Some("repr.bool_true"));
+        assert_eq!(moved.start, 10);
     }
 }
