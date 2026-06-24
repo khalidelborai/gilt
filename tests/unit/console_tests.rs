@@ -634,7 +634,8 @@ fn test_control_clear() {
 
 #[test]
 fn test_control_show_cursor() {
-    let mut console = Console::builder().record(true).build();
+    // force_terminal(true) so the is_terminal() guard does not suppress the control.
+    let mut console = Console::builder().force_terminal(true).record(true).build();
     console.show_cursor(true);
     let text = console.export_text(true, true);
     assert!(text.contains("\x1b[?25h"));
@@ -648,7 +649,8 @@ fn test_control_show_cursor() {
 
 #[test]
 fn test_alt_screen_enable_disable() {
-    let mut console = Console::builder().record(true).build();
+    // force_terminal(true) so the is_terminal() guard allows the operation.
+    let mut console = Console::builder().force_terminal(true).record(true).build();
 
     assert!(!console.is_alt_screen);
     let changed = console.set_alt_screen(true);

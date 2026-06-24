@@ -662,7 +662,8 @@ fn test_control_clear() {
 
 #[test]
 fn test_control_show_cursor() {
-    let mut console = Console::builder().record(true).build();
+    // force_terminal(true) so the is_terminal() guard does not suppress the control.
+    let mut console = Console::builder().force_terminal(true).record(true).build();
     console.show_cursor(true);
     let text = console.export_text(true, true);
     assert!(text.contains("\x1b[?25h"));
@@ -676,7 +677,8 @@ fn test_control_show_cursor() {
 
 #[test]
 fn test_alt_screen_enable_disable() {
-    let mut console = Console::builder().record(true).build();
+    // force_terminal(true) so the is_terminal() guard allows the operation.
+    let mut console = Console::builder().force_terminal(true).record(true).build();
 
     assert!(!console.is_alt_screen);
     let changed = console.set_alt_screen(true);
@@ -704,7 +706,7 @@ fn test_update_screen_no_op_when_not_in_alt_screen() {
 
 #[test]
 fn test_update_screen_writes_at_position_in_alt_screen() {
-    let mut console = Console::builder().record(true).build();
+    let mut console = Console::builder().force_terminal(true).record(true).build();
     console.set_alt_screen(true);
     console.update_screen(10, 3, &Text::new("hello", Style::null()));
     let text = console.export_text(false, true);
@@ -718,7 +720,7 @@ fn test_update_screen_writes_at_position_in_alt_screen() {
 
 #[test]
 fn test_update_screen_lines_writes_each_line_at_successive_rows() {
-    let mut console = Console::builder().record(true).build();
+    let mut console = Console::builder().force_terminal(true).record(true).build();
     console.set_alt_screen(true);
     let lines = vec![
         vec![Segment::text("row0")],
@@ -1332,7 +1334,11 @@ fn test_pager_with_capture() {
 
 #[test]
 fn test_enter_exit_screen() {
-    let mut console = Console::builder().width(80).record(true).build();
+    let mut console = Console::builder()
+        .width(80)
+        .force_terminal(true)
+        .record(true)
+        .build();
 
     // Verify enter_screen activates alt screen and hides cursor.
     console.enter_screen(true);
@@ -1345,7 +1351,11 @@ fn test_enter_exit_screen() {
 
 #[test]
 fn test_enter_exit_screen_no_hide_cursor() {
-    let mut console = Console::builder().width(80).record(true).build();
+    let mut console = Console::builder()
+        .width(80)
+        .force_terminal(true)
+        .record(true)
+        .build();
 
     console.enter_screen(false);
     assert!(console.is_alt_screen);
@@ -3360,5 +3370,91 @@ fn test_svg_space_segment_no_text_element() {
     assert!(
         matrix.contains("x=\"29.0\""),
         "x position of 'X' must be 29.0 (spaces advanced x); got:\n{matrix}"
+    );
+}
+
+// -- show_cursor is_terminal guard -------------------------------------
+
+#[test]
+fn test_show_cursor_no_terminal_noop() {
+    // A non-terminal console (force_terminal = false) must not emit any cursor
+    // control when show_cursor is called.
+    let mut console = Console::builder()
+        .force_terminal(false)
+        .record(true)
+        .build();
+    console.show_cursor(true);
+    let text = console.export_text(true, true);
+    assert!(
+        !text.contains("\x1b[?25h"),
+        "show_cursor on non-terminal must not emit ShowCursor; got: {text:?}"
+    );
+}
+
+// -- set_alt_screen guards ----------------------------------------------
+
+#[test]
+fn test_set_alt_screen_no_terminal_returns_false() {
+    let mut console = Console::builder()
+        .force_terminal(false)
+        .record(true)
+        .build();
+    let result = console.set_alt_screen(true);
+    assert!(!result, "set_alt_screen on non-terminal must return false");
+    assert!(
+        !console.is_alt_screen,
+        "is_alt_screen must stay false on non-terminal"
+    );
+}
+
+#[test]
+fn test_set_alt_screen_legacy_windows_returns_false() {
+    let mut console = Console::builder().force_terminal(true).record(true).build();
+    // Directly set the legacy_windows flag to simulate a legacy Windows console.
+    console.legacy_windows = true;
+    let result = console.set_alt_screen(true);
+    assert!(
+        !result,
+        "set_alt_screen on legacy_windows console must return false"
+    );
+    assert!(
+        !console.is_alt_screen,
+        "is_alt_screen must stay false on legacy_windows console"
+    );
+}
+
+// -- update_screen_region -----------------------------------------------
+
+#[test]
+fn test_update_screen_region_uses_region_position() {
+    // When not in alt-screen mode the method must no-op.
+    let mut console = Console::builder().force_terminal(true).record(true).build();
+    assert!(!console.is_alt_screen);
+    let region = crate::region::Region::new(5, 10, 40, 20);
+    console.update_screen_region(region, &Text::new("hello", Style::null()));
+    let text = console.export_text(false, true);
+    assert!(
+        !text.contains("hello"),
+        "update_screen_region must no-op when not in alt-screen; got: {text:?}"
+    );
+}
+
+#[test]
+fn test_update_screen_region_in_alt_screen() {
+    // Happy path: in alt-screen mode the method emits a cursor-positioning
+    // escape followed by the renderable's content.
+    let mut console = Console::builder().force_terminal(true).record(true).build();
+    console.set_alt_screen(true);
+    assert!(console.is_alt_screen);
+    let region = crate::region::Region::new(2, 3, 40, 10);
+    console.update_screen_region(region, &Text::new("hello", Style::null()));
+    let text = console.export_text(false, true);
+    assert!(
+        text.contains("hello"),
+        "expected renderable content in output; got: {text:?}"
+    );
+    assert!(
+        text.contains("\x1b["),
+        "expected cursor-positioning escape in output; got: {text:?}"
     );
 }

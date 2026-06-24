@@ -1121,13 +1121,35 @@ impl Console {
         self.control(&Control::bell());
     }
 
-    /// Clear the terminal screen.
+    /// Clear the terminal screen, moving the cursor to home first.
+    ///
+    /// Emits `\x1b[H\x1b[2J` (Home + Clear) — matches rich's default
+    /// `Console.clear(home=True)` behaviour.  For fine-grained control use
+    /// [`clear_screen`](Self::clear_screen).
     pub fn clear(&mut self) {
-        self.control(&Control::clear());
+        self.control(&Control::clear_with_home());
+    }
+
+    /// Clear the terminal screen with an optional home-cursor move.
+    ///
+    /// - `home == true`  → `\x1b[H\x1b[2J`  (parity with rich `clear(home=True)`)
+    /// - `home == false` → `\x1b[2J`         (parity with rich `clear(home=False)`)
+    pub fn clear_screen(&mut self, home: bool) {
+        if home {
+            self.control(&Control::clear_with_home());
+        } else {
+            self.control(&Control::clear());
+        }
     }
 
     /// Show or hide the cursor.
+    ///
+    /// No-ops when the output is not an interactive terminal — emitting cursor
+    /// escape sequences to a pipe or file would produce raw garbage.
     pub fn show_cursor(&mut self, show: bool) {
+        if !self.is_terminal() {
+            return;
+        }
         self.control(&Control::show_cursor(show));
     }
 
@@ -1135,6 +1157,9 @@ impl Console {
     ///
     /// Returns `true` if the operation was performed.
     pub fn set_alt_screen(&mut self, enable: bool) -> bool {
+        if !self.is_terminal() || self.legacy_windows {
+            return false;
+        }
         if enable == self.is_alt_screen {
             return false;
         }
@@ -1356,6 +1381,33 @@ impl Console {
         let ctrl = crate::utils::control::Control::move_to(x as i32, y as i32);
         self.write_segments(&[ctrl.segment]);
         self.print(renderable);
+    }
+
+    /// Render a [`Renderable`] into a specific [`Region`] in the active
+    /// alternate screen.
+    ///
+    /// Moves the cursor to `(region.x, region.y)`, then renders the renderable
+    /// with `ConsoleOptions::max_width` clamped to `region.width`.  This lets
+    /// layout widgets confine their output to a rectangular area without
+    /// knowing the full terminal size.
+    ///
+    /// Like [`update_screen`](Self::update_screen), no-ops when the console is
+    /// not currently in alt-screen mode.
+    pub fn update_screen_region(
+        &mut self,
+        region: crate::region::Region,
+        renderable: &dyn Renderable,
+    ) {
+        if !self.is_alt_screen {
+            return;
+        }
+        let ctrl = crate::utils::control::Control::move_to(region.x, region.y);
+        self.write_segments(&[ctrl.segment]);
+        let mut opts = self.options();
+        opts.max_width = region.width;
+        let segments = renderable.gilt_console(self, &opts);
+        // write_segments (not print()) to avoid newline normalization for region-constrained rendering.
+        self.write_segments(&segments);
     }
 
     /// Render a slice of [`Segment`] lines at successive rows starting from

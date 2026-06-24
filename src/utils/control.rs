@@ -190,7 +190,20 @@ impl Control {
     }
 
     /// Clear the entire screen.
+    ///
+    /// Emits `\x1b[2J` only — cursor position is unchanged (parity with
+    /// Python rich's `Control.CLEAR`).  If you also need to move the cursor
+    /// to the home position before clearing, use
+    /// [`clear_with_home`](Self::clear_with_home).
     pub fn clear() -> Self {
+        Self::new(vec![ControlCode::Simple(ControlType::Clear)])
+    }
+
+    /// Move cursor to home then clear the entire screen.
+    ///
+    /// Emits `\x1b[H\x1b[2J`.  This was the behaviour of `clear()` prior to
+    /// v1.10 and is still the default used by [`Console::clear`].
+    pub fn clear_with_home() -> Self {
         Self::new(vec![
             ControlCode::Simple(ControlType::Home),
             ControlCode::Simple(ControlType::Clear),
@@ -482,7 +495,12 @@ mod tests {
 
     #[test]
     fn test_clear() {
-        assert_eq!(Control::clear().to_string(), "\x1b[H\x1b[2J");
+        assert_eq!(Control::clear().to_string(), "\x1b[2J");
+    }
+
+    #[test]
+    fn test_clear_with_home() {
+        assert_eq!(Control::clear_with_home().to_string(), "\x1b[H\x1b[2J");
     }
 
     #[test]
