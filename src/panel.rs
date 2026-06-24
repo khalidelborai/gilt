@@ -3,7 +3,7 @@
 
 use crate::align_widget::HorizontalAlign;
 use crate::box_chars::{BoxChars, ROUNDED};
-use crate::console::{Console, ConsoleOptions, Renderable};
+use crate::console::{Console, ConsoleOptions, Renderable, RenderableArc};
 use crate::highlighter::Highlighter;
 use crate::measure::Measurement;
 use crate::padding::PaddingDimensions;
@@ -34,15 +34,15 @@ use crate::text::Text;
 ///     .with_title("Notice")
 ///     .with_border_style(Style::parse("red"));
 ///
-/// // Panel with Table content (render table to text first)
+/// // Panel wrapping a Table
 /// let mut table = Table::new(&["Name", "Value"]);
 /// table.add_row(&["Key", "Value"]);
-/// let panel = Panel::new(Text::from(format!("{}", table))).with_title("Data");
+/// let panel = Panel::new(table).with_title("Data");
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Panel {
-    /// The inner content.
-    pub content: Text,
+    /// The inner content — any renderable widget (Text, Table, Tree, Panel, …).
+    pub content: RenderableArc,
     /// Box-drawing character set (reference to one of the 19 static constants).
     pub box_chars: &'static BoxChars,
     /// Optional title rendered in the top border.
@@ -72,11 +72,35 @@ pub struct Panel {
     pub safe_box: Option<bool>,
 }
 
+// Manual Debug — RenderableArc (Arc<dyn Renderable + Send + Sync>) doesn't
+// implement Debug, so we print a placeholder for the content field.
+impl std::fmt::Debug for Panel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Panel")
+            .field("content", &"<renderable>")
+            .field("box_chars", &self.box_chars)
+            .field("title", &self.title)
+            .field("title_align", &self.title_align)
+            .field("subtitle", &self.subtitle)
+            .field("subtitle_align", &self.subtitle_align)
+            .field("expand", &self.expand)
+            .field("style", &self.style)
+            .field("border_style", &self.border_style)
+            .field("width", &self.width)
+            .field("height", &self.height)
+            .field("padding", &self.padding)
+            .field("highlight", &self.highlight)
+            .field("safe_box", &self.safe_box)
+            .finish()
+    }
+}
+
 impl Panel {
     /// Create a new expanding `Panel` with ROUNDED box and default padding.
     ///
-    /// The content can be any type that implements [`Renderable`] by first converting
-    /// to [`Text`] via the console's string rendering. For more control, use [`Text`] directly.
+    /// Accepts any type that implements [`Renderable`] — [`Text`], [`Table`],
+    /// [`Tree`], another [`Panel`], etc.  The value is stored as a
+    /// [`RenderableArc`] (reference-counted, cheaply cloned).
     ///
     /// # Examples
     ///
@@ -86,14 +110,14 @@ impl Panel {
     /// // Panel with Text
     /// let panel = Panel::new(Text::new("Hello", Style::null()));
     ///
-    /// // Panel with Table (rendered as text)
+    /// // Panel with Table
     /// let mut table = Table::new(&["Name", "Value"]);
     /// table.add_row(&["Key", "Value"]);
-    /// let panel = Panel::new(Text::from(format!("{}", table)));
+    /// let panel = Panel::new(table);
     /// ```
-    pub fn new(content: Text) -> Self {
+    pub fn new(content: impl Renderable + Send + Sync + 'static) -> Self {
         Panel {
-            content,
+            content: std::sync::Arc::new(content),
             box_chars: &ROUNDED,
             title: None,
             title_align: HorizontalAlign::Center,
@@ -111,16 +135,19 @@ impl Panel {
     }
 
     /// Create a non-expanding (fit-to-content) `Panel`.
-    pub fn fit(content: Text) -> Self {
+    pub fn fit(content: impl Renderable + Send + Sync + 'static) -> Self {
         let mut panel = Panel::new(content);
         panel.expand = false;
         panel
     }
 
-    /// Wrap any [`Renderable`] in a `Panel`. Mirror of
+    /// Wrap any [`Renderable`] in a `Panel`.
+    ///
+    /// This is a thin wrapper around [`Panel::new`] — the renderable is stored
+    /// directly as a [`RenderableArc`] with no pre-rendering.  Mirror of
     /// [`Live::from_renderable`](crate::live::Live::from_renderable).
-    pub fn from_renderable<R: crate::console::Renderable>(renderable: &R) -> Self {
-        Self::new(crate::console::Console::default().render_widget_to_text(renderable))
+    pub fn from_renderable<R: Renderable + Send + Sync + 'static>(renderable: R) -> Self {
+        Self::new(renderable)
     }
 
     // -- Builder methods ----------------------------------------------------
@@ -226,15 +253,16 @@ impl Panel {
     /// `cell_len()` which sums all characters across all lines. Also accounts
     /// for the title width so the panel is always wide enough to display its
     /// title (rich parity).
-    pub fn measure(&self, _console: &Console, _options: &ConsoleOptions) -> Measurement {
+    pub fn measure(&self, console: &Console, options: &ConsoleOptions) -> Measurement {
         let (_, right, _, left) = self.padding.unpack();
         let padding = left + right;
         let w = if let Some(fixed) = self.width {
             fixed
         } else {
-            // Use the content's true maximum (longest line), not cell_len()
-            // which would sum every character across all lines.
-            let content_max = self.content.measure().maximum;
+            // Use the content's true maximum (longest line) via the Renderable
+            // trait so any widget type (Text, Table, Tree, nested Panel…) is
+            // measured correctly.
+            let content_max = self.content.gilt_measure(console, options).maximum;
             let mut w = content_max + padding + 2;
 
             // Panel must be wide enough to display its title.
@@ -356,9 +384,9 @@ impl Renderable for Panel {
         let mut child_width = if self.expand {
             max_width.saturating_sub(2)
         } else {
-            // Fit mode: size to the longest rendered line, not the total char count.
-            // Text::measure().maximum uses lines().map(cell_len).max() — the correct metric.
-            let content_width = self.content.measure().maximum;
+            // Fit mode: size to the longest rendered line via the Renderable trait
+            // so any content type (Text, Table, Tree, nested Panel…) is measured.
+            let content_width = self.content.gilt_measure(console, options).maximum;
             content_width + horizontal_padding
         };
 
@@ -392,43 +420,56 @@ impl Renderable for Panel {
         // The total panel width
         let width = child_width + 2;
 
-        // Render content lines.
-        // We wrap the content text ourselves and render each line individually
-        // to avoid the double-newline issue that occurs when Text.gilt_console's
-        // wrap (which includes separators in line text) combines with the
-        // between-lines Segment::line().
+        // Inner width = the space available to content (child_width minus h-padding).
         let inner_width = child_width.saturating_sub(horizontal_padding).max(1);
-        let mut content_copy = self.content.clone();
-        content_copy.end = String::new();
-        let tab_size = content_copy.tab_size.unwrap_or(8);
 
-        // Apply ReprHighlighter if highlight is enabled
-        if self.highlight {
-            crate::highlighter::ReprHighlighter.highlight(&mut content_copy);
-        }
-        let wrapped = content_copy.wrap(
-            inner_width,
-            content_copy.justify,
-            content_copy.overflow,
-            tab_size,
-            content_copy.no_wrap.unwrap_or(false),
-        );
-        let mut lines: Vec<Vec<Segment>> = Vec::new();
-        for mut line in wrapped.lines {
-            line.end = String::new();
-            // Strip trailing newline that Text::split("\n", true, true) embeds
-            // in each line's plain text during wrap().
-            line.remove_suffix("\n");
-            let line_segments = line.render_themed(console);
-            // Apply content style if set
-            let styled = if !self.style.is_null() {
-                Segment::apply_style(&line_segments, Some(self.style.clone()), None)
-            } else {
-                line_segments
-            };
-            let adjusted = Segment::adjust_line_length(&styled, inner_width, &self.style, true);
-            lines.push(adjusted);
-        }
+        // Build child ConsoleOptions at inner_width so the child widget wraps
+        // and measures correctly at panel interior size.
+        let child_opts = options.update_width(inner_width);
+
+        // Render the child widget.
+        //
+        // When `highlight` is set (a Text-oriented feature), first render the
+        // content to plain text (collecting the text of each segment), then
+        // apply the ReprHighlighter to a Text built from that plain string, and
+        // finally re-render the highlighted Text at inner_width.
+        //
+        // For all other content (and when highlight=false), render directly via
+        // `render_lines` so complex widgets (Table, Tree, nested Panel…) render
+        // at full fidelity.
+        let raw_lines: Vec<Vec<Segment>> = if self.highlight {
+            // Collect plain text from the content's segments at inner_width,
+            // joining lines with "\n" so multi-line content is preserved as
+            // distinct lines rather than fused into one run-on string.
+            let plain_segments =
+                console.render_lines(self.content.as_ref(), Some(&child_opts), None, false, false);
+            let flat: String = plain_segments
+                .iter()
+                .map(|line| line.iter().map(|s| s.text.as_str()).collect::<String>())
+                .collect::<Vec<_>>()
+                .join("\n");
+            // Build a Text from the joined string and apply the highlighter.
+            let mut content_text = Text::new(&flat, Style::null());
+            crate::highlighter::ReprHighlighter.highlight(&mut content_text);
+            // Re-render the highlighted text at inner_width (reuse child_opts).
+            console.render_lines(&content_text, Some(&child_opts), None, false, false)
+        } else {
+            console.render_lines(self.content.as_ref(), Some(&child_opts), None, false, false)
+        };
+
+        // Pad / trim each rendered line to exactly `inner_width` cells and
+        // apply the content style.
+        let mut lines: Vec<Vec<Segment>> = raw_lines
+            .into_iter()
+            .map(|line_segs| {
+                let styled = if !self.style.is_null() {
+                    Segment::apply_style(&line_segs, Some(self.style.clone()), None)
+                } else {
+                    line_segs
+                };
+                Segment::adjust_line_length(&styled, inner_width, &self.style, true)
+            })
+            .collect();
 
         // Apply fixed height if specified
         if let Some(h) = self.height {
@@ -1303,6 +1344,160 @@ mod tests {
             panel.gilt_measure(&console, &opts),
             panel.measure(&console, &opts),
             "Panel::gilt_measure with title must delegate to Panel::measure"
+        );
+    }
+
+    // ── Task 4.2: RenderableArc content tests ────────────────────────────
+
+    /// Panel::new still compiles and renders correctly for Text content (no regression).
+    #[test]
+    fn panel_text_content_compiles_and_renders() {
+        let console = make_console(30);
+        let panel = Panel::new(Text::new("Hello, world!", Style::null()));
+        let output = render_panel(&console, &panel);
+        let lines = content_lines(&output);
+        // Standard 3-line panel: top border, content, bottom border.
+        assert_eq!(lines.len(), 3);
+        assert!(
+            lines[1].contains("Hello, world!"),
+            "Text content must appear in output"
+        );
+        // All lines must be 30 cells wide (expand mode).
+        for line in &lines {
+            assert_eq!(cell_len(line), 30, "Line '{}' should be 30 cells", line);
+        }
+    }
+
+    /// Panel wrapping a Table renders the table's headers and rows inside the border.
+    #[test]
+    fn panel_table_content_renders_headers_and_rows() {
+        use crate::table::Table;
+        let console = make_console(60);
+        let mut table = Table::new(&["Name", "Score"]);
+        table.add_row(&["Alice", "42"]);
+        let panel = Panel::new(table).with_title(Text::new("Results", Style::null()));
+        let output = render_panel(&console, &panel);
+        // The border/title must be present.
+        let lines = content_lines(&output);
+        assert!(
+            lines[0].contains("Results"),
+            "Title must appear in top border"
+        );
+        assert!(lines[0].starts_with('╭'), "Top border must use rounded box");
+        assert!(
+            lines.last().unwrap().starts_with('╰'),
+            "Bottom border must use rounded box"
+        );
+        // Table headers and row content must appear somewhere in the output.
+        assert!(output.contains("Name"), "Table header 'Name' must appear");
+        assert!(output.contains("Score"), "Table header 'Score' must appear");
+        assert!(output.contains("Alice"), "Row value 'Alice' must appear");
+        assert!(output.contains("42"), "Row value '42' must appear");
+        // All lines must have equal width (panel geometry must be consistent).
+        let w = cell_len(lines[0]);
+        for (i, line) in lines.iter().enumerate() {
+            assert_eq!(
+                cell_len(line),
+                w,
+                "Line {} has width {}, expected {}",
+                i,
+                cell_len(line),
+                w
+            );
+        }
+    }
+
+    /// Panel wrapping another Panel renders the inner panel's border inside the outer border.
+    #[test]
+    fn panel_nested_panel_content_renders() {
+        let console = make_console(40);
+        let inner = Panel::new(Text::new("inner content", Style::null()))
+            .with_title(Text::new("Inner", Style::null()));
+        let outer = Panel::new(inner).with_title(Text::new("Outer", Style::null()));
+        let output = render_panel(&console, &outer);
+        // Both titles must appear.
+        assert!(output.contains("Outer"), "Outer panel title must appear");
+        assert!(output.contains("Inner"), "Inner panel title must appear");
+        // The inner panel's border characters must be present in the content area.
+        assert!(
+            output.contains("inner content"),
+            "Inner content must appear"
+        );
+        // Outer panel geometry: all non-empty lines same width.
+        let lines = content_lines(&output);
+        let w = cell_len(lines[0]);
+        for (i, line) in lines.iter().enumerate() {
+            assert_eq!(
+                cell_len(line),
+                w,
+                "Outer line {} has width {}, expected {}",
+                i,
+                cell_len(line),
+                w
+            );
+        }
+    }
+
+    /// from_renderable is a thin wrapper — no pre-render, same result as new().
+    #[test]
+    fn panel_from_renderable_same_as_new() {
+        let console = make_console(30);
+        let panel1 = Panel::new(Text::new("test content", Style::null()));
+        let panel2 = Panel::from_renderable(Text::new("test content", Style::null()));
+        let out1 = render_panel(&console, &panel1);
+        let out2 = render_panel(&console, &panel2);
+        assert_eq!(
+            out1, out2,
+            "from_renderable must produce identical output to new()"
+        );
+    }
+
+    /// Panel Debug impl must not panic and must print "<renderable>" for content.
+    #[test]
+    fn panel_debug_impl() {
+        let panel = Panel::new(Text::new("debug me", Style::null()));
+        let s = format!("{:?}", panel);
+        assert!(
+            s.contains("<renderable>"),
+            "Debug output must contain '<renderable>'"
+        );
+        assert!(
+            s.contains("Panel"),
+            "Debug output must contain struct name 'Panel'"
+        );
+    }
+
+    /// highlight=true on multi-line Text must preserve line breaks — both
+    /// "line1" and "line2" must appear on SEPARATE rendered lines, not fused.
+    #[test]
+    fn panel_highlight_multiline_preserves_line_breaks() {
+        let console = make_console(40);
+        let panel = Panel::new(Text::new("line1\nline2", Style::null())).with_highlight(true);
+        let output = render_panel(&console, &panel);
+        // Both strings must appear in the output.
+        assert!(
+            output.contains("line1"),
+            "highlight multiline: 'line1' must appear"
+        );
+        assert!(
+            output.contains("line2"),
+            "highlight multiline: 'line2' must appear"
+        );
+        // They must be on different rendered lines (not fused like "line1line2").
+        let lines = content_lines(&output);
+        let has_line1 = lines
+            .iter()
+            .any(|l| l.contains("line1") && !l.contains("line2"));
+        let has_line2 = lines
+            .iter()
+            .any(|l| l.contains("line2") && !l.contains("line1"));
+        assert!(
+            has_line1,
+            "highlight multiline: 'line1' must appear on its own line (not fused with line2)"
+        );
+        assert!(
+            has_line2,
+            "highlight multiline: 'line2' must appear on its own line (not fused with line1)"
         );
     }
 }
