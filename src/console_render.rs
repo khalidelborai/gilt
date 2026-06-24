@@ -765,3 +765,53 @@ impl Console {
         output
     }
 }
+
+// ---------------------------------------------------------------------------
+// Measurement protocol free functions
+// ---------------------------------------------------------------------------
+//
+// These live in console_render.rs (NOT in measure.rs) to avoid a circular
+// import: measure.rs is imported by console.rs; putting Console/Renderable
+// references back in measure.rs would form a dependency cycle.
+// They are re-exported from `crate::measure` via `pub use` in measure.rs.
+
+/// Get the `Measurement` for a single `Renderable`, normalized and clamped to
+/// `options.max_width`.
+///
+/// This is the Rust equivalent of rich's `Measurement.get(console, options, renderable)`.
+/// It calls `r.gilt_measure(console, options)`, normalizes (ensures minimum ≤ maximum),
+/// and then clamps the result so neither field exceeds `options.max_width`.
+pub fn measurement_get<R: Renderable + ?Sized>(
+    console: &Console,
+    options: &ConsoleOptions,
+    r: &R,
+) -> Measurement {
+    r.gilt_measure(console, options)
+        .normalize()
+        .with_maximum(options.max_width)
+}
+
+/// Get a `Measurement` that spans all the given `Renderable`s.
+///
+/// This is the Rust equivalent of rich's `measure_renderables(console, options, renderables)`.
+/// Combine semantics (matching rich's contract):
+/// - `minimum` = max of individual minimums (widest "must-have" requirement wins)
+/// - `maximum` = max of individual maximums (widest "could-use" requirement wins)
+///
+/// Returns `Measurement::new(0, 0)` for an empty slice.
+pub fn measure_renderables<R: Renderable + ?Sized>(
+    console: &Console,
+    options: &ConsoleOptions,
+    rs: &[&R],
+) -> Measurement {
+    if rs.is_empty() {
+        return Measurement::new(0, 0);
+    }
+    let measurements: Vec<Measurement> = rs
+        .iter()
+        .map(|r| measurement_get(console, options, *r))
+        .collect();
+    let minimum = measurements.iter().map(|m| m.minimum).max().unwrap_or(0);
+    let maximum = measurements.iter().map(|m| m.maximum).max().unwrap_or(0);
+    Measurement::new(minimum, maximum)
+}

@@ -3,11 +3,13 @@
 //! The Console manages terminal capabilities, drives the rendering pipeline,
 //! and handles output buffering, capture, and export.
 
+use crate::cells::cell_len;
 use crate::color::ColorSystem;
 use crate::color_env::{detect_color_env, ColorEnvOverride};
 use crate::console_caps::ConsoleCapabilities;
 use crate::control::Control;
 use crate::error::ConsoleError;
+use crate::measure::Measurement;
 use crate::pager::Pager;
 use crate::segment::Segment;
 use crate::style::Style;
@@ -256,6 +258,39 @@ pub trait Renderable {
     /// Produce segments for rendering on the given console with given options.
     fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment>;
 
+    /// Return the minimum and maximum cell widths required to render this object.
+    ///
+    /// The default implementation performs a full render and measures the resulting
+    /// segments — equivalent to the current `Console::measure` body.  Widgets with
+    /// a cheaper measurement path should override this method.
+    ///
+    /// **Empty-output contract:** when the rendered output is empty this returns
+    /// `Measurement::new(0, options.max_width)` rather than `(0, 0)`, matching
+    /// rich's `__rich_measure__` protocol (an object that produces no output can
+    /// still fill any available width).
+    ///
+    /// This method is additive and non-breaking: all existing `Renderable`
+    /// implementations inherit this default without any source change.
+    fn gilt_measure(&self, console: &Console, options: &ConsoleOptions) -> Measurement {
+        let segments = self.gilt_console(console, options);
+        // Collect all text, split by newlines to find line widths
+        let full_text: String = segments
+            .iter()
+            .filter(|s| !s.is_control())
+            .map(|s| s.text.as_str())
+            .collect();
+        if full_text.is_empty() {
+            return Measurement::new(0, options.max_width);
+        }
+        let max_width = full_text.lines().map(cell_len).max().unwrap_or(0);
+        let min_width = full_text
+            .split_whitespace()
+            .map(cell_len)
+            .max()
+            .unwrap_or(0);
+        Measurement::new(min_width, max_width)
+    }
+
     /// Return a cheap hash of this widget's content for per-region dirty tracking.
     ///
     /// `None` (the default) means "always dirty — re-render every frame".
@@ -348,6 +383,10 @@ pub use console_capture::{CaptureGuard, ScreenGuard};
 // v1.3 Phase 5 — same multi-impl-block pattern.
 #[path = "console_render.rs"]
 mod console_render;
+// Re-export the measurement-protocol free functions so they are accessible
+// at `crate::console::measurement_get` and subsequently re-exported from
+// `crate::measure`.
+pub use console_render::{measure_renderables, measurement_get};
 
 // ---------------------------------------------------------------------------
 // Console

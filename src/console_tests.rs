@@ -2641,3 +2641,180 @@ fn task2_two_successive_scoped_records_are_independent() {
         t2
     );
 }
+
+// ---------------------------------------------------------------------------
+// Task 3.1 — Renderable::gilt_measure, measurement_get, measure_renderables
+// ---------------------------------------------------------------------------
+
+/// A minimal custom Renderable that emits exactly one text segment.
+/// This lets us test the DEFAULT `gilt_measure` with known segment content.
+struct FixedTextRenderable {
+    text: &'static str,
+}
+
+impl Renderable for FixedTextRenderable {
+    fn gilt_console(&self, _console: &Console, _options: &ConsoleOptions) -> Vec<Segment> {
+        vec![Segment::new(self.text, None, None)]
+    }
+}
+
+/// A Renderable that emits no segments (empty output).
+struct EmptyRenderable;
+
+impl Renderable for EmptyRenderable {
+    fn gilt_console(&self, _console: &Console, _options: &ConsoleOptions) -> Vec<Segment> {
+        vec![]
+    }
+}
+
+#[test]
+fn test_gilt_measure_default_matches_current_measure_logic() {
+    // "Hello World" — the current Console::measure body gives:
+    //   max_width = max line width = cell_len("Hello World") = 11
+    //   min_width = max word width = max(cell_len("Hello"), cell_len("World")) = 5
+    let console = Console::builder()
+        .width(80)
+        .no_color(true)
+        .markup(false)
+        .build();
+    let opts = console.options();
+
+    let r = FixedTextRenderable {
+        text: "Hello World",
+    };
+
+    // Default gilt_measure must return same values as what Console::measure currently does.
+    let m = r.gilt_measure(&console, &opts);
+    assert_eq!(
+        m.minimum, 5,
+        "min should be longest word ('Hello'/'World')=5"
+    );
+    assert_eq!(m.maximum, 11, "max should be full line width=11");
+}
+
+#[test]
+fn test_gilt_measure_default_empty_returns_zero_max_width() {
+    // CHANGED from Console::measure's current (0,0) — empty → (0, options.max_width).
+    let console = Console::builder()
+        .width(80)
+        .no_color(true)
+        .markup(false)
+        .build();
+    let opts = console.options();
+
+    let r = EmptyRenderable;
+    let m = r.gilt_measure(&console, &opts);
+    assert_eq!(m.minimum, 0);
+    assert_eq!(m.maximum, opts.max_width, "empty → (0, max_width)");
+}
+
+#[test]
+fn test_gilt_measure_multiline() {
+    // "Short\nA much longer second line"
+    //   max_width = cell_len("A much longer second line") = 25
+    //   min_width = max word = "longer"/"second" = 6
+    let console = Console::builder()
+        .width(80)
+        .no_color(true)
+        .markup(false)
+        .build();
+    let opts = console.options();
+
+    let r = FixedTextRenderable {
+        text: "Short\nA much longer second line",
+    };
+    let m = r.gilt_measure(&console, &opts);
+    assert_eq!(m.maximum, 25, "max is longest line");
+    assert!(m.minimum >= 6, "min is longest word (at least 6)");
+}
+
+#[test]
+fn test_measurement_get_normalizes_and_clamps() {
+    use crate::measure::measurement_get;
+
+    let console = Console::builder()
+        .width(20)
+        .no_color(true)
+        .markup(false)
+        .build();
+    let opts = console.options(); // max_width = 20
+
+    // "Hello World" → raw (5, 11); normalize = (5,11); with_maximum(20) = (5,11) — fits
+    let r = FixedTextRenderable {
+        text: "Hello World",
+    };
+    let m = measurement_get(&console, &opts, &r);
+    assert_eq!(m.minimum, 5);
+    assert_eq!(m.maximum, 11);
+}
+
+#[test]
+fn test_measurement_get_clamps_to_max_width() {
+    use crate::measure::measurement_get;
+
+    // Use a very narrow console so max_width clamps the measurement
+    let console = Console::builder()
+        .width(4)
+        .no_color(true)
+        .markup(false)
+        .build();
+    let opts = console.options(); // max_width = 4
+
+    // "Hello World" → raw (5, 11); with_maximum(4) → (4, 4) after normalize+clamp
+    let r = FixedTextRenderable {
+        text: "Hello World",
+    };
+    let m = measurement_get(&console, &opts, &r);
+    assert!(
+        m.maximum <= 4,
+        "maximum should be clamped to max_width=4, got {}",
+        m.maximum
+    );
+    assert!(
+        m.minimum <= m.maximum,
+        "minimum ({}) must not exceed maximum ({})",
+        m.minimum,
+        m.maximum
+    );
+}
+
+#[test]
+fn test_measure_renderables_empty_slice() {
+    use crate::measure::measure_renderables;
+
+    let console = Console::builder()
+        .width(80)
+        .no_color(true)
+        .markup(false)
+        .build();
+    let opts = console.options();
+
+    let renderables: &[&dyn Renderable] = &[];
+    let m = measure_renderables(&console, &opts, renderables);
+    assert_eq!(m, crate::measure::Measurement::new(0, 0));
+}
+
+#[test]
+fn test_measure_renderables_max_of_minimums_and_maximums() {
+    use crate::measure::measure_renderables;
+
+    let console = Console::builder()
+        .width(80)
+        .no_color(true)
+        .markup(false)
+        .build();
+    let opts = console.options();
+
+    // r1: "Hi" → min=2, max=2
+    // r2: "Hello World" → min=5, max=11
+    // combined: minimum = max(2,5) = 5; maximum = max(2,11) = 11
+    let r1 = FixedTextRenderable { text: "Hi" };
+    let r2 = FixedTextRenderable {
+        text: "Hello World",
+    };
+
+    let renderables: &[&dyn Renderable] = &[&r1, &r2];
+    let m = measure_renderables(&console, &opts, renderables);
+    assert_eq!(m.minimum, 5, "minimum should be max of minimums");
+    assert_eq!(m.maximum, 11, "maximum should be max of maximums");
+}

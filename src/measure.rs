@@ -1,5 +1,14 @@
 //! Measurement module for tracking minimum and maximum rendering widths.
 //!
+//! Also re-exports the measurement-protocol free functions from
+//! `console_render` (`measurement_get`, `measure_renderables`) so callers
+//! can write `crate::measure::measurement_get(...)` without worrying about
+//! where they're physically defined.  The functions live in `console_render`
+//! rather than here to avoid a circular dependency: this module is imported
+//! by `console.rs`, so putting `Console`/`Renderable` references here would
+//! create a cycle.
+
+pub use crate::console::{measure_renderables, measurement_get};
 
 use std::fmt;
 use std::ops::Add;
