@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+Parity 2.0 — closing verified gaps against Python `rich` (see `.review/parity-audit-2026-06-24.md`). Phase 1: correctness fixes.
+
+### Fixed
+
+- **Color downgrade now applied at render time (P0).** `Style::render` previously emitted truecolor SGR (`38;2;r;g;b`) regardless of the console's color system; on a 16-color (`Standard`) or 256-color (`EightBit`) terminal that produced escapes the terminal can't render correctly. Each of `color`/`bgcolor`/`underline_color` is now downgraded to the console's `color_system` before emission, matching rich's `_make_ansi_codes`.
+- **`Color::downgrade` is now an identity when the color is already at (or below) the target system**, instead of re-matching through a palette (which could shift an index, e.g. `Standard(8)` → `Standard(7)`).
+- **`MONOKAI`, `DIMMED_MONOKAI`, and `NIGHT_OWLISH` terminal themes** now have 8 normal + 8 bright ANSI colors (were 9 + 7), fixing corrupted ANSI 8–15 in HTML/SVG export.
+- **`pretty` debug-string truncation** places the `+N` overflow suffix outside the closing quote (`"kept"+N`, was `"kept+N"`).
+- **`Prompt::ask_int` / `ask_float` terminate on EOF** instead of looping forever (the misleading "invalid number" message is no longer printed on EOF).
+- **`Panel` fit mode** sizes to the longest content line (via `measure().maximum`) instead of the total character count, so multi-line panels are no longer over-wide.
+
 ## [1.11.0] - 2026-06-23
 
 ### Added
