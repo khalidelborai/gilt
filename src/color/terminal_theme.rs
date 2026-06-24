@@ -112,85 +112,106 @@ pub static SVG_EXPORT_THEME: LazyLock<TerminalTheme> = LazyLock::new(|| {
 });
 
 /// Monokai theme with dark background and vibrant colors.
+///
+/// Layout: 8 normal (ANSI 0-7) + 8 bright (ANSI 8-15).
+/// Audit #24: the previous definition had 9 normal entries, shifting all
+/// bright-color indices by one. The stray 9th entry (98,94,76) has been
+/// relocated as the first bright color (bright-black / ANSI 8).
 pub static MONOKAI: LazyLock<TerminalTheme> = LazyLock::new(|| {
     TerminalTheme::new(
         (12, 12, 12),
         (217, 217, 217),
+        // Normal colors: ANSI 0-7
         vec![
-            (26, 26, 26),
-            (244, 0, 95),
-            (152, 224, 36),
-            (253, 151, 31),
-            (157, 101, 255),
-            (244, 0, 95),
-            (88, 209, 235),
-            (196, 197, 181),
-            (98, 94, 76),
+            (26, 26, 26),    // 0 black
+            (244, 0, 95),    // 1 red
+            (152, 224, 36),  // 2 green
+            (253, 151, 31),  // 3 yellow
+            (157, 101, 255), // 4 blue
+            (244, 0, 95),    // 5 magenta
+            (88, 209, 235),  // 6 cyan
+            (196, 197, 181), // 7 white
         ],
+        // Bright colors: ANSI 8-15
         Some(vec![
-            (244, 0, 95),
-            (152, 224, 36),
-            (224, 213, 97),
-            (157, 101, 255),
-            (244, 0, 95),
-            (88, 209, 235),
-            (246, 246, 239),
+            (98, 94, 76),    // 8  bright black (was the stray 9th normal entry)
+            (244, 0, 95),    // 9  bright red
+            (152, 224, 36),  // 10 bright green
+            (224, 213, 97),  // 11 bright yellow
+            (157, 101, 255), // 12 bright blue
+            (244, 0, 95),    // 13 bright magenta
+            (88, 209, 235),  // 14 bright cyan
+            (246, 246, 239), // 15 bright white
         ]),
     )
 });
 
 /// Dimmed Monokai theme with muted colors.
+///
+/// Layout: 8 normal (ANSI 0-7) + 8 bright (ANSI 8-15).
+/// Audit #24: the previous definition had 9 normal entries, shifting all
+/// bright-color indices by one. The stray 9th entry (136,137,135) has been
+/// relocated as the first bright color (bright-black / ANSI 8).
 pub static DIMMED_MONOKAI: LazyLock<TerminalTheme> = LazyLock::new(|| {
     TerminalTheme::new(
         (25, 25, 25),
         (185, 188, 186),
+        // Normal colors: ANSI 0-7
         vec![
-            (58, 61, 67),
-            (190, 63, 72),
-            (135, 154, 59),
-            (197, 166, 53),
-            (79, 118, 161),
-            (133, 92, 141),
-            (87, 143, 164),
-            (185, 188, 186),
-            (136, 137, 135),
+            (58, 61, 67),    // 0 black
+            (190, 63, 72),   // 1 red
+            (135, 154, 59),  // 2 green
+            (197, 166, 53),  // 3 yellow
+            (79, 118, 161),  // 4 blue
+            (133, 92, 141),  // 5 magenta
+            (87, 143, 164),  // 6 cyan
+            (185, 188, 186), // 7 white
         ],
+        // Bright colors: ANSI 8-15
         Some(vec![
-            (251, 0, 31),
-            (15, 114, 47),
-            (196, 112, 51),
-            (24, 109, 227),
-            (251, 0, 103),
-            (46, 112, 109),
-            (253, 255, 185),
+            (136, 137, 135), // 8  bright black (was the stray 9th normal entry)
+            (251, 0, 31),    // 9  bright red
+            (15, 114, 47),   // 10 bright green
+            (196, 112, 51),  // 11 bright yellow
+            (24, 109, 227),  // 12 bright blue
+            (251, 0, 103),   // 13 bright magenta
+            (46, 112, 109),  // 14 bright cyan
+            (253, 255, 185), // 15 bright white
         ]),
     )
 });
 
 /// Night Owlish theme with light background.
+///
+/// Layout: 8 normal (ANSI 0-7) + 8 bright (ANSI 8-15).
+/// Audit #24: the previous definition had 9 normal entries, shifting all
+/// bright-color indices by one. The stray 9th entry (122,129,129) has been
+/// relocated as the first bright color (bright-black / ANSI 8).
 pub static NIGHT_OWLISH: LazyLock<TerminalTheme> = LazyLock::new(|| {
     TerminalTheme::new(
         (255, 255, 255),
         (64, 63, 83),
+        // Normal colors: ANSI 0-7
         vec![
-            (1, 22, 39),
-            (211, 66, 62),
-            (42, 162, 152),
-            (218, 170, 1),
-            (72, 118, 214),
-            (64, 63, 83),
-            (8, 145, 106),
-            (122, 129, 129),
-            (122, 129, 129),
+            (1, 22, 39),     // 0 black
+            (211, 66, 62),   // 1 red
+            (42, 162, 152),  // 2 green
+            (218, 170, 1),   // 3 yellow
+            (72, 118, 214),  // 4 blue
+            (64, 63, 83),    // 5 magenta
+            (8, 145, 106),   // 6 cyan
+            (122, 129, 129), // 7 white
         ],
+        // Bright colors: ANSI 8-15
         Some(vec![
-            (247, 110, 110),
-            (73, 208, 197),
-            (218, 194, 107),
-            (92, 167, 228),
-            (105, 112, 152),
-            (0, 201, 144),
-            (152, 159, 177),
+            (122, 129, 129), // 8  bright black (was the stray 9th normal entry)
+            (247, 110, 110), // 9  bright red
+            (73, 208, 197),  // 10 bright green
+            (218, 194, 107), // 11 bright yellow
+            (92, 167, 228),  // 12 bright blue
+            (105, 112, 152), // 13 bright magenta
+            (0, 201, 144),   // 14 bright cyan
+            (152, 159, 177), // 15 bright white
         ]),
     )
 });
@@ -633,6 +654,94 @@ mod tests {
         assert_eq!(theme.background_color.red, 0);
         assert_eq!(theme.background_color.green, 43);
         assert_eq!(theme.background_color.blue, 54);
+    }
+
+    /// Audit #24: MONOKAI, DIMMED_MONOKAI, and NIGHT_OWLISH must have exactly
+    /// 8 normal (ANSI 0-7) + 8 bright (ANSI 8-15) = 16 total palette entries.
+    /// Previously these themes had 9 normal + 7 bright (16 total but wrong split),
+    /// which shifted every bright-color index by one in HTML/SVG export.
+    #[test]
+    fn builtin_themes_have_8_normal_and_8_bright() {
+        // MONOKAI: verify total length and that the relocated bright-black
+        // (ANSI 8) is (98,94,76) — the stray 9th normal entry.
+        assert_eq!(
+            MONOKAI.ansi_colors.len(),
+            16,
+            "MONOKAI must have exactly 16 ANSI palette entries"
+        );
+        let monokai_7 = MONOKAI.ansi_colors.get(7);
+        assert_eq!(
+            (monokai_7.red, monokai_7.green, monokai_7.blue),
+            (196, 197, 181),
+            "MONOKAI ANSI 7 (normal white) must be (196,197,181)"
+        );
+        let monokai_8 = MONOKAI.ansi_colors.get(8);
+        assert_eq!(
+            (monokai_8.red, monokai_8.green, monokai_8.blue),
+            (98, 94, 76),
+            "MONOKAI ANSI 8 (bright-black) must be (98,94,76) — relocated from old normal[8]"
+        );
+        // ANSI 15 (bright white) must be the last entry (246,246,239).
+        let monokai_15 = MONOKAI.ansi_colors.get(15);
+        assert_eq!(
+            (monokai_15.red, monokai_15.green, monokai_15.blue),
+            (246, 246, 239),
+            "MONOKAI ANSI 15 (bright white) must be (246,246,239)"
+        );
+
+        // DIMMED_MONOKAI: verify total length and that the relocated
+        // bright-black (ANSI 8) is (136,137,135) — the stray 9th normal entry.
+        assert_eq!(
+            DIMMED_MONOKAI.ansi_colors.len(),
+            16,
+            "DIMMED_MONOKAI must have exactly 16 ANSI palette entries"
+        );
+        let dm_7 = DIMMED_MONOKAI.ansi_colors.get(7);
+        assert_eq!(
+            (dm_7.red, dm_7.green, dm_7.blue),
+            (185, 188, 186),
+            "DIMMED_MONOKAI ANSI 7 (normal white) must be (185,188,186)"
+        );
+        let dm_8 = DIMMED_MONOKAI.ansi_colors.get(8);
+        assert_eq!(
+            (dm_8.red, dm_8.green, dm_8.blue),
+            (136, 137, 135),
+            "DIMMED_MONOKAI ANSI 8 (bright-black) must be (136,137,135) — relocated from old normal[8]"
+        );
+        let dm_15 = DIMMED_MONOKAI.ansi_colors.get(15);
+        assert_eq!(
+            (dm_15.red, dm_15.green, dm_15.blue),
+            (253, 255, 185),
+            "DIMMED_MONOKAI ANSI 15 (bright white) must be (253,255,185)"
+        );
+
+        // NIGHT_OWLISH: verify total length and that the relocated
+        // bright-black (ANSI 8) is (122,129,129) — the stray 9th normal entry.
+        // Note: in this theme normal[7] and bright[0] share the same RGB value
+        // by design (see rich's terminal_theme.py NIGHT_OWLISH definition).
+        assert_eq!(
+            NIGHT_OWLISH.ansi_colors.len(),
+            16,
+            "NIGHT_OWLISH must have exactly 16 ANSI palette entries"
+        );
+        let no_7 = NIGHT_OWLISH.ansi_colors.get(7);
+        assert_eq!(
+            (no_7.red, no_7.green, no_7.blue),
+            (122, 129, 129),
+            "NIGHT_OWLISH ANSI 7 (normal white) must be (122,129,129)"
+        );
+        let no_8 = NIGHT_OWLISH.ansi_colors.get(8);
+        assert_eq!(
+            (no_8.red, no_8.green, no_8.blue),
+            (122, 129, 129),
+            "NIGHT_OWLISH ANSI 8 (bright-black) must be (122,129,129) — relocated from old normal[8]"
+        );
+        let no_15 = NIGHT_OWLISH.ansi_colors.get(15);
+        assert_eq!(
+            (no_15.red, no_15.green, no_15.blue),
+            (152, 159, 177),
+            "NIGHT_OWLISH ANSI 15 (bright white) must be (152,159,177)"
+        );
     }
 
     #[test]

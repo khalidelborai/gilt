@@ -17,6 +17,16 @@ impl Palette {
         Self { colors }
     }
 
+    /// Returns the number of colors in the palette.
+    pub fn len(&self) -> usize {
+        self.colors.len()
+    }
+
+    /// Returns `true` if the palette contains no colors.
+    pub fn is_empty(&self) -> bool {
+        self.colors.is_empty()
+    }
+
     /// Gets the color at the given index as a ColorTriplet.
     ///
     /// # Panics
