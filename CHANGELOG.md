@@ -7,20 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-Parity 2.0 — closing verified gaps against Python `rich` (see `.review/parity-audit-2026-06-24.md`). Phase 1: correctness fixes. Phase 2: render-time theme resolution.
+Parity 2.0 — closing verified gaps against Python `rich` (see `.review/parity-audit-2026-06-24.md`). Phase 1: correctness fixes. Phase 2: render-time theme resolution. Phase 3: measurement protocol.
 
 ### Added
 
+- **`Renderable::gilt_measure(&Console, &ConsoleOptions) -> Measurement`** — a measurement-protocol hook (rich's `__rich_measure__`) with a default that falls back to the previous full-render width derivation, overridden on every built-in widget (Text, Panel, Tree, Table, Columns, Padding, Align, Constrain, Group, Bar, Styled, Renderables, CsvTable, Figlet, Sparkline, Diff, Canvas, ProgressBar, Syntax) so width is computed without a full render.
+- **`measurement_get` / `measure_renderables`** (re-exported from `gilt::measure`) — rich's `Measurement.get` / `measure_renderables` dispatch helpers.
 - **`Span::named(start, end, name)`** — a span that defers style resolution to render time (carries a `style_name: Option<String>` instead of an eager `Style`).
 - **`Text::render_themed(&Console)`** — resolves theme-named spans against the active console theme stack at render time (with a fast-path that delegates to `render()` when no span is named, preserving the zero-clone hot path).
 
 ### Changed (Breaking)
 
+- **`Console::measure` now dispatches through `Renderable::gilt_measure`** instead of always rendering (#2, #11). For widgets with a measure override this skips the render. The empty-content case for the *default* (un-overridden) path now returns `(0, max_width)` instead of `(0, 0)` (#3), matching rich; `Text("")` still measures `(0, 0)` via its own override.
+- **`Align::measure`** now returns the content's measured width (clamped to `max_width`), or the explicit width (also clamped), instead of always returning `max_width` (#14).
 - **`Span` gains a `style_name: Option<String>` field** and its equality now includes it. Struct-literal construction (`Span { .. }`) must migrate to `Span::new(..)` or `Span::named(..)`.
 - **`Renderable for Text` (and `Rule`/`Panel` title, `Progress`, `Spinner`) now use the Console theme** when rendering, so theme-named content that previously rendered unstyled now carries the themed style.
 
 ### Fixed
 
+- **Measurement protocol (#2, #3, #4, #11, #14)** — see Added/Changed above; `Console::measure` no longer bypasses per-widget measurement, and the empty/Align width contracts now match rich.
 - **Theme-named markup tags resolve at render time (#5, #6).** `[warning]`, `[repr.number]`, etc. previously collapsed to `Style::null()` at parse time (the theme name was lost); they now carry the name and resolve against the Console theme (or `DEFAULT_STYLES` with no console). _Known limitation:_ a single-word theme name that also parses as a literal style token (e.g. an overridden `red`) is still treated as a literal — full render-time resolution of every tag is a deferred enhancement.
 - **`highlight_regex_with_groups` resolves group-name styles via `DEFAULT_STYLES`** (#7), not only `parse_strict` — so names like `repr.number` highlight correctly.
 - **`RegexHighlighter` emits theme-overridable named spans** (#37) — a console theme override of a group style (e.g. `repr.number → italic yellow`) now wins at render time.
