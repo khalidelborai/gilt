@@ -7,10 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-Parity 2.0 — closing verified gaps against Python `rich` (see `.review/parity-audit-2026-06-24.md`). Phase 1: correctness fixes. Phase 2: render-time theme resolution. Phase 3: measurement protocol.
+Parity 2.0 — closing verified gaps against Python `rich` (see `.review/parity-audit-2026-06-24.md`). Phase 1: correctness fixes. Phase 2: render-time theme resolution. Phase 3: measurement protocol. Phase 4: container generalization.
 
 ### Added
 
+- **Container widgets now hold ANY `Renderable`, not just `Text`** (#13, #15, #16, #19, #21) — `Panel`, `Tree` labels, `Group`/`Renderables` items, `Align`, `Padding`, `Constrain`, `Styled`, and `Table` `CellContent::Renderable` cells. Compose freely: `Panel::new(Table::new(..))`, a `Group` of mixed widgets, a `Tree` with a `Panel` label, a table cell holding a `Panel`. Constructors are generic (`impl Renderable + Send + Sync + 'static`), so `Panel::new(Text::new(..))` / `Panel::new("literal")` keep working.
+- **`RenderableArc` type alias** (`Arc<dyn Renderable + Send + Sync>`) + **`into_renderable_arc`** helper — the shared container element type (also used by `Live`/`Layout`).
 - **`Renderable::gilt_measure(&Console, &ConsoleOptions) -> Measurement`** — a measurement-protocol hook (rich's `__rich_measure__`) with a default that falls back to the previous full-render width derivation, overridden on every built-in widget (Text, Panel, Tree, Table, Columns, Padding, Align, Constrain, Group, Bar, Styled, Renderables, CsvTable, Figlet, Sparkline, Diff, Canvas, ProgressBar, Syntax) so width is computed without a full render.
 - **`measurement_get` / `measure_renderables`** (re-exported from `gilt::measure`) — rich's `Measurement.get` / `measure_renderables` dispatch helpers.
 - **`Span::named(start, end, name)`** — a span that defers style resolution to render time (carries a `style_name: Option<String>` instead of an eager `Style`).
@@ -18,6 +20,8 @@ Parity 2.0 — closing verified gaps against Python `rich` (see `.review/parity-
 
 ### Changed (Breaking)
 
+- **Container content fields are now `RenderableArc` instead of `Text`** — `Panel.content`, `Tree.label`, `Align.content`, `Padding.content`, `Constrain.renderable`, `Styled.renderable`, and `Group`/`Renderables` items (`Vec<RenderableArc>`). Constructing via `Text`/`&str` still compiles, but **direct field reads that called `Text` methods** (e.g. `panel.content.plain()`) no longer compile — access through the `Renderable` trait or downcast the `Arc`. `Group::new`/`fit` take `Vec<RenderableArc>` (new `Group::push` / `Renderables::append` accept `impl Renderable`). These structs lost their derived `Debug` (now a manual impl printing `"<renderable>"`); `Clone` is preserved (cheap `Arc` clone).
+- **`Panel::from_renderable` takes an owned `R`** (was `&R`); **`Styled::measure` takes `(&Console, &ConsoleOptions)`** (was no-arg).
 - **`Console::measure` now dispatches through `Renderable::gilt_measure`** instead of always rendering (#2, #11). For widgets with a measure override this skips the render. The empty-content case for the *default* (un-overridden) path now returns `(0, max_width)` instead of `(0, 0)` (#3), matching rich; `Text("")` still measures `(0, 0)` via its own override.
 - **`Align::measure`** now returns the content's measured width (clamped to `max_width`), or the explicit width (also clamped), instead of always returning `max_width` (#14).
 - **`Span` gains a `style_name: Option<String>` field** and its equality now includes it. Struct-literal construction (`Span { .. }`) must migrate to `Span::new(..)` or `Span::named(..)`.
@@ -25,6 +29,7 @@ Parity 2.0 — closing verified gaps against Python `rich` (see `.review/parity-
 
 ### Fixed
 
+- **Nested widgets in `Table` cells render at the column width** (#19) — a `CellContent::Renderable` (e.g. a `Panel`) was previously pre-rendered at the console's default width and re-wrapped, destroying its geometry; it now renders at the resolved column width with correct padding/alignment.
 - **Measurement protocol (#2, #3, #4, #11, #14)** — see Added/Changed above; `Console::measure` no longer bypasses per-widget measurement, and the empty/Align width contracts now match rich.
 - **Theme-named markup tags resolve at render time (#5, #6).** `[warning]`, `[repr.number]`, etc. previously collapsed to `Style::null()` at parse time (the theme name was lost); they now carry the name and resolve against the Console theme (or `DEFAULT_STYLES` with no console). _Known limitation:_ a single-word theme name that also parses as a literal style token (e.g. an overridden `red`) is still treated as a literal — full render-time resolution of every tag is a deferred enhancement.
 - **`highlight_regex_with_groups` resolves group-name styles via `DEFAULT_STYLES`** (#7), not only `parse_strict` — so names like `repr.number` highlight correctly.
