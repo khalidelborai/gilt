@@ -43,6 +43,10 @@ pub struct ConsoleBuilder {
     pub(crate) quiet: bool,
     pub(crate) soft_wrap: bool,
     pub(crate) safe_box: bool,
+    /// Explicit override for `legacy_windows`. `None` (the default) lets
+    /// the built console auto-detect legacy Windows mode at build time;
+    /// `Some(val)` forces the value.
+    pub(crate) legacy_windows: Option<bool>,
     pub(crate) log_path: bool,
 }
 
@@ -66,6 +70,7 @@ impl Default for ConsoleBuilder {
             quiet: false,
             soft_wrap: false,
             safe_box: true,
+            legacy_windows: None,
             log_path: false,
         }
     }
@@ -186,6 +191,36 @@ impl ConsoleBuilder {
     /// Enable or disable safe box characters (ASCII fallback for non-UTF-8 terminals).
     pub fn safe_box(mut self, sb: bool) -> Self {
         self.safe_box = sb;
+        self
+    }
+
+    /// Explicitly set the `legacy_windows` flag.
+    ///
+    /// When `legacy_windows` is `true`, gilt uses the legacy Windows
+    /// console renderer (Win32 API) instead of ANSI/VT escape codes.
+    ///
+    /// On non-Windows hosts this is a forced override; gilt does not
+    /// auto-detect legacy Windows on those targets. On Windows, this
+    /// overrides auto-detection — pass `false` to confirm a modern
+    /// terminal (Windows Terminal, etc.) even when one of the
+    /// `WT_SESSION` / `WT_PROFILE_ID` / `TERM_PROGRAM` env vars is
+    /// missing.
+    ///
+    /// Default: `None` (auto-detect).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    ///
+    /// let console = Console::builder()
+    ///     .width(80)
+    ///     .with_legacy_windows(false)
+    ///     .build();
+    /// assert!(!console.legacy_windows());
+    /// ```
+    pub fn with_legacy_windows(mut self, val: bool) -> Self {
+        self.legacy_windows = Some(val);
         self
     }
 
