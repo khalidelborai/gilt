@@ -1822,7 +1822,8 @@ fn capabilities_truecolor_flag_reflects_colorterm_env() {
     // ConsoleCapabilities::from_env_parts is the pure helper; we test it
     // directly so no env mutation is needed.
     use crate::console_caps::ConsoleCapabilities;
-    let caps = ConsoleCapabilities::from_env_parts(Some("truecolor"), None, true, None, None, None);
+    let caps =
+        ConsoleCapabilities::from_env_parts(Some("truecolor"), None, true, None, None, None, None);
     assert!(
         caps.truecolor,
         "COLORTERM=truecolor → truecolor flag should be true"
@@ -1833,7 +1834,7 @@ fn capabilities_truecolor_flag_reflects_colorterm_env() {
 #[test]
 fn capabilities_synchronized_output_default_true() {
     use crate::console_caps::ConsoleCapabilities;
-    let caps = ConsoleCapabilities::from_env_parts(None, None, false, None, None, None);
+    let caps = ConsoleCapabilities::from_env_parts(None, None, false, None, None, None, None);
     assert!(
         caps.synchronized_output,
         "synchronized_output must default to true (CSI ?2026 is harmless no-op)"
@@ -1853,9 +1854,9 @@ fn console_capabilities_accessor_returns_struct() {
 #[test]
 fn capabilities_unicode_version_from_env_parts() {
     use crate::console_caps::ConsoleCapabilities;
-    let caps = ConsoleCapabilities::from_env_parts(None, None, false, Some("15"), None, None);
+    let caps = ConsoleCapabilities::from_env_parts(None, None, false, Some("15"), None, None, None);
     assert_eq!(caps.unicode_version, Some(15));
-    let caps_none = ConsoleCapabilities::from_env_parts(None, None, false, None, None, None);
+    let caps_none = ConsoleCapabilities::from_env_parts(None, None, false, None, None, None, None);
     assert_eq!(caps_none.unicode_version, None);
 }
 

@@ -200,6 +200,7 @@ mod tests {
             None,
             None, // kitty_window_id
             None, // term_program
+            None, // image_protocol_override
         );
         assert!(caps.kitty, "TERM=xterm-kitty should set kitty=true");
     }
@@ -212,6 +213,7 @@ mod tests {
             true,
             None,
             Some("42"), // KITTY_WINDOW_ID set
+            None,
             None,
         );
         assert!(caps.kitty, "KITTY_WINDOW_ID set should set kitty=true");
@@ -226,21 +228,36 @@ mod tests {
             None,
             None,
             Some("WezTerm"), // TERM_PROGRAM=WezTerm
+            None,
         );
         assert!(caps.kitty, "TERM_PROGRAM=WezTerm should set kitty=true");
     }
 
     #[test]
     fn caps_kitty_flag_from_ghostty() {
-        let caps =
-            ConsoleCapabilities::from_env_parts(None, None, true, None, None, Some("ghostty"));
+        let caps = ConsoleCapabilities::from_env_parts(
+            None,
+            None,
+            true,
+            None,
+            None,
+            Some("ghostty"),
+            None,
+        );
         assert!(caps.kitty, "TERM_PROGRAM=ghostty should set kitty=true");
     }
 
     #[test]
     fn caps_iterm_flag_from_term_program() {
-        let caps =
-            ConsoleCapabilities::from_env_parts(None, None, true, None, None, Some("iTerm.app"));
+        let caps = ConsoleCapabilities::from_env_parts(
+            None,
+            None,
+            true,
+            None,
+            None,
+            Some("iTerm.app"),
+            None,
+        );
         assert!(caps.iterm, "TERM_PROGRAM=iTerm.app should set iterm=true");
     }
 
@@ -250,6 +267,7 @@ mod tests {
             Some("truecolor"),
             Some("xterm-256color"),
             true,
+            None,
             None,
             None,
             None,
