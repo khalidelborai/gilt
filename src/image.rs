@@ -69,6 +69,17 @@ fn sixel_emit_run(out: &mut String, val: u8, len: usize) {
     }
 }
 
+/// Composite one channel of a source pixel over a background using `alpha`
+/// (`out = src·(a/255) + bg·(1 − a/255)`), with integer rounding.
+///
+/// `alpha == 255` returns `src` unchanged; `alpha == 0` returns `bg`. Pure
+/// integer math — dep-free and WASM-safe.
+#[inline]
+fn composite_channel(src: u8, alpha: u8, bg: u8) -> u8 {
+    let a = alpha as u16;
+    ((src as u16 * a + bg as u16 * (255 - a) + 127) / 255) as u8
+}
+
 // ---------------------------------------------------------------------------
 // Image
 // ---------------------------------------------------------------------------
@@ -95,6 +106,9 @@ pub struct Image {
     pub(crate) target_cols: Option<usize>,
     /// Requested display height in terminal rows, if set.
     pub(crate) target_rows: Option<usize>,
+    /// Background colour the halfblock renderer composites RGBA alpha over.
+    /// Defaults to opaque black (`#000000`).
+    pub(crate) background: Color,
 }
 
 impl Image {
@@ -140,6 +154,7 @@ impl Image {
             height_px,
             target_cols: None,
             target_rows: None,
+            background: Color::from_rgb(0, 0, 0),
         }
     }
 
@@ -169,6 +184,7 @@ impl Image {
             height_px,
             target_cols: None,
             target_rows: None,
+            background: Color::from_rgb(0, 0, 0),
         }
     }
 
@@ -200,6 +216,30 @@ impl Image {
     /// Each row is 2 pixels tall in the halfblock renderer (one `▀` per cell).
     pub fn height(mut self, rows: usize) -> Self {
         self.target_rows = Some(rows);
+        self
+    }
+
+    /// Set the background colour the halfblock renderer composites RGBA alpha
+    /// over.
+    ///
+    /// Each pixel is blended `out = src·(a/255) + background·(1 − a/255)` per
+    /// channel before being emitted as a truecolor cell. The default is opaque
+    /// black (`#000000`), so fully-opaque images render unchanged. This only
+    /// affects the halfblock fallback; the Kitty/iTerm2/Sixel paths leave alpha
+    /// compositing to the terminal.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use gilt::image::Image;
+    /// use gilt::color::Color;
+    ///
+    /// // Composite a logo with transparency over white instead of black.
+    /// let img = Image::from_rgba(1, 2, vec![255, 0, 0, 128, 255, 0, 0, 128])
+    ///     .with_background(Color::from_rgb(255, 255, 255));
+    /// ```
+    pub fn with_background(mut self, background: Color) -> Self {
+        self.background = background;
         self
     }
 
@@ -299,26 +339,31 @@ impl Image {
             std::borrow::Cow::Owned(self.resize_nearest(dst_w, dst_h))
         };
 
+        // Resolve the compositing background to an RGB triplet once. Each pixel
+        // is alpha-composited over it: out = src·(a/255) + bg·(1 − a/255).
+        // Fully-opaque pixels (a=255) are returned unchanged.
+        let bg = self.background.get_truecolor(None, false);
+
         let mut segments: Vec<Segment> = Vec::with_capacity(rows * (cols + 1));
 
         for row in 0..rows {
             for col in 0..cols {
                 let top_off = ((row * 2) as u32 * dst_w + col as u32) as usize * 4;
                 let bot_off = ((row * 2 + 1) as u32 * dst_w + col as u32) as usize * 4;
-                let tr = pixels[top_off];
-                let tg = pixels[top_off + 1];
-                let tb = pixels[top_off + 2];
-                let br = pixels[bot_off];
-                let bg_g = pixels[bot_off + 1];
-                let bb = pixels[bot_off + 2];
+                let ta = pixels[top_off + 3];
+                let tr = composite_channel(pixels[top_off], ta, bg.red);
+                let tg = composite_channel(pixels[top_off + 1], ta, bg.green);
+                let tb = composite_channel(pixels[top_off + 2], ta, bg.blue);
+                let ba = pixels[bot_off + 3];
+                let br = composite_channel(pixels[bot_off], ba, bg.red);
+                let bg_g = composite_channel(pixels[bot_off + 1], ba, bg.green);
+                let bb = composite_channel(pixels[bot_off + 2], ba, bg.blue);
 
                 let fg_color = Color::from_rgb(tr, tg, tb);
                 let bg_color = Color::from_rgb(br, bg_g, bb);
 
                 let style = Style::null().fg(fg_color).bg(bg_color);
 
-                // Blend alpha against black background for simplicity.
-                // Full alpha-compositing omitted to keep dep-free.
                 let cell_text = "▀";
                 segments.push(Segment::styled(cell_text, style));
             }

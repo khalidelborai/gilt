@@ -4,6 +4,7 @@
 
 #[cfg(test)]
 mod tests {
+    use crate::color::Color;
     use crate::console::Console;
     use crate::console_caps::ConsoleCapabilities;
     use crate::image::Image;
@@ -91,6 +92,156 @@ mod tests {
         assert!(
             !output.contains("\x1b_G"),
             "halfblock path must NOT emit Kitty APC"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Helper: build a single-cell (1 col × 2 rows of pixels) halfblock console.
+    // One `▀` cell → fg = top pixel, bg = bottom pixel, so SGR params are easy
+    // to assert. Returns the captured ANSI output.
+    // -----------------------------------------------------------------------
+    fn render_1x2_halfblock(top: [u8; 4], bottom: [u8; 4], background: Option<Color>) -> String {
+        let mut rgba = Vec::with_capacity(8);
+        rgba.extend_from_slice(&top);
+        rgba.extend_from_slice(&bottom);
+        let mut img = Image::from_rgba(1, 2, rgba).width(1);
+        if let Some(bg) = background {
+            img = img.with_background(bg);
+        }
+
+        let mut console = Console::builder()
+            .no_color(false)
+            .force_terminal(true)
+            .color_system("truecolor")
+            .width(80)
+            .build();
+        console.set_capabilities(ConsoleCapabilities {
+            kitty: false,
+            iterm: false,
+            ..console.capabilities().clone()
+        });
+
+        console.begin_capture();
+        console.print(&img);
+        console.end_capture()
+    }
+
+    // -----------------------------------------------------------------------
+    // Alpha compositing — semi-transparent red (a=128) over a WHITE background
+    // composites to a pink-ish RGB, for BOTH the upper (fg) and lower (bg) cell
+    // pixels. The emitted truecolor SGR params must be the blended value, not
+    // pure red and not black.
+    //   out = src*a/255 + bg*(255-a)/255  →  R: 255, G/B: ~127  → (255,127,127)
+    // -----------------------------------------------------------------------
+    #[test]
+    fn halfblock_alpha_composites_semitransparent_over_white() {
+        let red_half = [255, 0, 0, 128];
+        let output = render_1x2_halfblock(red_half, red_half, Some(Color::from_rgb(255, 255, 255)));
+
+        // fg (upper pixel) blended to pink
+        assert!(
+            output.contains("38;2;255;127;127"),
+            "expected fg blended to pink (255,127,127); got: {:?}",
+            output
+        );
+        // bg (lower pixel) blended to pink
+        assert!(
+            output.contains("48;2;255;127;127"),
+            "expected bg blended to pink (255,127,127); got: {:?}",
+            output
+        );
+        // NOT pure red (alpha ignored) …
+        assert!(
+            !output.contains("38;2;255;0;0"),
+            "must not emit pure red — alpha must be composited; got: {:?}",
+            output
+        );
+        // … and NOT blended against black (the old behaviour).
+        assert!(
+            !output.contains("38;2;128;0;0"),
+            "must not blend against black; background is white; got: {:?}",
+            output
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Regression guard — fully-opaque pixels (a=255) are unchanged by
+    // compositing. fg=red, bg=blue, default (black) background.
+    // -----------------------------------------------------------------------
+    #[test]
+    fn halfblock_opaque_pixels_unchanged_by_compositing() {
+        let output = render_1x2_halfblock([255, 0, 0, 255], [0, 0, 255, 255], None);
+        assert!(
+            output.contains("38;2;255;0;0"),
+            "opaque fg red must be unchanged; got: {:?}",
+            output
+        );
+        assert!(
+            output.contains("48;2;0;0;255"),
+            "opaque bg blue must be unchanged; got: {:?}",
+            output
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // `with_background` changes the composite result. Same a=128 red pixel:
+    //   default (black) bg  → (128,0,0)
+    //   white bg            → (255,127,127)
+    // -----------------------------------------------------------------------
+    #[test]
+    fn with_background_changes_composite_result() {
+        let red_half = [255, 0, 0, 128];
+
+        // Default background is opaque black.
+        let on_black = render_1x2_halfblock(red_half, red_half, None);
+        assert!(
+            on_black.contains("38;2;128;0;0"),
+            "a=128 red over black → (128,0,0); got: {:?}",
+            on_black
+        );
+
+        // White background composites to a different (pink) value.
+        let on_white =
+            render_1x2_halfblock(red_half, red_half, Some(Color::from_rgb(255, 255, 255)));
+        assert!(
+            on_white.contains("38;2;255;127;127"),
+            "a=128 red over white → (255,127,127); got: {:?}",
+            on_white
+        );
+        assert!(
+            !on_white.contains("38;2;128;0;0"),
+            "white-background result must differ from black-background result; got: {:?}",
+            on_white
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Fully-transparent pixels (a=0) yield exactly the background colour, for
+    // both the upper and lower cell pixels.
+    // -----------------------------------------------------------------------
+    #[test]
+    fn halfblock_fully_transparent_yields_background() {
+        // Red source, fully transparent, over a blue background.
+        let transparent_red = [255, 0, 0, 0];
+        let output = render_1x2_halfblock(
+            transparent_red,
+            transparent_red,
+            Some(Color::from_rgb(0, 0, 255)),
+        );
+        assert!(
+            output.contains("38;2;0;0;255"),
+            "fg a=0 must yield the background colour (blue); got: {:?}",
+            output
+        );
+        assert!(
+            output.contains("48;2;0;0;255"),
+            "bg a=0 must yield the background colour (blue); got: {:?}",
+            output
+        );
+        assert!(
+            !output.contains("255;0;0"),
+            "the transparent red source must not appear; got: {:?}",
+            output
         );
     }
 
