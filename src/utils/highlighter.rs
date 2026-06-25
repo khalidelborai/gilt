@@ -146,7 +146,7 @@ static REPR_HIGHLIGHTS: LazyLock<Vec<Regex>> = LazyLock::new(|| {
         // Tags: <tag_name contents>
         r"(?P<tag_start><)(?P<tag_name>[-\w.:|]*)(?P<tag_contents>[\w\W]*)(?P<tag_end>>)",
         // Attribute name=value
-        r#"(?P<attrib_name>[\w_]+)=(?P<attrib_value>"?[\w_]+"?)?"#,
+        r#"(?P<attrib_name>[\w_]+)=(?P<attrib_value>"?[\w_]+"?)"#,
         // Braces
         r"(?P<brace>[\[\]{}\(\)])",
         // Combined pattern for everything else
@@ -778,6 +778,45 @@ mod tests {
             "expected full-length attrib_name span for a 60-char name"
         );
     }
+
+    #[test]
+    fn test_repr_attrib_value_required() {
+        // Phase 7 P3 parity: the `attrib_value` capture group must require a
+        // value (rich uses `"?\w+"` — no outer `?` making the whole group
+        // optional). Verify the intent:
+        //   1. `name=42` matches both `attrib_name` (`name`) and `attrib_value`
+        //      (`42`).
+        //   2. `name=` (no value) does NOT produce an `attrib_name` span —
+        //      the regex should fail rather than capture an empty value.
+        let hl = ReprHighlighter::new();
+
+        // 1. With a value, both groups capture.
+        let text = hl.apply("name=42");
+        let plain = text.plain();
+        let has_name = text
+            .spans()
+            .iter()
+            .any(|s| span_text(plain, s) == "name");
+        let has_value = text
+            .spans()
+            .iter()
+            .any(|s| span_text(plain, s) == "42");
+        assert!(has_name, "expected an attrib_name span for 'name'");
+        assert!(has_value, "expected an attrib_value span for '42'");
+
+        // 2. Without a value, no attrib_name span is produced.
+        let text_no_val = hl.apply("name=");
+        let plain_no_val = text_no_val.plain();
+        let has_name_no_val = text_no_val
+            .spans()
+            .iter()
+            .any(|s| span_text(plain_no_val, s) == "name");
+        assert!(
+            !has_name_no_val,
+            "name= alone should not produce an attrib_name span"
+        );
+    }
+
 
     // -- JSONHighlighter ----------------------------------------------------
 
