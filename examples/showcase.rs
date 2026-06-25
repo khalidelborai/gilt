@@ -1633,9 +1633,12 @@ Mumbai,India,12440000,603";
     // clears the screen, runs full-screen, then restores your scrollback.
     #[cfg(feature = "markdown")]
     {
+        use gilt::barchart::BarChart;
         use gilt::console::into_renderable_arc;
         use gilt::group::Group;
         use gilt::markdown::Markdown;
+        use gilt::sparkline::Sparkline;
+        use std::collections::VecDeque;
 
         let agent_console = Console::builder()
             .width(100)
@@ -1670,6 +1673,8 @@ Mumbai,India,12440000,603";
             "}",
         ];
         let total = 32u32;
+        // Rolling CPU window for the live metrics sparkline.
+        let mut cpu: VecDeque<f64> = VecDeque::from(vec![45.0_f64; 24]);
 
         live.start();
         for frame in 0..total {
@@ -1745,8 +1750,55 @@ Mumbai,India,12440000,603";
             let mut main = Layout::new(None, Some("main".into()), None, None, Some(1), None);
             main.split_column(vec![tasks, code_panel]);
 
+            // Live metrics column — a scrolling CPU sparkline (with min/max
+            // markers) + a per-step BarChart, both animating each frame.
+            let cpu_v = (52.0 + 38.0 * (frame as f64 * 0.4).sin()
+                + 6.0 * (frame as f64 * 1.3).sin())
+            .clamp(3.0, 99.0);
+            cpu.push_back(cpu_v);
+            if cpu.len() > 24 {
+                cpu.pop_front();
+            }
+            let cpu_data: Vec<f64> = cpu.iter().copied().collect();
+            let cpu_panel = Layout::new(None, Some("cpu".into()), Some(5), None, None, None)
+                .with_renderable(
+                    Panel::new(
+                        Sparkline::new(&cpu_data)
+                            .with_width(26)
+                            .with_min(0.0)
+                            .with_max(100.0)
+                            .with_style(Style::parse("green"))
+                            .with_min_max_markers(true)
+                            .with_min_style(Style::parse("blue"))
+                            .with_max_style(Style::parse("bold red")),
+                    )
+                    .with_title(Text::new(&format!("cpu {cpu_v:>3.0}%"), Style::parse("dim"))),
+                );
+            let step_f = progress * steps.len() as f64;
+            let mut bars = BarChart::new()
+                .with_width(26)
+                .with_max(100.0)
+                .with_bar_style(Style::parse("magenta"))
+                .with_value_style(Style::parse("dim"));
+            for (i, s) in steps.iter().enumerate() {
+                let v = if i < step_idx {
+                    100.0
+                } else if i == step_idx {
+                    ((step_f - step_idx as f64) * 100.0).clamp(2.0, 100.0)
+                } else {
+                    0.0
+                };
+                bars = bars.with_bar(s.split(' ').next().unwrap_or(*s), v);
+            }
+            let bars_panel = Layout::new(None, Some("steps".into()), None, None, Some(1), None)
+                .with_renderable(
+                    Panel::new(bars).with_title(Text::new("steps", Style::parse("dim"))),
+                );
+            let mut metrics = Layout::new(None, Some("metrics".into()), Some(30), None, None, None);
+            metrics.split_column(vec![cpu_panel, bars_panel]);
+
             let mut body = Layout::new(None, Some("body".into()), None, None, Some(1), None);
-            body.split_row(vec![sidebar, main]);
+            body.split_row(vec![sidebar, main, metrics]);
 
             // Footer: a live progress bar + status line.
             let bar = Bar::new(100.0, 0.0, pct as f64).with_width(44);
