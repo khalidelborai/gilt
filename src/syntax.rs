@@ -792,7 +792,12 @@ impl Syntax {
     ///
     /// Respects `line_range` when set — only visible lines contribute to the
     /// maximum width, matching what `render_syntax` actually outputs.
-    pub fn measure(&self) -> Measurement {
+    ///
+    /// The `console` and `options` parameters provide the width context: when
+    /// `code_width` is not set the measured maximum is clamped to
+    /// `options.max_width` (matching how other widget `measure` implementations
+    /// use these arguments — e.g. `Panel::measure`, `Table::measure`).
+    pub fn measure(&self, _console: &Console, options: &ConsoleOptions) -> Measurement {
         let numbers_width = self.numbers_column_width();
         if let Some(cw) = self.code_width {
             let total = cw + numbers_width + if self.line_numbers { 1 } else { 0 };
@@ -812,7 +817,8 @@ impl Syntax {
             &all_lines
         };
         let max_line_width = visible.iter().map(|l| cell_len(l)).max().unwrap_or(0);
-        let total = numbers_width + max_line_width + if self.line_numbers { 1 } else { 0 };
+        let total = (numbers_width + max_line_width + if self.line_numbers { 1 } else { 0 })
+            .min(options.max_width);
         Measurement::new(numbers_width, total)
     }
 }
@@ -823,8 +829,8 @@ impl Renderable for Syntax {
         self.render_syntax(options.max_width, options.legacy_windows)
     }
 
-    fn gilt_measure(&self, _console: &Console, _options: &ConsoleOptions) -> Measurement {
-        self.measure()
+    fn gilt_measure(&self, console: &Console, options: &ConsoleOptions) -> Measurement {
+        self.measure(console, options)
     }
 }
 
@@ -940,7 +946,7 @@ mod tests {
         let opts = console.options();
         assert_eq!(
             syntax.gilt_measure(&console, &opts),
-            syntax.measure(),
+            syntax.measure(&console, &opts),
             "Syntax::gilt_measure must delegate to Syntax::measure",
         );
     }
@@ -1175,7 +1181,9 @@ mod tests {
     fn test_measure_no_line_numbers() {
         let code = "hello world\n";
         let syntax = Syntax::new(code, "txt");
-        let m = syntax.measure();
+        let console = Console::builder().width(80).build();
+        let opts = console.options();
+        let m = syntax.measure(&console, &opts);
         assert_eq!(m.minimum, 0); // no line numbers = 0 gutter
         assert!(m.maximum >= 11); // "hello world" is 11 chars
     }
@@ -1184,7 +1192,9 @@ mod tests {
     fn test_measure_with_line_numbers() {
         let code = "a\nb\nc\n";
         let syntax = Syntax::new(code, "txt").with_line_numbers(true);
-        let m = syntax.measure();
+        let console = Console::builder().width(80).build();
+        let opts = console.options();
+        let m = syntax.measure(&console, &opts);
         assert!(m.minimum > 0); // gutter width
         assert!(m.maximum > m.minimum);
     }
@@ -1193,7 +1203,9 @@ mod tests {
     fn test_measure_with_code_width() {
         let code = "hello\n";
         let syntax = Syntax::new(code, "txt").with_code_width(40);
-        let m = syntax.measure();
+        let console = Console::builder().width(80).build();
+        let opts = console.options();
+        let m = syntax.measure(&console, &opts);
         assert_eq!(m.maximum, 40);
     }
 
@@ -1434,7 +1446,9 @@ mod tests {
     fn test_code_width_constraint() {
         let code = "a very long line of code that goes on and on and on\n";
         let syntax = Syntax::new(code, "txt").with_code_width(20);
-        let m = syntax.measure();
+        let console = Console::builder().width(80).build();
+        let opts = console.options();
+        let m = syntax.measure(&console, &opts);
         assert_eq!(m.maximum, 20);
     }
 

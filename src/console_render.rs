@@ -202,6 +202,47 @@ impl Console {
         }
     }
 
+    /// Print any type that implements [`GiltCast`] by converting it via its
+    /// `__gilt__` method before rendering.
+    ///
+    /// This is the primary way to print custom types that implement
+    /// [`GiltCast`] but **not** [`Renderable`] directly.
+    ///
+    /// A blanket `impl<T: GiltCast> Renderable for T` cannot be provided
+    /// because Rust's coherence checker prohibits it — any type could
+    /// implement both `GiltCast` and `Renderable`, which would create
+    /// overlapping implementations. Instead, `print_cast` wraps the value in
+    /// a [`CastWrapper`] (which implements `Renderable` unambiguously) and
+    /// delegates to `print`.
+    ///
+    /// [`GiltCast`]: crate::utils::protocol::GiltCast
+    /// [`CastWrapper`]: crate::utils::protocol::CastWrapper
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::protocol::GiltCast;
+    /// use gilt::prelude::*;
+    ///
+    /// struct Report { title: String, count: usize }
+    ///
+    /// impl GiltCast for Report {
+    ///     fn __gilt__(self) -> Box<dyn gilt::console::Renderable> {
+    ///         Box::new(Text::from(format!("{}: {}", self.title, self.count)))
+    ///     }
+    /// }
+    ///
+    /// let mut console = Console::builder().width(80).no_color(true).build();
+    /// console.begin_capture();
+    /// console.print_cast(Report { title: "items".into(), count: 42 });
+    /// let out = console.end_capture();
+    /// assert!(out.contains("items: 42"));
+    /// ```
+    pub fn print_cast<T: crate::utils::protocol::GiltCast>(&mut self, value: T) {
+        let wrapper = crate::utils::protocol::CastWrapper::new(value);
+        self.print(&wrapper);
+    }
+
     /// Print a Renderable with full styling options.
     #[allow(clippy::too_many_arguments)]
     pub fn print_styled<R: Renderable + ?Sized>(

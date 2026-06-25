@@ -1447,7 +1447,7 @@ impl Table {
                     let inner_opts = options.with_updates(&ConsoleOptionsUpdates {
                         width: Some(inner_width),
                         justify: Some(Some(column.justify)),
-                        no_wrap: Some(column.no_wrap),
+                        no_wrap: Some(Some(column.no_wrap)),
                         overflow: Some(Some(column.overflow)),
                         height: Some(None),
                         highlight: Some(Some(column.highlight)),
@@ -1497,7 +1497,7 @@ impl Table {
                     let render_options = options.with_updates(&ConsoleOptionsUpdates {
                         width: Some(width),
                         justify: Some(Some(column.justify)),
-                        no_wrap: Some(column.no_wrap),
+                        no_wrap: Some(Some(column.no_wrap)),
                         overflow: Some(Some(column.overflow)),
                         height: Some(None),
                         highlight: Some(Some(column.highlight)),

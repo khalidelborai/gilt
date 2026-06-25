@@ -61,7 +61,8 @@ pub use highlighter::{
 pub use inspect::Inspect;
 pub use padding::Padding;
 pub use protocol::{
-    as_renderable_mut, as_renderable_ref, GiltCast, IntoRenderable, RenderableBox, RenderableExt,
+    as_renderable_mut, as_renderable_ref, CastWrapper, GiltCast, IntoRenderable, RenderableBox,
+    RenderableExt,
 };
 pub use ratio::{ratio_distribute, ratio_reduce, ratio_resolve, Edge};
 pub use region::Region;

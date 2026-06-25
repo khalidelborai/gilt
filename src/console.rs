@@ -152,7 +152,12 @@ pub struct ConsoleOptionsUpdates {
     /// New overflow strategy override, if changing.
     pub overflow: Option<Option<OverflowMethod>>,
     /// New no-wrap flag, if changing.
-    pub no_wrap: Option<bool>,
+    ///
+    /// Triple-state:
+    /// - `None`           = don't touch the field
+    /// - `Some(None)`     = reset `ConsoleOptions::no_wrap` to `None`
+    /// - `Some(Some(b))` = set `ConsoleOptions::no_wrap` to `Some(b)`
+    pub no_wrap: Option<Option<bool>>,
     /// New highlight flag, if changing.
     pub highlight: Option<Option<bool>>,
     /// New markup flag, if changing.
@@ -229,9 +234,8 @@ impl ConsoleOptions {
             opts.overflow = *o;
         }
         if let Some(nw) = updates.no_wrap {
-            // `ConsoleOptionsUpdates.no_wrap` is `Option<bool>`; wrap it in
-            // `Some` so it becomes the tri-state value on ConsoleOptions.
-            opts.no_wrap = Some(nw);
+            // Triple-state: `Some(None)` resets to `None`; `Some(Some(b))` sets to `Some(b)`.
+            opts.no_wrap = nw;
         }
         if let Some(ref h) = updates.highlight {
             opts.highlight = *h;

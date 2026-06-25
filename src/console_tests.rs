@@ -112,16 +112,59 @@ fn test_console_options_with_updates() {
     let opts = make_default_options();
     let updates = ConsoleOptionsUpdates {
         width: Some(60),
-        no_wrap: Some(true),
+        no_wrap: Some(Some(true)),
         justify: Some(Some(JustifyMethod::Center)),
         ..Default::default()
     };
     let updated = opts.with_updates(&updates);
     assert_eq!(updated.size.width, 60);
     assert_eq!(updated.max_width, 60);
-    // no_wrap is now Option<bool>; `Some(true)` from the update (tri-state).
+    // no_wrap triple-state: `Some(Some(true))` sets ConsoleOptions::no_wrap to Some(true).
     assert_eq!(updated.no_wrap, Some(true));
     assert_eq!(updated.justify, Some(JustifyMethod::Center));
+}
+
+// -- Item 3: no_wrap triple-option ----------------------------------------
+
+#[test]
+fn test_no_wrap_triple_option_reset_to_none() {
+    // Some(None) must RESET no_wrap to None on ConsoleOptions.
+    let mut opts = make_default_options();
+    opts.no_wrap = Some(true); // start with wrap disabled
+
+    let updates = ConsoleOptionsUpdates {
+        no_wrap: Some(None), // triple-option reset
+        ..Default::default()
+    };
+    let updated = opts.with_updates(&updates);
+    assert_eq!(
+        updated.no_wrap, None,
+        "Some(None) in no_wrap update must reset ConsoleOptions::no_wrap to None"
+    );
+}
+
+#[test]
+fn test_no_wrap_triple_option_set_false() {
+    // Some(Some(false)) must set no_wrap to Some(false).
+    let opts = make_default_options();
+    let updates = ConsoleOptionsUpdates {
+        no_wrap: Some(Some(false)),
+        ..Default::default()
+    };
+    let updated = opts.with_updates(&updates);
+    assert_eq!(updated.no_wrap, Some(false));
+}
+
+#[test]
+fn test_no_wrap_triple_option_no_change() {
+    // None must leave no_wrap unchanged.
+    let mut opts = make_default_options();
+    opts.no_wrap = Some(true);
+    let updates = ConsoleOptionsUpdates {
+        ..Default::default()
+    };
+    let updated = opts.with_updates(&updates);
+    assert_eq!(updated.no_wrap, Some(true));
 }
 
 // -- Console creation ---------------------------------------------------

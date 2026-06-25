@@ -143,14 +143,15 @@ fn test_console_options_with_updates() {
     let opts = make_default_options();
     let updates = ConsoleOptionsUpdates {
         width: Some(60),
-        no_wrap: Some(true),
+        no_wrap: Some(Some(true)),
         justify: Some(Some(JustifyMethod::Center)),
         ..Default::default()
     };
     let updated = opts.with_updates(&updates);
     assert_eq!(updated.size.width, 60);
     assert_eq!(updated.max_width, 60);
-    assert!(updated.no_wrap);
+    // Triple-option: Some(Some(true)) sets ConsoleOptions::no_wrap to Some(true).
+    assert_eq!(updated.no_wrap, Some(true));
     assert_eq!(updated.justify, Some(JustifyMethod::Center));
 }
 

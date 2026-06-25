@@ -233,6 +233,103 @@ impl<T: Renderable + 'static> RenderableExt for T {
     }
 }
 
+// ---------------------------------------------------------------------------
+// CastWrapper — bridges GiltCast → Renderable without a blanket impl
+// ---------------------------------------------------------------------------
+
+/// A newtype that wraps a [`GiltCast`] value and exposes it as a [`Renderable`].
+///
+/// # Why a newtype instead of a blanket impl?
+///
+/// A blanket `impl<T: GiltCast> Renderable for T` is rejected by the Rust
+/// coherence checker because nothing prevents a downstream crate (or the
+/// codebase itself) from implementing *both* `GiltCast` and `Renderable` on
+/// the same type — which would create an overlapping implementation. The
+/// newtype sidesteps coherence: `CastWrapper<T>` is a distinct type that has
+/// exactly one `Renderable` impl, with no risk of overlap.
+///
+/// `CastWrapper` stores its value in a `RefCell<Option<T>>`. The first time
+/// `gilt_console` is called it moves the value out and invokes `__gilt__`,
+/// delegating to the resulting [`Renderable`]. Subsequent calls will produce
+/// an empty segment list (the value has been consumed). This matches Python's
+/// `__rich__` protocol: an object is rendered at most once per print call.
+///
+/// # Usage
+///
+/// ```
+/// use gilt::protocol::{GiltCast, CastWrapper};
+/// use gilt::prelude::*;
+///
+/// struct MyData(String);
+///
+/// impl GiltCast for MyData {
+///     fn __gilt__(self) -> Box<dyn gilt::console::Renderable> {
+///         Box::new(Text::from(self.0))
+///     }
+/// }
+///
+/// let wrapper = CastWrapper::new(MyData("hello".into()));
+/// let mut console = Console::builder().width(80).build();
+/// console.begin_capture();
+/// console.print(&wrapper);
+/// let out = console.end_capture();
+/// assert!(out.contains("hello"));
+/// ```
+///
+/// Alternatively, call [`Console::print_cast`] which constructs the wrapper
+/// for you:
+///
+/// ```
+/// use gilt::protocol::GiltCast;
+/// use gilt::prelude::*;
+///
+/// struct Msg(String);
+/// impl GiltCast for Msg {
+///     fn __gilt__(self) -> Box<dyn gilt::console::Renderable> {
+///         Box::new(Text::from(self.0))
+///     }
+/// }
+///
+/// let mut console = Console::builder().width(80).build();
+/// console.begin_capture();
+/// console.print_cast(Msg("world".into()));
+/// let out = console.end_capture();
+/// assert!(out.contains("world"));
+/// ```
+pub struct CastWrapper<T: GiltCast> {
+    inner: std::cell::RefCell<Option<T>>,
+}
+
+impl<T: GiltCast> CastWrapper<T> {
+    /// Wrap a [`GiltCast`] value so it can be passed to `Console::print`.
+    pub fn new(value: T) -> Self {
+        Self {
+            inner: std::cell::RefCell::new(Some(value)),
+        }
+    }
+}
+
+impl<T: GiltCast> Renderable for CastWrapper<T> {
+    fn gilt_console(
+        &self,
+        console: &crate::console::Console,
+        options: &crate::console::ConsoleOptions,
+    ) -> Vec<crate::segment::Segment> {
+        // Take ownership of the wrapped value (consumes it on first call).
+        // `gilt_console` takes `&self` so we use `RefCell` for interior
+        // mutability. Subsequent calls after the value has been taken return
+        // an empty segment list, mirroring Python's single-render protocol.
+        let maybe_val = self.inner.borrow_mut().take();
+        match maybe_val {
+            Some(val) => {
+                let boxed: Box<dyn Renderable> = val.__gilt__();
+                boxed.gilt_console(console, options)
+            }
+            None => vec![],
+        }
+    }
+}
+
 /// A type-erased wrapper that can hold any renderable value.
 ///
 /// This struct wraps a `Box<dyn Renderable>` and can be used when you need
@@ -552,5 +649,79 @@ mod tests {
         assert!(output.contains("Item 1"));
         assert!(output.contains("Item 2"));
         assert!(output.contains("Item 3"));
+    }
+
+    // ── Item 1: GiltCast auto-invoked via CastWrapper / print_cast ──────────
+
+    /// A type implementing only GiltCast (not Renderable directly).
+    struct MyWidget {
+        label: String,
+        count: usize,
+    }
+
+    impl GiltCast for MyWidget {
+        fn __gilt__(self) -> Box<dyn Renderable> {
+            Box::new(Text::from(format!("{}: {}", self.label, self.count)))
+        }
+    }
+
+    #[test]
+    fn test_cast_wrapper_renders_gilt_cast_type() {
+        // CastWrapper wraps a GiltCast value and implements Renderable.
+        let w = CastWrapper::new(MyWidget {
+            label: "hits".into(),
+            count: 99,
+        });
+        let mut console = crate::console::Console::builder()
+            .width(80)
+            .no_color(true)
+            .build();
+        console.begin_capture();
+        console.print(&w);
+        let output = console.end_capture();
+        assert!(
+            output.contains("hits: 99"),
+            "CastWrapper must render via __gilt__; got: {output:?}"
+        );
+    }
+
+    #[test]
+    fn test_print_cast_renders_gilt_cast_type() {
+        // Console::print_cast is the ergonomic shorthand.
+        let mut console = crate::console::Console::builder()
+            .width(80)
+            .no_color(true)
+            .build();
+        console.begin_capture();
+        console.print_cast(MyWidget {
+            label: "events".into(),
+            count: 7,
+        });
+        let output = console.end_capture();
+        assert!(
+            output.contains("events: 7"),
+            "print_cast must render via __gilt__; got: {output:?}"
+        );
+    }
+
+    #[test]
+    fn test_cast_wrapper_coherence_no_conflict() {
+        // Compile-time proof: a type that implements only GiltCast can be
+        // wrapped without conflicting with any existing Renderable impl.
+        struct OnlyGiltCast(String);
+        impl GiltCast for OnlyGiltCast {
+            fn __gilt__(self) -> Box<dyn Renderable> {
+                Box::new(Text::from(self.0))
+            }
+        }
+        let w = CastWrapper::new(OnlyGiltCast("unique".into()));
+        let mut console = crate::console::Console::builder()
+            .width(80)
+            .no_color(true)
+            .build();
+        console.begin_capture();
+        console.print(&w);
+        let output = console.end_capture();
+        assert!(output.contains("unique"));
     }
 }
