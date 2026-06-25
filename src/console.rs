@@ -56,6 +56,35 @@ pub fn detect_color_system_from(colorterm: Option<&str>, term: Option<&str>) -> 
     ColorSystem::TrueColor
 }
 
+/// Detect whether the host terminal advertises itself as a modern Windows
+/// terminal that supports ANSI / VT escape codes (and therefore does not
+/// need the legacy Windows renderer).
+///
+/// The detection mirrors the existing rule in
+/// [`crate::utils::diagnose`] and rich's own logic: a terminal is treated
+/// as "modern" when any of these environment variables is set to a
+/// non-empty value:
+///
+/// - `WT_SESSION`     — set by Windows Terminal when launched in the
+///   default profile mode.
+/// - `WT_PROFILE_ID`  — set by Windows Terminal when launched with a
+///   non-default profile (some hosts set only this one).
+/// - `TERM_PROGRAM`   — set by VS Code, Apple Terminal, iTerm, and many
+///   other modern terminal emulators that may be hosting the process.
+///
+/// This is a pure helper (takes string slices) so the logic can be
+/// unit-tested without mutating the process environment. Empty strings
+/// are NOT treated as set — `Option<&str>` differentiates "variable
+/// unset" from "variable set to empty".
+pub fn detect_modern_windows_terminal(
+    wt_session: Option<&str>,
+    wt_profile_id: Option<&str>,
+    term_program: Option<&str>,
+) -> bool {
+    let is_set = |v: Option<&str>| v.map(|s| !s.is_empty()).unwrap_or(false);
+    is_set(wt_session) || is_set(wt_profile_id) || is_set(term_program)
+}
+
 // ---------------------------------------------------------------------------
 // Terminal detection helper
 // ---------------------------------------------------------------------------
@@ -78,6 +107,30 @@ fn detect_is_terminal() -> bool {
             std::env::var("TERM").as_deref(),
             Ok(t) if !t.is_empty() && t != "dumb"
         )
+    }
+}
+
+/// Detect whether the host is a "legacy" Windows console (one without
+/// VT/ANSI escape-code support).
+///
+/// On Windows targets with native (non-wasm) builds this returns `true`
+/// when none of the modern-terminal environment variables
+/// (`WT_SESSION`, `WT_PROFILE_ID`, `TERM_PROGRAM`) are set. On every
+/// other target — non-Windows OR wasm32 — it returns `false`, matching
+/// gilt's WASM-safe contract.
+///
+/// The env reads only execute inside the Windows+native cfg-branch; on
+/// every other target the function short-circuits to `false`, so wasm
+/// builds never touch `std::env`.
+pub(crate) fn detect_legacy_windows() -> bool {
+    if cfg!(all(target_os = "windows", not(target_arch = "wasm32"))) {
+        !detect_modern_windows_terminal(
+            std::env::var("WT_SESSION").ok().as_deref(),
+            std::env::var("WT_PROFILE_ID").ok().as_deref(),
+            std::env::var("TERM_PROGRAM").ok().as_deref(),
+        )
+    } else {
+        false
     }
 }
 
@@ -815,7 +868,10 @@ impl Console {
             no_color: effective_no_color,
             quiet: builder.quiet,
             safe_box: builder.safe_box,
-            legacy_windows: false,
+            // Explicit builder override (Some) wins; otherwise auto-detect
+            // at construction time. See `detect_legacy_windows` for the
+            // cfg-gated detection logic.
+            legacy_windows: builder.legacy_windows.unwrap_or_else(detect_legacy_windows),
             base_style: None,
             log_path: builder.log_path,
             theme_stack,
@@ -1035,6 +1091,23 @@ impl Console {
     /// `safe_box: Option<bool>` field should use this as the fallback default.
     pub fn safe_box(&self) -> bool {
         self.safe_box
+    }
+
+    /// Whether this console is rendering against a legacy Windows console
+    /// (one without VT/ANSI escape-code support).
+    ///
+    /// When `true`, gilt routes output through the legacy Win32 console
+    /// API and avoids emitting ANSI escape sequences (SGR, OSC 8, OSC 11,
+    /// etc.).  When `false`, gilt emits ANSI escapes as usual.
+    ///
+    /// Defaults to `false` on every non-Windows target. On Windows,
+    /// auto-detection runs at [`Console::builder`] time and is `true`
+    /// unless one of `WT_SESSION`, `WT_PROFILE_ID`, or `TERM_PROGRAM` is
+    /// set in the environment (which indicates a modern terminal). The
+    /// explicit [`ConsoleBuilder::with_legacy_windows`] setter overrides
+    /// auto-detection.
+    pub fn legacy_windows(&self) -> bool {
+        self.legacy_windows
     }
 
     /// Whether this is a "dumb" terminal with no styling support.

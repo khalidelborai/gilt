@@ -204,6 +204,48 @@ fn test_console_builder_height() {
 }
 
 #[test]
+fn test_console_builder_with_legacy_windows_true() {
+    // Explicit setter overrides auto-detection.
+    let console = Console::builder().with_legacy_windows(true).build();
+    assert!(console.legacy_windows());
+}
+
+#[test]
+fn test_console_builder_with_legacy_windows_false() {
+    // Explicit setter overrides auto-detection.
+    let console = Console::builder().with_legacy_windows(false).build();
+    assert!(!console.legacy_windows());
+}
+
+#[test]
+fn test_console_default_legacy_windows_off_on_non_windows() {
+    // On non-Windows hosts (this CI machine is darwin), the auto-detected
+    // default must be `false`. The setter was NOT called.
+    let console = Console::builder().force_terminal(true).build();
+    #[cfg(not(target_os = "windows"))]
+    assert!(
+        !console.legacy_windows(),
+        "non-Windows hosts must default legacy_windows to false"
+    );
+    #[cfg(target_os = "windows")]
+    {
+        // On Windows, the default is true unless a modern terminal is
+        // detected. We don't assert a specific value here — that's the
+        // pure-helper test's job. Just don't crash.
+        let _ = console.legacy_windows();
+    }
+}
+
+#[test]
+fn test_console_builder_options_propagates_legacy_windows() {
+    // The legacy_windows flag must propagate into ConsoleOptions so that
+    // renderables see the resolved value (matches rich parity).
+    let console = Console::builder().with_legacy_windows(true).build();
+    let opts = console.options();
+    assert!(opts.legacy_windows);
+}
+
+#[test]
 fn test_console_custom_width_height() {
     let console = Console::builder().width(100).height(40).build();
     assert_eq!(console.width(), 100);
@@ -1887,6 +1929,56 @@ fn test_detect_color_system_colorterm_wins_over_256color_term() {
         detect_color_system_from(Some("truecolor"), Some("xterm-256color")),
         ColorSystem::TrueColor
     );
+}
+
+// -- Phase 7.25: modern-terminal detection helper -------------------------
+
+#[test]
+fn test_detect_modern_windows_terminal_no_env() {
+    use crate::console::detect_modern_windows_terminal;
+    // No env → not modern → false
+    assert!(!detect_modern_windows_terminal(None, None, None));
+}
+
+#[test]
+fn test_detect_modern_windows_terminal_wt_session() {
+    use crate::console::detect_modern_windows_terminal;
+    // WT_SESSION set → Windows Terminal detected → modern → true
+    assert!(detect_modern_windows_terminal(Some("abc123"), None, None));
+}
+
+#[test]
+fn test_detect_modern_windows_terminal_wt_profile_id() {
+    use crate::console::detect_modern_windows_terminal;
+    // WT_PROFILE_ID set (non-default profile launch) → modern → true
+    assert!(detect_modern_windows_terminal(
+        None,
+        Some("{abc-123}"),
+        None
+    ));
+}
+
+#[test]
+fn test_detect_modern_windows_terminal_term_program() {
+    use crate::console::detect_modern_windows_terminal;
+    // TERM_PROGRAM set (vscode, Apple_Terminal, etc.) → modern → true
+    assert!(detect_modern_windows_terminal(None, None, Some("vscode")));
+    assert!(detect_modern_windows_terminal(
+        None,
+        None,
+        Some("Apple_Terminal")
+    ));
+}
+
+#[test]
+fn test_detect_modern_windows_terminal_empty_strings_are_not_modern() {
+    use crate::console::detect_modern_windows_terminal;
+    // Empty strings should not register as set.
+    assert!(!detect_modern_windows_terminal(
+        Some(""),
+        Some(""),
+        Some("")
+    ));
 }
 
 // -- Finding #3: update_width min_width clamp ----------------------------
