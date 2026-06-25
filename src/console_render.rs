@@ -588,8 +588,12 @@ impl Console {
 
         // Optional locals label
         if log_locals {
+            // rich renders locals via render_scope(title="[i]locals"). The
+            // (locals) marker here is a placeholder for that; style it with
+            // log.level (the log content style) rather than log.path (which
+            // is specifically for caller file:line), falling back to dim.
             let locals_style = self
-                .get_style("log.path")
+                .get_style("log.level")
                 .unwrap_or_else(|_| Style::parse("dim"));
             segments.push(Segment::text(" "));
             segments.push(Segment::styled("(locals)", locals_style));
