@@ -790,14 +790,8 @@ mod tests {
         // 1. With a value, both groups capture.
         let text = hl.apply("name=42");
         let plain = text.plain();
-        let has_name = text
-            .spans()
-            .iter()
-            .any(|s| span_text(plain, s) == "name");
-        let has_value = text
-            .spans()
-            .iter()
-            .any(|s| span_text(plain, s) == "42");
+        let has_name = text.spans().iter().any(|s| span_text(plain, s) == "name");
+        let has_value = text.spans().iter().any(|s| span_text(plain, s) == "42");
         assert!(has_name, "expected an attrib_name span for 'name'");
         assert!(has_value, "expected an attrib_value span for '42'");
 
@@ -813,7 +807,6 @@ mod tests {
             "name= alone should not produce an attrib_name span"
         );
     }
-
 
     // -- JSONHighlighter ----------------------------------------------------
 
