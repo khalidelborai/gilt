@@ -129,13 +129,22 @@ impl Align {
     }
 
     /// Measure the minimum and maximum width requirements.
+    ///
+    /// The **maximum** stays the content's full width; the **minimum** is
+    /// the longest whitespace-delimited token so the content can wrap to
+    /// fit (Plan 7.18 Task 4). For Text content this is the longest word
+    /// in the rendered plain string; for other widgets it delegates to
+    /// the widget's own `gilt_measure().minimum` (Panel/Rule/etc.). Both
+    /// are clamped to `max_width` so we never report a wider value than
+    /// the available space.
     pub fn measure(&self, console: &Console, options: &ConsoleOptions) -> Measurement {
-        let content_width = self.content.gilt_measure(console, options).maximum;
+        let content_measure = self.content.gilt_measure(console, options);
         let max_width = match self.width {
             Some(w) => w.min(options.max_width),
-            None => content_width.min(options.max_width),
+            None => content_measure.maximum.min(options.max_width),
         };
-        Measurement::new(content_width.min(max_width), max_width)
+        let min_width = content_measure.minimum.min(max_width);
+        Measurement::new(min_width, max_width)
     }
 
     /// Generate vertically-padded blank lines above or below content.
@@ -677,5 +686,44 @@ mod tests {
     fn align_center_panel_compiles() {
         let p = crate::panel::Panel::new(Text::new("x", Style::null()));
         let _ = Align::center(p);
+    }
+
+    // -- Plan 7.18 Task 4: minimum = longest-word width ---------------------
+
+    #[test]
+    fn test_align_measure_min_is_longest_word() {
+        // "hello world foo" — content cell length 15, longest single word 5.
+        // Align must report min=5 (not min=15) so the content can wrap to fit.
+        let console = make_console(80);
+        let opts = console.options();
+        let align = Align::center(Text::new("hello world foo", Style::null()));
+        let m = align.measure(&console, &opts);
+        assert_eq!(
+            m.minimum, 5,
+            "minimum must equal the longest single word (5), not the full content width"
+        );
+        assert_eq!(m.maximum, 15, "maximum stays the full content width");
+    }
+
+    #[test]
+    fn test_align_measure_min_clamps_to_max_width() {
+        // Long word in a narrow console — min must not exceed max_width.
+        let console = make_console(5);
+        let opts = console.options();
+        let align = Align::left(Text::new("supercalifragilistic", Style::null()));
+        let m = align.measure(&console, &opts);
+        assert_eq!(m.minimum, 5, "min clamps to max_width (5)");
+        assert_eq!(m.maximum, 5, "max clamps to max_width (5)");
+    }
+
+    #[test]
+    fn test_align_measure_min_single_word_unchanged() {
+        // Single word: longest word == content length, no behavior change.
+        let console = make_console(40);
+        let opts = console.options();
+        let align = Align::right(Text::new("Hello", Style::null()));
+        let m = align.measure(&console, &opts);
+        assert_eq!(m.minimum, 5);
+        assert_eq!(m.maximum, 5);
     }
 }

@@ -224,24 +224,39 @@ impl Default for Columns {
         Self::new()
     }
 }
-
 impl Renderable for Columns {
     fn gilt_measure(&self, console: &Console, options: &ConsoleOptions) -> Measurement {
         // Replicate the same item-width accounting as gilt_console, then
         // derive minimum and maximum without actually building a Table.
 
-        let renderables: Vec<Text> = if !self.widgets.is_empty() {
-            let mut tmp = Console::default();
-            self.widgets
-                .iter()
-                .map(|w| tmp.render_widget_to_text(w.as_ref()))
-                .collect()
-        } else {
-            self.renderables
-                .iter()
-                .map(|s| console.render_str(s, None, None, None))
-                .collect()
-        };
+        // For the widget path we measure each widget directly via its
+        // `gilt_measure` override (Phase 3 measurement protocol) — avoiding
+        // the lossy ANSI round-trip through `render_widget_to_text` that the
+        // old path used, which truncated widget widths to the console width
+        // and produced min > max for widgets wider than the console.
+        // For the string path we still need a Text (no measurement protocol
+        // on `&str`), so keep `render_str` for that branch.
+        let (mut renderable_widths, renderables): (Vec<usize>, Vec<Text>) =
+            if !self.widgets.is_empty() {
+                let widths: Vec<usize> = self
+                    .widgets
+                    .iter()
+                    .map(|w| w.gilt_measure(console, options).maximum)
+                    .collect();
+                // `iter_renderables` takes a parallel `&[Text]` slice for
+                // layout bookkeeping, but gilt_measure only consumes the
+                // widths — the Text values are placeholders never inspected.
+                let stubs = vec![Text::from(""); widths.len()];
+                (widths, stubs)
+            } else {
+                let texts: Vec<Text> = self
+                    .renderables
+                    .iter()
+                    .map(|s| console.render_str(s, None, None, None))
+                    .collect();
+                let widths: Vec<usize> = texts.iter().map(|t| t.measure().maximum).collect();
+                (widths, texts)
+            };
 
         if renderables.is_empty() {
             return Measurement::new(0, 0);
@@ -250,10 +265,6 @@ impl Renderable for Columns {
         let (_top, right, _bottom, left) = self.padding;
         let width_padding = right.max(left);
         let max_width = options.max_width;
-
-        // Measure each renderable's maximum width
-        let mut renderable_widths: Vec<usize> =
-            renderables.iter().map(|r| r.measure().maximum).collect();
 
         // If equal, all widths = max of all
         if self.equal {
@@ -1062,5 +1073,70 @@ mod tests {
         cols.add_renderable("ccccc"); // 5
         let m = cols.gilt_measure(&console, &opts);
         assert_eq!(m.minimum, 5, "minimum should equal widest single item (5)");
+    }
+
+    // -- Plan 7.18 Task 2: widget path uses gilt_measure -------------------
+
+    #[test]
+    fn columns_gilt_measure_widgets_uses_gilt_measure_not_text_round_trip() {
+        use crate::panel::Panel;
+        use crate::style::Style;
+        use crate::text::Text;
+
+        let console = make_console(40);
+        let opts = console.options();
+
+        // 4 Panels of known widths. Each Panel's measurement comes from its
+        // `gilt_measure` override — NOT from a lossy ANSI round-trip
+        // through `render_widget_to_text`.
+        let panels: Vec<Panel> = vec![
+            Panel::new(Text::new("alpha", Style::null())),
+            Panel::new(Text::new("beta", Style::null())),
+            Panel::new(Text::new("gamma", Style::null())),
+            Panel::new(Text::new("delta", Style::null())),
+        ];
+        let cols = Columns::from_renderables(panels);
+
+        let m = cols.gilt_measure(&console, &opts);
+
+        // minimum = widest single widget's max (forced to one column).
+        assert!(m.minimum > 0, "expected non-zero min, got {m:?}");
+        assert!(
+            m.minimum <= m.maximum,
+            "min {} > max {}",
+            m.minimum,
+            m.maximum
+        );
+        assert!(
+            m.maximum <= opts.max_width,
+            "max {} exceeds console max_width {}",
+            m.maximum,
+            opts.max_width
+        );
+    }
+
+    #[test]
+    fn columns_widgets_gilt_measure_no_panic() {
+        use crate::panel::Panel;
+        use crate::style::Style;
+        use crate::text::Text;
+
+        // Regression guard: 6 Panels of varying widths in a 40-col console
+        // must not panic during gilt_measure (the column-fit loop used to
+        // panic on some edge cases via the render_widget_to_text path).
+        let console = make_console(40);
+        let opts = console.options();
+        let panels: Vec<Panel> = vec![
+            Panel::new(Text::new("aaaa", Style::null())),
+            Panel::new(Text::new("bb", Style::null())),
+            Panel::new(Text::new("ccccccc", Style::null())),
+            Panel::new(Text::new("dd", Style::null())),
+            Panel::new(Text::new("eee", Style::null())),
+            Panel::new(Text::new("f", Style::null())),
+        ];
+        let cols = Columns::from_renderables(panels);
+        let m = cols.gilt_measure(&console, &opts);
+        assert!(m.minimum > 0);
+        assert!(m.maximum <= opts.max_width);
     }
 }
