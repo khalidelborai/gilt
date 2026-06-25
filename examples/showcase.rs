@@ -1624,6 +1624,103 @@ Mumbai,India,12440000,603";
     pause();
 
     // =========================================================================
+    // 2.2 / 2.3: Charts & Canvas (new widgets)
+    // =========================================================================
+    {
+        use gilt::barchart::BarChart;
+        use gilt::canvas::Blitter;
+        use gilt::histogram::Histogram;
+        use gilt::linechart::LineChart;
+
+        // 2.2: BarChart — horizontal bars with sub-cell precision.
+        console.rule(Some("2.2: BarChart"));
+        let chart = BarChart::from_pairs([
+            ("Rust", 81.0),
+            ("Go", 119.0),
+            ("Zig", 33.0),
+            ("Python", 59.0),
+        ])
+        .with_width(56)
+        .with_max(120.0)
+        .with_bar_style(Style::parse("cyan"))
+        .with_label_style(Style::parse("bold"))
+        .with_value_style(Style::parse("dim"));
+        console.print(&chart);
+        pause();
+
+        // 2.2: Heatmap — values painted as colour.
+        console.rule(Some("2.2: Heatmap"));
+        let grid: Vec<Vec<f64>> = (0..6)
+            .map(|r| {
+                (0..24)
+                    .map(|c| (r as f64 * 0.6 + c as f64 * 0.5).sin() * 0.5 + 0.5)
+                    .collect()
+            })
+            .collect();
+        console.print(&Heatmap::new(grid).with_cell_width(2).with_gradient(vec![
+            Color::from_rgb(40, 42, 54),
+            Color::from_rgb(139, 233, 253),
+            Color::from_rgb(241, 250, 140),
+            Color::from_rgb(255, 85, 85),
+        ]));
+        pause();
+
+        // 2.2: Sparkline min/max markers.
+        console.rule(Some("2.2: Sparkline min/max markers"));
+        let series = [
+            30.0, 45.0, 38.0, 62.0, 55.0, 91.0, 70.0, 48.0, 12.0, 33.0, 58.0, 80.0, 44.0,
+        ];
+        console.print(
+            &Sparkline::new(&series)
+                .with_width(48)
+                .with_style(Style::parse("dim white"))
+                .with_min_max_markers(true)
+                .with_min_style(Style::parse("blue"))
+                .with_max_style(Style::parse("bold red")),
+        );
+        pause();
+
+        // 2.2: Canvas Octant blitter (Unicode 16, 2×4 sub-cell).
+        console.rule(Some("2.2: Canvas Octant blitter (Unicode 16)"));
+        let mut oc = Canvas::new(30, 6)
+            .with_blitter(Blitter::Octant)
+            .with_style(Style::parse("magenta"));
+        oc.line(0, 0, 59, 23);
+        oc.circle(30, 12, 11);
+        console.print(&oc);
+        pause();
+
+        // 2.3: LineChart — Braille multi-series line plot.
+        console.rule(Some("2.3: LineChart"));
+        let sine: Vec<f64> = (0..60).map(|i| (i as f64 * 0.25).sin()).collect();
+        let cosine: Vec<f64> = (0..60).map(|i| (i as f64 * 0.25).cos()).collect();
+        console.print(
+            &LineChart::new()
+                .series("sin", &sine, Style::parse("green"))
+                .series("cos", &cosine, Style::parse("magenta"))
+                .with_width(56)
+                .with_height(8),
+        );
+        pause();
+
+        // 2.3: Histogram — binned distribution.
+        console.rule(Some("2.3: Histogram"));
+        let samples: Vec<f64> = (0..400)
+            .map(|i| {
+                let t = i as f64 * 0.1;
+                50.0 + 18.0 * (t.sin() + (t * 0.3).cos())
+            })
+            .collect();
+        console.print(
+            &Histogram::new(&samples)
+                .with_bins(20)
+                .with_height(6)
+                .with_style(Style::parse("cyan")),
+        );
+        pause();
+    }
+
+    // =========================================================================
     // Grand Finale — Full-Screen "Coding Agent" TUI
     // =========================================================================
     // Everything integrated in a live, full-screen (alternate-screen) app:
