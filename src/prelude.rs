@@ -27,6 +27,7 @@ pub use crate::figlet::Figlet;
 pub use crate::gradient::Gradient;
 pub use crate::group::Group;
 pub use crate::heatmap::Heatmap;
+pub use crate::histogram::Histogram;
 pub use crate::inspect::Inspect;
 #[cfg(feature = "markdown")]
 pub use crate::markdown::Markdown;
