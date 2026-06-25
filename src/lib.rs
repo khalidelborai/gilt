@@ -785,6 +785,8 @@ pub mod diff;
 pub mod export_format;
 pub mod figlet;
 pub mod gradient;
+pub mod heatmap;
+pub use heatmap::Heatmap;
 pub mod windows_vt;
 pub use utils::group;
 pub mod barchart;
