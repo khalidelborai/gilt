@@ -476,11 +476,27 @@ impl Color {
                 _ => *self,
             },
             ColorSystem::Standard => {
+                // EightBit(0-15) IS the Standard palette — pass through to
+                // avoid an RGB round-trip that can silently change the index
+                // (audit #39 residual, Phase 7).
+                if let Color::EightBit(n) = self {
+                    if *n < 16 {
+                        return Color::Standard(*n);
+                    }
+                }
                 let triplet = self.get_truecolor(None, true);
                 let index = STANDARD_PALETTE.match_color(&triplet);
                 Color::Standard(index as u8)
             }
             ColorSystem::Windows => {
+                // EightBit(0-15) IS the Windows palette — pass through to
+                // avoid an RGB round-trip that can silently change the index
+                // (audit #39 residual, Phase 7).
+                if let Color::EightBit(n) = self {
+                    if *n < 16 {
+                        return Color::Windows(*n);
+                    }
+                }
                 let triplet = self.get_truecolor(None, true);
                 let index = WINDOWS_PALETTE.match_color(&triplet);
                 Color::Windows(index as u8)
@@ -1321,6 +1337,28 @@ mod tests {
             Color::EightBit(123).downgrade(ColorSystem::Standard),
             Color::Standard(_)
         ));
+    }
+    #[test]
+    fn eightbit_low_passthrough_to_windows() {
+        // EightBit(0-15) ARE the standard/Windows palette — downgrade to
+        // Windows must pass through directly to Windows(n) instead of
+        // round-tripping through RGB nearest-match (audit #39 residual).
+        for n in 0u8..16 {
+            assert_eq!(
+                Color::EightBit(n).downgrade(ColorSystem::Windows),
+                Color::Windows(n),
+                "EightBit({n}) must pass through to Windows({n}) on downgrade",
+            );
+        }
+        // EightBit(0-15) → Standard is the analogous shortcut (already
+        // implied by the existing identity test for Standard, but pin it).
+        for n in 0u8..16 {
+            assert_eq!(
+                Color::EightBit(n).downgrade(ColorSystem::Standard),
+                Color::Standard(n),
+                "EightBit({n}) must pass through to Standard({n}) on downgrade",
+            );
+        }
     }
 }
 
