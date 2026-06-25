@@ -863,7 +863,7 @@ mod fuzzy_select_tests;
 mod terminal_bg_tests;
 
 // Phase 7.24 — public API additions
-#[cfg(test)]
+#[cfg(all(test, feature = "json"))]
 #[path = "print_json_opts_tests.rs"]
 mod print_json_opts_tests;
 
