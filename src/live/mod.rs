@@ -664,9 +664,25 @@ impl Live {
             let new_height = new_lines.len();
 
             if prev_height == 0 {
-                // First frame or after invalidation: full repaint (no diff data).
-                let position_segments = s.live_render.position_cursor();
-                emit_control_segments(&mut s.console, &position_segments);
+                // First frame (or after invalidation / print_above): there is NO
+                // previously-tracked live region directly above the cursor, so we
+                // must NOT move the cursor up — doing so would erase whatever was
+                // printed above us (e.g. a section rule or earlier output). Just
+                // clear the current line and render the frame downward from here.
+                // (position_cursor() moves up by the *new* render height, which is
+                // exactly the bug for a first frame.) Subsequent frames have
+                // prev_height > 0 and use the manual line-diff below.
+                emit_control_segments(
+                    &mut s.console,
+                    &[Segment::new(
+                        "",
+                        None,
+                        Some(vec![
+                            ControlCode::Simple(ControlType::CarriageReturn),
+                            ControlCode::WithParam(ControlType::EraseInLine, 2),
+                        ]),
+                    )],
+                );
                 s.console.write_segments(&render_segments);
             } else {
                 // Move cursor to top of previous region (CR + erase current
