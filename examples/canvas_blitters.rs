@@ -1,104 +1,137 @@
-//! Canvas blitters — draw the same circle in Braille, Sextant, and HalfBlock.
+//! `Canvas` blitters — one shape, four resolutions, side by side.
 //!
-//! Demonstrates:
-//! - `Canvas::new(cols, rows)` — default Braille blitter.
-//! - `.with_blitter(Blitter::Sextant)` — 2×3 pixel cells (higher vert density).
-//! - `.with_blitter(Blitter::HalfBlock)` — 1×2 pixel cells (widest compat).
-//! - `canvas.circle(cx, cy, r)` — midpoint circle on the pixel grid.
-//! - `canvas.line(x0, y0, x1, y1)` — Bresenham line.
-//! - `canvas.frame()` — render to a multi-line string.
+//! The *same* drawing calls (a filled rect, a corner-to-corner diagonal, and
+//! the largest circle that fits) are rendered through all four blitters. Only
+//! the glyph table changes, so the difference you see is pure sub-cell density:
 //!
-//! Resolution per cell:
-//!   Braille   — 2 × 4 px   (most detail per cell)
-//!   Sextant   — 2 × 3 px   (Unicode 13; needs a font with U+1FB00 block)
-//!   HalfBlock — 1 × 2 px   (universal: ▀ ▄ █; lowest resolution)
+//!   | Blitter   | cell (w×h) | Unicode block                  |
+//!   |-----------|------------|--------------------------------|
+//!   | Braille   | 2 × 4      | U+2800 Braille Patterns        |
+//!   | Octant    | 2 × 4      | U+1CD00 Octants (Unicode 16)   |
+//!   | Sextant   | 2 × 3      | U+1FB00 Legacy Computing (U13) |
+//!   | HalfBlock | 1 × 2      | U+2580 Block Elements          |
 //!
-//! Run with: cargo run --example canvas_blitters
+//! Braille and Octant share the top 2×4 density (Octant draws solid blocks
+//! instead of dots); Sextant is 2×3; HalfBlock is the most portable at 1×2.
+//! Octant needs a Unicode-16 font and Sextant a Unicode-13 one to render; the
+//! pixel *resolution* is identical regardless of what your font can draw.
+//!
+//! Run with: `cargo run --example canvas_blitters`
 
 use gilt::canvas::{Blitter, Canvas};
+use gilt::color::Color;
 use gilt::console::Console;
+use gilt::gradient::Gradient;
+use gilt::panel::Panel;
+use gilt::style::Style;
+use gilt::text::Text;
 
-/// Print the frame of a canvas with a labelled header.
-fn show(label: &str, canvas: &Canvas, console: &mut Console) {
-    console.print_text(&format!("[bold cyan]=== {} ===[/]", label));
-    // print each line of the frame through the console for ANSI styling.
-    for line in canvas.frame().lines() {
-        println!("{}", line);
-    }
-    println!();
+/// Draw the identical shape onto a canvas using `blitter`, scaled to whatever
+/// pixel resolution that blitter yields for the given cell dimensions.
+fn shape(cols: usize, rows: usize, blitter: Blitter, color: &str) -> Canvas {
+    let mut c = Canvas::new(cols, rows)
+        .with_blitter(blitter)
+        .with_style(Style::parse(color));
+    let pw = c.pixel_width() as i32;
+    let ph = c.pixel_height() as i32;
+
+    // A small filled rectangle anchored top-left.
+    c.fill_rect(1, 1, (pw / 5).max(2) as usize, (ph / 5).max(2) as usize);
+    // A diagonal spanning the whole grid.
+    c.line(0, 0, pw - 1, ph - 1);
+    // The largest centred circle that fits.
+    c.circle(pw / 2, ph / 2, (pw.min(ph) / 2 - 1).max(1));
+    c
+}
+
+/// Frame a canvas in a titled `Panel`; the title carries the blitter facts.
+fn framed(name: &str, cell: &str, color: &str, canvas: Canvas) -> Panel {
+    let (pw, ph) = (canvas.pixel_width(), canvas.pixel_height());
+    Panel::new(canvas)
+        .with_expand(false) // shrink the frame to the content + title width
+        .with_title(Text::new(
+            &format!(" {name} · {cell} cells · {pw}×{ph} px "),
+            Style::parse(&format!("bold {color}")),
+        ))
+        .with_subtitle(Text::new(
+            &format!(" {} pixels ", pw * ph),
+            Style::parse("italic #6272a4"),
+        ))
+        .with_border_style(Style::parse("#44475a"))
 }
 
 fn main() {
-    let mut console = Console::builder().width(80).force_terminal(true).build();
+    let mut console = Console::builder()
+        .width(60)
+        .force_terminal(true)
+        .no_color(false)
+        .build();
 
-    // Common parameters — same shape, different blitters.
-    // Each canvas is 20 cols × 12 rows terminal cells.
-    let cols = 20usize;
-    let rows = 12usize;
+    console.print(&Gradient::new(
+        "gilt · Canvas blitters — same shape, four sub-cell densities",
+        vec![
+            Color::from_rgb(139, 233, 253),
+            Color::from_rgb(189, 147, 249),
+            Color::from_rgb(80, 250, 123),
+            Color::from_rgb(255, 184, 108),
+        ],
+    ));
+    console.line(1);
 
-    // ---- Braille (2×4 px per cell = 40×48 pixel grid) ----------------------
-    let mut braille = Canvas::new(cols, rows); // default = Braille
-    let (pw, ph) = (braille.pixel_width() as i32, braille.pixel_height() as i32);
-    let cx = pw / 2;
-    let cy = ph / 2;
-    let r = (pw.min(ph) / 2 - 2).max(1);
-    braille.circle(cx, cy, r);
-    // Add a diagonal for contrast.
-    braille.line(0, 0, pw - 1, ph - 1);
-    show(
-        &format!("Braille  (pixel {}×{})", pw, ph),
-        &braille,
-        &mut console,
+    // Same terminal footprint for every panel — only the glyph density differs.
+    let (cols, rows) = (24usize, 12usize);
+
+    let panels = [
+        framed(
+            "Braille  ",
+            "2×4",
+            "#8be9fd",
+            shape(cols, rows, Blitter::Braille, "#8be9fd"),
+        ),
+        framed(
+            "Octant   ",
+            "2×4",
+            "#bd93f9",
+            shape(cols, rows, Blitter::Octant, "#bd93f9"),
+        ),
+        framed(
+            "Sextant  ",
+            "2×3",
+            "#50fa7b",
+            shape(cols, rows, Blitter::Sextant, "#50fa7b"),
+        ),
+        framed(
+            "HalfBlock",
+            "1×2",
+            "#ffb86c",
+            shape(cols, rows, Blitter::HalfBlock, "#ffb86c"),
+        ),
+    ];
+    for panel in &panels {
+        console.print(panel);
+    }
+
+    // -- Density check: Braille == Octant > Sextant > HalfBlock. --------------
+    let px = |b: Blitter| {
+        let c = Canvas::new(cols, rows).with_blitter(b);
+        c.pixel_width() * c.pixel_height()
+    };
+    let (braille, octant, sextant, half) = (
+        px(Blitter::Braille),
+        px(Blitter::Octant),
+        px(Blitter::Sextant),
+        px(Blitter::HalfBlock),
+    );
+    assert_eq!(braille, octant, "Braille and Octant share 2×4 density");
+    assert!(
+        braille > sextant && sextant > half,
+        "density ordering holds"
     );
 
-    // ---- Sextant (2×3 px per cell = 40×36 pixel grid) ----------------------
-    let mut sextant = Canvas::new(cols, rows).with_blitter(Blitter::Sextant);
-    let (pw, ph) = (sextant.pixel_width() as i32, sextant.pixel_height() as i32);
-    let cx = pw / 2;
-    let cy = ph / 2;
-    let r = (pw.min(ph) / 2 - 2).max(1);
-    sextant.circle(cx, cy, r);
-    sextant.line(0, 0, pw - 1, ph - 1);
-    show(
-        &format!("Sextant  (pixel {}×{})", pw, ph),
-        &sextant,
-        &mut console,
-    );
-
-    // ---- HalfBlock (1×2 px per cell = 20×24 pixel grid) --------------------
-    let mut halfblock = Canvas::new(cols, rows).with_blitter(Blitter::HalfBlock);
-    let (pw, ph) = (
-        halfblock.pixel_width() as i32,
-        halfblock.pixel_height() as i32,
-    );
-    let cx = pw / 2;
-    let cy = ph / 2;
-    let r = (pw.min(ph) / 2 - 2).max(1);
-    halfblock.circle(cx, cy, r);
-    halfblock.line(0, 0, pw - 1, ph - 1);
-    show(
-        &format!("HalfBlock(pixel {}×{})", pw, ph),
-        &halfblock,
-        &mut console,
-    );
-
-    // ---- Verify ----
-    // Each canvas frame must be non-empty and differ in resolution.
-    assert!(!braille.frame().is_empty(), "Braille frame non-empty");
-    assert!(!sextant.frame().is_empty(), "Sextant frame non-empty");
-    assert!(!halfblock.frame().is_empty(), "HalfBlock frame non-empty");
-
-    // Braille is the densest (most pixels); HalfBlock is the least.
-    let b_px = Canvas::new(cols, rows).pixel_width() * Canvas::new(cols, rows).pixel_height();
-    let h_px = Canvas::new(cols, rows)
-        .with_blitter(Blitter::HalfBlock)
-        .pixel_width()
-        * Canvas::new(cols, rows)
-            .with_blitter(Blitter::HalfBlock)
-            .pixel_height();
-    assert!(b_px > h_px, "Braille has more pixels than HalfBlock");
-
-    console.print_text(
-        "[bold green]assertions passed[/]  — Braille > Sextant > HalfBlock pixel density",
-    );
+    console.line(1);
+    console.print_text(&format!(
+        "  [#8be9fd]Braille[/]/[#bd93f9]Octant[/] {braille}px  ›  \
+         [#50fa7b]Sextant[/] {sextant}px  ›  [#ffb86c]HalfBlock[/] {half}px   \
+         [dim](same {cols}×{rows} cells)[/]"
+    ));
 }
