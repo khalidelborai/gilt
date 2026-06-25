@@ -1453,8 +1453,9 @@ fn test_pager_with_capture() {
     let text = Text::new("Pager content here", Style::null());
     console.print(&text);
 
-    // Use `cat` as pager -- it reads stdin and exits cleanly.
-    console.pager(Some("cat"));
+    // Use `cat` as pager -- it reads stdin and exits cleanly. `styles=false`
+    // matches rich's Console.pager(styles=False) default.
+    console.pager(Some("cat"), false);
 }
 
 // -- Screen enter/exit --------------------------------------------------

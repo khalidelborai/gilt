@@ -1312,6 +1312,7 @@ mod batch_7_7_tests {
                 c.print_text("hello from pager_with");
             },
             Some("cat"),
+            false,
         );
     }
 
@@ -1336,12 +1337,81 @@ mod batch_7_7_tests {
                 c.print_text("inside pager_with");
             },
             Some("cat"),
+            false,
         );
         // After pager_with, record buffer was cleared by export_text(clear=true);
         // the console is still in record mode (was_recording was true).
         let remaining = console.export_text(false, false);
         // Nothing should remain (the pager_with cleared it), but no panic.
         let _ = remaining;
+    }
+
+    // -- Item 5b: pager_with styles parameter (Phase 7.26) -----------------
+
+    /// Verify the `styles=false` (default) path strips ANSI escapes.
+    /// Uses the hermetic `pager_text` helper which does the same formatting
+    /// as `pager_with` but returns the text instead of piping.
+    #[test]
+    fn pager_text_strips_ansi_when_styles_false() {
+        let mut console = Console::builder()
+            .width(80)
+            .force_terminal(true)
+            .markup(false)
+            .build();
+        let text = console.pager_text(false, |c| {
+            c.print_text("plain content with no styles");
+        });
+        assert!(text.contains("plain content with no styles"));
+        // No ANSI escape sequences — plain text only.
+        assert!(
+            !text.contains('\u{1b}'),
+            "expected no ESC characters in styles=false output, got: {:?}",
+            text
+        );
+    }
+
+    /// Verify the `styles=true` path keeps ANSI escapes (styled output).
+    /// We force a colored style so the styled buffer emits escape codes.
+    #[test]
+    fn pager_text_keeps_ansi_when_styles_true() {
+        use crate::style::Style;
+        let mut console = Console::builder()
+            .width(80)
+            .color_system("truecolor")
+            .markup(false)
+            .build();
+        let text = console.pager_text(true, |c| {
+            let t = Text::new("styled text", Style::parse("red on white"));
+            c.print(&t);
+        });
+        assert!(text.contains("styled text"));
+        assert!(
+            text.contains('\u{1b}'),
+            "expected ESC (ANSI escapes) in styles=true output, got: {:?}",
+            text
+        );
+    }
+
+    /// Default `styles=false` matches rich's `Console.pager(styles=False)`.
+    #[test]
+    fn pager_with_default_styles_is_false() {
+        // pager_with with a non-piping pager (true exits cleanly) should
+        // produce no ANSI escapes — same as the old behavior.
+        let mut console = Console::builder()
+            .width(80)
+            .force_terminal(true)
+            .markup(false)
+            .quiet(true)
+            .build();
+        // `true` is a no-op pager (exits 0, ignores stdin). No assertion on
+        // output, just that the call doesn't panic.
+        console.pager_with(
+            |c| {
+                c.print_text("hello from pager_with (styles=false default)");
+            },
+            Some("true"),
+            false,
+        );
     }
 
     // -- Item 6: RenderHook pipeline ----------------------------------------
