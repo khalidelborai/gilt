@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.2.0] - 2026-06-25
+
+Visualizations — four beyond-rich Track A additions, each dep-free and WASM-safe.
+
+### Added
+
+- **`BarChart` widget** — horizontal bar chart: right-aligned labels, bars scaled
+  to the data max (or an explicit `with_max`) with eighth-block sub-cell
+  precision, and optional value labels. Builders for width, max, and bar/label/
+  value styles; `Renderable` + `gilt_measure`. Re-exported at the crate root and
+  in the prelude. See `examples/barchart.rs`.
+- **`Heatmap` widget** — 2-D `f64` grid rendered as a coloured cell grid; each
+  value is normalized and mapped through a configurable colour gradient to a
+  background-coloured cell (`with_min`/`with_max`/`with_gradient`/`with_cell_width`).
+  `Renderable` + `gilt_measure`. Re-exported at the crate root and in the prelude.
+  See `examples/heatmap.rs`.
+- **`Canvas` Octant blitter (Unicode 16)** — `Blitter::Octant` now renders real
+  2×4 octant glyphs (higher density than Braille) instead of falling back to
+  Braille. The full 256-pattern table is derived authoritatively from Unicode
+  16.0 `UnicodeData.txt` (230 `BLOCK OCTANT-N` glyphs at U+1CD00..=U+1CDE5 plus
+  26 reused legacy block/quadrant glyphs).
+
+### Changed
+
+- **`Sparkline` min/max markers** — additive `with_min_max_markers(bool)` plus
+  `with_min_style`/`with_max_style` highlight the extreme data points. Fully
+  backward-compatible: with markers off, output is unchanged.
+
 ## [2.1.0] - 2026-06-25
 
 ### Added
