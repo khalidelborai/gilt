@@ -1624,62 +1624,161 @@ Mumbai,India,12440000,603";
     pause();
 
     // =========================================================================
-    // Grand Finale — Live Dashboard (everything integrated, updating live)
+    // Grand Finale — Full-Screen "Coding Agent" TUI
     // =========================================================================
-    console.rule(Some("Grand Finale: Live Dashboard"));
+    // Everything integrated in a live, full-screen (alternate-screen) app:
+    // a Layout with a header bar, a file Tree sidebar, a Markdown task list +
+    // a live code panel, and a footer progress Bar — all redrawn each frame
+    // like a CLI coding agent working through a task. On a real terminal this
+    // clears the screen, runs full-screen, then restores your scrollback.
+    #[cfg(feature = "markdown")]
     {
         use gilt::console::into_renderable_arc;
         use gilt::group::Group;
+        use gilt::markdown::Markdown;
 
-        let dash_console = Console::builder().width(72).force_terminal(true).build();
-        let mut live = Live::new(Text::new("booting…", Style::null()))
-            .with_console(dash_console)
+        let agent_console = Console::builder()
+            .width(100)
+            .height(30)
+            .force_terminal(true)
+            .no_color(false)
+            .build();
+        // with_screen(true) => alternate-screen buffer (full screen), restored on stop().
+        let mut live = Live::new(Text::new("booting agent…", Style::null()))
+            .with_console(agent_console)
+            .with_screen(true)
             .with_auto_refresh(false);
+
+        let spinner = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+        let steps = [
+            "scan repository",
+            "read color/mod.rs",
+            "patch EightBit downgrade",
+            "run test suite",
+            "commit & push",
+        ];
+        let code_lines = [
+            "fn downgrade(c: Color, sys: ColorSystem) -> Color {",
+            "    match sys {",
+            "        ColorSystem::Standard => {",
+            "            let t = c.get_truecolor(None, true);",
+            "            let i = STANDARD_PALETTE.match_color(&t);",
+            "            Color::Standard(i as u8)",
+            "        }",
+            "        _ => c,",
+            "    }",
+            "}",
+        ];
+        let total = 32u32;
+
         live.start();
-        let mut cpu_hist: Vec<f64> = Vec::new();
-        for frame in 0..20u32 {
-            // Simulated, smoothly-varying metrics.
-            let cpu = 30.0 + 55.0 * ((frame as f64) * 0.55).sin().abs();
-            let mem = 40.0 + 30.0 * ((frame as f64) * 0.30).cos().abs();
-            cpu_hist.push(cpu);
-            if cpu_hist.len() > 24 {
-                cpu_hist.remove(0);
-            }
+        for frame in 0..total {
+            let progress = frame as f64 / (total - 1) as f64; // 0.0 ..= 1.0
+            let step_idx = ((progress * steps.len() as f64) as usize).min(steps.len() - 1);
+            let spin = spinner[frame as usize % spinner.len()];
+            let pct = (progress * 100.0) as u32;
+            let passed = (progress * 3073.0) as u32;
 
-            let mut table = Table::new(&["Metric", "Value"]);
-            table.border_style = "dim".to_string();
-            let cpu_v = format!("{cpu:.0}%");
-            let mem_v = format!("{mem:.0}%");
-            let frame_v = format!("{frame}/19");
-            table.add_row(&["CPU", cpu_v.as_str()]);
-            table.add_row(&["Memory", mem_v.as_str()]);
-            table.add_row(&["Frame", frame_v.as_str()]);
-
-            let spark = Sparkline::new(&cpu_hist).with_style(Style::parse("bold green"));
-            let cpu_bar = Bar::new(cpu, 0.0, 100.0).with_width(48);
-
-            let body = Group::new(vec![
-                into_renderable_arc(table),
-                into_renderable_arc(Text::new("CPU history", Style::parse("dim"))),
-                into_renderable_arc(spark),
-                into_renderable_arc(Text::new("CPU load", Style::parse("dim"))),
-                into_renderable_arc(cpu_bar),
-            ]);
-            let border = if cpu > 70.0 { "bold red" } else { "green" };
-            live.set(
-                Panel::new(body)
-                    .with_title(Text::new(
-                        "● Live System Monitor",
+            // Header bar.
+            let header = Layout::new(None, Some("header".into()), Some(3), None, None, None)
+                .with_renderable(
+                    Panel::new(Text::new(
+                        &format!("{spin}  gilt coding-agent   ·   {}", steps[step_idx]),
                         Style::parse("bold cyan"),
                     ))
-                    .with_border_style(Style::parse(border)),
+                    .with_border_style(Style::parse("cyan")),
+                );
+
+            // Sidebar: a file tree (current file marked while editing).
+            let mut tree = Tree::new(Text::new("gilt/", Style::parse("bold blue")));
+            {
+                let src = tree.add(Text::new("src/", Style::parse("bold blue")));
+                let colordir = src.add(Text::new("color/", Style::parse("bold blue")));
+                let (mark, st) = if step_idx >= 2 {
+                    ("mod.rs  ✎", "bold yellow")
+                } else {
+                    ("mod.rs", "green")
+                };
+                colordir.add(Text::new(mark, Style::parse(st)));
+                src.add(Text::new("live/mod.rs", Style::parse("green")));
+                src.add(Text::new("markdown.rs", Style::parse("green")));
+            }
+            tree.add(Text::new("tests/", Style::parse("bold blue")));
+            tree.add(Text::new("Cargo.toml", Style::parse("dim")));
+            let sidebar = Layout::new(None, Some("sidebar".into()), Some(30), None, None, None)
+                .with_renderable(
+                    Panel::new(tree).with_title(Text::new("files", Style::parse("dim"))),
+                );
+
+            // Main top: a Markdown task checklist that checks off over time.
+            let mut plan = String::from("## Plan\n\n");
+            for (i, s) in steps.iter().enumerate() {
+                if i < step_idx {
+                    plan.push_str(&format!("- [x] {s}\n"));
+                } else if i == step_idx {
+                    plan.push_str(&format!("- [ ] **{s}**\n"));
+                } else {
+                    plan.push_str(&format!("- [ ] {s}\n"));
+                }
+            }
+            let tasks = Layout::new(None, Some("tasks".into()), Some(9), None, None, None)
+                .with_renderable(
+                    Panel::new(Markdown::new(&plan))
+                        .with_title(Text::new("plan", Style::parse("dim"))),
+                );
+
+            // Main bottom: a live code panel (Markdown fenced block) revealed line by line.
+            let revealed =
+                ((progress * code_lines.len() as f64).ceil() as usize).clamp(1, code_lines.len());
+            let mut code = String::from("```rust\n");
+            for line in &code_lines[..revealed] {
+                code.push_str(line);
+                code.push('\n');
+            }
+            code.push_str("```\n");
+            let code_panel = Layout::new(None, Some("code".into()), None, None, Some(1), None)
+                .with_renderable(
+                    Panel::new(Markdown::new(&code))
+                        .with_title(Text::new("color/mod.rs", Style::parse("dim"))),
+                );
+
+            let mut main = Layout::new(None, Some("main".into()), None, None, Some(1), None);
+            main.split_column(vec![tasks, code_panel]);
+
+            let mut body = Layout::new(None, Some("body".into()), None, None, Some(1), None);
+            body.split_row(vec![sidebar, main]);
+
+            // Footer: a live progress bar + status line.
+            let bar = Bar::new(100.0, 0.0, pct as f64).with_width(44);
+            let stats = Text::new(
+                &format!(
+                    "  {pct:>3}%   tests {passed}/3073   elapsed 0:{:02}",
+                    frame / 4
+                ),
+                Style::parse("green"),
             );
+            let footer = Layout::new(None, Some("footer".into()), Some(4), None, None, None)
+                .with_renderable(
+                    Panel::new(Group::new(vec![
+                        into_renderable_arc(bar),
+                        into_renderable_arc(stats),
+                    ]))
+                    .with_border_style(Style::parse(if pct >= 100 {
+                        "bold green"
+                    } else {
+                        "green"
+                    })),
+                );
+
+            let mut root = Layout::new(None, Some("root".into()), None, None, None, None);
+            root.split_column(vec![header, body, footer]);
+
+            live.set(root);
             live.refresh();
             thread::sleep(Duration::from_millis(110));
         }
         live.stop();
     }
-    pause();
 
     // =========================================================================
     // Farewell
