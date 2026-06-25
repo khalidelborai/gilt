@@ -1397,6 +1397,174 @@ Mumbai,India,12440000,603";
     }
 
     // =========================================================================
+    // gilt 2.0 — Parity Additions (new APIs in the 2.0 rich-parity release)
+    // =========================================================================
+    console.line(1);
+    let v2 = Gradient::rainbow("  ✦ gilt 2.0 — rich-parity additions ✦  ")
+        .with_style(Style::parse("bold"));
+    console.print(&v2);
+
+    // -- Pretty-print any Debug value (Console::pprint / pretty_repr) ----------
+    console.rule(Some("2.0: Pretty-Printing Rust Values"));
+    {
+        #[derive(Debug)]
+        #[allow(dead_code)]
+        struct Server {
+            host: String,
+            port: u16,
+            tags: Vec<&'static str>,
+        }
+        let srv = Server {
+            host: "localhost".into(),
+            port: 8080,
+            tags: vec!["web", "tls"],
+        };
+        console.pprint(&srv);
+        let repr = gilt::pretty::pretty_repr(&vec![1, 2, 3], 80);
+        console.print_text(&format!("[dim]pretty_repr(&vec![1,2,3]) ->[/dim] {repr}"));
+    }
+    pause();
+
+    // -- Scoped theme guard (use_theme returns a RAII ThemeGuard) --------------
+    console.rule(Some("2.0: Scoped Theme Guard (use_theme)"));
+    {
+        let mut styles = HashMap::new();
+        styles.insert("info".to_string(), Style::parse("bold cyan"));
+        let theme = Theme::new(Some(styles), true);
+        let mut guard = console.use_theme(theme, true);
+        guard.print_text(
+            "[info]Inside the guard:[/info] info is bold cyan (rendered through the guard)",
+        );
+        drop(guard); // theme auto-pops here
+        console.print_text("[info]After drop:[/info] info reverted to the default theme");
+    }
+    pause();
+
+    // -- Variadic console.log (log multiple renderables at once) ---------------
+    console.rule(Some("2.0: Variadic console.log_objects"));
+    {
+        let p = Panel::fit(Text::new("a logged Panel", Style::null()));
+        let t = Text::new("plus a styled Text", Style::parse("green"));
+        console.log_objects(&[&p as &dyn gilt::console::Renderable, &t], false);
+    }
+    pause();
+
+    // -- Low-level Segments / SegmentLines renderables -------------------------
+    console.rule(Some("2.0: Low-Level Segments"));
+    {
+        use gilt::segment::{Segment, SegmentLines, Segments};
+        console.print(&Segments(vec![
+            Segment::new("red ", Some(Style::parse("red")), None),
+            Segment::new("green ", Some(Style::parse("green")), None),
+            Segment::new("blue", Some(Style::parse("blue")), None),
+        ]));
+        console.print(&SegmentLines(vec![
+            vec![Segment::new(
+                "line one (bold)",
+                Some(Style::parse("bold")),
+                None,
+            )],
+            vec![Segment::new(
+                "line two (dim)",
+                Some(Style::parse("dim")),
+                None,
+            )],
+        ]));
+    }
+    pause();
+
+    // -- Vertical centering (vertical_center convenience) ----------------------
+    console.rule(Some("2.0: Vertical Centering"));
+    {
+        let centered = vertical_center(Text::new(
+            "centered vertically",
+            Style::parse("bold yellow"),
+        ));
+        console.print(
+            &Panel::new(centered)
+                .with_height(5)
+                .with_title("vertical_center"),
+        );
+    }
+    pause();
+
+    // -- Unicode-aware splitting (cells::split_graphemes / split_text) ---------
+    console.rule(Some("2.0: Unicode-Aware Splitting"));
+    {
+        let text = "日本語ab🇺🇸";
+        console.print_text(&format!("[bold]split_graphemes[/bold]({text:?}):"));
+        for (start, end, width) in gilt::utils::split_graphemes(text) {
+            console.print_text(&format!(
+                "  [cyan]{:?}[/cyan] -> cell width [yellow]{width}[/yellow]",
+                &text[start..end]
+            ));
+        }
+        let (left, right) = gilt::utils::split_text(text, 4);
+        console.print_text(&format!(
+            "[bold]split_text[/bold](_, 4) -> ([green]{left:?}[/green], [green]{right:?}[/green])"
+        ));
+    }
+    pause();
+
+    // -- ANSI color name <-> number accessors ----------------------------------
+    console.rule(Some("2.0: ANSI Color Name Accessors"));
+    {
+        let name = gilt::ansi_color_name(1).unwrap_or("?");
+        let num = gilt::get_ansi_color_number("green").unwrap_or(255);
+        console.print_text(&format!(
+            "ansi_color_name(1) = [red]{name}[/red]    get_ansi_color_number(\"green\") = [green]{num}[/green]"
+        ));
+    }
+    pause();
+
+    // -- Color downgrade across color systems (the v2.0 parity fix) ------------
+    console.rule(Some("2.0: Color Downgrade Across Systems"));
+    {
+        use gilt::color::ColorSystem;
+        console.print_text(
+            "[bold]#1e90ff[/bold] (DodgerBlue) [on #1e90ff]        [/on #1e90ff] downgraded:",
+        );
+        let c = Color::parse("#1e90ff").unwrap();
+        for sys in [
+            ColorSystem::TrueColor,
+            ColorSystem::EightBit,
+            ColorSystem::Standard,
+            ColorSystem::Windows,
+        ] {
+            console.print_text(&format!(
+                "  [dim]{:<10}[/dim] -> {:?}",
+                format!("{sys:?}"),
+                c.downgrade(sys)
+            ));
+        }
+    }
+    pause();
+
+    // -- Export the same content to HTML and SVG (record mode) -----------------
+    console.rule(Some("2.0: Export to HTML & SVG"));
+    {
+        let mut rec = Console::builder()
+            .width(40)
+            .force_terminal(true)
+            .record(true)
+            .build();
+        rec.print_text("[bold red]Recorded[/bold red] for export");
+        let html = rec.export_html(None, false, true);
+        let svg = rec.export_svg("Demo", None, false, None, 0.61);
+        console.print_text(&format!(
+            "[green]export_html[/green] -> {} bytes (contains `<span`: {})",
+            html.len(),
+            html.contains("<span")
+        ));
+        console.print_text(&format!(
+            "[green]export_svg[/green]  -> {} bytes (contains `<svg`: {})",
+            svg.len(),
+            svg.contains("<svg")
+        ));
+    }
+    pause();
+
+    // =========================================================================
     // Farewell
     // =========================================================================
     console.line(1);
