@@ -1381,3 +1381,46 @@ fn test_blockquote_multi_paragraph_no_trailing_prefix() {
         output
     );
 }
+
+// -- Image OSC-8 link covers prefix glyph --------------------------------
+
+/// When `hyperlinks=true`, the image's `🌆` prefix glyph must also carry the
+/// OSC-8 link, not just the alt text.  rich wraps the whole image
+/// representation (prefix + alt) in the hyperlink.
+#[test]
+fn test_image_hyperlinks_prefix_has_link() {
+    let console = make_console(80);
+    let md = Markdown::new("![Alt text](https://example.com/image.png)");
+    let segments = render_segments(&console, &md);
+    // Find the 🌆 prefix segment
+    let prefix_seg = segments.iter().find(|s| s.text.contains('\u{1F306}'));
+    assert!(
+        prefix_seg.is_some(),
+        "🌆 prefix segment should exist; segments: {:?}",
+        segments.iter().map(|s| &s.text).collect::<Vec<_>>()
+    );
+    if let Some(seg) = prefix_seg {
+        let link = seg.style().and_then(|s| s.link());
+        assert!(
+            link.is_some(),
+            "🌆 prefix should have OSC-8 link when hyperlinks=true; got style: {:?}",
+            seg.style()
+        );
+        assert_eq!(
+            link,
+            Some("https://example.com/image.png"),
+            "🌆 prefix link should be the image URL"
+        );
+    }
+    // Also verify the alt text segment has the link
+    let alt_seg = segments.iter().find(|s| s.text.contains("Alt text"));
+    assert!(alt_seg.is_some(), "alt text segment should exist");
+    if let Some(seg) = alt_seg {
+        let link = seg.style().and_then(|s| s.link());
+        assert_eq!(
+            link,
+            Some("https://example.com/image.png"),
+            "alt text should have OSC-8 link"
+        );
+    }
+}

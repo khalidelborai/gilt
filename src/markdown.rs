@@ -500,10 +500,18 @@ impl Renderable for Markdown {
                     let link_style = console
                         .get_style("markdown.link")
                         .unwrap_or_else(|_| Style::parse("bright_blue"));
-                    style_stack.push(link_style);
+                    style_stack.push(link_style.clone());
                     link_url = Some(dest_url.to_string());
-                    // P2 parity: prepend 🌆 emoji prefix for images
-                    text_buffer.append_str("\u{1F306} ", None);
+                    // P2 parity: prepend 🌆 emoji prefix for images.
+                    // Deep-review fix: when hyperlinks=true, apply the OSC-8
+                    // link to the prefix glyph too — rich wraps the whole
+                    // image representation (prefix + alt) in the link.
+                    let prefix_style = if self.hyperlinks {
+                        Some(link_style + Style::with_link(&dest_url))
+                    } else {
+                        Some(link_style)
+                    };
+                    text_buffer.append_str("\u{1F306} ", prefix_style);
                     // Track where alt text starts so we can detect empty alt.
                     image_text_start = text_buffer.len();
                     in_image = true;
