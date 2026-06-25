@@ -48,6 +48,10 @@ pub struct ConsoleBuilder {
     /// `Some(val)` forces the value.
     pub(crate) legacy_windows: Option<bool>,
     pub(crate) log_path: bool,
+    /// When `true` (the default), `Console::log` and `Console::log_objects`
+    /// prepend a `[HH:MM:SS]` timestamp to each line. Set to `false` via
+    /// [`log_time`](Self::log_time) to suppress the timestamp.
+    pub(crate) log_time: bool,
 }
 
 impl Default for ConsoleBuilder {
@@ -72,7 +76,8 @@ impl Default for ConsoleBuilder {
             safe_box: true,
             legacy_windows: None,
             log_path: false,
-        }
+            log_time: true,
+         }
     }
 }
 
@@ -247,6 +252,39 @@ impl ConsoleBuilder {
     /// ```
     pub fn log_path(mut self, lp: bool) -> Self {
         self.log_path = lp;
+        self
+    }
+
+    /// Enable or disable the `[HH:MM:SS]` timestamp prefix in `log()` and
+    /// `log_objects()`.
+    ///
+    /// When `true` (the default) each log line is prefixed with a
+    /// `[HH:MM:SS]` timestamp. Set to `false` to suppress the timestamp
+    /// (the body — and the caller path, if `log_path` is enabled — is
+    /// still emitted). Matches Python rich's `Console.log_time` knob.
+    ///
+    /// Default: `true`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gilt::console::Console;
+    ///
+    /// let mut c = Console::builder()
+    ///     .width(80)
+    ///     .no_color(true)
+    ///     .markup(false)
+    ///     .log_time(false)
+    ///     .build();
+    /// c.begin_capture();
+    /// c.log("no timestamp");
+    /// let out = c.end_capture();
+    /// assert!(out.contains("no timestamp"));
+    /// // No leading '[' from a timestamp.
+    /// assert!(!out.trim_start().starts_with('['));
+    /// ```
+    pub fn log_time(mut self, lt: bool) -> Self {
+        self.log_time = lt;
         self
     }
 

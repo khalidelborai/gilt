@@ -573,6 +573,10 @@ pub struct Console {
     base_style: Option<Style>,
     /// When `true`, `Console::log` appends the caller's file:line to each log line.
     log_path: bool,
+    /// When `true` (the default), `Console::log` and `Console::log_objects`
+    /// prepend a `[HH:MM:SS]` timestamp to each line. Set to `false` via
+    /// [`ConsoleBuilder::log_time`] to suppress the timestamp.
+    log_time: bool,
 
     // Theme
     theme_stack: ThemeStack,
@@ -874,6 +878,9 @@ impl Console {
             legacy_windows: builder.legacy_windows.unwrap_or_else(detect_legacy_windows),
             base_style: None,
             log_path: builder.log_path,
+            // log_time defaults to true (preserves the historical
+            // "[HH:MM:SS] message" output).
+            log_time: builder.log_time,
             theme_stack,
             buffer: Vec::new(),
             buffer_index: 0,
