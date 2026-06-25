@@ -923,6 +923,53 @@ impl Text {
         count
     }
 
+    /// Apply a per-match computed style to every match of `pattern`.
+    ///
+    /// `style_fn` is invoked once per match with the matched substring and
+    /// must return the [`Style`] to apply to that match. This mirrors
+    /// Python rich's `Text.highlight_regex` callable overload.
+    ///
+    /// Returns the number of matches that produced a span (matches with an
+    /// empty matched range are still counted in iteration but stylize() is a
+    /// no-op on zero-width ranges, so they contribute no visible span).
+    pub fn highlight_regex_callable<F>(
+        &mut self,
+        pattern: &Regex,
+        style_fn: F,
+    ) -> usize
+    where
+        F: Fn(&str) -> Style,
+    {
+        fn build_byte_to_char_index(text: &str) -> Vec<usize> {
+            let mut map = vec![0usize; text.len() + 1];
+            let mut char_idx = 0usize;
+            for (byte_idx, _) in text.char_indices() {
+                map[byte_idx] = char_idx;
+                char_idx += 1;
+            }
+            map[text.len()] = char_idx;
+            map
+        }
+        // Collect (byte_start, byte_end, matched_str) up front; the iterator
+        // borrows self.text immutably, so we drop it before mutating self.
+        let matches: Vec<(usize, usize, String)> = pattern
+            .find_iter(&self.text)
+            .map(|m| (m.start(), m.end(), m.as_str().to_string()))
+            .collect();
+        if matches.is_empty() {
+            return 0;
+        }
+        let b2c = build_byte_to_char_index(&self.text);
+        let count = matches.len();
+        for (bs, be, matched) in matches {
+            let char_start = b2c[bs];
+            let char_end = b2c[be];
+            let style = style_fn(&matched);
+            self.stylize(style, char_start, Some(char_end));
+        }
+        count
+    }
+
     /// Highlight named capture groups from `pattern`, using `style_prefix` concatenated
     /// with each group name as the style string. Returns the total number of styled groups.
     pub fn highlight_regex_with_groups(&mut self, pattern: &Regex, style_prefix: &str) -> usize {
@@ -2444,5 +2491,40 @@ mod tests {
             markup_str, "hello",
             "named spans must be dropped from markup()"
         );
+    }
+    // --- Task 1 (P2): highlight_regex callable-style overload ---
+
+    /// A callable that maps each matched substring to a Style should produce
+    /// distinct spans per match — odd-length matches get bold, even get italic.
+    /// This proves the closure receives the matched text and runs per-match.
+    #[test]
+    fn highlight_regex_callable_per_match_styles() {
+        let bold_s = Style::parse("bold");
+        let italic_s = Style::parse("italic");
+        let mut text = Text::new("1 22 333 4444", Style::null());
+        let re = Regex::new(r"\d+").unwrap();
+        let count = text.highlight_regex_callable(&re, |m| {
+            if m.chars().count() % 2 == 1 {
+                bold_s.clone()
+            } else {
+                italic_s.clone()
+            }
+        });
+        assert_eq!(count, 4);
+        // matches: "1" (odd→bold), "22" (even→italic), "333" (odd→bold), "4444" (even→italic)
+        let spans = text.spans();
+        assert_eq!(spans.len(), 4);
+        assert_eq!(spans[0].start, 0);
+        assert_eq!(spans[0].end, 1);
+        assert_eq!(spans[0].style, bold_s);
+        assert_eq!(spans[1].start, 2);
+        assert_eq!(spans[1].end, 4);
+        assert_eq!(spans[1].style, italic_s);
+        assert_eq!(spans[2].start, 5);
+        assert_eq!(spans[2].end, 8);
+        assert_eq!(spans[2].style, bold_s);
+        assert_eq!(spans[3].start, 9);
+        assert_eq!(spans[3].end, 13);
+        assert_eq!(spans[3].style, italic_s);
     }
 }
