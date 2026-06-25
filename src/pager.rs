@@ -21,16 +21,43 @@ pub enum PagerError {
     NotFound(String),
 }
 
+/// Default pager command when `$PAGER` is unset or unavailable.
+const DEFAULT_PAGER_COMMAND: &str = "less -r";
+
+/// Read the pager command from `$PAGER`, falling back to the crate default.
+///
+/// On `wasm32` targets the environment is not available; returns the default
+/// unconditionally. This mirrors the cfg-gating used elsewhere in the crate
+/// for env-var reads (e.g. `console::detect_is_terminal`).
+fn pager_command_from_env() -> String {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        if let Ok(pager) = std::env::var("PAGER") {
+            let trimmed = pager.trim();
+            if !trimmed.is_empty() {
+                return trimmed.to_string();
+            }
+        }
+    }
+    DEFAULT_PAGER_COMMAND.to_string()
+}
+
 /// A pager that pipes content through an external pager program.
 ///
-/// By default the pager command is `less -r`, which enables raw control
-/// character passthrough so ANSI escape sequences render correctly.
+/// The default pager command is `less -r` (raw control character passthrough
+/// so ANSI escape sequences render correctly). When the `$PAGER` environment
+/// variable is set, its value is used instead. Use [`Pager::with_command`] to
+/// override the command for a single `Pager` instance — that always wins.
+///
+/// The `wasm32` build target has no environment access, so it always uses
+/// the default command.
 ///
 /// # Examples
 ///
 /// ```no_run
 /// use gilt::pager::Pager;
 ///
+/// // Honors $PAGER when set, otherwise "less -r".
 /// let pager = Pager::new();
 /// pager.show("Hello from the pager!").unwrap();
 /// ```
@@ -48,14 +75,30 @@ pub struct Pager {
 
 impl Default for Pager {
     fn default() -> Self {
-        Self {
-            command: "less -r".to_string(),
-        }
+        Self::from_env()
     }
 }
 
 impl Pager {
+    /// Create a `Pager` honoring the `$PAGER` environment variable.
+    ///
+    /// Returns a pager configured to spawn `$PAGER` when set, otherwise the
+    /// default `"less -r"` (the long-standing gilt/rich default — `less` with
+    /// raw control character passthrough so ANSI escape sequences render).
+    ///
+    /// On `wasm32` targets the environment is not available, so the default
+    /// is used unconditionally. This mirrors the `cfg(not(target_arch =
+    /// "wasm32"))` gating used elsewhere in the crate.
+    #[must_use]
+    pub fn from_env() -> Self {
+        let command = pager_command_from_env();
+        Self { command }
+    }
+
     /// Creates a new `Pager` with the default command (`less -r`).
+    ///
+    /// Equivalent to `Pager::default()`. To honor `$PAGER`, use
+    /// [`Pager::from_env`] (which `Pager::default` already does).
     #[must_use]
     pub fn new() -> Self {
         Self::default()
@@ -132,14 +175,20 @@ mod tests {
 
     #[test]
     fn test_default_command() {
-        let pager = Pager::new();
-        assert_eq!(pager.command, "less -r");
+        // Clear $PAGER to exercise the hardcoded fallback (not env-influenced).
+        with_pager_env(None, || {
+            let pager = Pager::new();
+            assert_eq!(pager.command, "less -r");
+        });
     }
 
     #[test]
     fn test_default_trait() {
-        let pager = Pager::default();
-        assert_eq!(pager.command, "less -r");
+        // Clear $PAGER to exercise the hardcoded fallback (not env-influenced).
+        with_pager_env(None, || {
+            let pager = Pager::default();
+            assert_eq!(pager.command, "less -r");
+        });
     }
 
     #[test]
@@ -283,5 +332,76 @@ mod tests {
         let mut pager = Pager::new();
         pager.command = "more".to_string();
         assert_eq!(pager.command, "more");
+    }
+
+    // -- $PAGER environment variable ---------------------------------------
+
+    /// Save and restore the `PAGER` env var around a test, so concurrent tests
+    /// (and CI) don't see each other's mutations. The lock prevents two env
+    /// tests from racing.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn with_pager_env<F: FnOnce()>(value: Option<&str>, f: F) {
+        use parking_lot::Mutex;
+        static LOCK: Mutex<()> = Mutex::new(());
+        let _guard = LOCK.lock();
+        let saved = std::env::var("PAGER").ok();
+        match value {
+            Some(v) => std::env::set_var("PAGER", v),
+            None => std::env::remove_var("PAGER"),
+        }
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f));
+        // Restore no matter what (including panic).
+        match saved {
+            Some(v) => std::env::set_var("PAGER", v),
+            None => std::env::remove_var("PAGER"),
+        }
+        if let Err(e) = result {
+            std::panic::resume_unwind(e);
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn test_default_honors_pager_env_var() {
+        with_pager_env(Some("more -F"), || {
+            let pager = Pager::default();
+            assert_eq!(pager.command, "more -F");
+        });
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn test_default_falls_back_when_pager_unset() {
+        with_pager_env(None, || {
+            let pager = Pager::default();
+            assert_eq!(pager.command, "less -r");
+        });
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn test_from_env_matches_default_when_set() {
+        with_pager_env(Some("bat --paging=always"), || {
+            assert_eq!(Pager::from_env().command, Pager::default().command);
+            assert_eq!(Pager::from_env().command, "bat --paging=always");
+        });
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn test_from_env_falls_back_when_unset() {
+        with_pager_env(None, || {
+            assert_eq!(Pager::from_env().command, "less -r");
+        });
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn test_with_command_overrides_pager_env() {
+        with_pager_env(Some("more"), || {
+            // Explicit with_command wins over $PAGER (user override semantics).
+            let pager = Pager::new().with_command("less -SR");
+            assert_eq!(pager.command, "less -SR");
+        });
     }
 }
