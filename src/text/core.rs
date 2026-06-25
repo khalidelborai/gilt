@@ -1142,7 +1142,17 @@ impl Text {
             let new_start = char_offset_map.get(span.start).copied().unwrap_or(new_pos);
             let new_end = char_offset_map.get(span.end).copied().unwrap_or(new_pos);
             if new_start < new_end {
-                new_spans.push(Span::new(new_start, new_end, span.style.clone()));
+                // Preserve `style_name` and `meta` from the source span —
+                // `Span::new(..)` would reset both to `None`, silently
+                // dropping deferred theme tokens (e.g. `[repr.number]`) and
+                // meta spans (e.g. `[@click]`).
+                new_spans.push(Span {
+                    start: new_start,
+                    end: new_end,
+                    style: span.style.clone(),
+                    meta: span.meta.clone(),
+                    style_name: span.style_name.clone(),
+                });
             }
         }
 
@@ -2647,5 +2657,56 @@ mod tests {
         let text = Text::new("    hi", Style::null());
         let result = text.with_indent_guides(Some(1), '|', Style::null());
         assert_eq!(result.plain(), "||||hi");
+    }
+
+    // -- deep-review: style_name + meta survival through expand_tabs ---------
+
+    /// A named span (`style_name = Some("repr.number")`) must survive
+    /// `Text::expand_tabs` with its `style_name` intact.  Before the fix the
+    /// span was reconstructed with `Span::new(..)` which reset `style_name`
+    /// to `None`, silently dropping the deferred theme token.
+    #[test]
+    fn expand_tabs_preserves_style_name() {
+        // "a\tb" with tab_size=4: "a"=1 cell, next stop=4, so tab emits 3 spaces.
+        // Result: "a   b" (5 chars). The named span on "b" shifts 2..3 -> 4..5.
+        let mut text = Text::new("a\tb", Style::null());
+        text.spans_mut().push(Span::named(2, 3, "repr.number"));
+        text.expand_tabs(Some(4));
+        assert_eq!(text.plain(), "a   b");
+        let named = text
+            .spans()
+            .iter()
+            .find(|s| s.style_name.is_some())
+            .expect("named span must survive expand_tabs");
+        assert_eq!(named.style_name(), Some("repr.number"));
+        assert_eq!(named.start, 4);
+        assert_eq!(named.end, 5);
+    }
+
+    /// A meta span (e.g. from `[@click]`) must survive `Text::expand_tabs`
+    /// with its `meta` map intact.  Before the fix `Span::new(..)` reset
+    /// `meta` to `None`.
+    #[test]
+    fn expand_tabs_preserves_meta() {
+        use std::collections::HashMap;
+        use std::sync::Arc;
+
+        // "a\tb" with tab_size=4 -> "a   b". Meta span on "b" shifts 2..3 -> 4..5.
+        let mut text = Text::new("a\tb", Style::null());
+        let mut m = HashMap::new();
+        m.insert("@click".to_string(), "true".to_string());
+        text.spans_mut()
+            .push(Span::with_meta(2, 3, Style::null(), Some(Arc::new(m))));
+        text.expand_tabs(Some(4));
+        assert_eq!(text.plain(), "a   b");
+        let meta_span = text
+            .spans()
+            .iter()
+            .find(|s| s.meta.is_some())
+            .expect("meta span must survive expand_tabs");
+        let meta = meta_span.meta.as_ref().unwrap();
+        assert_eq!(meta.get("@click").map(|v| v.as_str()), Some("true"));
+        assert_eq!(meta_span.start, 4);
+        assert_eq!(meta_span.end, 5);
     }
 }
