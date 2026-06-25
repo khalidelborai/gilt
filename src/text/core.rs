@@ -923,6 +923,49 @@ impl Text {
         count
     }
 
+    /// Apply a per-match computed style to every match of `pattern`.
+    ///
+    /// `style_fn` is invoked once per match with the matched substring and
+    /// must return the [`Style`] to apply to that match. This mirrors
+    /// Python rich's `Text.highlight_regex` callable overload.
+    ///
+    /// Returns the number of matches that produced a span (matches with an
+    /// empty matched range are still counted in iteration but stylize() is a
+    /// no-op on zero-width ranges, so they contribute no visible span).
+    pub fn highlight_regex_callable<F>(&mut self, pattern: &Regex, style_fn: F) -> usize
+    where
+        F: Fn(&str) -> Style,
+    {
+        fn build_byte_to_char_index(text: &str) -> Vec<usize> {
+            let mut map = vec![0usize; text.len() + 1];
+            let mut char_idx = 0usize;
+            for (byte_idx, _) in text.char_indices() {
+                map[byte_idx] = char_idx;
+                char_idx += 1;
+            }
+            map[text.len()] = char_idx;
+            map
+        }
+        // Collect (byte_start, byte_end, matched_str) up front; the iterator
+        // borrows self.text immutably, so we drop it before mutating self.
+        let matches: Vec<(usize, usize, String)> = pattern
+            .find_iter(&self.text)
+            .map(|m| (m.start(), m.end(), m.as_str().to_string()))
+            .collect();
+        if matches.is_empty() {
+            return 0;
+        }
+        let b2c = build_byte_to_char_index(&self.text);
+        let count = matches.len();
+        for (bs, be, matched) in matches {
+            let char_start = b2c[bs];
+            let char_end = b2c[be];
+            let style = style_fn(&matched);
+            self.stylize(style, char_start, Some(char_end));
+        }
+        count
+    }
+
     /// Highlight named capture groups from `pattern`, using `style_prefix` concatenated
     /// with each group name as the style string. Returns the total number of styled groups.
     pub fn highlight_regex_with_groups(&mut self, pattern: &Regex, style_prefix: &str) -> usize {
@@ -960,6 +1003,66 @@ impl Text {
         let count = pending.len();
         for (style, bs, be) in pending {
             self.stylize(style, b2c[bs], Some(b2c[be]));
+        }
+        count
+    }
+
+    /// Apply both a base style and per-named-group prefix styles in one walk.
+    ///
+    /// - When `style` is `Some`, each match of `pattern` gets that style over its full range.
+    /// - When `style_prefix` is `Some`, each named group `name` produces an
+    ///   additional span styled `f"{style_prefix}{name}"` (resolved via
+    ///   [`DEFAULT_STYLES`] then [`Style::parse_strict`]).
+    ///
+    /// Returns the total number of spans added.
+    pub fn highlight_regex_unified(
+        &mut self,
+        pattern: &Regex,
+        style: Option<Style>,
+        style_prefix: Option<&str>,
+    ) -> usize {
+        if style.is_none() && style_prefix.is_none() {
+            return 0;
+        }
+        fn build_byte_to_char_index(text: &str) -> Vec<usize> {
+            let mut map = vec![0usize; text.len() + 1];
+            let mut char_idx = 0usize;
+            for (byte_idx, _) in text.char_indices() {
+                map[byte_idx] = char_idx;
+                char_idx += 1;
+            }
+            map[text.len()] = char_idx;
+            map
+        }
+        // Single captures_iter walk — covers base-style matches (full match)
+        // and named-group spans in one pass.
+        let mut pending: Vec<(Style, usize, usize)> = Vec::new();
+        for captures in pattern.captures_iter(&self.text) {
+            if let (Some(base), Some(whole)) = (style.as_ref(), captures.get(0)) {
+                pending.push((base.clone(), whole.start(), whole.end()));
+            }
+            if let Some(prefix) = style_prefix {
+                for name in pattern.capture_names().flatten() {
+                    if let Some(mat) = captures.name(name) {
+                        let style_str = format!("{}{}", prefix, name);
+                        if let Some(s) = DEFAULT_STYLES
+                            .get(style_str.as_str())
+                            .cloned()
+                            .or_else(|| Style::parse_strict(&style_str).ok())
+                        {
+                            pending.push((s, mat.start(), mat.end()));
+                        }
+                    }
+                }
+            }
+        }
+        if pending.is_empty() {
+            return 0;
+        }
+        let b2c = build_byte_to_char_index(&self.text);
+        let count = pending.len();
+        for (s, bs, be) in pending {
+            self.stylize(s, b2c[bs], Some(b2c[be]));
         }
         count
     }
@@ -1167,7 +1270,10 @@ impl Text {
             }
 
             let trimmed = line.trim_start();
-            let indent = line.len() - trimmed.len();
+            // Count leading whitespace in CHARS (not bytes) so that multi-byte
+            // whitespace like U+3000 IDEOGRAPHIC SPACE counts as one indent step,
+            // matching rich's indent-guide spacing.
+            let indent = line.chars().count() - trimmed.chars().count();
 
             if indent == 0 || trimmed.is_empty() {
                 new_text.push_str(line);
@@ -2444,5 +2550,101 @@ mod tests {
             markup_str, "hello",
             "named spans must be dropped from markup()"
         );
+    }
+    // --- Task 1 (P2): highlight_regex callable-style overload ---
+
+    /// A callable that maps each matched substring to a Style should produce
+    /// distinct spans per match — odd-length matches get bold, even get italic.
+    /// This proves the closure receives the matched text and runs per-match.
+    #[test]
+    fn highlight_regex_callable_per_match_styles() {
+        let bold_s = Style::parse("bold");
+        let italic_s = Style::parse("italic");
+        let mut text = Text::new("1 22 333 4444", Style::null());
+        let re = Regex::new(r"\d+").unwrap();
+        let count = text.highlight_regex_callable(&re, |m| {
+            if m.chars().count() % 2 == 1 {
+                bold_s.clone()
+            } else {
+                italic_s.clone()
+            }
+        });
+        assert_eq!(count, 4);
+        // matches: "1" (odd→bold), "22" (even→italic), "333" (odd→bold), "4444" (even→italic)
+        let spans = text.spans();
+        assert_eq!(spans.len(), 4);
+        assert_eq!(spans[0].start, 0);
+        assert_eq!(spans[0].end, 1);
+        assert_eq!(spans[0].style, bold_s);
+        assert_eq!(spans[1].start, 2);
+        assert_eq!(spans[1].end, 4);
+        assert_eq!(spans[1].style, italic_s);
+        assert_eq!(spans[2].start, 5);
+        assert_eq!(spans[2].end, 8);
+        assert_eq!(spans[2].style, bold_s);
+        assert_eq!(spans[3].start, 9);
+        assert_eq!(spans[3].end, 13);
+        assert_eq!(spans[3].style, italic_s);
+    }
+
+    // --- Task 2 (P2): highlight_regex_unified (base style + style_prefix) ---
+
+    /// A regex with a named group + a base style applied via the unified API
+    /// should produce BOTH a base-style span over the whole match AND a
+    /// named-group span (looked up via DEFAULT_STYLES under `style_prefix`).
+    #[test]
+    fn highlight_regex_unified_applies_base_and_prefix() {
+        let base = Style::parse("bold");
+        let mut text = Text::new("count=42", Style::null());
+        let re = Regex::new(r"(?P<number>\d+)").unwrap();
+        // "repr.number" exists in DEFAULT_STYLES (cyan bold not-italic)
+        let count = text.highlight_regex_unified(&re, Some(base.clone()), Some("repr."));
+        // 1 base span + 1 group span = 2
+        assert_eq!(count, 2, "expected 2 spans (base + named group)");
+        let spans = text.spans();
+        assert_eq!(spans.len(), 2);
+        // base span covers whole match "42" (6..8)
+        let base_span = spans.iter().find(|s| s.style == base).expect("base span");
+        assert_eq!(base_span.start, 6);
+        assert_eq!(base_span.end, 8);
+        // group span covers the same "42" (6..8) but with the named-group style
+        let group_span = spans.iter().find(|s| s.style != base).expect("group span");
+        assert_eq!(group_span.start, 6);
+        assert_eq!(group_span.end, 8);
+        assert_eq!(group_span.style.bold(), Some(true));
+    }
+
+    // --- Task 3 (P2): with_indent_guides counts leading whitespace in CHARS ---
+
+    /// Leading whitespace that is multi-byte in UTF-8 (fullwidth space U+3000
+    /// = 3 bytes / 1 char) must be counted in chars, not bytes, when deciding
+    /// where to insert guide characters. The buggy byte-based detection
+    /// over-counted and inserted too many guide characters.
+    ///
+    /// With `indent_size = 1` every leading-whitespace character should
+    /// become a guide character. Two fullwidth spaces → exactly 2 guides,
+    /// not 6 (which is what byte-counting produces).
+    #[test]
+    fn with_indent_guides_fullwidth_leading_whitespace() {
+        // Two fullwidth spaces (U+3000 each = 3 bytes / 1 char) then "hi".
+        let line = "\u{3000}\u{3000}hi";
+        let text = Text::new(line, Style::null());
+        let result = text.with_indent_guides(Some(1), '|', Style::null());
+        // Expected: "||hi" (2 guides), not "||||||hi" (6 from byte count).
+        assert_eq!(
+            result.plain(),
+            "||hi",
+            "expected 2 guide chars (one per fullwidth space), got {:?}",
+            result.plain()
+        );
+    }
+
+    /// Plain ASCII leading spaces should still produce the correct number of
+    /// guides — guards against the fix accidentally regressing the ASCII case.
+    #[test]
+    fn with_indent_guides_ascii_leading_whitespace_unchanged() {
+        let text = Text::new("    hi", Style::null());
+        let result = text.with_indent_guides(Some(1), '|', Style::null());
+        assert_eq!(result.plain(), "||||hi");
     }
 }
