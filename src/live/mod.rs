@@ -671,11 +671,10 @@ impl Live {
             } else {
                 // Move cursor to top of previous region (CR + erase current
                 // line + move up (height-1) lines, erasing each).
-                let position_segments = s.live_render.position_cursor();
-                // position_cursor() uses the NEW shape (already set by
-                // gilt_console_lines). We need to use the PREVIOUS height for
-                // cursor positioning so we land at the top of the old region.
-                // Build the cursor-to-top sequence manually from prev_height.
+                // position_cursor() would use the NEW shape (already set by
+                // gilt_console_lines); we instead build the cursor-to-top
+                // sequence manually from the PREVIOUS height so we land at the
+                // top of the old region.
                 let mut codes: Vec<ControlCode> = Vec::new();
                 codes.push(ControlCode::Simple(ControlType::CarriageReturn));
                 // Erase current (first) line only; remaining erases happen
@@ -745,10 +744,6 @@ impl Live {
                         emit_control_segments(&mut s.console, &[go_up]);
                     }
                 }
-
-                // If we used the position_cursor output (needed to keep the
-                // borrow checker happy when prev_height > 0), use it now.
-                let _ = position_segments; // used above via manual codes
             }
 
             s.console.end_synchronized();

@@ -514,8 +514,14 @@ impl Syntax {
     /// Used by the markdown renderer for inline `code` with a lexer set.
     pub fn highlight_inline(code: &str, lexer_name: &str, theme_name: &str) -> Text {
         let syn = Syntax::new(code, lexer_name).with_theme(theme_name);
-        let mut t = syn.highlight(code);
-        // Drop trailing newline that highlight_code may append.
+        // Route through process_code so inline code gets the same normalization
+        // (tab expansion + guaranteed trailing newline) as the main render path,
+        // instead of highlighting the raw input (deep-review: multi-line inline
+        // code diverged otherwise).
+        let (_ends_on_nl, processed) = syn.process_code();
+        let mut t = syn.highlight(&processed);
+        // Drop the trailing newline process_code/highlight guarantees — inline
+        // code must not carry a hard line break.
         t.remove_suffix("\n");
         t
     }

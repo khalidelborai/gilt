@@ -157,6 +157,7 @@ pub struct Traceback {
 
 /// Configuration for [`Traceback::install_panic_hook_with_config`].
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct PanicHookConfig {
     /// Path-prefix substrings used to suppress matching frames.
     pub suppress_paths: Vec<String>,
