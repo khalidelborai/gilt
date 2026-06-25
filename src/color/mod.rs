@@ -476,11 +476,27 @@ impl Color {
                 _ => *self,
             },
             ColorSystem::Standard => {
+                // EightBit(0-15) IS the Standard palette — pass through to
+                // avoid an RGB round-trip that can silently change the index
+                // (audit #39 residual, Phase 7).
+                if let Color::EightBit(n) = self {
+                    if *n < 16 {
+                        return Color::Standard(*n);
+                    }
+                }
                 let triplet = self.get_truecolor(None, true);
                 let index = STANDARD_PALETTE.match_color(&triplet);
                 Color::Standard(index as u8)
             }
             ColorSystem::Windows => {
+                // EightBit(0-15) IS the Windows palette — pass through to
+                // avoid an RGB round-trip that can silently change the index
+                // (audit #39 residual, Phase 7).
+                if let Color::EightBit(n) = self {
+                    if *n < 16 {
+                        return Color::Windows(*n);
+                    }
+                }
                 let triplet = self.get_truecolor(None, true);
                 let index = WINDOWS_PALETTE.match_color(&triplet);
                 Color::Windows(index as u8)
@@ -623,7 +639,7 @@ fn rgb_to_hls(rgb: (f64, f64, f64)) -> (f64, f64, f64) {
 /// Inverse of [`get_ansi_color_number`] for the 16 standard colors. Returns
 /// the canonical name so `Color::name()` round-trips through `Color::parse`.
 /// Numbers ≥ 16 don't have unique canonical names — use `format!("color({n})")`.
-fn ansi_color_name(n: u8) -> Option<&'static str> {
+pub fn ansi_color_name(n: u8) -> Option<&'static str> {
     Some(match n {
         0 => "black",
         1 => "red",
@@ -646,7 +662,7 @@ fn ansi_color_name(n: u8) -> Option<&'static str> {
 }
 
 /// Gets the ANSI color number for a named color.
-fn get_ansi_color_number(name: &str) -> Option<u8> {
+pub fn get_ansi_color_number(name: &str) -> Option<u8> {
     match name {
         "black" => Some(0),
         "red" => Some(1),
@@ -1321,6 +1337,51 @@ mod tests {
             Color::EightBit(123).downgrade(ColorSystem::Standard),
             Color::Standard(_)
         ));
+    }
+    #[test]
+    fn eightbit_low_passthrough_to_windows() {
+        // EightBit(0-15) ARE the standard/Windows palette — downgrade to
+        // Windows must pass through directly to Windows(n) instead of
+        // round-tripping through RGB nearest-match (audit #39 residual).
+        for n in 0u8..16 {
+            assert_eq!(
+                Color::EightBit(n).downgrade(ColorSystem::Windows),
+                Color::Windows(n),
+                "EightBit({n}) must pass through to Windows({n}) on downgrade",
+            );
+        }
+        // EightBit(0-15) → Standard is the analogous shortcut (already
+        // implied by the existing identity test for Standard, but pin it).
+        for n in 0u8..16 {
+            assert_eq!(
+                Color::EightBit(n).downgrade(ColorSystem::Standard),
+                Color::Standard(n),
+                "EightBit({n}) must pass through to Standard({n}) on downgrade",
+            );
+        }
+    }
+    #[test]
+    fn ansi_color_name_and_number_round_trip() {
+        // Task 2 (Phase 7): `ansi_color_name` and `get_ansi_color_number`
+        // must be public accessors for ANSI color name<->number lookups.
+        use crate::color::{ansi_color_name, get_ansi_color_number};
+        // The first 16 standard colors (per rich's ANSI_COLOR_NAMES table).
+        for n in 0u8..16 {
+            let name =
+                ansi_color_name(n).unwrap_or_else(|| panic!("ansi_color_name({n}) must be Some"));
+            assert_eq!(
+                get_ansi_color_number(name),
+                Some(n),
+                "round-trip failed for n={n} (name={name})",
+            );
+        }
+        // Spot-check the canonical name for index 1.
+        assert_eq!(ansi_color_name(1), Some("red"));
+        // Out-of-range (n >= 16) has no canonical name.
+        assert_eq!(ansi_color_name(16), None);
+        assert_eq!(ansi_color_name(255), None);
+        // Unknown name returns None.
+        assert_eq!(get_ansi_color_number("not_a_real_ansi_name"), None);
     }
 }
 
