@@ -80,15 +80,27 @@ fn scene_hero(dir: &Path) {
     // A capabilities table — wrapped in a Panel. gilt 2.0 lets any container
     // (Panel here) hold any Renderable, including a full bordered Table.
     let mut caps = Table::new(&["Widget", "What you get"]).with_border_style("magenta");
-    caps.add_row(&["[bold]Styles[/]", "[bold]bold[/] [italic]italic[/] [cyan]color[/] [underline]links[/]"]);
+    caps.add_row(&[
+        "[bold]Styles[/]",
+        "[bold]bold[/] [italic]italic[/] [cyan]color[/] [underline]links[/]",
+    ]);
     caps.add_row(&["[bold]Table · Tree[/]", "Unicode box-drawing, free nesting"]);
-    caps.add_row(&["[bold]Markdown[/]", "headings, lists, [green]code[/], tables"]);
+    caps.add_row(&[
+        "[bold]Markdown[/]",
+        "headings, lists, [green]code[/], tables",
+    ]);
     caps.add_row(&["[bold]Syntax[/]", "[yellow]150+[/] languages"]);
     caps.add_row(&["[bold]Progress · Live[/]", "ETA, speed, lock-free updates"]);
 
     let panel = Panel::new(caps)
-        .with_title(Text::new(" gilt 2.0 ", Style::parse("bold #282a36 on #bd93f9")))
-        .with_subtitle(Text::new("a Rust port of rich", Style::parse("italic #6272a4")))
+        .with_title(Text::new(
+            " gilt 2.0 ",
+            Style::parse("bold #282a36 on #bd93f9"),
+        ))
+        .with_subtitle(Text::new(
+            "a Rust port of rich",
+            Style::parse("italic #6272a4"),
+        ))
         .with_border_style(Style::parse("bold #bd93f9"));
     c.print(&panel);
 
@@ -143,7 +155,11 @@ fn scene_table(dir: &Path) {
     table.add_row(&["clap", "arg-parsing", "[green]★★★★★[/]"]);
     table.add_row(&["indicatif", "progress-bars", "[green]★★★★[/][dim]★[/]"]);
     table.add_row(&["console", "terminal-utils", "[green]★★★[/][dim]★★[/]"]);
-    table.add_row(&["[bold magenta]gilt[/]", "[magenta]rich-output[/]", "[green]★★★★★[/]"]);
+    table.add_row(&[
+        "[bold magenta]gilt[/]",
+        "[magenta]rich-output[/]",
+        "[green]★★★★★[/]",
+    ]);
 
     c.print(&table);
 
@@ -163,8 +179,8 @@ fn scene_tree(dir: &Path) {
     let dim = Style::parse("dim");
     let default = Style::null();
 
-    let mut tree = Tree::new(Text::new("gilt 2.0.0", Style::parse("bold cyan")))
-        .with_guide_style(dim.clone());
+    let mut tree =
+        Tree::new(Text::new("gilt 2.0.0", Style::parse("bold cyan"))).with_guide_style(dim.clone());
 
     let md = tree.add(Text::new("pulldown-cmark 0.12", bold_blue.clone()));
     md.add(Text::new("unicase 2.8", default.clone()));
@@ -211,7 +227,13 @@ gilt = "2.0"
     let md = Markdown::new(doc);
     c.print(&md);
 
-    export(&mut c, dir, "markdown.svg", "gilt markdown", "gilt-demo-markdown");
+    export(
+        &mut c,
+        dir,
+        "markdown.svg",
+        "gilt markdown",
+        "gilt-demo-markdown",
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -277,7 +299,13 @@ fn scene_progress(dir: &Path) {
     c.print(&Rule::with_title("build progress"));
     c.print(&table);
 
-    export(&mut c, dir, "progress.svg", "gilt progress", "gilt-demo-progress");
+    export(
+        &mut c,
+        dir,
+        "progress.svg",
+        "gilt progress",
+        "gilt-demo-progress",
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -306,13 +334,21 @@ fn scene_extras(dir: &Path) {
         30.0, 25.0, 18.0, 20.0, 28.0, 35.0, 50.0, 62.0, 75.0, 85.0, 78.0, 65.0, 55.0, 40.0, 32.0,
     ];
     c.print_text("[bold]CPU[/]  ");
-    c.print(&Sparkline::new(&cpu).with_width(64).with_style(Style::parse("bold green")));
+    c.print(
+        &Sparkline::new(&cpu)
+            .with_width(64)
+            .with_style(Style::parse("bold green")),
+    );
 
     let mem: Vec<f64> = vec![
         30.0, 32.0, 35.0, 40.0, 55.0, 70.0, 85.0, 92.0, 95.0, 88.0, 75.0, 60.0, 48.0, 40.0,
     ];
     c.print_text("[bold]MEM[/]  ");
-    c.print(&Sparkline::new(&mem).with_width(64).with_style(Style::parse("bold yellow")));
+    c.print(
+        &Sparkline::new(&mem)
+            .with_width(64)
+            .with_style(Style::parse("bold yellow")),
+    );
 
     export(&mut c, dir, "extras.svg", "gilt extras", "gilt-demo-extras");
 }

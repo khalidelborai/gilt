@@ -95,7 +95,11 @@ fn big_table(rows: usize) -> Table {
         let id = i.to_string();
         let name = format!("user_{i}");
         let score = format!("{}", (i * 7) % 100);
-        let status = if i % 2 == 0 { "[green]ok[/]" } else { "[red]fail[/]" };
+        let status = if i % 2 == 0 {
+            "[green]ok[/]"
+        } else {
+            "[red]fail[/]"
+        };
         t.add_row(&[&id, &name, &score, status, "lorem ipsum dolor sit amet"]);
     }
     t
@@ -110,10 +114,22 @@ fn main() {
     let sty = std::mem::size_of::<Style>();
     println!("    Segment                  = {seg} B");
     println!("    Style                    = {sty} B");
-    println!("    Option<Style>            = {} B", std::mem::size_of::<Option<Style>>());
-    println!("    Span                     = {} B", std::mem::size_of::<Span>());
-    println!("    ControlCode              = {} B", std::mem::size_of::<ControlCode>());
-    println!("    Option<Vec<ControlCode>> = {} B", std::mem::size_of::<Option<Vec<ControlCode>>>());
+    println!(
+        "    Option<Style>            = {} B",
+        std::mem::size_of::<Option<Style>>()
+    );
+    println!(
+        "    Span                     = {} B",
+        std::mem::size_of::<Span>()
+    );
+    println!(
+        "    ControlCode              = {} B",
+        std::mem::size_of::<ControlCode>()
+    );
+    println!(
+        "    Option<Vec<ControlCode>> = {} B",
+        std::mem::size_of::<Option<Vec<ControlCode>>>()
+    );
     let seg_with_styleid = seg - sty + 4; // replace inline Style with a u32 id
     println!(
         "    -> hypothetical Segment with StyleId(u32): ~{seg_with_styleid} B ({:.0}% smaller)\n",
@@ -131,7 +147,10 @@ fn main() {
     let seg_storage = n * seg;
     println!(
         "    time={:?}  allocs={}  alloc_bytes={}  peak_live={}",
-        s.dt, s.allocs, kb(s.bytes), kb(s.peak)
+        s.dt,
+        s.allocs,
+        kb(s.bytes),
+        kb(s.peak)
     );
     println!(
         "    segments={n}  segment storage = {} = {:.1}% of peak_live, {:.1}% of alloc_bytes",
@@ -148,7 +167,11 @@ fn main() {
 
     // -- 3. ADR's named case: giant recorded buffer + export ----------------
     println!("[3] Giant recorded buffer (the ADR's memory-pressure case): print 5000-row table, then export_html");
-    let mut rec = Console::builder().width(100).record(true).force_terminal(true).build();
+    let mut rec = Console::builder()
+        .width(100)
+        .record(true)
+        .force_terminal(true)
+        .build();
     let big = big_table(5000);
     let n5 = console.render(&big, None).len();
     // begin_capture redirects output away from stdout while record(true) still
@@ -161,7 +184,10 @@ fn main() {
     let rec_seg_storage = n5 * seg;
     println!(
         "    print:  time={:?}  allocs={}  peak_live={}  (record buffer ≈ {} segments)",
-        s_print.dt, s_print.allocs, kb(s_print.peak), n5
+        s_print.dt,
+        s_print.allocs,
+        kb(s_print.peak),
+        n5
     );
     println!(
         "    segment storage in record buffer = {} = {:.1}% of print peak_live",
@@ -170,24 +196,33 @@ fn main() {
     );
     println!(
         "    export_html: time={:?}  allocs={}  alloc_bytes={}  -> html {} bytes\n",
-        s_html.dt, s_html.allocs, kb(s_html.bytes), html.len()
+        s_html.dt,
+        s_html.allocs,
+        kb(s_html.bytes),
+        html.len()
     );
 
     // -- 4. copy isolation: Style vs StyleId --------------------------------
-    println!("[4] Copy isolation: clone Vec<Style> vs Vec<u32> (the interner's per-element copy win)");
+    println!(
+        "[4] Copy isolation: clone Vec<Style> vs Vec<u32> (the interner's per-element copy win)"
+    );
     let count = 500_000usize;
-    let styles: Vec<Style> = std::iter::repeat_with(|| Style::parse("bold red")).take(count).collect();
+    let styles: Vec<Style> = std::iter::repeat_with(|| Style::parse("bold red"))
+        .take(count)
+        .collect();
     let ids: Vec<u32> = (0..count as u32).collect();
     let (c1, s_style) = measure(|| black_box(styles.clone()));
     let (c2, s_id) = measure(|| black_box(ids.clone()));
     let (c3, s_seg) = measure(|| black_box(segs.clone()));
     println!(
         "    clone {count} Style : time={:?}  alloc_bytes={}",
-        s_style.dt, kb(s_style.bytes)
+        s_style.dt,
+        kb(s_style.bytes)
     );
     println!(
         "    clone {count} u32   : time={:?}  alloc_bytes={}",
-        s_id.dt, kb(s_id.bytes)
+        s_id.dt,
+        kb(s_id.bytes)
     );
     let copy_win = s_style.dt.saturating_sub(s_id.dt);
     println!(
@@ -196,7 +231,9 @@ fn main() {
     );
     println!(
         "    clone {} rendered Segment (incl. text): time={:?}  alloc_bytes={}",
-        n, s_seg.dt, kb(s_seg.bytes)
+        n,
+        s_seg.dt,
+        kb(s_seg.bytes)
     );
     // express the copy win as % of render time, scaled to the render's segment count
     let per_elem_win_ns = copy_win.as_nanos() as f64 / count as f64;
@@ -221,6 +258,10 @@ fn main() {
     let fired = mem_share >= 10.0 || rec_share >= 10.0 || cpu_share >= 10.0;
     println!(
         "    => TRIGGER {}",
-        if fired { "FIRES — structural refactor is justified" } else { "does NOT fire — keep the refactor deferred" }
+        if fired {
+            "FIRES — structural refactor is justified"
+        } else {
+            "does NOT fire — keep the refactor deferred"
+        }
     );
 }

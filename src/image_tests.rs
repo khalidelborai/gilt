@@ -313,7 +313,10 @@ mod tests {
             output
         );
         // Must NOT fall back to halfblock or use Kitty.
-        assert!(!output.contains('▀'), "iTerm2 path must NOT emit halfblock ▀");
+        assert!(
+            !output.contains('▀'),
+            "iTerm2 path must NOT emit halfblock ▀"
+        );
         assert!(
             !output.contains("\x1b_G"),
             "iTerm2 path must NOT emit Kitty APC"
@@ -408,8 +411,14 @@ mod tests {
             output
         );
         // Not any other protocol / fallback.
-        assert!(!output.contains('▀'), "Sixel path must NOT emit halfblock ▀");
-        assert!(!output.contains("\x1b_G"), "Sixel path must NOT emit Kitty APC");
+        assert!(
+            !output.contains('▀'),
+            "Sixel path must NOT emit halfblock ▀"
+        );
+        assert!(
+            !output.contains("\x1b_G"),
+            "Sixel path must NOT emit Kitty APC"
+        );
         assert!(
             !output.contains("\x1b]1337"),
             "Sixel path must NOT emit iTerm2 OSC 1337"

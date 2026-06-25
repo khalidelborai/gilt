@@ -65,12 +65,30 @@ fn main() {
     if let Ok(force) = std::env::var("GILT_IMAGE_PROTOCOL") {
         let base = console.capabilities().clone();
         let caps = match force.to_ascii_lowercase().as_str() {
-            "kitty" => ConsoleCapabilities { kitty: true, iterm: false, sixel: false, ..base },
-            "iterm" => ConsoleCapabilities { kitty: false, iterm: true, sixel: false, ..base },
-            "sixel" => ConsoleCapabilities { kitty: false, iterm: false, sixel: true, ..base },
-            "halfblock" => {
-                ConsoleCapabilities { kitty: false, iterm: false, sixel: false, ..base }
-            }
+            "kitty" => ConsoleCapabilities {
+                kitty: true,
+                iterm: false,
+                sixel: false,
+                ..base
+            },
+            "iterm" => ConsoleCapabilities {
+                kitty: false,
+                iterm: true,
+                sixel: false,
+                ..base
+            },
+            "sixel" => ConsoleCapabilities {
+                kitty: false,
+                iterm: false,
+                sixel: true,
+                ..base
+            },
+            "halfblock" => ConsoleCapabilities {
+                kitty: false,
+                iterm: false,
+                sixel: false,
+                ..base
+            },
             other => {
                 eprintln!(
                     "GILT_IMAGE_PROTOCOL={other:?} unrecognized (use kitty|iterm|sixel|halfblock)"
@@ -113,7 +131,9 @@ fn main() {
                 console.print(&Rule::with_title("file"));
                 match Image::from_path(&path) {
                     Ok(img) => console.print(&img.width(64)),
-                    Err(e) => console.print_text(&format!("[bold red]could not load {path}:[/] {e}")),
+                    Err(e) => {
+                        console.print_text(&format!("[bold red]could not load {path}:[/] {e}"))
+                    }
                 }
             }
             None => {

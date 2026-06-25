@@ -415,7 +415,13 @@ impl Image {
         let lvl = |l: usize| l * 20; // 0,20,40,60,80,100
         for (p, &u) in used.iter().enumerate() {
             if u {
-                out.push_str(&format!("#{};2;{};{};{}", p, lvl(p / 36), lvl((p / 6) % 6), lvl(p % 6)));
+                out.push_str(&format!(
+                    "#{};2;{};{};{}",
+                    p,
+                    lvl(p / 36),
+                    lvl((p / 6) % 6),
+                    lvl(p % 6)
+                ));
             }
         }
 
