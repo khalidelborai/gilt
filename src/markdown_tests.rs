@@ -1263,3 +1263,164 @@ fn test_markdown_inline_code_lexer_multi_token() {
         code_segs.len()
     );
 }
+
+// -- Trailing blockquote prefix -----------------------------------------
+
+/// The blockquote prefix `▌ ` must only appear before content lines, never
+/// as a dangling trailing prefix after the block's final newline.
+fn blockquote_output(md: &Markdown) -> String {
+    let console = make_console(80);
+    render_markdown(&console, md)
+}
+
+/// Check if the *last* non-empty line in `output` is a dangling blockquote
+/// prefix — i.e. it consists solely of the ▌ glyph and whitespace, with no
+/// content following it.  This is the rich-parity bug: the prefix is emitted
+/// after the block's final newline, producing a trailing `▌ ` line.
+fn last_line_is_dangling_prefix(output: &str) -> bool {
+    let last_non_empty = output.lines().rev().find(|line| !line.trim().is_empty());
+    match last_non_empty {
+        Some(line) => {
+            let trimmed = line.trim_end();
+            !trimmed.is_empty()
+                && trimmed
+                    .chars()
+                    .all(|c| c.is_whitespace() || c == '\u{258C}')
+                && trimmed.contains('\u{258C}')
+        }
+        None => false,
+    }
+}
+
+#[test]
+fn test_blockquote_paragraph_no_trailing_prefix() {
+    let output = blockquote_output(&Markdown::new("> This is a quote."));
+    assert!(
+        output.contains("This is a quote."),
+        "content should appear; got: {:?}",
+        output
+    );
+    assert!(
+        !last_line_is_dangling_prefix(&output),
+        "no trailing dangling ▌ prefix after paragraph; got: {:?}",
+        output
+    );
+}
+
+#[test]
+fn test_blockquote_heading_no_trailing_prefix() {
+    let output = blockquote_output(&Markdown::new("> # Heading in quote"));
+    assert!(
+        output.contains("Heading in quote"),
+        "heading text should appear; got: {:?}",
+        output
+    );
+    assert!(
+        !last_line_is_dangling_prefix(&output),
+        "no trailing dangling ▌ prefix after heading; got: {:?}",
+        output
+    );
+}
+
+#[test]
+fn test_blockquote_code_block_no_trailing_prefix() {
+    let output = blockquote_output(&Markdown::new("> ```\n> code\n> ```"));
+    assert!(
+        output.contains("code"),
+        "code content should appear; got: {:?}",
+        output
+    );
+    assert!(
+        !last_line_is_dangling_prefix(&output),
+        "no trailing dangling ▌ prefix after code block; got: {:?}",
+        output
+    );
+}
+
+#[test]
+fn test_blockquote_list_no_trailing_prefix() {
+    let output = blockquote_output(&Markdown::new("> - Item 1\n> - Item 2"));
+    assert!(
+        output.contains("Item 1"),
+        "list item 1 should appear; got: {:?}",
+        output
+    );
+    assert!(
+        !last_line_is_dangling_prefix(&output),
+        "no trailing dangling ▌ prefix after list; got: {:?}",
+        output
+    );
+}
+
+#[test]
+fn test_blockquote_hr_no_trailing_prefix() {
+    let output = blockquote_output(&Markdown::new("> ---"));
+    assert!(
+        !last_line_is_dangling_prefix(&output),
+        "no trailing dangling ▌ prefix after HR; got: {:?}",
+        output
+    );
+}
+
+#[test]
+fn test_blockquote_multi_paragraph_no_trailing_prefix() {
+    let output = blockquote_output(&Markdown::new("> First quote.\n>\n> Second quote."));
+    assert!(
+        output.contains("First quote."),
+        "first paragraph should appear; got: {:?}",
+        output
+    );
+    assert!(
+        output.contains("Second quote."),
+        "second paragraph should appear; got: {:?}",
+        output
+    );
+    assert!(
+        !last_line_is_dangling_prefix(&output),
+        "no trailing dangling ▌ prefix after multi-paragraph blockquote; got: {:?}",
+        output
+    );
+}
+
+// -- Image OSC-8 link covers prefix glyph --------------------------------
+
+/// When `hyperlinks=true`, the image's `🌆` prefix glyph must also carry the
+/// OSC-8 link, not just the alt text.  rich wraps the whole image
+/// representation (prefix + alt) in the hyperlink.
+#[test]
+fn test_image_hyperlinks_prefix_has_link() {
+    let console = make_console(80);
+    let md = Markdown::new("![Alt text](https://example.com/image.png)");
+    let segments = render_segments(&console, &md);
+    // Find the 🌆 prefix segment
+    let prefix_seg = segments.iter().find(|s| s.text.contains('\u{1F306}'));
+    assert!(
+        prefix_seg.is_some(),
+        "🌆 prefix segment should exist; segments: {:?}",
+        segments.iter().map(|s| &s.text).collect::<Vec<_>>()
+    );
+    if let Some(seg) = prefix_seg {
+        let link = seg.style().and_then(|s| s.link());
+        assert!(
+            link.is_some(),
+            "🌆 prefix should have OSC-8 link when hyperlinks=true; got style: {:?}",
+            seg.style()
+        );
+        assert_eq!(
+            link,
+            Some("https://example.com/image.png"),
+            "🌆 prefix link should be the image URL"
+        );
+    }
+    // Also verify the alt text segment has the link
+    let alt_seg = segments.iter().find(|s| s.text.contains("Alt text"));
+    assert!(alt_seg.is_some(), "alt text segment should exist");
+    if let Some(seg) = alt_seg {
+        let link = seg.style().and_then(|s| s.link());
+        assert_eq!(
+            link,
+            Some("https://example.com/image.png"),
+            "alt text should have OSC-8 link"
+        );
+    }
+}
