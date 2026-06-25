@@ -4,6 +4,7 @@
 use crate::align_widget::HorizontalAlign;
 use crate::cells::{cell_len, set_cell_size};
 use crate::console::{Console, ConsoleOptions, Renderable};
+use crate::measure::Measurement;
 use crate::segment::Segment;
 use crate::style::Style;
 use crate::text::{OverflowMethod, Text};
@@ -310,8 +311,11 @@ impl Renderable for Rule {
                 }
             }
         }
-
         segments
+    }
+
+    fn gilt_measure(&self, _console: &Console, _options: &ConsoleOptions) -> Measurement {
+        Measurement::new(1, 1)
     }
 }
 
@@ -670,5 +674,30 @@ mod tests {
                 .filter(|s| s.text.contains("42"))
                 .collect::<Vec<_>>()
         );
+    }
+
+    // -- gilt_measure override (Phase 7) ------------------------------------
+
+    /// Phase 7 — rich's `Rule.__rich_measure__` returns `Measurement(1, 1)`
+    /// because a rule can render at any width. The default full-render
+    /// measurement is unnecessarily expensive; this overrides it.
+    #[test]
+    fn test_gilt_measure_returns_one_one() {
+        let console = make_console(80);
+        let opts = console.options();
+        let rule = Rule::with_title("Section").with_characters("-");
+        let m = rule.gilt_measure(&console, &opts);
+        assert_eq!(m.minimum, 1);
+        assert_eq!(m.maximum, 1);
+    }
+
+    #[test]
+    fn test_gilt_measure_one_one_with_no_title() {
+        let console = make_console(80);
+        let opts = console.options();
+        let rule = Rule::new();
+        let m = rule.gilt_measure(&console, &opts);
+        assert_eq!(m.minimum, 1);
+        assert_eq!(m.maximum, 1);
     }
 }
