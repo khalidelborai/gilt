@@ -40,6 +40,7 @@ fn main() {
         Some("16"),             // UNICODE_VERSION
         None,                   // KITTY_WINDOW_ID
         Some("ghostty"),        // TERM_PROGRAM
+        None,                   // GILT_IMAGE_PROTOCOL override
     );
 
     println!("\n=== Simulated Ghostty capabilities ===");
