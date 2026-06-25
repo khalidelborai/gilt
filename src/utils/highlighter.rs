@@ -247,9 +247,6 @@ static JSON_HIGHLIGHTS: LazyLock<Vec<Regex>> = LazyLock::new(|| {
 static JSON_STR_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r#""[^"\\]*(?:\\.[^"\\]*)*""#).expect("invalid json str regex"));
 
-/// Characters considered whitespace in JSON.
-const JSON_WHITESPACE: &[char] = &[' ', '\n', '\r', '\t'];
-
 /// Highlights JSON text.
 ///
 /// After applying the base regex highlights, this highlighter additionally
@@ -315,7 +312,7 @@ impl Highlighter for JSONHighlighter {
                         text.spans_mut()
                             .push(Span::new(char_start, char_end, key_style.clone()));
                         break;
-                    } else if JSON_WHITESPACE.contains(&ch) {
+                    } else if ch.is_whitespace() {
                         continue;
                     } else {
                         break;
@@ -899,6 +896,34 @@ mod tests {
         assert!(
             has_key_span,
             "expected a span covering the JSON key \"key\""
+        );
+    }
+
+    #[test]
+    fn test_json_key_with_unicode_whitespace_before_colon() {
+        // Phase 7 P3 parity: JSON key detection must treat Unicode
+        // whitespace (e.g. NBSP U+00A0) the same as ASCII whitespace,
+        // so a `"name"\u{00A0}:` sequence is recognized as a key.
+        let hl = JSONHighlighter::new();
+        let text = hl.apply(&format!("{{\"name\"{nbsp}: \"value\"}}", nbsp = '\u{00A0}'));
+        // Why count spans: the base regex pass creates a named span
+        // (`style_name = Some("json.str")`), but the key-detection pass
+        // creates a *resolved* span via `Span::new(...)` with
+        // `style_name = None`. Two spans at the same char range is the
+        // unambiguous signal that the key pass ran.
+        // Count spans covering exactly `"name"` (chars 1..7). The base
+        // `json.str` pass always produces one. The key detection pass
+        // (which respects Unicode whitespace) adds a second span at the
+        // same range. Two spans = key detected.
+        let key_spans = text
+            .spans()
+            .iter()
+            .filter(|s| s.start == 1 && s.end == 7)
+            .count();
+        assert_eq!(
+            key_spans, 2,
+            "expected 2 spans covering \"name\" (json.str + json.key); got {}",
+            key_spans
         );
     }
 
