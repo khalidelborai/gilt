@@ -50,6 +50,16 @@ impl From<(usize, usize, usize, usize)> for PaddingDimensions {
     }
 }
 
+/// CSS-style 1-element array: uniform padding on all four sides.
+///
+/// Matches the existing [`From<usize>`] semantics: `[n]` is identical to
+/// `n` or `(n, n, n, n)`.
+impl From<[usize; 1]> for PaddingDimensions {
+    fn from([n]: [usize; 1]) -> Self {
+        PaddingDimensions::Uniform(n)
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Padding
 // ---------------------------------------------------------------------------
@@ -257,6 +267,37 @@ mod tests {
     #[test]
     fn test_unpack_uniform_zero() {
         let pd = PaddingDimensions::Uniform(0);
+        assert_eq!(pd.unpack(), (0, 0, 0, 0));
+    }
+
+    // -- Plan 7.18 Task 3: From<[usize; 1]> --------------------------------
+
+    #[test]
+    fn test_from_array1_uniform_padding() {
+        // CSS-style 1-element array means uniform padding on all four sides,
+        // matching the existing From<usize> and From<(usize,usize,usize,usize)>
+        // semantics (the variant may differ — Uniform vs Full — but the
+        // unpacked (t, r, b, l) is identical).
+        let pd: PaddingDimensions = [3].into();
+        assert_eq!(
+            pd,
+            PaddingDimensions::Uniform(3),
+            "[3].into() must equal Uniform(3) (matches From<usize> of 3)"
+        );
+        assert_eq!(pd.unpack(), (3, 3, 3, 3));
+
+        // Semantically identical to both From<usize> and the explicit 4-tuple.
+        let pd_uniform: PaddingDimensions = 3usize.into();
+        assert_eq!(pd, pd_uniform);
+        let pd_full: PaddingDimensions = (3, 3, 3, 3).into();
+        assert_eq!(pd.unpack(), pd_full.unpack());
+    }
+
+    #[test]
+    fn test_from_array1_zero() {
+        // Zero is a valid uniform padding (no padding at all).
+        let pd: PaddingDimensions = [0].into();
+        assert_eq!(pd, PaddingDimensions::Uniform(0));
         assert_eq!(pd.unpack(), (0, 0, 0, 0));
     }
 
