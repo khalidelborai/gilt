@@ -276,7 +276,6 @@ impl GiltLayer {
     ///
     /// Tries theme lookup via `console.get_style("logging.level.{name}")` first,
     /// falls back to `self.level_styles`.
-    #[cfg(test)]
     fn render_level(&self, level: &Level, console: &Console) -> Text {
         let name = match *level {
             Level::ERROR => "ERROR",
@@ -327,27 +326,40 @@ impl GiltLayer {
 
         let metadata = event.metadata();
 
-        // Phase 1: collect styles via a brief console lock, then drop.
-        let (level_style, kw_style) = if let Ok(console) = self.console.lock() {
-            let lvl_name = format!("logging.level.{}", metadata.level().as_str().to_lowercase());
-            let lvl = console.get_style(&lvl_name).unwrap_or_else(|_| {
-                self.level_styles
-                    .get(metadata.level())
-                    .cloned()
-                    .unwrap_or_else(Style::null)
-            });
+        // Phase 1: collect styles and build level cell via render_level (single
+        // source of truth — previously emit() re-implemented the level logic
+        // inline while render_level was #[cfg(test)] only).  We hold the lock
+        // for the helper call, then drop it before building remaining cells.
+        let (level_cell, kw_style) = if let Ok(console) = self.console.lock() {
+            let lvl_cell = if self.show_level {
+                Some(self.render_level(metadata.level(), &console))
+            } else {
+                None
+            };
             let kw = console
                 .get_style("logging.keyword")
                 .unwrap_or_else(|_| Style::parse("bold on dark_green"));
-            (lvl, kw)
+            (lvl_cell, kw)
         } else {
-            (
-                self.level_styles
+            let lvl_cell = if self.show_level {
+                let name = match *metadata.level() {
+                    Level::ERROR => "ERROR",
+                    Level::WARN => "WARN",
+                    Level::INFO => "INFO",
+                    Level::DEBUG => "DEBUG",
+                    Level::TRACE => "TRACE",
+                };
+                let padded = format!("{:<8}", name);
+                let level_style = self
+                    .level_styles
                     .get(metadata.level())
                     .cloned()
-                    .unwrap_or_else(Style::null),
-                Style::parse("bold on dark_green"),
-            )
+                    .unwrap_or_else(Style::null);
+                Some(Text::styled_with(&padded, level_style))
+            } else {
+                None
+            };
+            (lvl_cell, Style::parse("bold on dark_green"))
         };
 
         let mut cells: Vec<Text> = Vec::new();
@@ -359,17 +371,9 @@ impl GiltLayer {
             headers.push("");
         }
 
-        // Level column — use pre-fetched style
-        if self.show_level {
-            let name = match *metadata.level() {
-                Level::ERROR => "ERROR",
-                Level::WARN => "WARN",
-                Level::INFO => "INFO",
-                Level::DEBUG => "DEBUG",
-                Level::TRACE => "TRACE",
-            };
-            let padded = format!("{:<8}", name);
-            cells.push(Text::styled_with(&padded, level_style));
+        // Level column — built via render_level above (single source of truth)
+        if let Some(lc) = level_cell {
+            cells.push(lc);
             headers.push("");
         }
 
