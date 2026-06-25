@@ -448,11 +448,12 @@ impl Traceback {
     /// ```rust,no_run
     /// use gilt::error::traceback::{Traceback, PanicHookConfig};
     ///
-    /// Traceback::install_panic_hook_with_config(PanicHookConfig {
-    ///     suppress_paths: vec!["/.cargo/registry/src/".to_string()],
-    ///     max_frames: 50,
-    ///     ..PanicHookConfig::default()
-    /// });
+    /// // PanicHookConfig is #[non_exhaustive]: start from `default()` and set
+    /// // the fields you need, so adding config fields later is non-breaking.
+    /// let mut config = PanicHookConfig::default();
+    /// config.suppress_paths = vec!["/.cargo/registry/src/".to_string()];
+    /// config.max_frames = 50;
+    /// Traceback::install_panic_hook_with_config(config);
     /// ```
     pub fn install_panic_hook_with_config(config: PanicHookConfig) {
         std::panic::set_hook(Box::new(move |info| {
