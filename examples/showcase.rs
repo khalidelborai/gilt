@@ -30,6 +30,7 @@ use gilt::gradient::Gradient;
 use gilt::highlighter::*;
 use gilt::inspect::Inspect;
 use gilt::layout::Layout;
+use gilt::live::Live;
 use gilt::padding::{Padding, PaddingDimensions};
 use gilt::panel::Panel;
 use gilt::prelude::*;
@@ -1443,9 +1444,9 @@ Mumbai,India,12440000,603";
     // -- Variadic console.log (log multiple renderables at once) ---------------
     console.rule(Some("2.0: Variadic console.log_objects"));
     {
-        let p = Panel::fit(Text::new("a logged Panel", Style::null()));
-        let t = Text::new("plus a styled Text", Style::parse("green"));
-        console.log_objects(&[&p as &dyn gilt::console::Renderable, &t], false);
+        let first = Text::new("first object", Style::parse("green"));
+        let second = Text::new("second object", Style::parse("cyan"));
+        console.log_objects(&[&first as &dyn gilt::console::Renderable, &second], false);
     }
     pause();
 
@@ -1476,15 +1477,14 @@ Mumbai,India,12440000,603";
     // -- Vertical centering (vertical_center convenience) ----------------------
     console.rule(Some("2.0: Vertical Centering"));
     {
-        let centered = vertical_center(Text::new(
+        // vertical_center sets vertical=Middle; give the Align an explicit
+        // height so it actually centers (a bare print has no height to center within).
+        let mut centered = vertical_center(Text::new(
             "centered vertically",
             Style::parse("bold yellow"),
         ));
-        console.print(
-            &Panel::new(centered)
-                .with_height(5)
-                .with_title("vertical_center"),
-        );
+        centered.height = Some(5);
+        console.print(&Panel::new(centered).with_title("vertical_center (h=5)"));
     }
     pause();
 
@@ -1561,6 +1561,123 @@ Mumbai,India,12440000,603";
             svg.len(),
             svg.contains("<svg")
         ));
+    }
+    pause();
+
+    // -- Live region: real-time content updates (lock-free ArcSwap) ------------
+    console.rule(Some("2.0: Live Region (real-time updates)"));
+    {
+        let live_console = Console::builder().width(60).force_terminal(true).build();
+        let mut live = Live::new(Text::new("", Style::null()))
+            .with_console(live_console)
+            .with_auto_refresh(false);
+        live.start();
+        for i in 0..=10u32 {
+            let pct = i * 10;
+            let filled: String = std::iter::repeat_n('█', i as usize * 3).collect();
+            let style = if pct < 100 { "yellow" } else { "bold green" };
+            let body = Text::new(&format!("Loading {pct:>3}%\n{filled}"), Style::parse(style));
+            live.set(Panel::new(body).with_title("Live"));
+            live.refresh();
+            thread::sleep(Duration::from_millis(80));
+        }
+        live.stop();
+    }
+    pause();
+
+    // -- Live pause/resume: the v1.11 headline feature (sticky hand-off) -------
+    console.rule(Some("2.0: Live Pause / Resume"));
+    {
+        let footer_console = Console::builder().width(70).force_terminal(true).build();
+        let mut footer = Live::new(Panel::new(Text::new(
+            "● status: starting",
+            Style::parse("bold green"),
+        )))
+        .with_console(footer_console)
+        .with_auto_refresh(false);
+        footer.start();
+        for i in 1..=3u32 {
+            footer.set(Panel::new(Text::new(
+                &format!("● status: working ({i}/3)"),
+                Style::parse("bold yellow"),
+            )));
+            footer.refresh();
+            thread::sleep(Duration::from_millis(120));
+        }
+        // pause() erases the live region but PRESERVES its state for resume.
+        footer.pause();
+        console.print_text("[dim](footer paused — its state is preserved; printing below)[/dim]");
+        let mut t = Tree::new(Text::new("results/", Style::parse("bold blue")));
+        t.add(Text::new("passed: 42", Style::parse("green")));
+        t.add(Text::new("failed:  0", Style::parse("dim")));
+        console.print(&t);
+        // resume() re-renders the live region in place — no rebuild needed.
+        footer.resume();
+        footer.set(Panel::new(Text::new(
+            "● status: done ✓",
+            Style::parse("bold green"),
+        )));
+        footer.refresh();
+        thread::sleep(Duration::from_millis(200));
+        footer.stop();
+    }
+    pause();
+
+    // =========================================================================
+    // Grand Finale — Live Dashboard (everything integrated, updating live)
+    // =========================================================================
+    console.rule(Some("Grand Finale: Live Dashboard"));
+    {
+        use gilt::console::into_renderable_arc;
+        use gilt::group::Group;
+
+        let dash_console = Console::builder().width(72).force_terminal(true).build();
+        let mut live = Live::new(Text::new("booting…", Style::null()))
+            .with_console(dash_console)
+            .with_auto_refresh(false);
+        live.start();
+        let mut cpu_hist: Vec<f64> = Vec::new();
+        for frame in 0..20u32 {
+            // Simulated, smoothly-varying metrics.
+            let cpu = 30.0 + 55.0 * ((frame as f64) * 0.55).sin().abs();
+            let mem = 40.0 + 30.0 * ((frame as f64) * 0.30).cos().abs();
+            cpu_hist.push(cpu);
+            if cpu_hist.len() > 24 {
+                cpu_hist.remove(0);
+            }
+
+            let mut table = Table::new(&["Metric", "Value"]);
+            table.border_style = "dim".to_string();
+            let cpu_v = format!("{cpu:.0}%");
+            let mem_v = format!("{mem:.0}%");
+            let frame_v = format!("{frame}/19");
+            table.add_row(&["CPU", cpu_v.as_str()]);
+            table.add_row(&["Memory", mem_v.as_str()]);
+            table.add_row(&["Frame", frame_v.as_str()]);
+
+            let spark = Sparkline::new(&cpu_hist).with_style(Style::parse("bold green"));
+            let cpu_bar = Bar::new(cpu, 0.0, 100.0).with_width(48);
+
+            let body = Group::new(vec![
+                into_renderable_arc(table),
+                into_renderable_arc(Text::new("CPU history", Style::parse("dim"))),
+                into_renderable_arc(spark),
+                into_renderable_arc(Text::new("CPU load", Style::parse("dim"))),
+                into_renderable_arc(cpu_bar),
+            ]);
+            let border = if cpu > 70.0 { "bold red" } else { "green" };
+            live.set(
+                Panel::new(body)
+                    .with_title(Text::new(
+                        "● Live System Monitor",
+                        Style::parse("bold cyan"),
+                    ))
+                    .with_border_style(Style::parse(border)),
+            );
+            live.refresh();
+            thread::sleep(Duration::from_millis(110));
+        }
+        live.stop();
     }
     pause();
 
