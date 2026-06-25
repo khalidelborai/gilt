@@ -138,6 +138,13 @@ mod tests {
             "Kitty APC must reach its ST terminator (not be width-cropped); got len {}",
             output.len()
         );
+        // Must carry the display cell-box size (c=cols, r=rows) so Kitty scales
+        // the image to the requested cells instead of a tiny native-pixel thumb.
+        assert!(
+            output.contains(",c=") && output.contains(",r="),
+            "Kitty APC must specify c=/r= cell dimensions; got: {:?}",
+            output
+        );
         // Must NOT contain ▀ (halfblock chars)
         assert!(
             !output.contains('▀'),

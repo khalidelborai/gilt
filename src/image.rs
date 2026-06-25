@@ -320,19 +320,39 @@ impl Image {
     /// base64-encoded raw RGBA pixel data.
     fn render_kitty(&self, opts: &ConsoleOptions) -> Vec<Segment> {
         let (cols, rows) = self.resolve_cell_size(opts.max_width);
-        let dst_w = cols as u32;
-        let dst_h = (rows * 2) as u32;
 
-        let pixels: Vec<u8> = if self.width_px == dst_w && self.height_px == dst_h {
+        // Transmit at (capped) native resolution and let Kitty scale the image
+        // into a `cols × rows` *cell* box via the `c`/`r` keys. Previously the
+        // image was downscaled to `cols × rows*2` *pixels* with no c/r, so Kitty
+        // displayed it a few pixels wide — a tiny thumbnail regardless of
+        // `.width()`. The cap keeps huge photos from producing enormous payloads
+        // (~20 px per cell is more than enough resolution for any terminal cell).
+        let max_w = (cols as u32).saturating_mul(20).max(1);
+        let max_h = (rows as u32).saturating_mul(40).max(1);
+        let (tw, th) = if self.width_px <= max_w && self.height_px <= max_h {
+            (self.width_px.max(1), self.height_px.max(1))
+        } else {
+            let scale = (max_w as f64 / self.width_px.max(1) as f64)
+                .min(max_h as f64 / self.height_px.max(1) as f64);
+            (
+                ((self.width_px as f64 * scale).round() as u32).max(1),
+                ((self.height_px as f64 * scale).round() as u32).max(1),
+            )
+        };
+        let pixels: Vec<u8> = if self.width_px == tw && self.height_px == th {
             self.rgba.clone()
         } else {
-            self.resize_nearest(dst_w, dst_h)
+            self.resize_nearest(tw, th)
         };
 
-        // Build Kitty APC transmit-and-display sequence.
-        // f=32 → RGBA, s=width, v=height, a=T (transmit+display).
+        // Kitty APC transmit-and-display: f=32 RGBA, s/v = transmitted pixel
+        // size, c/r = display size in cells (Kitty scales into that box),
+        // a=T (transmit+display).
         let b64 = crate::utils::control::base64_encode(&pixels);
-        let apc = format!("\x1b_Gf=32,s={},v={},a=T;{}\x1b\\", dst_w, dst_h, b64);
+        let apc = format!(
+            "\x1b_Gf=32,s={},v={},c={},r={},a=T;{}\x1b\\",
+            tw, th, cols, rows, b64
+        );
 
         // Emit as a control segment (empty control vec) so the render pipeline
         // treats it as zero-width and never width-crops or line-splits the APC

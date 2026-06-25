@@ -12,8 +12,14 @@
 //!
 //!   cargo run --example image --features inline-images -- path/to/photo.png
 //!       Display an actual image file.
+//!
+//! Terminal not auto-detected (e.g. an embedded terminal)? Force a protocol:
+//!   GILT_IMAGE_PROTOCOL=kitty cargo run --example image
+//!       (use kitty | iterm | halfblock — handy for testing what your terminal
+//!        actually supports; if it shows garbage, that protocol isn't supported.)
 
 use gilt::console::Console;
+use gilt::console_caps::ConsoleCapabilities;
 use gilt::image::Image;
 use gilt::rule::Rule;
 
@@ -54,6 +60,22 @@ fn gradient_image(w: u32, h: u32) -> Image {
 fn main() {
     let mut console = Console::default();
 
+    // Optional override for terminals gilt can't auto-detect (embedded terminals,
+    // SSH, etc.): GILT_IMAGE_PROTOCOL=kitty|iterm|halfblock.
+    if let Ok(force) = std::env::var("GILT_IMAGE_PROTOCOL") {
+        let base = console.capabilities().clone();
+        let caps = match force.to_ascii_lowercase().as_str() {
+            "kitty" => ConsoleCapabilities { kitty: true, iterm: false, ..base },
+            "iterm" => ConsoleCapabilities { kitty: false, iterm: true, ..base },
+            "halfblock" => ConsoleCapabilities { kitty: false, iterm: false, ..base },
+            other => {
+                eprintln!("GILT_IMAGE_PROTOCOL={other:?} unrecognized (use kitty|iterm|halfblock)");
+                base
+            }
+        };
+        console.set_capabilities(caps);
+    }
+
     // Which protocol will this terminal use? (read caps before borrowing mutably)
     let (kitty, iterm) = {
         let caps = console.capabilities();
@@ -73,7 +95,7 @@ fn main() {
 
     // A procedural image — always works, no file or feature required.
     console.print_text("[bold]Procedural gradient[/] (Image::from_rgba):");
-    console.print(&gradient_image(120, 120).width(32));
+    console.print(&gradient_image(160, 160).width(40));
     console.print_text("");
 
     // Optionally load a real image file (needs the `inline-images` feature).
@@ -83,7 +105,7 @@ fn main() {
             Some(path) => {
                 console.print(&Rule::with_title("file"));
                 match Image::from_path(&path) {
-                    Ok(img) => console.print(&img.width(48)),
+                    Ok(img) => console.print(&img.width(64)),
                     Err(e) => console.print_text(&format!("[bold red]could not load {path}:[/] {e}")),
                 }
             }

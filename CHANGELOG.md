@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   render pipeline never width-crops or line-splits them. Previously a plain text
   segment truncated the base64 payload to the console width (a latent Kitty bug;
   its test only checked the introducer prefix).
+- **Kitty images now honor `.width()`/`.height()`** — `render_kitty` sends the
+  display cell-box size (`c`/`r` keys) and transmits at capped native resolution,
+  so the image fills the requested cells. Previously it downscaled to
+  `cols × rows*2` pixels with no `c`/`r`, rendering a tiny native-pixel thumbnail
+  regardless of the requested size.
 
 ## [2.0.0] - 2026-06-25
 
