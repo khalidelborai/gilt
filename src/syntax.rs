@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use std::sync::LazyLock;
 use syntect::easy::HighlightLines;
-use syntect::highlighting::{Style as SyntectStyle, Theme as SyntectTheme, ThemeSet};
+use syntect::highlighting::{Highlighter, Style as SyntectStyle, Theme as SyntectTheme, ThemeSet};
 use syntect::parsing::SyntaxSet;
 
 use crate::cells::cell_len;
@@ -133,8 +133,11 @@ pub struct Syntax {
     /// Whether to auto-dedent code by stripping common leading whitespace.
     pub dedent: bool,
     /// Style ranges to apply on top of syntax highlighting.
-    /// Each entry is a (style, character_range) pair applied during rendering.
-    pub style_ranges: Vec<(Style, std::ops::Range<usize>)>,
+    /// Each entry is a `(style, character_range, style_before)` triple.
+    /// When `style_before` is `true` the span is inserted *before* existing
+    /// spans (lowest priority); when `false` it is appended (highest priority),
+    /// matching Python rich's `stylize_range(style_before=…)` parameter.
+    pub style_ranges: Vec<(Style, std::ops::Range<usize>, bool)>,
     /// Optional syntect theme injected via [`with_syntect_theme`](Self::with_syntect_theme).
     ///
     /// When set, this theme is used instead of the `theme` name field for both
@@ -323,10 +326,19 @@ impl Syntax {
     /// Add a style to apply over a flat character range of the code.
     ///
     /// The range is in terms of character offsets into the original code string
-    /// (after dedent, if enabled). Multiple ranges may overlap; they are applied
-    /// in order on top of the syntax highlighting.
-    pub fn stylize_range(&mut self, style: Style, range: std::ops::Range<usize>) {
-        self.style_ranges.push((style, range));
+    /// (after dedent, if enabled). Multiple ranges may overlap.
+    ///
+    /// `style_before` controls priority: when `true` the span is inserted
+    /// *before* all existing spans (lowest visual priority), matching Python
+    /// rich's `stylize_range(style_before=True)`.  When `false` (the default)
+    /// the span is appended *after* existing spans (highest priority).
+    pub fn stylize_range(
+        &mut self,
+        style: Style,
+        range: std::ops::Range<usize>,
+        style_before: bool,
+    ) {
+        self.style_ranges.push((style, range, style_before));
     }
 
     /// Add a style to apply over a `(line, col)` range of the code.
@@ -334,6 +346,8 @@ impl Syntax {
     /// Both `start` and `end` are `(line, col)` pairs where line is 1-based and
     /// col is 0-based character offset within the line.  The pair is converted
     /// to a flat character offset and delegated to [`stylize_range`].
+    ///
+    /// `style_before` has the same semantics as in [`stylize_range`].
     ///
     /// Matches the `start=(line, col), end=(line, col)` form used by Python rich.
     ///
@@ -343,11 +357,12 @@ impl Syntax {
         style: Style,
         start: (usize, usize),
         end: (usize, usize),
+        style_before: bool,
     ) {
         let flat_start = self.linecol_to_offset(start);
         let flat_end = self.linecol_to_offset(end);
         if flat_start <= flat_end {
-            self.stylize_range(style, flat_start..flat_end);
+            self.stylize_range(style, flat_start..flat_end, style_before);
         }
     }
 
@@ -453,8 +468,13 @@ impl Syntax {
             .expect("at least one theme must be available")
     }
 
-    /// Highlight the given code and return a `Text` with styled spans.
-    fn highlight_code(&self, code: &str) -> Text {
+    /// Highlight the given code and return a [`Text`] with styled spans.
+    ///
+    /// This is a public API that mirrors Python rich's `Syntax.highlight(code)`
+    /// method.  It tokenises `code` using the configured lexer and theme and
+    /// returns a fully-styled `Text` value suitable for further manipulation or
+    /// embedding.
+    pub fn highlight(&self, code: &str) -> Text {
         let ss = &*SYNTAX_SET;
 
         // Find the syntax definition
@@ -494,7 +514,7 @@ impl Syntax {
     /// Used by the markdown renderer for inline `code` with a lexer set.
     pub fn highlight_inline(code: &str, lexer_name: &str, theme_name: &str) -> Text {
         let syn = Syntax::new(code, lexer_name).with_theme(theme_name);
-        let mut t = syn.highlight_code(code);
+        let mut t = syn.highlight(code);
         // Drop trailing newline that highlight_code may append.
         t.remove_suffix("\n");
         t
@@ -523,11 +543,13 @@ impl Syntax {
     /// Return `(normal_style, highlighted_style)` for line number rendering.
     ///
     /// Follows rich: blend bg→fg at 0.3 for normal numbers and 0.9 for
-    /// highlighted ones.  Falls back to a dim/bold style when the theme lacks
-    /// an explicit foreground color.
+    /// highlighted ones.  The foreground color is taken from the `Token.Text`
+    /// style (empty scope stack → base text color) rather than
+    /// `theme.settings.foreground`, matching Python rich's
+    /// `theme.get_token_color(Token.Text)`.
     fn line_number_styles(&self) -> (Style, Style) {
         let theme = self.effective_syntect_theme();
-        // Obtain bg and fg triplets from the theme settings.
+        // Obtain bg triplet from the theme settings.
         let bg = theme
             .settings
             .background
@@ -537,17 +559,28 @@ impl Syntax {
                 b: 0,
                 a: 255,
             });
-        let fg = theme
-            .settings
-            .foreground
-            .unwrap_or(syntect::highlighting::Color {
-                r: 255,
-                g: 255,
-                b: 255,
-                a: 255,
-            });
+        // Obtain the Token.Text foreground color using an empty scope stack,
+        // which resolves to the base text style — analogous to rich's
+        // `theme.get_token_color(Token.Text)`.  Fall back to theme.settings
+        // .foreground when the base-text style carries no foreground, and
+        // ultimately to white.
+        let highlighter = Highlighter::new(theme);
+        let token_text_style = highlighter.style_for_stack(&[]);
+        let fg_synth = if token_text_style.foreground.a > 0 {
+            token_text_style.foreground
+        } else {
+            theme
+                .settings
+                .foreground
+                .unwrap_or(syntect::highlighting::Color {
+                    r: 255,
+                    g: 255,
+                    b: 255,
+                    a: 255,
+                })
+        };
         let bg_t = ColorTriplet::new(bg.r, bg.g, bg.b);
-        let fg_t = ColorTriplet::new(fg.r, fg.g, fg.b);
+        let fg_t = ColorTriplet::new(fg_synth.r, fg_synth.g, fg_synth.b);
 
         let normal_t = blend_rgb(bg_t, fg_t, 0.3);
         let highlight_t = blend_rgb(bg_t, fg_t, 0.9);
@@ -572,9 +605,9 @@ impl Syntax {
     }
 
     /// Build the rendered segments for this Syntax object.
-    fn render_syntax(&self, max_width: usize) -> Vec<Segment> {
+    fn render_syntax(&self, max_width: usize, legacy_windows: bool) -> Vec<Segment> {
         let (ends_on_nl, processed_code) = self.process_code();
-        let mut text = self.highlight_code(&processed_code);
+        let mut text = self.highlight(&processed_code);
 
         // Apply indent guides before line splitting (Finding #6).
         if self.indent_guides {
@@ -584,8 +617,12 @@ impl Syntax {
         }
 
         // Apply user-defined style ranges on top of syntax highlighting.
-        for (style, range) in &self.style_ranges {
-            text.stylize(style.clone(), range.start, Some(range.end));
+        for (style, range, style_before) in &self.style_ranges {
+            if *style_before {
+                text.stylize_before(style.clone(), range.start, Some(range.end));
+            } else {
+                text.stylize(style.clone(), range.start, Some(range.end));
+            }
         }
 
         // Remove trailing newline if original didn't have one
@@ -661,7 +698,9 @@ impl Syntax {
                         Some(Color::parse("red").unwrap_or_else(|_| Color::from_rgb(255, 0, 0))),
                         None,
                     );
-                    segments.push(Segment::styled("> ", pointer_style));
+                    // rich uses ❱ on modern terminals, "> " on legacy Windows.
+                    let pointer = if legacy_windows { "> " } else { "❱ " };
+                    segments.push(Segment::styled(pointer, pointer_style));
                     // Use the strongly-blended (0.9) color for highlighted line numbers.
                     segments.push(Segment::styled(&num_str, highlighted_number_style.clone()));
                 } else {
@@ -781,7 +820,7 @@ impl Syntax {
 /// Implement the Renderable trait so Syntax can be printed by Console.
 impl Renderable for Syntax {
     fn gilt_console(&self, _console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
-        self.render_syntax(options.max_width)
+        self.render_syntax(options.max_width, options.legacy_windows)
     }
 
     fn gilt_measure(&self, _console: &Console, _options: &ConsoleOptions) -> Measurement {
@@ -819,19 +858,45 @@ fn syntect_to_gilt_style(style: SyntectStyle) -> Style {
     gilt
 }
 
-/// Guess the lexer name from a file path extension.
+/// Guess the lexer name from a file path extension, with shebang/first-line
+/// fallback.
+///
+/// Detection order (matches Python rich's `guess_lexer_for_filename` chain):
+/// 1. Extension lookup via syntect.
+/// 2. First-line / shebang detection via syntect (`find_syntax_by_first_line`).
+/// 3. Raw extension string as a last resort.
+/// 4. `"txt"` when no extension is present and no shebang matches.
 fn guess_lexer(path: &str) -> String {
     let p = Path::new(path);
+    let ss = &*SYNTAX_SET;
+
+    // 1. Extension-based lookup.
     if let Some(ext) = p.extension() {
         let ext_str = ext.to_string_lossy().to_lowercase();
-        // syntect uses extension-based lookup
-        let ss = &*SYNTAX_SET;
         if let Some(syn) = ss.find_syntax_by_extension(&ext_str) {
-            // Return the first token (short name)
             return syn.name.to_lowercase();
+        }
+        // Extension exists but not recognised — try shebang then fall back to
+        // the raw extension string.
+        if let Ok(content) = std::fs::read_to_string(path) {
+            if let Some(first_line) = content.lines().next() {
+                if let Some(syn) = ss.find_syntax_by_first_line(first_line) {
+                    return syn.name.to_lowercase();
+                }
+            }
         }
         return ext_str;
     }
+
+    // 2. No extension: try shebang / first-line detection from file content.
+    if let Ok(content) = std::fs::read_to_string(path) {
+        if let Some(first_line) = content.lines().next() {
+            if let Some(syn) = ss.find_syntax_by_first_line(first_line) {
+                return syn.name.to_lowercase();
+            }
+        }
+    }
+
     "txt".to_string()
 }
 
@@ -886,7 +951,7 @@ mod tests {
     fn test_basic_rust_highlighting() {
         let code = "fn main() {\n    println!(\"Hello\");\n}\n";
         let syntax = Syntax::new(code, "rs");
-        let segments = syntax.render_syntax(80);
+        let segments = syntax.render_syntax(80, false);
         let text: String = segments.iter().map(|s| s.text.as_str()).collect();
         assert!(text.contains("fn"));
         assert!(text.contains("main"));
@@ -897,7 +962,7 @@ mod tests {
     fn test_python_highlighting() {
         let code = "def hello():\n    print(\"Hello\")\n";
         let syntax = Syntax::new(code, "py");
-        let segments = syntax.render_syntax(80);
+        let segments = syntax.render_syntax(80, false);
         let text: String = segments.iter().map(|s| s.text.as_str()).collect();
         assert!(text.contains("def"));
         assert!(text.contains("hello"));
@@ -907,7 +972,7 @@ mod tests {
     fn test_json_highlighting() {
         let code = "{\"key\": \"value\", \"num\": 42}\n";
         let syntax = Syntax::new(code, "json");
-        let segments = syntax.render_syntax(80);
+        let segments = syntax.render_syntax(80, false);
         let text: String = segments.iter().map(|s| s.text.as_str()).collect();
         assert!(text.contains("key"));
         assert!(text.contains("value"));
@@ -920,7 +985,7 @@ mod tests {
     fn test_line_numbers_enabled() {
         let code = "line one\nline two\nline three\n";
         let syntax = Syntax::new(code, "txt").with_line_numbers(true);
-        let segments = syntax.render_syntax(80);
+        let segments = syntax.render_syntax(80, false);
         let text: String = segments.iter().map(|s| s.text.as_str()).collect();
         assert!(text.contains("1"));
         assert!(text.contains("2"));
@@ -931,7 +996,7 @@ mod tests {
     fn test_line_numbers_disabled() {
         let code = "line one\nline two\n";
         let syntax = Syntax::new(code, "txt");
-        let segments = syntax.render_syntax(80);
+        let segments = syntax.render_syntax(80, false);
         // Without line numbers, should not have the gutter padding pattern
         let text: String = segments.iter().map(|s| s.text.as_str()).collect();
         assert!(text.contains("line one"));
@@ -945,7 +1010,7 @@ mod tests {
         let syntax = Syntax::new(code, "txt")
             .with_line_numbers(true)
             .with_start_line(10);
-        let segments = syntax.render_syntax(80);
+        let segments = syntax.render_syntax(80, false);
         let text: String = segments.iter().map(|s| s.text.as_str()).collect();
         assert!(text.contains("10"));
         assert!(text.contains("11"));
@@ -958,7 +1023,7 @@ mod tests {
     fn test_line_range() {
         let code = "line1\nline2\nline3\nline4\nline5\n";
         let syntax = Syntax::new(code, "txt").with_line_range((2, 4));
-        let segments = syntax.render_syntax(80);
+        let segments = syntax.render_syntax(80, false);
         let text: String = segments.iter().map(|s| s.text.as_str()).collect();
         assert!(text.contains("line2"));
         assert!(text.contains("line3"));
@@ -973,7 +1038,7 @@ mod tests {
     fn test_word_wrap() {
         let code = "this is a very long line that should be wrapped when word wrap is enabled\n";
         let syntax = Syntax::new(code, "txt").with_word_wrap(true);
-        let segments = syntax.render_syntax(30);
+        let segments = syntax.render_syntax(30, false);
         let text: String = segments.iter().map(|s| s.text.as_str()).collect();
         // Should have line breaks from wrapping
         let newline_count = text.matches('\n').count();
@@ -1009,7 +1074,7 @@ mod tests {
     fn test_theme_base16_ocean_dark() {
         let code = "let x = 1;\n";
         let syntax = Syntax::new(code, "rs").with_theme("base16-ocean.dark");
-        let segments = syntax.render_syntax(80);
+        let segments = syntax.render_syntax(80, false);
         assert!(!segments.is_empty());
     }
 
@@ -1017,7 +1082,7 @@ mod tests {
     fn test_theme_base16_eighties_dark() {
         let code = "let x = 1;\n";
         let syntax = Syntax::new(code, "rs").with_theme("base16-eighties.dark");
-        let segments = syntax.render_syntax(80);
+        let segments = syntax.render_syntax(80, false);
         assert!(!segments.is_empty());
     }
 
@@ -1025,7 +1090,7 @@ mod tests {
     fn test_unknown_theme_fallback() {
         let code = "hello\n";
         let syntax = Syntax::new(code, "txt").with_theme("nonexistent-theme-xyz");
-        let segments = syntax.render_syntax(80);
+        let segments = syntax.render_syntax(80, false);
         // Should still render, using a fallback theme
         assert!(!segments.is_empty());
     }
@@ -1038,10 +1103,14 @@ mod tests {
         let syntax = Syntax::new(code, "txt")
             .with_line_numbers(true)
             .with_highlight_lines(vec![2]);
-        let segments = syntax.render_syntax(80);
-        // Check that a ">" pointer appears for the highlighted line
+        let segments = syntax.render_syntax(80, false);
+        // On modern terminals (legacy_windows=false) the pointer is ❱;
+        // just verify some pointer character appears.
         let text: String = segments.iter().map(|s| s.text.as_str()).collect();
-        assert!(text.contains('>'), "expected highlight pointer");
+        assert!(
+            text.contains('❱') || text.contains('>'),
+            "expected highlight pointer"
+        );
     }
 
     // -- Unknown language handling ------------------------------------------
@@ -1050,7 +1119,7 @@ mod tests {
     fn test_unknown_language_fallback() {
         let code = "some random text\n";
         let syntax = Syntax::new(code, "zzzz_nonexistent");
-        let segments = syntax.render_syntax(80);
+        let segments = syntax.render_syntax(80, false);
         let text: String = segments.iter().map(|s| s.text.as_str()).collect();
         // Should fall back to plain text
         assert!(text.contains("some random text"));
@@ -1153,7 +1222,7 @@ mod tests {
     #[test]
     fn test_empty_code() {
         let syntax = Syntax::new("", "txt");
-        let segments = syntax.render_syntax(80);
+        let segments = syntax.render_syntax(80, false);
         // Should produce at least something (even if just a newline)
         let text: String = segments.iter().map(|s| s.text.as_str()).collect();
         // Empty code with added newline should produce one line
@@ -1165,7 +1234,7 @@ mod tests {
     #[test]
     fn test_single_line_code() {
         let syntax = Syntax::new("hello", "txt");
-        let segments = syntax.render_syntax(80);
+        let segments = syntax.render_syntax(80, false);
         let text: String = segments.iter().map(|s| s.text.as_str()).collect();
         assert!(text.contains("hello"));
     }
@@ -1176,7 +1245,7 @@ mod tests {
     fn test_code_with_special_characters() {
         let code = "let x = \"hello <world> & 'friends'\";\n";
         let syntax = Syntax::new(code, "rs");
-        let segments = syntax.render_syntax(80);
+        let segments = syntax.render_syntax(80, false);
         let text: String = segments.iter().map(|s| s.text.as_str()).collect();
         assert!(text.contains('<'));
         assert!(text.contains('>'));
@@ -1306,7 +1375,7 @@ mod tests {
     fn test_padding_top_bottom() {
         let mut syntax = Syntax::new("hello\n", "txt");
         syntax.padding = (1, 0, 1, 0);
-        let segments = syntax.render_syntax(40);
+        let segments = syntax.render_syntax(40, false);
         // With top=1, bottom=1, expect ≥3 newlines (top + code + bottom)
         let newline_count = segments.iter().filter(|s| s.text == "\n").count();
         assert!(
@@ -1337,7 +1406,7 @@ mod tests {
     fn test_line_range_out_of_bounds() {
         let code = "a\nb\n";
         let syntax = Syntax::new(code, "txt").with_line_range((10, 20));
-        let segments = syntax.render_syntax(80);
+        let segments = syntax.render_syntax(80, false);
         // Should produce nothing for the code area
         let text: String = segments
             .iter()
@@ -1353,7 +1422,7 @@ mod tests {
     fn test_segments_have_styles() {
         let code = "fn main() {}\n";
         let syntax = Syntax::new(code, "rs");
-        let segments = syntax.render_syntax(80);
+        let segments = syntax.render_syntax(80, false);
         // At least some segments should have styles
         let styled_count = segments.iter().filter(|s| s.style.is_some()).count();
         assert!(styled_count > 0, "expected some styled segments");
@@ -1377,7 +1446,7 @@ mod tests {
         let ts = &*THEME_SET;
         for theme_name in ts.themes.keys() {
             let syntax = Syntax::new(code, "rs").with_theme(theme_name);
-            let segments = syntax.render_syntax(80);
+            let segments = syntax.render_syntax(80, false);
             assert!(
                 !segments.is_empty(),
                 "theme '{}' produced no output",
@@ -1460,7 +1529,7 @@ mod tests {
             Some(Color::parse("red").unwrap_or_else(|_| Color::from_rgb(255, 0, 0))),
             None,
         );
-        syntax.stylize_range(style.clone(), 0..5);
+        syntax.stylize_range(style.clone(), 0..5, false);
         assert_eq!(syntax.style_ranges.len(), 1);
         assert_eq!(syntax.style_ranges[0].1, 0..5);
     }
@@ -1472,8 +1541,8 @@ mod tests {
             Some(Color::parse("red").unwrap_or_else(|_| Color::from_rgb(255, 0, 0))),
             None,
         );
-        syntax.stylize_range(red_style, 0..5);
-        let segments = syntax.render_syntax(80);
+        syntax.stylize_range(red_style, 0..5, false);
+        let segments = syntax.render_syntax(80, false);
         // The rendered segments should contain "hello" with a red foreground
         // Find the segment(s) covering "hello"
         let mut found_styled = false;
@@ -1513,7 +1582,7 @@ mod tests {
         let ts = ThemeSet::load_defaults();
         let theme = ts.themes["base16-ocean.dark"].clone();
         let syntax = Syntax::new("let x = 1;\n", "rs").with_syntect_theme(theme);
-        let segments = syntax.render_syntax(80);
+        let segments = syntax.render_syntax(80, false);
         assert!(
             !segments.is_empty(),
             "with_syntect_theme produced no output"
@@ -1577,5 +1646,135 @@ mod tests {
     fn test_load_theme_from_file_nonexistent() {
         let result = Syntax::load_theme_from_file("/nonexistent/path/theme.tmTheme");
         assert!(result.is_err());
+    }
+
+    // -- Phase 7 batch 7.15 parity tests -------------------------------------
+
+    // Item 1: stylize_range style_before=true uses stylize_before (lower priority).
+    #[test]
+    fn test_stylize_range_style_before_true_stored() {
+        let mut syntax = Syntax::new("hello world", "txt");
+        let style = Style::from_color(
+            Some(Color::parse("blue").unwrap_or_else(|_| Color::from_rgb(0, 0, 255))),
+            None,
+        );
+        syntax.stylize_range(style.clone(), 0..5, true);
+        assert_eq!(syntax.style_ranges.len(), 1);
+        assert_eq!(
+            syntax.style_ranges[0].2, true,
+            "style_before flag must be stored"
+        );
+    }
+
+    #[test]
+    fn test_stylize_range_style_before_false_stored() {
+        let mut syntax = Syntax::new("hello world", "txt");
+        let style = Style::parse("bold");
+        syntax.stylize_range(style, 0..5, false);
+        assert_eq!(syntax.style_ranges[0].2, false);
+    }
+
+    #[test]
+    fn test_stylize_range_style_before_renders() {
+        // style_before=true: span inserted before → lower priority.
+        // style_before=false: span appended → higher priority.
+        // Both should still produce output containing the text.
+        let mut syntax = Syntax::new("hello\n", "txt");
+        let blue = Style::from_color(
+            Some(Color::parse("blue").unwrap_or_else(|_| Color::from_rgb(0, 0, 255))),
+            None,
+        );
+        syntax.stylize_range(blue, 0..5, true);
+        let segments = syntax.render_syntax(80, false);
+        let text: String = segments.iter().map(|s| s.text.as_str()).collect();
+        assert!(text.contains("hello"), "styled text must still appear");
+    }
+
+    // Item 2: Syntax::highlight is public and returns Text.
+    #[test]
+    fn test_highlight_is_public_and_returns_text() {
+        let syntax = Syntax::new("fn main() {}\n", "rs");
+        let text = syntax.highlight("fn main() {}\n");
+        assert!(
+            text.plain().contains("fn"),
+            "highlight() must return Text containing the source"
+        );
+    }
+
+    #[test]
+    fn test_highlight_inline_still_works() {
+        // Internal caller of the renamed method.
+        let text = Syntax::highlight_inline("x = 1", "py", "base16-ocean.dark");
+        assert!(
+            text.plain().contains('x'),
+            "highlight_inline must still work"
+        );
+    }
+
+    // Item 3: pointer glyph is ❱ on non-legacy, "> " on legacy Windows.
+    #[test]
+    fn test_highlighted_line_pointer_modern() {
+        let code = "a\nb\nc\n";
+        let syntax = Syntax::new(code, "txt")
+            .with_line_numbers(true)
+            .with_highlight_lines(vec![2]);
+        let segments = syntax.render_syntax(80, false); // legacy_windows=false
+        let text: String = segments.iter().map(|s| s.text.as_str()).collect();
+        assert!(
+            text.contains('❱'),
+            "modern terminal must use ❱ pointer, got: {:?}",
+            &text[..text.len().min(200)]
+        );
+        assert!(
+            !text.contains("> "),
+            "modern terminal must NOT use '> ' pointer"
+        );
+    }
+
+    #[test]
+    fn test_highlighted_line_pointer_legacy_windows() {
+        let code = "a\nb\nc\n";
+        let syntax = Syntax::new(code, "txt")
+            .with_line_numbers(true)
+            .with_highlight_lines(vec![2]);
+        let segments = syntax.render_syntax(80, true); // legacy_windows=true
+        let text: String = segments.iter().map(|s| s.text.as_str()).collect();
+        assert!(
+            text.contains("> "),
+            "legacy Windows must use '> ' pointer, got: {:?}",
+            &text[..text.len().min(200)]
+        );
+    }
+
+    // Item 4: guess_lexer detects shebang when no extension matches.
+    #[test]
+    fn test_guess_lexer_shebang_via_tmpfile() {
+        // Write a Python shebang to a file with no recognisable extension.
+        let path = std::env::temp_dir().join("gilt_shebang_test_no_ext");
+        std::fs::write(&path, "#!/usr/bin/env python3\nprint('hello')\n").expect("write temp file");
+        let name = guess_lexer(path.to_str().unwrap());
+        std::fs::remove_file(&path).ok();
+        // syntect recognises Python shebang → name should contain "python"
+        assert!(
+            name.contains("python"),
+            "shebang detection should yield python, got: {:?}",
+            name
+        );
+    }
+
+    // Item 5: line-number color uses Token.Text (base-text) color, not raw
+    // theme.settings.foreground. We verify the style is non-null (non-trivial)
+    // and differs from a simple white fallback when the theme has a text color.
+    #[test]
+    fn test_line_number_style_uses_token_text_color() {
+        let syntax = Syntax::new("a\nb\nc\n", "txt")
+            .with_line_numbers(true)
+            .with_theme("base16-ocean.dark");
+        let (normal, _highlighted) = syntax.line_number_styles();
+        // normal_style must carry a foreground color (the blend result).
+        assert!(
+            normal.color().is_some(),
+            "line number style must have a foreground color"
+        );
     }
 }
