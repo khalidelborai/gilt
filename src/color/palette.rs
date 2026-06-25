@@ -4,6 +4,36 @@
 //! including ANSI standard, 8-bit, and Windows console palettes.
 
 use crate::color::color_triplet::ColorTriplet;
+use lru::LruCache;
+use std::cell::RefCell;
+use std::num::NonZeroUsize;
+
+// Per-thread LRU cache: (palette-data-pointer, ColorTriplet) -> index.
+//
+// `match_color` is on the hot path for downgrade / palette rendering;
+// caching avoids a full linear scan of the palette for repeat lookups
+// (which are the common case: same RGB queried for many cells).
+//
+// Capacity 1024: well above the working set of a single screen of unique
+// RGB triplets, with bounded memory.
+//
+// Keyed by `(palette identity, triplet)` so STANDARD_PALETTE,
+// WINDOWS_PALETTE, and EIGHT_BIT_PALETTE do not collide. Identity is the
+// data pointer of the palette's underlying `Vec`; this is stable for
+// the static palettes and for any `Palette` instance that owns its
+// `colors` vec (clones share the same pointer via `Vec::clone`, which is
+// intentional — a cloned palette is semantically the same data).
+thread_local! {
+    static MATCH_COLOR_CACHE: RefCell<LruCache<(*const u8, ColorTriplet), usize>> =
+        RefCell::new(LruCache::new(NonZeroUsize::new(1024).unwrap()));
+}
+
+#[cfg(test)]
+// Test-only counter: number of cache misses in the current thread.
+// Reset at thread start (thread_local). Read via `match_color_misses`.
+std::thread_local! {
+    static MATCH_COLOR_MISSES: RefCell<u64> = const { RefCell::new(0) };
+}
 
 /// A palette of RGB colors.
 #[derive(Debug, Clone)]
@@ -40,8 +70,31 @@ impl Palette {
     /// Finds the index of the closest matching color in the palette.
     ///
     /// Uses the "redmean" weighted Euclidean distance formula for
-    /// perceptually accurate color matching.
+    /// perceptually accurate color matching. Results are memoised in a
+    /// thread-local LRU keyed by `(palette identity, triplet)` so repeat
+    /// lookups skip the linear scan (Phase 7 perf fix).
     pub fn match_color(&self, color: &ColorTriplet) -> usize {
+        // Identity by data pointer: stable for the static palettes and for
+        // any instance that owns its `colors` vec. Cast through `*const u8`
+        // (a `*const (u8, u8, u8)` would still be a valid `Hash`/`Eq` key,
+        // but `*const u8` is the canonical erased-pointer type).
+        let key = (self.colors.as_ptr() as *const u8, *color);
+        MATCH_COLOR_CACHE.with(|cache| {
+            let mut cache = cache.borrow_mut();
+            if let Some(&idx) = cache.get(&key) {
+                return idx;
+            }
+            // Cache miss: run the linear scan and record the result.
+            #[cfg(test)]
+            MATCH_COLOR_MISSES.with(|m| *m.borrow_mut() += 1);
+            let idx = self.match_color_uncached(color);
+            cache.put(key, idx);
+            idx
+        })
+    }
+
+    /// Pure (uncached) implementation of [`Self::match_color`].
+    fn match_color_uncached(&self, color: &ColorTriplet) -> usize {
         let red1 = color.red as i32;
         let green1 = color.green as i32;
         let blue1 = color.blue as i32;
@@ -171,6 +224,20 @@ fn generate_eight_bit_palette() -> Vec<(u8, u8, u8)> {
 /// 8-bit (256-color) ANSI palette.
 pub static EIGHT_BIT_PALETTE: std::sync::LazyLock<Palette> =
     std::sync::LazyLock::new(|| Palette::new(generate_eight_bit_palette()));
+
+#[cfg(test)]
+/// Test-only accessor: number of entries in the match_color thread-local
+/// cache (across all palettes, in the current thread).
+fn match_color_cache_size() -> usize {
+    MATCH_COLOR_CACHE.with(|c| c.borrow().len())
+}
+
+#[cfg(test)]
+/// Test-only accessor: cumulative miss count for the match_color cache in
+/// the current thread. Monotonic across the thread's lifetime.
+fn match_color_misses() -> u64 {
+    MATCH_COLOR_MISSES.with(|m| *m.borrow())
+}
 
 #[cfg(test)]
 mod tests {
@@ -344,5 +411,54 @@ mod tests {
 
         // Should match green (index 1) or olive (index 3), not red or blue
         assert!(matched == 1 || matched == 3);
+    }
+    #[test]
+    fn match_color_uses_thread_local_cache() {
+        // Task 3 (Phase 7): Palette::match_color must cache (palette, triplet)
+        // -> index lookups in a thread-local LRU. Verify by:
+        //   1. miss counter is 0 on a fresh thread-local state (best-effort:
+        //      see RESET below — counter is monotonic across tests, so we
+        //      snapshot the baseline and assert the *delta*).
+        //   2. first call for a triplet increments miss counter by 1.
+        //   3. repeat call for the same triplet does NOT increment miss
+        //      counter (cache hit).
+        //   4. cache_size() grows with unique triplets and is bounded.
+        let palette = STANDARD_PALETTE.clone();
+        let triplet_a = ColorTriplet::new(120, 60, 30);
+        let triplet_b = ColorTriplet::new(50, 200, 80);
+        let triplet_c = ColorTriplet::new(10, 10, 200);
+
+        let baseline_misses = match_color_misses();
+        let baseline_size = match_color_cache_size();
+
+        // First call for each unique triplet — each should miss.
+        let idx_a1 = palette.match_color(&triplet_a);
+        let idx_b1 = palette.match_color(&triplet_b);
+        let idx_c1 = palette.match_color(&triplet_c);
+        let misses_after_first = match_color_misses();
+        assert_eq!(
+            misses_after_first - baseline_misses,
+            3,
+            "first calls for 3 unique triplets must each miss the cache",
+        );
+        assert_eq!(
+            match_color_cache_size() - baseline_size,
+            3,
+            "cache must hold 3 entries after 3 unique lookups",
+        );
+
+        // Repeat calls — all must hit the cache (deterministic result, no
+        // new misses).
+        let idx_a2 = palette.match_color(&triplet_a);
+        let idx_b2 = palette.match_color(&triplet_b);
+        let idx_c2 = palette.match_color(&triplet_c);
+        assert_eq!(idx_a2, idx_a1);
+        assert_eq!(idx_b2, idx_b1);
+        assert_eq!(idx_c2, idx_c1);
+        let misses_after_repeat = match_color_misses();
+        assert_eq!(
+            misses_after_repeat, misses_after_first,
+            "repeat calls must be cache hits (no new misses)",
+        );
     }
 }
