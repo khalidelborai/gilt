@@ -32,9 +32,7 @@
         font-family: arial;
     }
 
-        .gilt-demo-tree-s1 { fill: #00823d }
-    .gilt-demo-tree-s2 { fill: #68a0b3; font-weight: bold }
-    .gilt-demo-tree-s3 { fill: #608ab1; font-weight: bold }
+        .gilt-demo-tree-s1 { font-weight: bold }
 
     </style>
 
@@ -42,41 +40,48 @@
     <clipPath id="gilt-demo-tree-clip-terminal">
       <rect x="0" y="0" width="895" height="268" />
     </clipPath>
-    
+        <clipPath id="gilt-demo-tree-line-0"><rect x="0" y="40.0" width="895.0" height="24.4"/></clipPath>
+    <clipPath id="gilt-demo-tree-line-1"><rect x="0" y="64.4" width="895.0" height="24.4"/></clipPath>
+    <clipPath id="gilt-demo-tree-line-2"><rect x="0" y="88.8" width="895.0" height="24.4"/></clipPath>
+    <clipPath id="gilt-demo-tree-line-3"><rect x="0" y="113.2" width="895.0" height="24.4"/></clipPath>
+    <clipPath id="gilt-demo-tree-line-4"><rect x="0" y="137.6" width="895.0" height="24.4"/></clipPath>
+    <clipPath id="gilt-demo-tree-line-5"><rect x="0" y="162.0" width="895.0" height="24.4"/></clipPath>
+    <clipPath id="gilt-demo-tree-line-6"><rect x="0" y="186.4" width="895.0" height="24.4"/></clipPath>
+    <clipPath id="gilt-demo-tree-line-7"><rect x="0" y="210.8" width="895.0" height="24.4"/></clipPath>
+    <clipPath id="gilt-demo-tree-line-8"><rect x="0" y="235.2" width="895.0" height="24.4"/></clipPath>
+
     </defs>
 
     <rect fill="#292929" stroke="rgba(255,255,255,0.35)" stroke-width="1" x="0" y="0" width="895" height="268" rx="8"/>
-    <circle cx="16" cy="18" r="5" fill="#ff5f57"/>
-    <circle cx="38" cy="18" r="5" fill="#febc2e"/>
-    <circle cx="60" cy="18" r="5" fill="#28c840"/>
-    <text class="gilt-demo-tree-title" fill="#c5c8c6" x="447.5" y="23" text-anchor="middle">gilt tree</text>
+    <circle cx="26" cy="22" r="7" fill="#ff5f57"/>
+    <circle cx="48" cy="22" r="7" fill="#febc2e"/>
+    <circle cx="70" cy="22" r="7" fill="#28c840"/>
+    <text class="gilt-demo-tree-title" fill="#c5c8c6" x="447.5" y="30" text-anchor="middle">gilt tree</text>
 
     <g transform="translate(1, 1)" clip-path="url(#gilt-demo-tree-clip-terminal)">
     
     <g class="gilt-demo-tree-matrix">
-        <text class="gilt-demo-tree-s1" x="8.0" y="64.4" textLength="268.4">──────────────────────</text>
-    <text fill="#c5c8c6" x="276.4" y="64.4" textLength="12.2"> </text>
-    <text fill="#c5c8c6" x="288.6" y="64.4" textLength="305.0">dependency tree (excerpt)</text>
-    <text fill="#c5c8c6" x="593.6" y="64.4" textLength="12.2"> </text>
-    <text class="gilt-demo-tree-s1" x="605.8" y="64.4" textLength="280.6">───────────────────────</text>
-    <text class="gilt-demo-tree-s2" x="8.0" y="88.8" textLength="134.2">gilt 1.10.0</text>
-    <text fill="#c5c8c6" x="8.0" y="113.2" textLength="48.8">├── </text>
-    <text class="gilt-demo-tree-s3" x="56.8" y="113.2" textLength="231.8">pulldown-cmark 0.12</text>
-    <text fill="#c5c8c6" x="8.0" y="137.6" textLength="48.8">│   </text>
-    <text fill="#c5c8c6" x="56.8" y="137.6" textLength="48.8">└── </text>
-    <text fill="#c5c8c6" x="105.6" y="137.6" textLength="134.2">unicase 2.8</text>
-    <text fill="#c5c8c6" x="8.0" y="162.0" textLength="48.8">├── </text>
-    <text class="gilt-demo-tree-s3" x="56.8" y="162.0" textLength="109.8">syntect 5</text>
-    <text fill="#c5c8c6" x="8.0" y="186.4" textLength="48.8">│   </text>
-    <text fill="#c5c8c6" x="56.8" y="186.4" textLength="48.8">├── </text>
-    <text fill="#c5c8c6" x="105.6" y="186.4" textLength="183.0">regex-fancy 0.x</text>
-    <text fill="#c5c8c6" x="8.0" y="210.8" textLength="48.8">│   </text>
-    <text fill="#c5c8c6" x="56.8" y="210.8" textLength="48.8">└── </text>
-    <text fill="#c5c8c6" x="105.6" y="210.8" textLength="85.4">serde 1</text>
-    <text fill="#c5c8c6" x="8.0" y="235.2" textLength="48.8">├── </text>
-    <text fill="#c5c8c6" x="56.8" y="235.2" textLength="207.4">unicode-width 0.2</text>
-    <text fill="#c5c8c6" x="8.0" y="259.6" textLength="48.8">└── </text>
-    <text fill="#c5c8c6" x="56.8" y="259.6" textLength="183.0">compact_str 0.8</text>
+        <text fill="#c5c8c6" x="8.0" y="64.4" textLength="268.4" clip-path="url(#gilt-demo-tree-line-0)">──────────────────────</text>
+    <text fill="#c5c8c6" x="288.6" y="64.4" textLength="305.0" clip-path="url(#gilt-demo-tree-line-0)">dependency tree (excerpt)</text>
+    <text fill="#c5c8c6" x="605.8" y="64.4" textLength="280.6" clip-path="url(#gilt-demo-tree-line-0)">───────────────────────</text>
+    <text class="gilt-demo-tree-s1" x="8.0" y="88.8" textLength="134.2" clip-path="url(#gilt-demo-tree-line-1)">gilt 1.10.0</text>
+    <text fill="#c5c8c6" x="8.0" y="113.2" textLength="48.8" clip-path="url(#gilt-demo-tree-line-2)">├── </text>
+    <text class="gilt-demo-tree-s1" x="56.8" y="113.2" textLength="231.8" clip-path="url(#gilt-demo-tree-line-2)">pulldown-cmark 0.12</text>
+    <text fill="#c5c8c6" x="8.0" y="137.6" textLength="48.8" clip-path="url(#gilt-demo-tree-line-3)">│   </text>
+    <text fill="#c5c8c6" x="56.8" y="137.6" textLength="48.8" clip-path="url(#gilt-demo-tree-line-3)">└── </text>
+    <text fill="#c5c8c6" x="105.6" y="137.6" textLength="134.2" clip-path="url(#gilt-demo-tree-line-3)">unicase 2.8</text>
+    <text fill="#c5c8c6" x="8.0" y="162.0" textLength="48.8" clip-path="url(#gilt-demo-tree-line-4)">├── </text>
+    <text class="gilt-demo-tree-s1" x="56.8" y="162.0" textLength="109.8" clip-path="url(#gilt-demo-tree-line-4)">syntect 5</text>
+    <text fill="#c5c8c6" x="8.0" y="186.4" textLength="48.8" clip-path="url(#gilt-demo-tree-line-5)">│   </text>
+    <text fill="#c5c8c6" x="56.8" y="186.4" textLength="48.8" clip-path="url(#gilt-demo-tree-line-5)">├── </text>
+    <text fill="#c5c8c6" x="105.6" y="186.4" textLength="183.0" clip-path="url(#gilt-demo-tree-line-5)">regex-fancy 0.x</text>
+    <text fill="#c5c8c6" x="8.0" y="210.8" textLength="48.8" clip-path="url(#gilt-demo-tree-line-6)">│   </text>
+    <text fill="#c5c8c6" x="56.8" y="210.8" textLength="48.8" clip-path="url(#gilt-demo-tree-line-6)">└── </text>
+    <text fill="#c5c8c6" x="105.6" y="210.8" textLength="85.4" clip-path="url(#gilt-demo-tree-line-6)">serde 1</text>
+    <text fill="#c5c8c6" x="8.0" y="235.2" textLength="48.8" clip-path="url(#gilt-demo-tree-line-7)">├── </text>
+    <text fill="#c5c8c6" x="56.8" y="235.2" textLength="207.4" clip-path="url(#gilt-demo-tree-line-7)">unicode-width 0.2</text>
+    <text fill="#c5c8c6" x="8.0" y="259.6" textLength="48.8" clip-path="url(#gilt-demo-tree-line-8)">└── </text>
+    <text fill="#c5c8c6" x="56.8" y="259.6" textLength="183.0" clip-path="url(#gilt-demo-tree-line-8)">compact_str 0.8</text>
 
     </g>
     </g>

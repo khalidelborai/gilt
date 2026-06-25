@@ -148,6 +148,11 @@ pub(super) fn build_svg_text(
              height=\"{line_height:.1}\"/></clipPath>",
         )
         .unwrap();
+        // Phase 7.28: the per-line clipPath def is now functional — attach a
+        // `clip-path` reference to every <text> on this line so the rect
+        // actually clips the line's content (matches rich's per-text
+        // `clip_path=...` kwarg at research_doc/10-export.md:475).
+        let clip_path = format!(" clip-path=\"url(#{unique_id}-line-{line_idx})\"");
 
         x = padding_left;
         for seg in line {
@@ -215,8 +220,8 @@ pub(super) fn build_svg_text(
                     writeln!(
                         matrix,
                         "    <text fill=\"{}\" x=\"{:.1}\" y=\"{:.1}\" \
-                         textLength=\"{:.1}\">{}</text>",
-                        blended_hex, x, y, text_width, escaped
+                         textLength=\"{:.1}\"{}>{}</text>",
+                        blended_hex, x, y, text_width, clip_path, escaped
                     )
                     .unwrap();
                 } else {
@@ -231,19 +236,20 @@ pub(super) fn build_svg_text(
                         writeln!(
                             matrix,
                             "    <text class=\"{}\" x=\"{:.1}\" y=\"{:.1}\" \
-                             textLength=\"{:.1}\">{}</text>",
-                            class_name, x, y, text_width, escaped
+                             textLength=\"{:.1}\"{}>{}</text>",
+                            class_name, x, y, text_width, clip_path, escaped
                         )
                         .unwrap();
                     } else {
                         writeln!(
                             matrix,
                             "    <text fill=\"{}\" x=\"{:.1}\" y=\"{:.1}\" \
-                             textLength=\"{:.1}\">{}</text>",
+                             textLength=\"{:.1}\"{}>{}</text>",
                             theme.foreground_color.hex(),
                             x,
                             y,
                             text_width,
+                            clip_path,
                             escaped
                         )
                         .unwrap();
@@ -253,11 +259,12 @@ pub(super) fn build_svg_text(
                 writeln!(
                     matrix,
                     "    <text fill=\"{}\" x=\"{:.1}\" y=\"{:.1}\" \
-                     textLength=\"{:.1}\">{}</text>",
+                     textLength=\"{:.1}\"{}>{}</text>",
                     theme.foreground_color.hex(),
                     x,
                     y,
                     text_width,
+                    clip_path,
                     escaped
                 )
                 .unwrap();
