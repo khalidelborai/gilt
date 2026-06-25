@@ -80,6 +80,24 @@ fn main() {
     let styled_spark = Sparkline::new(&triangle).with_style(Style::parse("bold yellow on blue"));
     console.print(&styled_spark);
 
+    // -- Min/max markers (gilt 2.2) ------------------------------------------
+    // Highlight the extreme data points: the lowest cell in blue, the highest in
+    // bold red. Backward-compatible — markers are off unless enabled.
+    console.print(&Rule::with_title(
+        "Min/Max markers (low=blue, high=bold red)",
+    ));
+
+    let series: Vec<f64> = vec![
+        30.0, 45.0, 38.0, 62.0, 55.0, 91.0, 70.0, 48.0, 12.0, 33.0, 58.0, 80.0, 44.0,
+    ];
+    let marked = Sparkline::new(&series)
+        .with_width(40)
+        .with_style(Style::parse("dim white"))
+        .with_min_max_markers(true)
+        .with_min_style(Style::parse("blue"))
+        .with_max_style(Style::parse("bold red"));
+    console.print(&marked);
+
     // -- Display trait -------------------------------------------------------
     console.print(&Rule::with_title("Display Trait (via println!)"));
     let display_spark = Sparkline::new(&[1.0, 4.0, 7.0, 2.0, 5.0, 8.0, 3.0, 6.0]);
