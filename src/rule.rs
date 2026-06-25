@@ -4,6 +4,7 @@
 use crate::align_widget::HorizontalAlign;
 use crate::cells::{cell_len, set_cell_size};
 use crate::console::{Console, ConsoleOptions, Renderable};
+use crate::measure::Measurement;
 use crate::segment::Segment;
 use crate::style::Style;
 use crate::text::{OverflowMethod, Text};
@@ -241,8 +242,9 @@ impl Renderable for Rule {
                         segments.push(Segment::new(&self.end, None, None));
                     }
                     HorizontalAlign::Left => {
-                        // Left: "title  rule_chars..."
-                        let title_max_width = width.saturating_sub(min_side + 2);
+                        // Left: "title rule_chars..."
+                        // Reserve only the 1 space separator (rich reserves 2 for left/right).
+                        let title_max_width = width.saturating_sub(2);
                         if title_max_width == 0 || title_text.cell_len() == 0 {
                             let line_text = rule_with_chars.rule_line(width);
                             let exact = set_cell_size(&line_text, width);
@@ -273,8 +275,9 @@ impl Renderable for Rule {
                         segments.push(Segment::new(&self.end, None, None));
                     }
                     HorizontalAlign::Right => {
-                        // Right: "rule_chars...  title"
-                        let title_max_width = width.saturating_sub(min_side + 2);
+                        // Right: "rule_chars... title"
+                        // Reserve only the 1 space separator (rich reserves 2 for left/right).
+                        let title_max_width = width.saturating_sub(2);
                         if title_max_width == 0 || title_text.cell_len() == 0 {
                             let line_text = rule_with_chars.rule_line(width);
                             let exact = set_cell_size(&line_text, width);
@@ -308,8 +311,11 @@ impl Renderable for Rule {
                 }
             }
         }
-
         segments
+    }
+
+    fn gilt_measure(&self, _console: &Console, _options: &ConsoleOptions) -> Measurement {
+        Measurement::new(1, 1)
     }
 }
 
@@ -552,6 +558,45 @@ mod tests {
         assert_eq!(cell_len(line), 10);
     }
 
+    // -- Left/right title truncation (Phase 7) ------------------------------
+
+    /// Phase 7 — rich's `Rule` reserves `width - 2` for the title when aligned
+    /// left/right. Rust was subtracting `min_side + 2 = 3`, truncating one
+    /// character too early. With a 10-cell rule and 8-char title the title
+    /// should fit (8 + space + 1 char = 10).
+    #[test]
+    fn test_left_title_keeps_eight_chars_at_width_ten() {
+        let console = make_console(10);
+        let rule = Rule::with_title("01234567")
+            .with_characters("-")
+            .with_align(HorizontalAlign::Left);
+        let output = render_rule(&console, &rule);
+        let line = output.trim_end_matches('\n');
+        assert_eq!(cell_len(line), 10);
+        // The full 8-char title should fit (width=10: 8 title + 1 space + 1 dash).
+        assert!(
+            line.starts_with("01234567"),
+            "expected full title to fit at left alignment; got: {:?}",
+            line
+        );
+    }
+
+    #[test]
+    fn test_right_title_keeps_eight_chars_at_width_ten() {
+        let console = make_console(10);
+        let rule = Rule::with_title("01234567")
+            .with_characters("-")
+            .with_align(HorizontalAlign::Right);
+        let output = render_rule(&console, &rule);
+        let line = output.trim_end_matches('\n');
+        assert_eq!(cell_len(line), 10);
+        assert!(
+            line.ends_with("01234567"),
+            "expected full title to fit at right alignment; got: {:?}",
+            line
+        );
+    }
+
     // -- Newline end --------------------------------------------------------
 
     #[test]
@@ -629,5 +674,30 @@ mod tests {
                 .filter(|s| s.text.contains("42"))
                 .collect::<Vec<_>>()
         );
+    }
+
+    // -- gilt_measure override (Phase 7) ------------------------------------
+
+    /// Phase 7 — rich's `Rule.__rich_measure__` returns `Measurement(1, 1)`
+    /// because a rule can render at any width. The default full-render
+    /// measurement is unnecessarily expensive; this overrides it.
+    #[test]
+    fn test_gilt_measure_returns_one_one() {
+        let console = make_console(80);
+        let opts = console.options();
+        let rule = Rule::with_title("Section").with_characters("-");
+        let m = rule.gilt_measure(&console, &opts);
+        assert_eq!(m.minimum, 1);
+        assert_eq!(m.maximum, 1);
+    }
+
+    #[test]
+    fn test_gilt_measure_one_one_with_no_title() {
+        let console = make_console(80);
+        let opts = console.options();
+        let rule = Rule::new();
+        let m = rule.gilt_measure(&console, &opts);
+        assert_eq!(m.minimum, 1);
+        assert_eq!(m.maximum, 1);
     }
 }

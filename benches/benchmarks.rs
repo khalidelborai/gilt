@@ -5,6 +5,7 @@ use criterion::{black_box, criterion_group, criterion_main, BatchSize, Criterion
 use gilt::cells::set_cell_size;
 use gilt::color::{Color, ColorSystem};
 use gilt::color_triplet::ColorTriplet;
+use gilt::console::Console;
 use gilt::console::ConsoleBuilder;
 use gilt::control::{escape_control_codes, strip_control_codes};
 use gilt::emoji_replace::emoji_replace;
@@ -124,11 +125,20 @@ fn bench_text_operations(c: &mut Criterion) {
         let _ = big_text.len();
         b.iter(|| black_box(&big_text).len());
     });
-
     // wrap
+    let shared_console = Console::new();
     let short_text = Text::new("Hello, World!", Style::null());
     group.bench_function("wrap_short", |b| {
-        b.iter(|| short_text.wrap(black_box(80), None, None, 4, false));
+        b.iter(|| {
+            short_text.wrap(
+                black_box(&shared_console),
+                black_box(80),
+                None,
+                None,
+                4,
+                false,
+            )
+        });
     });
 
     let paragraph = "The quick brown fox jumps over the lazy dog. \
@@ -138,7 +148,16 @@ fn bench_text_operations(c: &mut Criterion) {
         Sphinx of black quartz, judge my vow.";
     let para_text = Text::new(paragraph, Style::null());
     group.bench_function("wrap_paragraph", |b| {
-        b.iter(|| para_text.wrap(black_box(40), None, None, 4, false));
+        b.iter(|| {
+            para_text.wrap(
+                black_box(&shared_console),
+                black_box(40),
+                None,
+                None,
+                4,
+                false,
+            )
+        });
     });
 
     let styled_para = Text::from_markup(
@@ -148,7 +167,16 @@ fn bench_text_operations(c: &mut Criterion) {
     )
     .unwrap();
     group.bench_function("wrap_styled_paragraph", |b| {
-        b.iter(|| styled_para.wrap(black_box(40), None, None, 4, false));
+        b.iter(|| {
+            styled_para.wrap(
+                black_box(&shared_console),
+                black_box(40),
+                None,
+                None,
+                4,
+                false,
+            )
+        });
     });
 
     // truncate

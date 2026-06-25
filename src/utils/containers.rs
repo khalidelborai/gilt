@@ -122,7 +122,7 @@ impl Renderable for Lines {
 mod tests {
     use super::*;
     use crate::style::Style;
-    use crate::text::{JustifyMethod, Lines, OverflowMethod, Text};
+    use crate::text::{JustifyMethod, Lines, OverflowMethod, Span, Text};
     use crate::widgets::table::Table;
 
     fn make_console() -> Console {
@@ -472,11 +472,12 @@ mod tests {
 
     #[test]
     fn test_lines_justify_left() {
+        let console = make_console();
         let mut lines = Lines::new(vec![
             Text::new("Hi", Style::null()),
             Text::new("Hello", Style::null()),
         ]);
-        lines.justify(10, JustifyMethod::Left, OverflowMethod::Fold);
+        lines.justify(&console, 10, JustifyMethod::Left, OverflowMethod::Fold);
         // Left justify truncates with padding to width
         assert_eq!(lines[0].cell_len(), 10);
         assert_eq!(lines[1].cell_len(), 10);
@@ -488,20 +489,20 @@ mod tests {
 
     #[test]
     fn test_lines_justify_center() {
+        let console = make_console();
         let mut lines = Lines::new(vec![Text::new("Hi", Style::null())]);
-        lines.justify(10, JustifyMethod::Center, OverflowMethod::Fold);
+        lines.justify(&console, 10, JustifyMethod::Center, OverflowMethod::Fold);
         let plain = lines[0].plain().to_string();
         assert_eq!(lines[0].cell_len(), 10);
         // "Hi" is 2 chars, centered in 10: left_pad=4, right_pad=4
         assert_eq!(plain, "    Hi    ");
     }
 
-    // -- Lines: justify right -----------------------------------------------
-
     #[test]
     fn test_lines_justify_right() {
+        let console = make_console();
         let mut lines = Lines::new(vec![Text::new("Hi", Style::null())]);
-        lines.justify(10, JustifyMethod::Right, OverflowMethod::Fold);
+        lines.justify(&console, 10, JustifyMethod::Right, OverflowMethod::Fold);
         let plain = lines[0].plain().to_string();
         assert_eq!(lines[0].cell_len(), 10);
         // "Hi" is 2 chars, right justified in 10: 8 spaces then "Hi"
@@ -509,14 +510,14 @@ mod tests {
     }
 
     // -- Lines: justify full ------------------------------------------------
-
     #[test]
     fn test_lines_justify_full() {
+        let console = make_console();
         let mut lines = Lines::new(vec![
             Text::new("a b c", Style::null()),
             Text::new("end", Style::null()),
         ]);
-        lines.justify(10, JustifyMethod::Full, OverflowMethod::Fold);
+        lines.justify(&console, 10, JustifyMethod::Full, OverflowMethod::Fold);
         // First line "a b c" (5 chars) should be expanded to 10 with extra spaces
         // between words. Last line should be left-justified.
         let first = lines[0].plain().to_string();
@@ -530,12 +531,13 @@ mod tests {
 
     #[test]
     fn test_lines_justify_full_multiple_words() {
+        let console = make_console();
         let mut lines = Lines::new(vec![
             Text::new("aa bb cc dd", Style::null()),
             Text::new("last", Style::null()),
         ]);
         // "aa bb cc dd" = 11 chars, width = 15 -> 4 extra spaces among 3 gaps
-        lines.justify(15, JustifyMethod::Full, OverflowMethod::Fold);
+        lines.justify(&console, 15, JustifyMethod::Full, OverflowMethod::Fold);
         let first = lines[0].plain().to_string();
         assert_eq!(lines[0].cell_len(), 15);
         // Words should still be present
@@ -544,23 +546,23 @@ mod tests {
         assert!(first.contains("cc"));
         assert!(first.contains("dd"));
     }
-
     #[test]
     fn test_lines_justify_full_uneven_spacing() {
+        let console = make_console();
         let mut lines = Lines::new(vec![
             Text::new("a b c", Style::null()),
             Text::new("end", Style::null()),
         ]);
         // "a b c" = 5 chars, width = 9 -> 4 extra spaces among 2 gaps
         // 4/2 = 2 per gap, 0 remainder => "a   b   c"
-        lines.justify(9, JustifyMethod::Full, OverflowMethod::Fold);
+        lines.justify(&console, 9, JustifyMethod::Full, OverflowMethod::Fold);
         let first = lines[0].plain().to_string();
         assert_eq!(lines[0].cell_len(), 9);
         assert_eq!(first, "a   b   c");
     }
-
     #[test]
     fn test_lines_justify_full_odd_remainder() {
+        let console = make_console();
         let mut lines = Lines::new(vec![
             Text::new("a b c", Style::null()),
             Text::new("end", Style::null()),
@@ -569,24 +571,145 @@ mod tests {
         // 5/2 = 2 per gap, 1 remainder -> distributed right-to-left
         // gap 1 (between b and c) gets 3, gap 0 (between a and b) gets 2
         // => "a   b    c"
-        lines.justify(10, JustifyMethod::Full, OverflowMethod::Fold);
+        lines.justify(&console, 10, JustifyMethod::Full, OverflowMethod::Fold);
         let first = lines[0].plain().to_string();
         assert_eq!(lines[0].cell_len(), 10);
         assert!(first.starts_with('a'));
         assert!(first.ends_with('c'));
     }
-
     #[test]
     fn test_lines_justify_full_single_word() {
+        let console = make_console();
         let mut lines = Lines::new(vec![
             Text::new("hello", Style::null()),
             Text::new("end", Style::null()),
         ]);
         // Single word can't distribute spaces - should just truncate with padding
-        lines.justify(10, JustifyMethod::Full, OverflowMethod::Fold);
+        lines.justify(&console, 10, JustifyMethod::Full, OverflowMethod::Fold);
         let first = lines[0].plain().to_string();
         assert_eq!(lines[0].cell_len(), 10);
         assert!(first.starts_with("hello"));
+    }
+
+    // -- Lines: justify full with adjacent-word style (Phase 7) -------------
+
+    /// Phase 7 — `Full` justification should resolve the inter-word space
+    /// style from the adjacent word's style. With equal adjacent styles the
+    /// space carries that style; with different adjacent styles it falls back
+    /// to the line's root style (rich's `Lines.justify` contract).
+    #[test]
+    fn test_lines_justify_full_adjacent_word_style_equal() {
+        let console = make_console();
+        let red = Style::parse("red");
+        let mut text = Text::new("A B", Style::null());
+        text.spans_mut().push(Span::new(0, 1, red.clone())); // "A" red
+        text.spans_mut().push(Span::new(2, 3, red.clone())); // "B" red
+        let mut lines = Lines::new(vec![text, Text::new("end", Style::null())]);
+        lines.justify(&console, 5, JustifyMethod::Full, OverflowMethod::Fold);
+        // "A B" (3 chars) -> "A   B" (5 chars; gap 1..4 = 3 spaces).
+        assert_eq!(lines[0].plain(), "A   B");
+        assert_eq!(lines[0].cell_len(), 5);
+        // Gap must be covered by a span carrying the adjacent word's style
+        // (red, since both adjacent words are red).
+        let spans = lines[0].spans();
+        let gap = spans
+            .iter()
+            .find(|s| s.start == 1 && s.end == 4)
+            .expect("gap between A and B must be covered by a span");
+        assert_eq!(gap.style, red);
+    }
+
+    #[test]
+    fn test_lines_justify_full_adjacent_word_style_differs() {
+        let console = make_console();
+        let red = Style::parse("red");
+        let blue = Style::parse("blue");
+        let line_style = Style::parse("italic");
+        let mut text = Text::new("A B", line_style.clone());
+        text.spans_mut().push(Span::new(0, 1, red.clone())); // "A" red
+        text.spans_mut().push(Span::new(2, 3, blue.clone())); // "B" blue
+        let mut lines = Lines::new(vec![text, Text::new("end", Style::null())]);
+        lines.justify(&console, 5, JustifyMethod::Full, OverflowMethod::Fold);
+        assert_eq!(lines[0].plain(), "A   B");
+        let spans = lines[0].spans();
+        let gap = spans
+            .iter()
+            .find(|s| s.start == 1 && s.end == 4)
+            .expect("gap between A and B must be covered by a span");
+        // Adjacent styles differ -> rich falls back to the line's root style.
+        assert_eq!(gap.style, line_style);
+    }
+
+    /// Phase 7 — multi-gap styled justification. Three styled words with two
+    /// gaps; verify BOTH gaps are independently styled and that
+    /// `running_shift` correctly offsets the second gap's span start.
+    #[test]
+    fn test_lines_justify_full_multi_gap_styled() {
+        let console = make_console();
+        let red = Style::parse("red");
+        let blue = Style::parse("blue");
+        // "aa bb cc" -> 8 chars; width=11 -> 3 extras, 2 gaps -> per_gap=1, remainder=1.
+        // Right-to-left distribution: gap[1] (between bb and cc) gets the
+        // remainder -> extras = [1, 2]. New text = "aa bb  cc" (11 chars).
+        let mut text = Text::new("aa bb cc", Style::null());
+        text.spans_mut().push(Span::new(0, 2, red.clone())); // "aa"
+        text.spans_mut().push(Span::new(3, 5, blue.clone())); // "bb"
+        text.spans_mut().push(Span::new(6, 8, red.clone())); // "cc"
+        let mut lines = Lines::new(vec![text, Text::new("end", Style::null())]);
+        lines.justify(&console, 11, JustifyMethod::Full, OverflowMethod::Fold);
+        // "aa bb cc" -> 8 chars; width=11 -> 3 extras, 2 gaps -> per_gap=1, remainder=1.
+        // Right-to-left distribution: gap[1] (between bb and cc) gets the
+        // remainder -> extras = [1, 2]. New text = "aa  bb   cc" (11 chars):
+        // gap0 [2..4] (2 spaces), gap1 [6..9] (3 spaces).
+        assert_eq!(lines[0].plain(), "aa  bb   cc");
+        let spans = lines[0].spans();
+        // Gap 0 (aa|bb): red vs blue -> differ -> falls back to line.style (null).
+        let gap0 = spans
+            .iter()
+            .find(|s| s.start == 2 && s.end == 4)
+            .expect("gap 0 (between aa and bb) must be covered");
+        assert_eq!(gap0.style, Style::null());
+        // Gap 1 (bb|cc): blue vs red -> differ -> falls back to line.style (null).
+        // Position: sp_pos=5, running_shift after gap 0 = 1, gap_len=1+2=3.
+        let gap1 = spans
+            .iter()
+            .find(|s| s.start == 6 && s.end == 9)
+            .expect("gap 1 (between bb and cc) must be covered");
+        assert_eq!(gap1.style, Style::null());
+    }
+
+    /// Phase 7 — multi-gap with one equal-styled and one differing gap. The
+    /// equal gap should carry the shared style; the differing gap should
+    /// fall back to the line's root style.
+    #[test]
+    fn test_lines_justify_full_mixed_styled_gaps() {
+        let console = make_console();
+        let red = Style::parse("red");
+        let italic = Style::parse("italic");
+        // "aa bb cc" -> 8 chars; width=10 -> 2 extras, 2 gaps -> per_gap=1, remainder=0.
+        // Both gaps get 1 extra. New text = "aa bb cc" with each gap = 2 chars.
+        let mut text = Text::new("aa bb cc", italic.clone());
+        text.spans_mut().push(Span::new(0, 2, red.clone())); // "aa"
+        text.spans_mut().push(Span::new(3, 5, red.clone())); // "bb"
+        text.spans_mut().push(Span::new(6, 8, Style::parse("blue"))); // "cc"
+        let mut lines = Lines::new(vec![text, Text::new("end", Style::null())]);
+        lines.justify(&console, 10, JustifyMethod::Full, OverflowMethod::Fold);
+        // Gap 0 (red/red equal) -> gap carries italic + red (line.style + span style).
+        // Gap 1 (red/blue differ) -> falls back to italic only.
+        // Both gap styles are themed-composed by get_style_at_offset_themed,
+        // which combines the line's root style with overlapping span styles.
+        let spans = lines[0].spans();
+        let italic_red = italic.clone() + red.clone();
+        let gap0 = spans
+            .iter()
+            .find(|s| s.start == 2 && s.end == 4)
+            .expect("gap 0 must be covered");
+        assert_eq!(gap0.style, italic_red);
+        let gap1 = spans
+            .iter()
+            .find(|s| s.start == 6 && s.end == 8)
+            .expect("gap 1 must be covered");
+        assert_eq!(gap1.style, italic);
     }
 
     // -- gilt_measure override -----------------------------------------------

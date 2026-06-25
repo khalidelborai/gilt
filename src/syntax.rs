@@ -605,7 +605,12 @@ impl Syntax {
     }
 
     /// Build the rendered segments for this Syntax object.
-    fn render_syntax(&self, max_width: usize, legacy_windows: bool) -> Vec<Segment> {
+    fn render_syntax(
+        &self,
+        console: &Console,
+        max_width: usize,
+        legacy_windows: bool,
+    ) -> Vec<Segment> {
         let (ends_on_nl, processed_code) = self.process_code();
         let mut text = self.highlight(&processed_code);
 
@@ -721,7 +726,7 @@ impl Syntax {
 
             if self.word_wrap && line_cell_len > code_width {
                 // Word wrap: split into wrapped segments
-                let wrapped = line.wrap(code_width, None, None, self.tab_size, false);
+                let wrapped = line.wrap(console, code_width, None, None, self.tab_size, false);
                 for (wi, wline) in wrapped.iter().enumerate() {
                     if wi > 0 && self.line_numbers {
                         // Continuation line: pad the gutter
@@ -825,8 +830,8 @@ impl Syntax {
 
 /// Implement the Renderable trait so Syntax can be printed by Console.
 impl Renderable for Syntax {
-    fn gilt_console(&self, _console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
-        self.render_syntax(options.max_width, options.legacy_windows)
+    fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
+        self.render_syntax(console, options.max_width, options.legacy_windows)
     }
 
     fn gilt_measure(&self, console: &Console, options: &ConsoleOptions) -> Measurement {
@@ -957,7 +962,7 @@ mod tests {
     fn test_basic_rust_highlighting() {
         let code = "fn main() {\n    println!(\"Hello\");\n}\n";
         let syntax = Syntax::new(code, "rs");
-        let segments = syntax.render_syntax(80, false);
+        let segments = syntax.render_syntax(&Console::new(), 80, false);
         let text: String = segments.iter().map(|s| s.text.as_str()).collect();
         assert!(text.contains("fn"));
         assert!(text.contains("main"));
@@ -968,7 +973,7 @@ mod tests {
     fn test_python_highlighting() {
         let code = "def hello():\n    print(\"Hello\")\n";
         let syntax = Syntax::new(code, "py");
-        let segments = syntax.render_syntax(80, false);
+        let segments = syntax.render_syntax(&Console::new(), 80, false);
         let text: String = segments.iter().map(|s| s.text.as_str()).collect();
         assert!(text.contains("def"));
         assert!(text.contains("hello"));
@@ -978,7 +983,7 @@ mod tests {
     fn test_json_highlighting() {
         let code = "{\"key\": \"value\", \"num\": 42}\n";
         let syntax = Syntax::new(code, "json");
-        let segments = syntax.render_syntax(80, false);
+        let segments = syntax.render_syntax(&Console::new(), 80, false);
         let text: String = segments.iter().map(|s| s.text.as_str()).collect();
         assert!(text.contains("key"));
         assert!(text.contains("value"));
@@ -991,7 +996,7 @@ mod tests {
     fn test_line_numbers_enabled() {
         let code = "line one\nline two\nline three\n";
         let syntax = Syntax::new(code, "txt").with_line_numbers(true);
-        let segments = syntax.render_syntax(80, false);
+        let segments = syntax.render_syntax(&Console::new(), 80, false);
         let text: String = segments.iter().map(|s| s.text.as_str()).collect();
         assert!(text.contains("1"));
         assert!(text.contains("2"));
@@ -1002,7 +1007,7 @@ mod tests {
     fn test_line_numbers_disabled() {
         let code = "line one\nline two\n";
         let syntax = Syntax::new(code, "txt");
-        let segments = syntax.render_syntax(80, false);
+        let segments = syntax.render_syntax(&Console::new(), 80, false);
         // Without line numbers, should not have the gutter padding pattern
         let text: String = segments.iter().map(|s| s.text.as_str()).collect();
         assert!(text.contains("line one"));
@@ -1016,7 +1021,7 @@ mod tests {
         let syntax = Syntax::new(code, "txt")
             .with_line_numbers(true)
             .with_start_line(10);
-        let segments = syntax.render_syntax(80, false);
+        let segments = syntax.render_syntax(&Console::new(), 80, false);
         let text: String = segments.iter().map(|s| s.text.as_str()).collect();
         assert!(text.contains("10"));
         assert!(text.contains("11"));
@@ -1029,7 +1034,7 @@ mod tests {
     fn test_line_range() {
         let code = "line1\nline2\nline3\nline4\nline5\n";
         let syntax = Syntax::new(code, "txt").with_line_range((2, 4));
-        let segments = syntax.render_syntax(80, false);
+        let segments = syntax.render_syntax(&Console::new(), 80, false);
         let text: String = segments.iter().map(|s| s.text.as_str()).collect();
         assert!(text.contains("line2"));
         assert!(text.contains("line3"));
@@ -1044,7 +1049,7 @@ mod tests {
     fn test_word_wrap() {
         let code = "this is a very long line that should be wrapped when word wrap is enabled\n";
         let syntax = Syntax::new(code, "txt").with_word_wrap(true);
-        let segments = syntax.render_syntax(30, false);
+        let segments = syntax.render_syntax(&Console::new(), 30, false);
         let text: String = segments.iter().map(|s| s.text.as_str()).collect();
         // Should have line breaks from wrapping
         let newline_count = text.matches('\n').count();
@@ -1080,7 +1085,7 @@ mod tests {
     fn test_theme_base16_ocean_dark() {
         let code = "let x = 1;\n";
         let syntax = Syntax::new(code, "rs").with_theme("base16-ocean.dark");
-        let segments = syntax.render_syntax(80, false);
+        let segments = syntax.render_syntax(&Console::new(), 80, false);
         assert!(!segments.is_empty());
     }
 
@@ -1088,7 +1093,7 @@ mod tests {
     fn test_theme_base16_eighties_dark() {
         let code = "let x = 1;\n";
         let syntax = Syntax::new(code, "rs").with_theme("base16-eighties.dark");
-        let segments = syntax.render_syntax(80, false);
+        let segments = syntax.render_syntax(&Console::new(), 80, false);
         assert!(!segments.is_empty());
     }
 
@@ -1096,7 +1101,7 @@ mod tests {
     fn test_unknown_theme_fallback() {
         let code = "hello\n";
         let syntax = Syntax::new(code, "txt").with_theme("nonexistent-theme-xyz");
-        let segments = syntax.render_syntax(80, false);
+        let segments = syntax.render_syntax(&Console::new(), 80, false);
         // Should still render, using a fallback theme
         assert!(!segments.is_empty());
     }
@@ -1109,7 +1114,7 @@ mod tests {
         let syntax = Syntax::new(code, "txt")
             .with_line_numbers(true)
             .with_highlight_lines(vec![2]);
-        let segments = syntax.render_syntax(80, false);
+        let segments = syntax.render_syntax(&Console::new(), 80, false);
         // On modern terminals (legacy_windows=false) the pointer is ❱;
         // just verify some pointer character appears.
         let text: String = segments.iter().map(|s| s.text.as_str()).collect();
@@ -1125,7 +1130,7 @@ mod tests {
     fn test_unknown_language_fallback() {
         let code = "some random text\n";
         let syntax = Syntax::new(code, "zzzz_nonexistent");
-        let segments = syntax.render_syntax(80, false);
+        let segments = syntax.render_syntax(&Console::new(), 80, false);
         let text: String = segments.iter().map(|s| s.text.as_str()).collect();
         // Should fall back to plain text
         assert!(text.contains("some random text"));
@@ -1234,7 +1239,7 @@ mod tests {
     #[test]
     fn test_empty_code() {
         let syntax = Syntax::new("", "txt");
-        let segments = syntax.render_syntax(80, false);
+        let segments = syntax.render_syntax(&Console::new(), 80, false);
         // Should produce at least something (even if just a newline)
         let text: String = segments.iter().map(|s| s.text.as_str()).collect();
         // Empty code with added newline should produce one line
@@ -1246,7 +1251,7 @@ mod tests {
     #[test]
     fn test_single_line_code() {
         let syntax = Syntax::new("hello", "txt");
-        let segments = syntax.render_syntax(80, false);
+        let segments = syntax.render_syntax(&Console::new(), 80, false);
         let text: String = segments.iter().map(|s| s.text.as_str()).collect();
         assert!(text.contains("hello"));
     }
@@ -1257,7 +1262,7 @@ mod tests {
     fn test_code_with_special_characters() {
         let code = "let x = \"hello <world> & 'friends'\";\n";
         let syntax = Syntax::new(code, "rs");
-        let segments = syntax.render_syntax(80, false);
+        let segments = syntax.render_syntax(&Console::new(), 80, false);
         let text: String = segments.iter().map(|s| s.text.as_str()).collect();
         assert!(text.contains('<'));
         assert!(text.contains('>'));
@@ -1387,7 +1392,7 @@ mod tests {
     fn test_padding_top_bottom() {
         let mut syntax = Syntax::new("hello\n", "txt");
         syntax.padding = (1, 0, 1, 0);
-        let segments = syntax.render_syntax(40, false);
+        let segments = syntax.render_syntax(&Console::new(), 40, false);
         // With top=1, bottom=1, expect ≥3 newlines (top + code + bottom)
         let newline_count = segments.iter().filter(|s| s.text == "\n").count();
         assert!(
@@ -1418,7 +1423,7 @@ mod tests {
     fn test_line_range_out_of_bounds() {
         let code = "a\nb\n";
         let syntax = Syntax::new(code, "txt").with_line_range((10, 20));
-        let segments = syntax.render_syntax(80, false);
+        let segments = syntax.render_syntax(&Console::new(), 80, false);
         // Should produce nothing for the code area
         let text: String = segments
             .iter()
@@ -1434,7 +1439,7 @@ mod tests {
     fn test_segments_have_styles() {
         let code = "fn main() {}\n";
         let syntax = Syntax::new(code, "rs");
-        let segments = syntax.render_syntax(80, false);
+        let segments = syntax.render_syntax(&Console::new(), 80, false);
         // At least some segments should have styles
         let styled_count = segments.iter().filter(|s| s.style.is_some()).count();
         assert!(styled_count > 0, "expected some styled segments");
@@ -1460,7 +1465,7 @@ mod tests {
         let ts = &*THEME_SET;
         for theme_name in ts.themes.keys() {
             let syntax = Syntax::new(code, "rs").with_theme(theme_name);
-            let segments = syntax.render_syntax(80, false);
+            let segments = syntax.render_syntax(&Console::new(), 80, false);
             assert!(
                 !segments.is_empty(),
                 "theme '{}' produced no output",
@@ -1556,7 +1561,7 @@ mod tests {
             None,
         );
         syntax.stylize_range(red_style, 0..5, false);
-        let segments = syntax.render_syntax(80, false);
+        let segments = syntax.render_syntax(&Console::new(), 80, false);
         // The rendered segments should contain "hello" with a red foreground
         // Find the segment(s) covering "hello"
         let mut found_styled = false;
@@ -1596,7 +1601,7 @@ mod tests {
         let ts = ThemeSet::load_defaults();
         let theme = ts.themes["base16-ocean.dark"].clone();
         let syntax = Syntax::new("let x = 1;\n", "rs").with_syntect_theme(theme);
-        let segments = syntax.render_syntax(80, false);
+        let segments = syntax.render_syntax(&Console::new(), 80, false);
         assert!(
             !segments.is_empty(),
             "with_syntect_theme produced no output"
@@ -1699,7 +1704,7 @@ mod tests {
             None,
         );
         syntax.stylize_range(blue, 0..5, true);
-        let segments = syntax.render_syntax(80, false);
+        let segments = syntax.render_syntax(&Console::new(), 80, false);
         let text: String = segments.iter().map(|s| s.text.as_str()).collect();
         assert!(text.contains("hello"), "styled text must still appear");
     }
@@ -1732,7 +1737,7 @@ mod tests {
         let syntax = Syntax::new(code, "txt")
             .with_line_numbers(true)
             .with_highlight_lines(vec![2]);
-        let segments = syntax.render_syntax(80, false); // legacy_windows=false
+        let segments = syntax.render_syntax(&Console::new(), 80, false); // legacy_windows=false
         let text: String = segments.iter().map(|s| s.text.as_str()).collect();
         assert!(
             text.contains('❱'),
@@ -1751,7 +1756,7 @@ mod tests {
         let syntax = Syntax::new(code, "txt")
             .with_line_numbers(true)
             .with_highlight_lines(vec![2]);
-        let segments = syntax.render_syntax(80, true); // legacy_windows=true
+        let segments = syntax.render_syntax(&Console::new(), 80, true); // legacy_windows=true
         let text: String = segments.iter().map(|s| s.text.as_str()).collect();
         assert!(
             text.contains("> "),
