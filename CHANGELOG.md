@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.3.0] - 2026-06-25
+
+Inline images everywhere, two more charts, and richer Canvas demos. All
+dep-free and WASM-safe (native image decoding stays behind `inline-images`).
+
+### Added
+
+- **Markdown inline images** — `Markdown` renders `![alt](src)` as a real inline
+  image (auto-selecting Kitty / iTerm2 / Sixel / halfblock) when `src` is a local
+  file and the `inline-images` feature is on; the text/alt placeholder is kept for
+  remote URLs, missing files, and default/WASM builds.
+- **`LineChart` widget** — a Braille line plot: multiple series with per-series
+  styles, optional axes + y-range + legend, auto-scaling. Re-exported at the crate
+  root and prelude; see `examples/linechart.rs`.
+- **`Histogram` widget** — bins raw `f64` samples into a distribution rendered as
+  vertical block columns (`with_bins`/`with_range`/`with_height`). Re-exported;
+  see `examples/histogram.rs`.
+- **`GILT_IMAGE_PROTOCOL` override + broader detection** — set
+  `GILT_IMAGE_PROTOCOL=kitty|iterm|sixel|halfblock` to force the inline-image
+  protocol; `ConsoleCapabilities` also recognizes more Sixel/Kitty/iTerm2-capable
+  terminals from the environment.
+- **`Image::with_background` + halfblock alpha compositing** — the halfblock
+  renderer composites RGBA alpha over a configurable background (default opaque
+  black); fully-opaque pixels are byte-identical to before.
+- New Canvas examples: `canvas_plot` (function curves), `canvas_blitters` (the
+  same shape across Braille/Octant/Sextant/HalfBlock), and `canvas_lissajous`.
+
+### Fixed
+
+- `cargo test --lib --no-default-features` now builds — the `print_json_opts_tests`
+  module is gated behind the `json` feature (was `#[cfg(test)]` only).
+
 ## [2.2.0] - 2026-06-25
 
 Visualizations — four beyond-rich Track A additions, each dep-free and WASM-safe.

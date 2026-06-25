@@ -720,7 +720,7 @@ dependencies = [
 
 [[package]]
 name = "gilt"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "anstyle",
  "arc-swap",
@@ -759,7 +759,7 @@ dependencies = [
 
 [[package]]
 name = "gilt-cli"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "clap",
  "clap_complete",
@@ -768,7 +768,7 @@ dependencies = [
 
 [[package]]
 name = "gilt-derive"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "gilt",
  "insta",
