@@ -139,10 +139,10 @@ pub struct Prompt {
     /// The suffix appended at the end of the prompt (default: `": "`).
     pub prompt_suffix: String,
     /// Optional callback invoked before printing the prompt each iteration.
-    pub pre_prompt: Option<Box<dyn Fn()>>,
+    pub(crate) pre_prompt: Option<Box<dyn Fn()>>,
     /// Optional callback invoked when a validation error occurs, in addition
     /// to the standard error console output.
-    pub on_validate_error: Option<ValidateErrorHook>,
+    pub(crate) on_validate_error: Option<ValidateErrorHook>,
     /// The console used for rendering prompt text.
     console: Console,
 }
@@ -364,8 +364,9 @@ impl Prompt {
             // print via console but strip the auto-appended newline.
             self.console.print(&prompt);
             let captured = self.console.end_capture();
-            // Strip the trailing newline that Console::print always appends.
-            captured.strip_suffix('\n').unwrap_or(&captured).to_string()
+            // Strip trailing newlines (Console::print appends \n; on CRLF
+            // platforms a \r may also be present — strip both, rich parity).
+            captured.trim_end_matches(['\n', '\r']).to_string()
         };
 
         loop {
@@ -559,7 +560,7 @@ impl Prompt {
             self.console.begin_capture();
             self.console.print(&prompt_text);
             let captured = self.console.end_capture();
-            captured.strip_suffix('\n').unwrap_or(&captured).to_string()
+            captured.trim_end_matches(['\n', '\r']).to_string()
         };
 
         loop {
@@ -658,10 +659,7 @@ pub fn confirm_with_input_and_default<R: BufRead>(
         // Strip the trailing newline so we can concatenate the choices on
         // the same line.
         let question_captured = render_console.end_capture();
-        let question_part = question_captured
-            .strip_suffix('\n')
-            .unwrap_or(&question_captured)
-            .to_string();
+        let question_part = question_captured.trim_end_matches(['\n', '\r']).to_string();
 
         // Build the choices Text with the default letter bold-styled.
         let choices_markup = match default {
@@ -674,10 +672,7 @@ pub fn confirm_with_input_and_default<R: BufRead>(
             .unwrap_or_else(|_| Text::new(choices_markup, crate::style::Style::null()));
         render_console.print(&choices_text);
         let choices_captured = render_console.end_capture();
-        let choices_part = choices_captured
-            .strip_suffix('\n')
-            .unwrap_or(&choices_captured)
-            .to_string();
+        let choices_part = choices_captured.trim_end_matches(['\n', '\r']).to_string();
 
         format!("{} [{}]: ", question_part, choices_part)
     };
@@ -738,7 +733,7 @@ pub fn ask_int_with_input<R: BufRead>(prompt: &str, input: &mut R) -> i64 {
         render_console.begin_capture();
         render_console.print(&prompt_text);
         let captured = render_console.end_capture();
-        captured.strip_suffix('\n').unwrap_or(&captured).to_string()
+        captured.trim_end_matches(['\n', '\r']).to_string()
     };
     loop {
         print!("{}", ansi_prompt);
@@ -785,7 +780,7 @@ pub fn ask_float_with_input<R: BufRead>(prompt: &str, input: &mut R) -> f64 {
         render_console.begin_capture();
         render_console.print(&prompt_text);
         let captured = render_console.end_capture();
-        captured.strip_suffix('\n').unwrap_or(&captured).to_string()
+        captured.trim_end_matches(['\n', '\r']).to_string()
     };
     loop {
         print!("{}", ansi_prompt);
@@ -863,7 +858,7 @@ where
             self.prompt.console.begin_capture();
             self.prompt.console.print(&prompt_text);
             let captured = self.prompt.console.end_capture();
-            captured.strip_suffix('\n').unwrap_or(&captured).to_string()
+            captured.trim_end_matches(['\n', '\r']).to_string()
         };
 
         let mut err_console = Console::stderr();
@@ -1472,6 +1467,7 @@ impl MultiSelect {
 /// let mut input = Cursor::new(b"\n" as &[u8]);
 /// assert_eq!(p.ask_with_input(&mut input), 18);
 /// ```
+#[non_exhaustive]
 pub struct IntPrompt {
     /// The underlying `Prompt` used for rendering.
     pub prompt: Prompt,
@@ -1507,7 +1503,7 @@ impl IntPrompt {
             self.prompt.console.begin_capture();
             self.prompt.console.print(&prompt_text);
             let captured = self.prompt.console.end_capture();
-            captured.strip_suffix('\n').unwrap_or(&captured).to_string()
+            captured.trim_end_matches(['\n', '\r']).to_string()
         };
 
         loop {
@@ -1568,6 +1564,7 @@ impl IntPrompt {
 /// let mut input = Cursor::new(b"\n" as &[u8]);
 /// assert!((p.ask_with_input(&mut input) - 1.5).abs() < f64::EPSILON);
 /// ```
+#[non_exhaustive]
 pub struct FloatPrompt {
     /// The underlying `Prompt` used for rendering.
     pub prompt: Prompt,
@@ -1603,7 +1600,7 @@ impl FloatPrompt {
             self.prompt.console.begin_capture();
             self.prompt.console.print(&prompt_text);
             let captured = self.prompt.console.end_capture();
-            captured.strip_suffix('\n').unwrap_or(&captured).to_string()
+            captured.trim_end_matches(['\n', '\r']).to_string()
         };
 
         loop {
@@ -1665,6 +1662,7 @@ impl FloatPrompt {
 /// let mut input = Cursor::new(b"\n" as &[u8]);
 /// assert!(c.ask_with_input(&mut input));
 /// ```
+#[non_exhaustive]
 pub struct Confirm {
     /// The prompt question text.
     pub prompt: String,
