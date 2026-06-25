@@ -605,6 +605,50 @@ fn test_export_html_escape() {
     assert!(!html.contains("<script>"));
 }
 
+/// Deep-review: inline-styles HTML export must nest the anchor INSIDE the
+/// styled span (`<span style><a>text</a></span>`), matching rich's
+/// `render()` export in BOTH inline and class modes.  Previously gilt's
+/// inline mode emitted `<a><span>text</span></a>` (anchor wrapping span).
+#[test]
+fn test_export_html_inline_styles_anchor_inside_span() {
+    let mut console = Console::builder()
+        .width(80)
+        .force_terminal(true)
+        .record(true)
+        .markup(false)
+        .build();
+
+    let text = Text::styled("click", "bold link https://example.com");
+    console.print(&text);
+    let html = console.export_html(None, false, true);
+
+    // The span must wrap the anchor: <span style="..."><a href="...">click</a></span>
+    let span_pos = html
+        .find("<span style=\"")
+        .unwrap_or_else(|| panic!("expected <span style=\"...\"> in inline HTML, got: {html}"));
+    let a_pos = html
+        .find("<a href=\"https://example.com\">")
+        .unwrap_or_else(|| panic!("expected <a href> in inline HTML, got: {html}"));
+    let close_a = html[a_pos..]
+        .find("</a>")
+        .unwrap_or_else(|| panic!("expected </a> after <a> in inline HTML, got: {html}"));
+    let close_span = html[span_pos..]
+        .find("</span>")
+        .unwrap_or_else(|| panic!("expected </span> after <span> in inline HTML, got: {html}"));
+
+    assert!(
+        span_pos < a_pos,
+        "span must open BEFORE anchor (span-wraps-anchor); got span@{span_pos} a@{a_pos}"
+    );
+    assert!(
+        a_pos + close_a < span_pos + close_span,
+        "anchor must close BEFORE span (span-wraps-anchor); \
+         got </a>@{} </span>@{}",
+        a_pos + close_a,
+        span_pos + close_span
+    );
+}
+
 // -- render_buffer ------------------------------------------------------
 
 #[test]
