@@ -341,9 +341,11 @@ mod tests {
     /// tests from racing.
     #[cfg(not(target_arch = "wasm32"))]
     fn with_pager_env<F: FnOnce()>(value: Option<&str>, f: F) {
-        use parking_lot::Mutex;
+        use std::sync::Mutex;
         static LOCK: Mutex<()> = Mutex::new(());
-        let _guard = LOCK.lock();
+        // Recover the guard even if a prior env test panicked (poisoned lock);
+        // env state is restored by this helper regardless, so poison is benign.
+        let _guard = LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let saved = std::env::var("PAGER").ok();
         match value {
             Some(v) => std::env::set_var("PAGER", v),

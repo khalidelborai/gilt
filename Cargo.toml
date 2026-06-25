@@ -98,9 +98,6 @@ windows-sys = { version = "0.59", features = ["Win32_System_Console", "Win32_Fou
 pretty_assertions = "1"
 criterion = { version = "0.5", features = ["html_reports"] }
 proptest = "1"
-# parking_lot provides a non-poisoning Mutex used by env-mutating tests
-# (e.g. pager::tests::with_pager_env). Dev-only; runtime crate unaffected.
-parking_lot = "0.12"
 
 [[example]]
 name = "gen_readme_demos"
