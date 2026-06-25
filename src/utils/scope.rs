@@ -13,6 +13,7 @@ use crate::segment::Segment;
 use crate::style::Style;
 use crate::table::{ColumnOptions, Table};
 use crate::text::{JustifyMethod, Text};
+use crate::utils::highlighter::Highlighter;
 use crate::utils::padding::PaddingDimensions;
 
 // ---------------------------------------------------------------------------
@@ -116,23 +117,55 @@ impl Scope {
                 ..Default::default()
             },
         );
+        // Equals column: left-justified, no extra padding so "=" sits next
+        // to the key. The column-style is the equals theme style.
+        grid.add_column(
+            "",
+            "scope.equals",
+            ColumnOptions {
+                justify: Some(JustifyMethod::Left),
+                ..Default::default()
+            },
+        );
         // Value column: default (left-justified)
         grid.add_column("", "", ColumnOptions::default());
+
+        // Resolve the per-cell theme styles once. `get_style` falls back
+        // to `Style::null()` on any failure (missing theme entry, parse
+        // error) so the render never breaks on a custom theme.
+        let key_style = console
+            .get_style("scope.key")
+            .unwrap_or_else(|_| Style::null());
+        let key_special_style = console
+            .get_style("scope.key.special")
+            .unwrap_or_else(|_| Style::null());
+        let equals_style = console
+            .get_style("scope.equals")
+            .unwrap_or_else(|_| Style::null());
+        let highlighter = crate::utils::highlighter::ReprHighlighter::new();
 
         let items = self.ordered_items();
 
         for (key, value) in &items {
-            // Format the key column as "key =" and the value as-is.
-            // The Table stores cells as plain strings and renders them
-            // through console.render_str. While the Python version
-            // applies scope.key / scope.key.special / scope.equals
-            // styles and uses ReprHighlighter on values, gilt's Table
-            // does not yet support styled Text cells directly. The
-            // layout and panel wrapping are the primary visual concern
-            // here; per-cell styling will be supported once Table gains
-            // a rich-text cell API.
-            let key_cell = format!("{} =", key);
-            grid.add_row(&[&key_cell, value]);
+            // Per-cell styling (Phase 7 / Plan 7.27): mirror rich's
+            // `render_scope` by splitting the row into three styled cells
+            // — key, "=", value. The key uses `scope.key` for normal
+            // identifiers and `scope.key.special` for dunder / special
+            // names (start *and* end with `_`); the equals gets
+            // `scope.equals`; the value is run through `ReprHighlighter`
+            // so numbers / strings / paths / etc. are colored regardless
+            // of the console's `highlight` setting.
+            let is_special = key.starts_with('_') && key.ends_with('_');
+            let cell_key_style = if is_special {
+                key_special_style.clone()
+            } else {
+                key_style.clone()
+            };
+            let key_text = Text::new(key, cell_key_style);
+            let equals_text = Text::new(" =", equals_style.clone());
+            let mut value_text = Text::new(value, Style::null());
+            highlighter.highlight(&mut value_text);
+            grid.add_row_text(&[key_text, equals_text, value_text]);
         }
 
         // Get the border style
@@ -651,5 +684,149 @@ mod tests {
         );
         assert!(out.contains("user"));
         assert!(out.contains("alice"));
+    }
+    // -- Per-cell styling (Phase 7 / Plan 7.27) ----------------------------
+
+    #[test]
+    fn test_key_cell_carries_scope_key_style() {
+        // Per-cell key styling (Phase 7 / Plan 7.27): the segment carrying
+        // the key text "count" must carry the resolved "scope.key" theme
+        // style. The segment carrying "42" must carry the "repr.number"
+        // theme style (from ReprHighlighter). The "=" segment must carry
+        // the resolved "scope.equals" theme style.
+        let scope = Scope::from_pairs(&[("count", "42")]);
+        let console = Console::builder()
+            .width(60)
+            .force_terminal(true)
+            .color_system("truecolor")
+            .highlight(false)
+            .build();
+        let opts = console.options();
+        let key_style = console
+            .get_style("scope.key")
+            .expect("scope.key must be defined in default theme");
+        let equals_style = console
+            .get_style("scope.equals")
+            .expect("scope.equals must be defined in default theme");
+        let number_style = console
+            .get_style("repr.number")
+            .expect("repr.number must be defined in default theme");
+        let segments = scope.gilt_console(&console, &opts);
+        let segments: Vec<&Segment> = segments.iter().filter(|s| !s.text.is_empty()).collect();
+        let key_segs: Vec<&&Segment> = segments
+            .iter()
+            .filter(|s| s.text.contains("count"))
+            .collect();
+        let eq_segs: Vec<&&Segment> = segments.iter().filter(|s| s.text.contains("=")).collect();
+        let val_segs: Vec<&&Segment> = segments.iter().filter(|s| s.text.contains("42")).collect();
+        assert!(
+            !key_segs.is_empty(),
+            "expected at least one segment containing key text 'count'"
+        );
+        assert!(
+            !eq_segs.is_empty(),
+            "expected at least one segment containing '='"
+        );
+        assert!(
+            !val_segs.is_empty(),
+            "expected at least one segment containing value '42'"
+        );
+        for seg in &key_segs {
+            let st = seg.style().expect("key cell segment must carry a style");
+            assert_eq!(
+                st, &key_style,
+                "key cell must carry scope.key style; got {st:?}"
+            );
+        }
+        for seg in &eq_segs {
+            let st = seg.style().expect("equals cell segment must carry a style");
+            assert_eq!(
+                st, &equals_style,
+                "equals cell must carry scope.equals style; got {st:?}"
+            );
+        }
+        for seg in &val_segs {
+            let st = seg.style().expect("value cell segment must carry a style");
+            assert_eq!(
+                st, &number_style,
+                "value cell must carry repr.number style (ReprHighlighter); got {st:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_dunder_key_uses_special_style() {
+        // A dunder key like "__init__" must use the "scope.key.special"
+        // theme style for its key cell, not the regular "scope.key".
+        let scope = Scope::from_pairs(&[("__init__", "method")]);
+        let console = Console::builder()
+            .width(60)
+            .force_terminal(true)
+            .color_system("truecolor")
+            .highlight(false)
+            .build();
+        let opts = console.options();
+        let special_style = console
+            .get_style("scope.key.special")
+            .expect("scope.key.special must be defined in default theme");
+        let key_style = console.get_style("scope.key").unwrap();
+        assert_ne!(
+            special_style, key_style,
+            "scope.key.special must differ from scope.key in the theme"
+        );
+        let segments = scope.gilt_console(&console, &opts);
+        let segments: Vec<&Segment> = segments.iter().filter(|s| !s.text.is_empty()).collect();
+        let key_segs: Vec<&&Segment> = segments
+            .iter()
+            .filter(|s| s.text.contains("__init__"))
+            .collect();
+        assert!(
+            !key_segs.is_empty(),
+            "expected at least one segment containing '__init__'"
+        );
+        for seg in &key_segs {
+            let st = seg.style().expect("dunder key segment must be styled");
+            assert_eq!(
+                st, &special_style,
+                "dunder key cell must carry scope.key.special; got {st:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_value_repr_highlighted() {
+        // A numeric value "3.14" must be ReprHighlighter-annotated — the
+        // segment carrying the digits must carry the resolved
+        // "repr.number" theme style.
+        let scope = Scope::from_pairs(&[("count", "3.14")]);
+        let console = Console::builder()
+            .width(60)
+            .force_terminal(true)
+            .color_system("truecolor")
+            .highlight(false)
+            .build();
+        let opts = console.options();
+        let number_style = console
+            .get_style("repr.number")
+            .expect("repr.number must be defined in default theme");
+        let segments = scope.gilt_console(&console, &opts);
+        let segments: Vec<&Segment> = segments.iter().filter(|s| !s.text.is_empty()).collect();
+        let val_segs: Vec<&&Segment> = segments
+            .iter()
+            .filter(|s| s.text.contains("3.14"))
+            .collect();
+        assert!(
+            !val_segs.is_empty(),
+            "expected at least one segment containing value '3.14'"
+        );
+        for seg in &val_segs {
+            let st = seg
+                .style()
+                .expect("value segment must carry a style (ReprHighlighter)");
+            assert_eq!(
+                st, &number_style,
+                "value cell must carry repr.number style; got {st:?}"
+            );
+        }
     }
 }
