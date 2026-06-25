@@ -5,8 +5,11 @@
 //!
 //! 1. **Kitty graphics protocol** (`\x1b_G…\x1b\\`) — when `capabilities().kitty`
 //!    is true AND the console is not recording/exporting.
-//! 2. **Sixel** — currently stubbed; falls through to halfblock.
-//! 3. **Halfblock** (`▀`) — always available, always used during recording so
+//! 2. **iTerm2 inline images** (OSC 1337 `\x1b]1337;File=…\x07`) — when
+//!    `capabilities().iterm` is true, the console is not recording, and the
+//!    `inline-images` feature is enabled (the image is PNG-encoded).
+//! 3. **Sixel** — currently stubbed; falls through to halfblock.
+//! 4. **Halfblock** (`▀`) — always available, always used during recording so
 //!    that `export_html` / `export_svg` produce correct styled output.
 //!
 //! # Feature gate
@@ -331,7 +334,48 @@ impl Image {
         let b64 = crate::utils::control::base64_encode(&pixels);
         let apc = format!("\x1b_Gf=32,s={},v={},a=T;{}\x1b\\", dst_w, dst_h, b64);
 
-        vec![Segment::text(&apc), Segment::line()]
+        // Emit as a control segment (empty control vec) so the render pipeline
+        // treats it as zero-width and never width-crops or line-splits the APC
+        // payload — a plain text segment gets truncated to the console width.
+        vec![Segment::new(&apc, None, Some(vec![])), Segment::line()]
+    }
+
+    /// Render using the iTerm2 inline-image protocol (OSC 1337).
+    ///
+    /// Encodes the image as PNG, base64-encodes it, and wraps it in an
+    /// `ESC ] 1337 ; File = … : <base64> BEL` sequence sized to `cols × rows`
+    /// terminal cells (iTerm2 scales the source image into that cell box,
+    /// preserving aspect ratio). Requires the `inline-images` feature for PNG
+    /// encoding; without it the iTerm2 path is never taken and `Image` falls back
+    /// to halfblock.
+    #[cfg(feature = "inline-images")]
+    fn render_iterm(&self, opts: &ConsoleOptions) -> Vec<Segment> {
+        let (cols, rows) = self.resolve_cell_size(opts.max_width);
+        let png = self.to_png();
+        let b64 = crate::utils::control::base64_encode(&png);
+        let osc = format!(
+            "\x1b]1337;File=inline=1;size={};width={};height={};preserveAspectRatio=1:{}\x07",
+            png.len(),
+            cols,
+            rows,
+            b64,
+        );
+        // Control segment (empty control vec): zero-width, never cropped/split,
+        // text emitted verbatim — so the full OSC 1337 payload reaches the terminal.
+        vec![Segment::new(&osc, None, Some(vec![])), Segment::line()]
+    }
+
+    /// Encode the raw RGBA buffer as PNG bytes (for the iTerm2 protocol).
+    #[cfg(feature = "inline-images")]
+    fn to_png(&self) -> Vec<u8> {
+        use std::io::Cursor;
+        let img = ::image::RgbaImage::from_raw(self.width_px, self.height_px, self.rgba.clone())
+            .expect("rgba buffer length matches width_px × height_px × 4");
+        let mut buf = Cursor::new(Vec::new());
+        ::image::DynamicImage::ImageRgba8(img)
+            .write_to(&mut buf, ::image::ImageFormat::Png)
+            .expect("PNG encoding to an in-memory buffer cannot fail");
+        buf.into_inner()
     }
 }
 
@@ -342,13 +386,19 @@ impl Renderable for Image {
         // Protocol selection:
         //   1. If recording → halfblock (export uses styled text)
         //   2. If kitty supported and not recording → Kitty APC
-        //   3. If sixel supported → stub (falls through to halfblock)
-        //   4. Halfblock (always available fallback)
+        //   3. If iterm supported (and `inline-images`) → iTerm2 OSC 1337
+        //   4. If sixel supported → stub (falls through to halfblock)
+        //   5. Halfblock (always available fallback)
         if console.is_recording() {
             return self.render_halfblock(console, opts);
         }
         if caps.kitty {
             return self.render_kitty(opts);
+        }
+        // iTerm2 inline images (OSC 1337) — needs PNG encoding (inline-images).
+        #[cfg(feature = "inline-images")]
+        if caps.iterm {
+            return self.render_iterm(opts);
         }
         // Sixel is stubbed: fall through to halfblock
         self.render_halfblock(console, opts)

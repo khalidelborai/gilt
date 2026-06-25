@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **iTerm2 inline-image protocol (OSC 1337)** — `Image` now renders through the
+  iTerm2 inline-image protocol when the terminal advertises it
+  (`capabilities().iterm`), the console is not recording, and the `inline-images`
+  feature is enabled (the RGBA buffer is PNG-encoded). Protocol selection order is
+  now recording→halfblock, Kitty, iTerm2, Sixel (stub), halfblock.
+
+### Fixed
+
+- **Kitty / iTerm2 image escapes are no longer truncated** — the Kitty APC and
+  iTerm2 OSC 1337 payloads are emitted as zero-width control segments so the
+  render pipeline never width-crops or line-splits them. Previously a plain text
+  segment truncated the base64 payload to the console width (a latent Kitty bug;
+  its test only checked the introducer prefix).
+
 ## [2.0.0] - 2026-06-25
 
 Parity 2.0 — closing verified gaps against Python `rich` (see `.review/parity-audit-2026-06-24.md`). Phase 1: correctness fixes. Phase 2: render-time theme resolution. Phase 3: measurement protocol. Phase 4: container generalization. Phase 5: export correctness. Phase 6: live/progress nesting + logging layout. Phase 7: a broad P2/P3 parity sweep across 28 subsystems (Progress, Markdown, Pretty, Logging, Prompt, Traceback, Console, Control, Themes, Table, Panel/Box, Tree, Style, Markup, Syntax, Cells, Protocols, Layout, Containers, Text, Segment, Color/Palette, Highlighter, Public API, Windows, Inspect, Scope, Export).

@@ -43,10 +43,11 @@ mod tests {
             .width(80)
             .build();
 
-        // Force kitty=false so halfblock is used regardless of the test
-        // runner's environment (the developer may be running inside ghostty/kitty).
+        // Force kitty=false AND iterm=false so halfblock is used regardless of the
+        // test runner's environment (the developer may be inside ghostty/kitty/iTerm).
         console.set_capabilities(ConsoleCapabilities {
             kitty: false,
+            iterm: false,
             ..console.capabilities().clone()
         });
 
@@ -128,6 +129,14 @@ mod tests {
             output.contains("\x1b_G"),
             "Kitty path must emit \\x1b_G APC; got: {:?}",
             output
+        );
+        // The full APC must survive — the introducer AND the ST terminator
+        // `\x1b\\`. (Regression guard: a plain text segment gets width-cropped,
+        // truncating the base64 payload and dropping the terminator.)
+        assert!(
+            output.contains("\x1b\\"),
+            "Kitty APC must reach its ST terminator (not be width-cropped); got len {}",
+            output.len()
         );
         // Must NOT contain ▀ (halfblock chars)
         assert!(
@@ -245,6 +254,97 @@ mod tests {
         assert!(
             !caps.iterm,
             "plain xterm-256color should NOT set iterm=true"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // iTerm2 path (OSC 1337). Requires `inline-images` for PNG encoding.
+    //
+    // With iterm=true, kitty=false, and not recording, Image must emit an
+    // `ESC ]1337;File=inline=1;…:<base64 PNG> BEL` sequence — not halfblock,
+    // not Kitty APC.
+    // -----------------------------------------------------------------------
+    #[cfg(feature = "inline-images")]
+    #[test]
+    fn iterm_path_emits_osc1337_with_png_base64() {
+        let img = Image::from_rgba(2, 2, rgba_2x2()).width(2);
+
+        let mut console = Console::builder()
+            .no_color(false)
+            .force_terminal(true)
+            .color_system("truecolor")
+            .width(80)
+            .build();
+
+        console.set_capabilities(ConsoleCapabilities {
+            kitty: false,
+            iterm: true,
+            ..console.capabilities().clone()
+        });
+
+        console.begin_capture();
+        console.print(&img);
+        let output = console.end_capture();
+
+        // OSC 1337 inline-image introducer + args.
+        assert!(
+            output.contains("\x1b]1337;File=inline=1"),
+            "iTerm2 path must emit OSC 1337 File=inline=1; got: {:?}",
+            output
+        );
+        // The base64 of any PNG begins with "iVBORw0KGgo" (base64 of the PNG
+        // magic \x89PNG\r\n\x1a\n) — proves the payload is a real PNG.
+        assert!(
+            output.contains("iVBORw0KGgo"),
+            "iTerm2 payload must be a base64-encoded PNG; got: {:?}",
+            output
+        );
+        // BEL terminator for the OSC sequence.
+        assert!(
+            output.contains('\u{0007}'),
+            "iTerm2 OSC 1337 must be BEL-terminated; got: {:?}",
+            output
+        );
+        // Must NOT fall back to halfblock or use Kitty.
+        assert!(!output.contains('▀'), "iTerm2 path must NOT emit halfblock ▀");
+        assert!(
+            !output.contains("\x1b_G"),
+            "iTerm2 path must NOT emit Kitty APC"
+        );
+    }
+
+    // Recording mode wins over iTerm2: export must stay halfblock styled text.
+    #[cfg(feature = "inline-images")]
+    #[test]
+    fn recording_console_uses_halfblock_not_iterm() {
+        let img = Image::from_rgba(2, 2, rgba_2x2()).width(2);
+
+        let mut console = Console::builder()
+            .no_color(false)
+            .force_terminal(true)
+            .color_system("truecolor")
+            .width(80)
+            .record(true)
+            .build();
+
+        console.set_capabilities(ConsoleCapabilities {
+            iterm: true,
+            kitty: false,
+            ..console.capabilities().clone()
+        });
+
+        console.begin_capture();
+        console.print(&img);
+        let output = console.end_capture();
+
+        assert!(
+            output.contains('▀'),
+            "recording console must use halfblock for export; got: {:?}",
+            output
+        );
+        assert!(
+            !output.contains("\x1b]1337"),
+            "recording console must NOT emit iTerm2 OSC 1337 (breaks HTML export)"
         );
     }
 }
