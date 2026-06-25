@@ -426,7 +426,14 @@ impl Color {
         // Early-return: color is already at or below the target fidelity —
         // returning *self avoids a round-trip through the palette that can
         // silently change the index (audit #39).
-        if fidelity(self.system()) <= fidelity(system) {
+        //
+        // BUT: Standard and Windows are distinct 16-color systems with
+        // different palettes even though they share fidelity level 1. A
+        // Windows color downgraded to Standard (or vice versa) MUST convert
+        // via nearest-match, not early-return unchanged. So the early-return
+        // only fires when the systems are genuinely the same, or when the
+        // source is strictly below the target fidelity. (deep-review C2)
+        if self.system() == system || fidelity(self.system()) < fidelity(system) {
             return *self;
         }
 
@@ -476,14 +483,16 @@ impl Color {
                 _ => *self,
             },
             ColorSystem::Standard => {
-                // EightBit(0-15) IS the Standard palette — pass through to
-                // avoid an RGB round-trip that can silently change the index
-                // (audit #39 residual, Phase 7).
-                if let Color::EightBit(n) = self {
-                    if *n < 16 {
-                        return Color::Standard(*n);
-                    }
-                }
+                // Rich's `Color.downgrade(Standard)` always resolves the color
+                // to its RGB triplet and nearest-matches against the 16-entry
+                // STANDARD_PALETTE — it never short-circuits by index. For
+                // EightBit colors the RGB comes from EIGHT_BIT_PALETTE[n];
+                // because EIGHT_BIT_PALETTE[0-15] RGBs differ from
+                // STANDARD_PALETTE[0-15] RGBs, the bright colors 8-15 do NOT
+                // map to themselves (e.g. EightBit(8)=(128,128,128) ->
+                // Standard(7)=(170,170,170)). Index-passthrough here would
+                // produce Standard(8-15) which, while representable (bright
+                // ANSI codes 90-97), is NOT what rich emits. (deep-review C1)
                 let triplet = self.get_truecolor(None, true);
                 let index = STANDARD_PALETTE.match_color(&triplet);
                 Color::Standard(index as u8)
@@ -1340,9 +1349,10 @@ mod tests {
     }
     #[test]
     fn eightbit_low_passthrough_to_windows() {
-        // EightBit(0-15) ARE the standard/Windows palette — downgrade to
-        // Windows must pass through directly to Windows(n) instead of
-        // round-tripping through RGB nearest-match (audit #39 residual).
+        // EightBit(0-15) ARE the Windows palette — downgrade to Windows
+        // passes through directly to Windows(n) instead of round-tripping
+        // through RGB nearest-match (audit #39 residual). Windows has 16
+        // entries, so the full 0-15 range is valid.
         for n in 0u8..16 {
             assert_eq!(
                 Color::EightBit(n).downgrade(ColorSystem::Windows),
@@ -1350,13 +1360,88 @@ mod tests {
                 "EightBit({n}) must pass through to Windows({n}) on downgrade",
             );
         }
-        // EightBit(0-15) → Standard is the analogous shortcut (already
-        // implied by the existing identity test for Standard, but pin it).
-        for n in 0u8..16 {
+    }
+
+    /// Deep-review C1: `EightBit(0-15).downgrade(Standard)` must NOT
+    /// passthrough to `Standard(n)`. Rich's `Color.downgrade` always resolves
+    /// the EightBit color to its RGB triplet (via `EIGHT_BIT_PALETTE`) and
+    /// then nearest-matches against the 16-entry `STANDARD_PALETTE` — it never
+    /// short-circuits by index. Because gilt's `EIGHT_BIT_PALETTE[0-15]` RGBs
+    /// differ from `STANDARD_PALETTE[0-15]` RGBs (e.g. EightBit(1)=(128,0,0)
+    /// vs Standard(1)=(170,0,0)), the nearest-match is NOT identity for the
+    /// bright colors 8-15. The expected indices below are computed by the same
+    /// redmean nearest-match the code uses for all other EightBit colors.
+    #[test]
+    fn eightbit_bright_downgrade_to_standard_uses_nearest_match() {
+        // Indices 0-7 are dark colors; their EightBit RGBs are close enough
+        // to the corresponding Standard palette entry that nearest-match is
+        // identity (verified: 0->0, 1->1, ..., 7->7).
+        for n in 0u8..8 {
             assert_eq!(
                 Color::EightBit(n).downgrade(ColorSystem::Standard),
                 Color::Standard(n),
-                "EightBit({n}) must pass through to Standard({n}) on downgrade",
+                "EightBit({n}) dark color nearest-matches to Standard({n})",
+            );
+        }
+        // Bright colors 8-15: nearest-match into the 16-entry Standard palette.
+        // These are the rich-correct values (redmean distance, computed against
+        // gilt's EIGHT_BIT_PALETTE and STANDARD_PALETTE).
+        let expected: &[(u8, u8)] = &[
+            (8, 7),   // (128,128,128) -> (170,170,170)
+            (9, 1),   // (255,0,0)     -> (170,0,0)
+            (10, 2),  // (0,255,0)     -> (0,170,0)
+            (11, 11), // (255,255,0)   -> (255,255,85)
+            (12, 4),  // (0,0,255)     -> (0,0,170)
+            (13, 13), // (255,0,255)   -> (255,85,255)
+            (14, 14), // (0,255,255)   -> (85,255,255)
+            (15, 15), // (255,255,255) -> (255,255,255)
+        ];
+        for &(src, dst) in expected {
+            assert_eq!(
+                Color::EightBit(src).downgrade(ColorSystem::Standard),
+                Color::Standard(dst),
+                "EightBit({src}) must nearest-match to Standard({dst}), not Standard({src})",
+            );
+        }
+    }
+
+    /// Deep-review C2: `Windows(n).downgrade(Standard)` must NOT early-return
+    /// `Windows(n)` unchanged. Windows and Standard are distinct 16-color
+    /// systems with different palettes. Rich's downgrade resolves the Windows
+    /// color to its RGB triplet and nearest-matches against STANDARD_PALETTE.
+    /// The fidelity-based early-return wrongly treated Windows≡Standard as the
+    /// same system, so Windows colors never converted.
+    ///
+    /// Note: gilt's `get_truecolor` resolves `Windows(n)` via the terminal
+    /// theme's `ansi_colors[n]` (same RGBs as `EIGHT_BIT_PALETTE[0-15]`), so
+    /// the nearest-match results mirror the `EightBit(n)→Standard` case.
+    #[test]
+    fn windows_downgrade_to_standard_uses_nearest_match() {
+        // Expected: redmean nearest-match of theme.ansi_colors[n] into
+        // STANDARD_PALETTE (16 entries).
+        let expected: &[(u8, u8)] = &[
+            (0, 0),   // (0,0,0)       -> (0,0,0)
+            (1, 1),   // (128,0,0)     -> (170,0,0)
+            (2, 2),   // (0,128,0)     -> (0,170,0)
+            (3, 3),   // (128,128,0)   -> (170,85,0)
+            (4, 4),   // (0,0,128)     -> (0,0,170)
+            (5, 5),   // (128,0,128)   -> (170,0,170)
+            (6, 6),   // (0,128,128)   -> (0,170,170)
+            (7, 7),   // (192,192,192) -> (170,170,170)
+            (8, 7),   // (128,128,128) -> (170,170,170) [bright->dark]
+            (9, 1),   // (255,0,0)     -> (170,0,0)     [bright->dark]
+            (10, 2),  // (0,255,0)     -> (0,170,0)     [bright->dark]
+            (11, 11), // (255,255,0)   -> (255,255,85)
+            (12, 4),  // (0,0,255)     -> (0,0,170)     [bright->dark]
+            (13, 13), // (255,0,255)   -> (255,85,255)
+            (14, 14), // (0,255,255)   -> (85,255,255)
+            (15, 15), // (255,255,255) -> (255,255,255)
+        ];
+        for &(src, dst) in expected {
+            assert_eq!(
+                Color::Windows(src).downgrade(ColorSystem::Standard),
+                Color::Standard(dst),
+                "Windows({src}) must nearest-match to Standard({dst}), not stay as Windows({src})",
             );
         }
     }
