@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [2.0.0] - 2026-06-25
 
 Parity 2.0 — closing verified gaps against Python `rich` (see `.review/parity-audit-2026-06-24.md`). Phase 1: correctness fixes. Phase 2: render-time theme resolution. Phase 3: measurement protocol. Phase 4: container generalization. Phase 5: export correctness. Phase 6: live/progress nesting + logging layout. Phase 7: a broad P2/P3 parity sweep across 28 subsystems (Progress, Markdown, Pretty, Logging, Prompt, Traceback, Console, Control, Themes, Table, Panel/Box, Tree, Style, Markup, Syntax, Cells, Protocols, Layout, Containers, Text, Segment, Color/Palette, Highlighter, Public API, Windows, Inspect, Scope, Export).
 
