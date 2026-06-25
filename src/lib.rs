@@ -841,6 +841,11 @@ mod fuzzy_select_tests;
 #[path = "terminal_bg_tests.rs"]
 mod terminal_bg_tests;
 
+// Phase 7.24 — public API additions
+#[cfg(test)]
+#[path = "print_json_opts_tests.rs"]
+mod print_json_opts_tests;
+
 #[cfg(test)]
 #[path = "canvas_blitter_tests.rs"]
 mod canvas_blitter_tests;
@@ -970,8 +975,91 @@ pub fn print_json(json: &str) {
 
 /// Inspect a value in the default console.
 ///
-/// Displays the type name, Debug representation, and optional docs
-/// in a styled panel.
+/// Pretty-print JSON to the default console, with options for `data` and `ensure_ascii`.
+///
+/// Mirrors Python rich's `print_json(json, data, ..., ensure_ascii)`:
+/// - If `data` is `Some`, the pre-parsed `serde_json::Value` is serialized
+///   (instead of parsing the `json` string).
+/// - When `data` is `None`, the `json` string is used as the source.
+/// - `ensure_ascii=true` (the default in rich) escapes non-ASCII characters
+///   to `\uXXXX` sequences; `ensure_ascii=false` keeps them as raw UTF-8.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// # #[cfg(feature = "json")]
+/// # {
+/// gilt::print_json_opts(None, Some(&serde_json::json!({ "k": "é" })), true);
+/// # }
+/// ```
+#[cfg(feature = "json")]
+pub fn print_json_opts(
+    json: Option<&str>,
+    data: Option<&serde_json::Value>,
+    ensure_ascii: bool,
+) {
+    match format_json_for_test(json, data, ensure_ascii) {
+        Ok(serialized) => with_console(|c| c.print_json(&serialized)),
+        Err(e) => with_console(|c| c.print_text(&format!("[print_json_opts error: {e}]"))),
+    }
+}
+
+/// Internal: serialize the JSON input (data or string) into a JSON string,
+/// honoring `ensure_ascii`. Exposed crate-internally for unit tests so the
+/// serialization logic can be verified without going through the global
+/// console mutex (which is non-reentrant).
+#[cfg(feature = "json")]
+#[doc(hidden)]
+pub fn format_json_for_test(
+    json: Option<&str>,
+    data: Option<&serde_json::Value>,
+    ensure_ascii: bool,
+) -> Result<String, serde_json::Error> {
+    let owned;
+    let value: &serde_json::Value = match data {
+        Some(v) => v,
+        None => {
+            owned = serde_json::from_str(json.unwrap_or(""))?;
+            &owned
+        }
+    };
+    // serde_json's public `to_string` preserves UTF-8 by default (i.e.
+    // `ensure_ascii=false`). The contract here:
+    //   - ensure_ascii=false → use the default serialized form (UTF-8 kept).
+    //   - ensure_ascii=true  → post-process to escape non-ASCII as \uXXXX.
+    let serialized = serde_json::to_string(value)?;
+    if ensure_ascii {
+        Ok(escape_non_ascii(&serialized))
+    } else {
+        Ok(serialized)
+    }
+}
+
+/// Walk a JSON string and escape every non-ASCII character as `\uXXXX`,
+/// producing a JSON-compatible string with the `ensure_ascii=true` form.
+/// Operates on the *output* of `serde_json::to_string`, which has already
+/// escaped control characters and quotes; we only need to translate
+/// non-ASCII bytes into escape sequences.
+fn escape_non_ascii(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for ch in s.chars() {
+        if ch.is_ascii() {
+            out.push(ch);
+        } else {
+            // Surrogate pair char? Encode as two \uXXXX escapes (BMP-safe
+            // approach; serde_json emits \uXXXX for BMP and surrogate-pair
+            // codepoints get two escapes too).
+            let mut buf = [0u16; 2];
+            let encoded = ch.encode_utf16(&mut buf);
+            for unit in encoded {
+                out.push_str(&format!("\\u{:04x}", unit));
+            }
+        }
+    }
+    out
+}
+
+/// Inspect a value in the default console.
 pub fn inspect<T: std::fmt::Debug + 'static>(value: &T) {
     with_console(|c| c.inspect(value));
 }
