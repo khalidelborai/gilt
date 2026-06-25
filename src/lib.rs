@@ -419,6 +419,18 @@
 //! assert!(!output.is_empty());
 //! ```
 //!
+//! ## Histogram
+//!
+//! [`Histogram`](histogram::Histogram) bins raw samples into a distribution chart, drawn as
+//! vertical Unicode block columns scaled to the tallest bin.
+//!
+//! ```rust
+//! use gilt::histogram::Histogram;
+//!
+//! let hist = Histogram::new(&[1.0, 2.0, 2.0, 3.0, 3.0, 3.0]).with_bins(3);
+//! assert_eq!(hist.counts(), vec![1, 2, 3]);
+//! ```
+//!
 //! ## Canvas
 //!
 //! [`Canvas`](canvas::Canvas) provides a Braille dot-matrix for high-resolution terminal graphics.
@@ -731,6 +743,7 @@
 //! | [`status`] | Spinner with status message |
 //! | [`gradient`] | True-color gradient text |
 //! | [`sparkline`] | Inline Unicode sparkline charts |
+//! | [`histogram`] | Binned-distribution column charts |
 //! | [`canvas`] | Braille dot-matrix graphics |
 //! | [`diff`] | Colored unified and side-by-side diffs |
 //! | [`figlet`] | Large ASCII art text |
@@ -791,6 +804,8 @@ pub mod windows_vt;
 pub use utils::group;
 pub mod barchart;
 pub mod form;
+pub mod histogram;
+pub use histogram::Histogram;
 pub mod fuzzy_select;
 pub mod layout;
 pub mod linechart;
