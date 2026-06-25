@@ -183,6 +183,19 @@ impl Renderable for Markdown {
         let mut image_text_start: usize = 0;
         let mut in_image = false;
 
+        // gilt extension (feature `inline-images`): when an image src is a
+        // loadable local file we render the real `Image` inline instead of the
+        // 🌆 text placeholder.  `pending_image` holds the decoded image between
+        // Start/End(Image); `in_inline_image` suppresses the alt-text events;
+        // `para_emitted_image` lets the paragraph-end handler skip the now-empty
+        // flush so we don't emit a spurious blank line.
+        #[cfg(feature = "inline-images")]
+        let mut pending_image: Option<crate::image::Image> = None;
+        #[cfg(feature = "inline-images")]
+        let mut in_inline_image = false;
+        #[cfg(feature = "inline-images")]
+        let mut para_emitted_image = false;
+
         // Enable all pulldown-cmark extensions
         let mut md_options = Options::empty();
         md_options.insert(Options::ENABLE_TABLES);
@@ -327,6 +340,10 @@ impl Renderable for Markdown {
                 // -- Paragraphs ---------------------------------------------
                 Event::Start(Tag::Paragraph) => {
                     text_buffer = Text::new("", Style::null());
+                    #[cfg(feature = "inline-images")]
+                    {
+                        para_emitted_image = false;
+                    }
                     if let Some(j) = self.justify {
                         text_buffer.justify = Some(j);
                     }
@@ -345,6 +362,15 @@ impl Renderable for Markdown {
                         // (using append_text, not plain(), to retain styling).
                         cell_text.append_text(&text_buffer);
                         text_buffer = Text::new("", Style::null());
+                        continue;
+                    }
+
+                    // gilt extension: an inline image already emitted this
+                    // paragraph's block content and emptied the buffer; skip the
+                    // empty flush so we don't add a spurious blank line.
+                    #[cfg(feature = "inline-images")]
+                    if para_emitted_image && text_buffer.plain().is_empty() {
+                        para_emitted_image = false;
                         continue;
                     }
 
@@ -497,6 +523,20 @@ impl Renderable for Markdown {
 
                 // -- Images (treat like links with alt text) ----------------
                 Event::Start(Tag::Image { dest_url, .. }) => {
+                    // gilt extension: render a REAL inline image when the src is
+                    // a loadable local file and the `inline-images` feature is on
+                    // (emission happens at End(Image)).  Otherwise fall through to
+                    // the 🌆 text placeholder — feature off, remote URL, missing
+                    // file, or decode error.
+                    #[cfg(feature = "inline-images")]
+                    if let Some(img) = try_load_inline_image(&dest_url) {
+                        pending_image = Some(img);
+                        in_inline_image = true;
+                        in_image = true;
+                        link_url = Some(dest_url.to_string());
+                        continue;
+                    }
+
                     let link_style = console
                         .get_style("markdown.link")
                         .unwrap_or_else(|_| Style::parse("bright_blue"));
@@ -517,6 +557,45 @@ impl Renderable for Markdown {
                     in_image = true;
                 }
                 Event::End(TagEnd::Image) => {
+                    // gilt extension: emit the real inline image we loaded at
+                    // Start(Image).  We never pushed the link style or alt text
+                    // for this path, so there is nothing to pop/clean up here.
+                    #[cfg(feature = "inline-images")]
+                    if in_inline_image {
+                        in_inline_image = false;
+                        in_image = false;
+                        link_url = None;
+                        if let Some(img) = pending_image.take() {
+                            // Width available after blockquote indentation.
+                            let avail = width.saturating_sub(blockquote_depth * 4).max(1);
+                            // Flush any inline text accumulated before the image
+                            // (rare: image alone in a paragraph leaves this empty).
+                            // Whitespace-only buffers (e.g. the space between two
+                            // adjacent images) are dropped, not turned into a line.
+                            if !text_buffer.plain().is_empty() {
+                                if !text_buffer.plain().trim().is_empty() {
+                                    let pre_opts = options.update_width(avail);
+                                    let pre_segs = text_buffer.gilt_console(console, &pre_opts);
+                                    segments.extend(pre_segs);
+                                    segments.push(Segment::line());
+                                }
+                                text_buffer = Text::new("", Style::null());
+                            }
+                            if needs_newline {
+                                segments.push(Segment::line());
+                            }
+                            // Sensible default width (40 cols), capped to the
+                            // available console width by `resolve_cell_size`.
+                            let img = img.width(40);
+                            let img_opts = options.update_width(avail);
+                            let img_segs = img.gilt_console(console, &img_opts);
+                            segments.extend(img_segs);
+                            needs_newline = true;
+                            para_emitted_image = true;
+                        }
+                        continue;
+                    }
+
                     let _ = style_stack.pop();
                     // Item 7: if no alt text was accumulated, fall back to the filename.
                     if in_image && text_buffer.len() == image_text_start {
@@ -876,6 +955,13 @@ impl Renderable for Markdown {
 
                 // -- Text ---------------------------------------------------
                 Event::Text(text) => {
+                    // gilt extension: alt text belongs to the 🌆 placeholder we
+                    // are replacing with a real inline image — drop it.
+                    #[cfg(feature = "inline-images")]
+                    if in_inline_image {
+                        continue;
+                    }
+
                     // If inside a code block, accumulate raw text
                     if let Some(ref mut code_text) = code_block_text {
                         code_text.push_str(&text);
@@ -1055,6 +1141,27 @@ fn count_digits(n: u64) -> usize {
         x /= 10;
     }
     d
+}
+
+/// gilt extension: try to load a local image file for inline rendering.
+///
+/// Returns `Some(Image)` only when `src` is **not** a remote URL (no
+/// `http://`/`https://` scheme), points at an existing regular file, and
+/// decodes successfully.  Returns `None` in every other case so the caller
+/// falls back to the 🌆 text placeholder.  Only compiled with the
+/// `inline-images` feature (native-only: the `image` crate + `std::fs`).
+#[cfg(feature = "inline-images")]
+fn try_load_inline_image(src: &str) -> Option<crate::image::Image> {
+    let lower = src.to_ascii_lowercase();
+    // Remote URLs are never fetched — keep the placeholder, no network I/O.
+    if lower.starts_with("http://") || lower.starts_with("https://") {
+        return None;
+    }
+    let path = std::path::Path::new(src);
+    if !path.is_file() {
+        return None;
+    }
+    crate::image::Image::from_path(path).ok()
 }
 
 /// Extract filename stem from a URL for use as image alt-text fallback.
