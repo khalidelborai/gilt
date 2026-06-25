@@ -8,7 +8,8 @@
 //! 2. **iTerm2 inline images** (OSC 1337 `\x1b]1337;File=…\x07`) — when
 //!    `capabilities().iterm` is true, the console is not recording, and the
 //!    `inline-images` feature is enabled (the image is PNG-encoded).
-//! 3. **Sixel** — currently stubbed; falls through to halfblock.
+//! 3. **Sixel** (DCS `\x1bP…q…\x1b\\`) — when `capabilities().sixel` is true and
+//!    not recording. Dep-free (no `image` crate); 6×6×6 palette, banded RLE.
 //! 4. **Halfblock** (`▀`) — always available, always used during recording so
 //!    that `export_html` / `export_svg` produce correct styled output.
 //!
@@ -48,6 +49,25 @@ use crate::color::Color;
 use crate::console::{Console, ConsoleOptions, Renderable};
 use crate::segment::Segment;
 use crate::style::Style;
+
+/// Append a run of `len` identical sixel values (`val`, a 6-bit mask) to `out`,
+/// run-length-encoding runs of 4+ as `!<count><char>`. Sixel chars are
+/// `0x3F + val` (`?`=empty … `~`=all six dots).
+fn sixel_emit_run(out: &mut String, val: u8, len: usize) {
+    if len == 0 {
+        return;
+    }
+    let ch = (0x3F + val) as char;
+    if len >= 4 {
+        out.push('!');
+        out.push_str(&len.to_string());
+        out.push(ch);
+    } else {
+        for _ in 0..len {
+            out.push(ch);
+        }
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Image
@@ -360,6 +380,94 @@ impl Image {
         vec![Segment::new(&apc, None, Some(vec![])), Segment::line()]
     }
 
+    /// Render using the Sixel graphics protocol (DCS `\x1bP…q … \x1b\\`).
+    ///
+    /// Quantizes to a uniform 6×6×6 (216-colour) palette and emits banded,
+    /// run-length-encoded sixel data. This is **dep-free** — no `image` crate
+    /// required — so it works in any build. Sixel images are drawn at literal
+    /// pixels, so the cell box is approximated at ~10×20 px per cell.
+    fn render_sixel(&self, opts: &ConsoleOptions) -> Vec<Segment> {
+        let (cols, rows) = self.resolve_cell_size(opts.max_width);
+        let w = (cols as u32 * 10).max(1) as usize;
+        let h = (rows as u32 * 20).max(1) as usize;
+        let pixels = if self.width_px as usize == w && self.height_px as usize == h {
+            std::borrow::Cow::Borrowed(self.rgba.as_slice())
+        } else {
+            std::borrow::Cow::Owned(self.resize_nearest(w as u32, h as u32))
+        };
+
+        // Quantize each pixel to a 6×6×6 palette: index = r6*36 + g6*6 + b6.
+        let q = |c: u8| ((c as u32 * 5 + 127) / 255) as usize; // 0..=5, rounded
+        let mut idx = vec![0u16; w * h];
+        let mut used = [false; 216];
+        for (i, px) in pixels.chunks_exact(4).enumerate() {
+            let p = q(px[0]) * 36 + q(px[1]) * 6 + q(px[2]);
+            idx[i] = p as u16;
+            used[p] = true;
+        }
+
+        let mut out = String::with_capacity(w * h / 4 + 256);
+        // DCS introducer: P1=0 aspect, P2=1 (0-bits transparent — required for
+        // the multi-pass banded encoding), P3=0; then raster attributes.
+        out.push_str("\x1bP0;1;0q");
+        out.push_str(&format!("\"1;1;{w};{h}"));
+        // Colour registers (RGB, 0..=100 scale) for the palette entries in use.
+        let lvl = |l: usize| l * 20; // 0,20,40,60,80,100
+        for (p, &u) in used.iter().enumerate() {
+            if u {
+                out.push_str(&format!("#{};2;{};{};{}", p, lvl(p / 36), lvl((p / 6) % 6), lvl(p % 6)));
+            }
+        }
+
+        // Emit pixel data band by band (6 rows per band).
+        let mut band = 0usize;
+        while band < h {
+            let band_h = (h - band).min(6);
+            // Which palette entries appear in this band?
+            let mut present = [false; 216];
+            for y in band..band + band_h {
+                for x in 0..w {
+                    present[idx[y * w + x] as usize] = true;
+                }
+            }
+            let mut first = true;
+            for (p, &is_present) in present.iter().enumerate() {
+                if !is_present {
+                    continue;
+                }
+                if !first {
+                    out.push('$'); // graphics CR: overlay next colour on this band
+                }
+                first = false;
+                out.push_str(&format!("#{p}"));
+                // Build the 6-bit sixel value per column for this colour, RLE it.
+                let mut run_val = 0u8;
+                let mut run_len = 0usize;
+                for x in 0..w {
+                    let mut bits = 0u8;
+                    for (dy, row) in (band..band + band_h).enumerate() {
+                        if idx[row * w + x] as usize == p {
+                            bits |= 1 << dy;
+                        }
+                    }
+                    if run_len > 0 && bits == run_val {
+                        run_len += 1;
+                    } else {
+                        sixel_emit_run(&mut out, run_val, run_len);
+                        run_val = bits;
+                        run_len = 1;
+                    }
+                }
+                sixel_emit_run(&mut out, run_val, run_len);
+            }
+            out.push('-'); // graphics NL: advance to the next 6-row band
+            band += 6;
+        }
+
+        out.push_str("\x1b\\"); // ST terminator
+        vec![Segment::new(&out, None, Some(vec![])), Segment::line()]
+    }
+
     /// Render using the iTerm2 inline-image protocol (OSC 1337).
     ///
     /// Encodes the image as PNG, base64-encodes it, and wraps it in an
@@ -407,7 +515,7 @@ impl Renderable for Image {
         //   1. If recording → halfblock (export uses styled text)
         //   2. If kitty supported and not recording → Kitty APC
         //   3. If iterm supported (and `inline-images`) → iTerm2 OSC 1337
-        //   4. If sixel supported → stub (falls through to halfblock)
+        //   4. If sixel supported → Sixel DCS
         //   5. Halfblock (always available fallback)
         if console.is_recording() {
             return self.render_halfblock(console, opts);
@@ -420,7 +528,9 @@ impl Renderable for Image {
         if caps.iterm {
             return self.render_iterm(opts);
         }
-        // Sixel is stubbed: fall through to halfblock
+        if caps.sixel {
+            return self.render_sixel(opts);
+        }
         self.render_halfblock(console, opts)
     }
 }

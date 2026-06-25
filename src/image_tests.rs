@@ -354,4 +354,65 @@ mod tests {
             "recording console must NOT emit iTerm2 OSC 1337 (breaks HTML export)"
         );
     }
+
+    // -----------------------------------------------------------------------
+    // Sixel path (DCS). Dep-free — no `inline-images` feature needed.
+    //
+    // With sixel=true, kitty/iterm=false, and not recording, Image must emit a
+    // `ESC P … q … ESC \\` sixel stream with colour registers — not halfblock,
+    // not Kitty, not iTerm2.
+    // -----------------------------------------------------------------------
+    #[test]
+    fn sixel_path_emits_dcs_stream() {
+        let img = Image::from_rgba(2, 2, rgba_2x2()).width(2);
+
+        let mut console = Console::builder()
+            .no_color(false)
+            .force_terminal(true)
+            .color_system("truecolor")
+            .width(80)
+            .build();
+
+        console.set_capabilities(ConsoleCapabilities {
+            kitty: false,
+            iterm: false,
+            sixel: true,
+            ..console.capabilities().clone()
+        });
+
+        console.begin_capture();
+        console.print(&img);
+        let output = console.end_capture();
+
+        // DCS sixel introducer (ESC P ... q) and raster attributes.
+        assert!(
+            output.contains("\x1bP") && output.contains('q'),
+            "Sixel path must emit a DCS `\\x1bP…q` introducer; got: {:?}",
+            output
+        );
+        assert!(
+            output.contains("\"1;1;"),
+            "Sixel stream must carry raster attributes; got: {:?}",
+            output
+        );
+        // At least one colour register definition (#n;2;r;g;b).
+        assert!(
+            output.contains(";2;"),
+            "Sixel stream must define RGB colour registers; got: {:?}",
+            output
+        );
+        // ST terminator.
+        assert!(
+            output.contains("\x1b\\"),
+            "Sixel stream must be ST-terminated; got: {:?}",
+            output
+        );
+        // Not any other protocol / fallback.
+        assert!(!output.contains('▀'), "Sixel path must NOT emit halfblock ▀");
+        assert!(!output.contains("\x1b_G"), "Sixel path must NOT emit Kitty APC");
+        assert!(
+            !output.contains("\x1b]1337"),
+            "Sixel path must NOT emit iTerm2 OSC 1337"
+        );
+    }
 }

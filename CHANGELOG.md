@@ -12,8 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **iTerm2 inline-image protocol (OSC 1337)** — `Image` now renders through the
   iTerm2 inline-image protocol when the terminal advertises it
   (`capabilities().iterm`), the console is not recording, and the `inline-images`
-  feature is enabled (the RGBA buffer is PNG-encoded). Protocol selection order is
-  now recording→halfblock, Kitty, iTerm2, Sixel (stub), halfblock.
+  feature is enabled (the RGBA buffer is PNG-encoded).
+- **Sixel image protocol (DCS)** — `Image` renders real Sixel graphics when
+  `capabilities().sixel` is true and not recording: a uniform 6×6×6 palette with
+  banded, run-length-encoded sixel data. **Dep-free** (no `image` crate needed),
+  so it works in any build. Protocol selection order is now recording→halfblock,
+  Kitty, iTerm2, Sixel, halfblock.
 
 ### Fixed
 

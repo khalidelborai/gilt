@@ -15,8 +15,8 @@
 //!
 //! Terminal not auto-detected (e.g. an embedded terminal)? Force a protocol:
 //!   GILT_IMAGE_PROTOCOL=kitty cargo run --example image
-//!       (use kitty | iterm | halfblock — handy for testing what your terminal
-//!        actually supports; if it shows garbage, that protocol isn't supported.)
+//!       (use kitty | iterm | sixel | halfblock — handy for testing what your
+//!        terminal supports; if it shows garbage, that protocol isn't supported.)
 
 use gilt::console::Console;
 use gilt::console_caps::ConsoleCapabilities;
@@ -65,11 +65,16 @@ fn main() {
     if let Ok(force) = std::env::var("GILT_IMAGE_PROTOCOL") {
         let base = console.capabilities().clone();
         let caps = match force.to_ascii_lowercase().as_str() {
-            "kitty" => ConsoleCapabilities { kitty: true, iterm: false, ..base },
-            "iterm" => ConsoleCapabilities { kitty: false, iterm: true, ..base },
-            "halfblock" => ConsoleCapabilities { kitty: false, iterm: false, ..base },
+            "kitty" => ConsoleCapabilities { kitty: true, iterm: false, sixel: false, ..base },
+            "iterm" => ConsoleCapabilities { kitty: false, iterm: true, sixel: false, ..base },
+            "sixel" => ConsoleCapabilities { kitty: false, iterm: false, sixel: true, ..base },
+            "halfblock" => {
+                ConsoleCapabilities { kitty: false, iterm: false, sixel: false, ..base }
+            }
             other => {
-                eprintln!("GILT_IMAGE_PROTOCOL={other:?} unrecognized (use kitty|iterm|halfblock)");
+                eprintln!(
+                    "GILT_IMAGE_PROTOCOL={other:?} unrecognized (use kitty|iterm|sixel|halfblock)"
+                );
                 base
             }
         };
@@ -77,14 +82,16 @@ fn main() {
     }
 
     // Which protocol will this terminal use? (read caps before borrowing mutably)
-    let (kitty, iterm) = {
+    let (kitty, iterm, sixel) = {
         let caps = console.capabilities();
-        (caps.kitty, caps.iterm)
+        (caps.kitty, caps.iterm, caps.sixel)
     };
     let protocol = if kitty {
         "Kitty graphics protocol"
     } else if iterm {
         "iTerm2 inline images (OSC 1337)"
+    } else if sixel {
+        "Sixel graphics"
     } else {
         "halfblock (▀) — the universal fallback"
     };
