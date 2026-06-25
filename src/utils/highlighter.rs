@@ -146,7 +146,7 @@ static REPR_HIGHLIGHTS: LazyLock<Vec<Regex>> = LazyLock::new(|| {
         // Tags: <tag_name contents>
         r"(?P<tag_start><)(?P<tag_name>[-\w.:|]*)(?P<tag_contents>[\w\W]*)(?P<tag_end>>)",
         // Attribute name=value
-        r#"(?P<attrib_name>[\w_]{1,50})=(?P<attrib_value>"?[\w_]+"?)?"#,
+        r#"(?P<attrib_name>[\w_]+)=(?P<attrib_value>"?[\w_]+"?)"#,
         // Braces
         r"(?P<brace>[\[\]{}\(\)])",
         // Combined pattern for everything else
@@ -247,9 +247,6 @@ static JSON_HIGHLIGHTS: LazyLock<Vec<Regex>> = LazyLock::new(|| {
 static JSON_STR_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r#""[^"\\]*(?:\\.[^"\\]*)*""#).expect("invalid json str regex"));
 
-/// Characters considered whitespace in JSON.
-const JSON_WHITESPACE: &[char] = &[' ', '\n', '\r', '\t'];
-
 /// Highlights JSON text.
 ///
 /// After applying the base regex highlights, this highlighter additionally
@@ -315,7 +312,7 @@ impl Highlighter for JSONHighlighter {
                         text.spans_mut()
                             .push(Span::new(char_start, char_end, key_style.clone()));
                         break;
-                    } else if JSON_WHITESPACE.contains(&ch) {
+                    } else if ch.is_whitespace() {
                         continue;
                     } else {
                         break;
@@ -758,6 +755,66 @@ mod tests {
         assert!(!text.spans().is_empty());
     }
 
+    #[test]
+    fn test_repr_attrib_name_unbounded() {
+        // Phase 7 P3 parity: the `attrib_name` regex must match names longer
+        // than 50 chars (rich uses unbounded `\w+`). Build a 60-char
+        // alphanumeric name and assert the full string is captured as a
+        // single `attrib_name` span.
+        let hl = ReprHighlighter::new();
+        let long = "a".repeat(60);
+        let input = format!("{long}=42");
+        let text = hl.apply(&input);
+        let plain = text.plain();
+        let has_full_name = text
+            .spans()
+            .iter()
+            .any(|s| span_text(plain, s) == long.as_str());
+        assert!(
+            has_full_name,
+            "expected full-length attrib_name span for a 60-char name"
+        );
+    }
+
+    #[test]
+    fn test_repr_attrib_value_required() {
+        // Phase 7 P3 parity: the `attrib_value` capture group must require a
+        // value (rich uses `"?\w+"` — no outer `?` making the whole group
+        // optional). Verify the intent:
+        //   1. `name=42` matches both `attrib_name` (`name`) and `attrib_value`
+        //      (`42`).
+        //   2. `name=` (no value) does NOT produce an `attrib_name` span —
+        //      the regex should fail rather than capture an empty value.
+        let hl = ReprHighlighter::new();
+
+        // 1. With a value, both groups capture.
+        let text = hl.apply("name=42");
+        let plain = text.plain();
+        let has_name = text
+            .spans()
+            .iter()
+            .any(|s| span_text(plain, s) == "name");
+        let has_value = text
+            .spans()
+            .iter()
+            .any(|s| span_text(plain, s) == "42");
+        assert!(has_name, "expected an attrib_name span for 'name'");
+        assert!(has_value, "expected an attrib_value span for '42'");
+
+        // 2. Without a value, no attrib_name span is produced.
+        let text_no_val = hl.apply("name=");
+        let plain_no_val = text_no_val.plain();
+        let has_name_no_val = text_no_val
+            .spans()
+            .iter()
+            .any(|s| span_text(plain_no_val, s) == "name");
+        assert!(
+            !has_name_no_val,
+            "name= alone should not produce an attrib_name span"
+        );
+    }
+
+
     // -- JSONHighlighter ----------------------------------------------------
 
     #[test]
@@ -839,6 +896,34 @@ mod tests {
         assert!(
             has_key_span,
             "expected a span covering the JSON key \"key\""
+        );
+    }
+
+    #[test]
+    fn test_json_key_with_unicode_whitespace_before_colon() {
+        // Phase 7 P3 parity: JSON key detection must treat Unicode
+        // whitespace (e.g. NBSP U+00A0) the same as ASCII whitespace,
+        // so a `"name"\u{00A0}:` sequence is recognized as a key.
+        let hl = JSONHighlighter::new();
+        let text = hl.apply(&format!("{{\"name\"{nbsp}: \"value\"}}", nbsp = '\u{00A0}'));
+        // Why count spans: the base regex pass creates a named span
+        // (`style_name = Some("json.str")`), but the key-detection pass
+        // creates a *resolved* span via `Span::new(...)` with
+        // `style_name = None`. Two spans at the same char range is the
+        // unambiguous signal that the key pass ran.
+        // Count spans covering exactly `"name"` (chars 1..7). The base
+        // `json.str` pass always produces one. The key detection pass
+        // (which respects Unicode whitespace) adds a second span at the
+        // same range. Two spans = key detected.
+        let key_spans = text
+            .spans()
+            .iter()
+            .filter(|s| s.start == 1 && s.end == 7)
+            .count();
+        assert_eq!(
+            key_spans, 2,
+            "expected 2 spans covering \"name\" (json.str + json.key); got {}",
+            key_spans
         );
     }
 
