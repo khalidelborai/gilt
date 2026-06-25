@@ -426,7 +426,14 @@ impl Color {
         // Early-return: color is already at or below the target fidelity —
         // returning *self avoids a round-trip through the palette that can
         // silently change the index (audit #39).
-        if fidelity(self.system()) <= fidelity(system) {
+        //
+        // BUT: Standard and Windows are distinct 16-color systems with
+        // different palettes even though they share fidelity level 1. A
+        // Windows color downgraded to Standard (or vice versa) MUST convert
+        // via nearest-match, not early-return unchanged. So the early-return
+        // only fires when the systems are genuinely the same, or when the
+        // source is strictly below the target fidelity. (deep-review C2)
+        if self.system() == system || fidelity(self.system()) < fidelity(system) {
             return *self;
         }
 
@@ -1394,6 +1401,47 @@ mod tests {
                 Color::EightBit(src).downgrade(ColorSystem::Standard),
                 Color::Standard(dst),
                 "EightBit({src}) must nearest-match to Standard({dst}), not Standard({src})",
+            );
+        }
+    }
+
+    /// Deep-review C2: `Windows(n).downgrade(Standard)` must NOT early-return
+    /// `Windows(n)` unchanged. Windows and Standard are distinct 16-color
+    /// systems with different palettes. Rich's downgrade resolves the Windows
+    /// color to its RGB triplet and nearest-matches against STANDARD_PALETTE.
+    /// The fidelity-based early-return wrongly treated Windows≡Standard as the
+    /// same system, so Windows colors never converted.
+    ///
+    /// Note: gilt's `get_truecolor` resolves `Windows(n)` via the terminal
+    /// theme's `ansi_colors[n]` (same RGBs as `EIGHT_BIT_PALETTE[0-15]`), so
+    /// the nearest-match results mirror the `EightBit(n)→Standard` case.
+    #[test]
+    fn windows_downgrade_to_standard_uses_nearest_match() {
+        // Expected: redmean nearest-match of theme.ansi_colors[n] into
+        // STANDARD_PALETTE (16 entries).
+        let expected: &[(u8, u8)] = &[
+            (0, 0),   // (0,0,0)       -> (0,0,0)
+            (1, 1),   // (128,0,0)     -> (170,0,0)
+            (2, 2),   // (0,128,0)     -> (0,170,0)
+            (3, 3),   // (128,128,0)   -> (170,85,0)
+            (4, 4),   // (0,0,128)     -> (0,0,170)
+            (5, 5),   // (128,0,128)   -> (170,0,170)
+            (6, 6),   // (0,128,128)   -> (0,170,170)
+            (7, 7),   // (192,192,192) -> (170,170,170)
+            (8, 7),   // (128,128,128) -> (170,170,170) [bright->dark]
+            (9, 1),   // (255,0,0)     -> (170,0,0)     [bright->dark]
+            (10, 2),  // (0,255,0)     -> (0,170,0)     [bright->dark]
+            (11, 11), // (255,255,0)   -> (255,255,85)
+            (12, 4),  // (0,0,255)     -> (0,0,170)     [bright->dark]
+            (13, 13), // (255,0,255)   -> (255,85,255)
+            (14, 14), // (0,255,255)   -> (85,255,255)
+            (15, 15), // (255,255,255) -> (255,255,255)
+        ];
+        for &(src, dst) in expected {
+            assert_eq!(
+                Color::Windows(src).downgrade(ColorSystem::Standard),
+                Color::Standard(dst),
+                "Windows({src}) must nearest-match to Standard({dst}), not stay as Windows({src})",
             );
         }
     }
