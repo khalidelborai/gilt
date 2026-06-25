@@ -225,7 +225,6 @@ impl RichHandler {
     ///
     /// Tries `console.get_style("logging.level.{name}")` first (item 2),
     /// falling back to the handler's level_styles map.
-    #[cfg(test)]
     fn render_level(&self, level: log::Level, console: &Console) -> Text {
         let name = match level {
             log::Level::Error => "ERROR",
@@ -252,7 +251,6 @@ impl RichHandler {
     /// Finding #14: apply highlighter to all log messages to match Python's
     /// `RichHandler` behaviour (numbers, strings, booleans, etc. are highlighted
     /// in repr-style). Uses the configurable `self.highlighter` (item 4).
-    #[cfg(test)]
     fn render_message(&self, record: &log::Record, console: &Console) -> Text {
         let msg = format!("{}", record.args());
         let mut text = if self.markup {
@@ -344,74 +342,77 @@ impl RichHandler {
             return;
         }
 
-        // Lock console briefly to extract styles, then drop before building cells.
-        let (level_style, kw_style) = if let Ok(console) = self.console.lock() {
-            let lvl_lower = match record.level() {
-                log::Level::Error => "error",
-                log::Level::Warn => "warn",
-                log::Level::Info => "info",
-                log::Level::Debug => "debug",
-                log::Level::Trace => "trace",
-            };
-            let level_style = console
-                .get_style(&format!("logging.level.{}", lvl_lower))
-                .unwrap_or_else(|_| {
-                    self.level_styles
+        // Build cells, calling render_level/render_message (single source of
+        // truth — previously emit() re-implemented the same logic inline while
+        // the helpers were #[cfg(test)] only, so tests exercised a divergent
+        // path).  We hold the console lock for the helper calls so they can
+        // do their own style lookups, then drop it before building the grid.
+        let (mut cells, mut headers): (Vec<Text>, Vec<&str>) =
+            if let Ok(console) = self.console.lock() {
+                let mut cells: Vec<Text> = Vec::new();
+                let mut headers: Vec<&str> = Vec::new();
+
+                if self.show_time {
+                    cells.push(self.render_time_with_omit());
+                    headers.push("");
+                }
+
+                if self.show_level {
+                    cells.push(self.render_level(record.level(), &console));
+                    headers.push("");
+                }
+
+                cells.push(self.render_message(record, &console));
+                headers.push("");
+
+                (cells, headers)
+            } else {
+                // Console lock failed — build cells without console style lookups
+                // (styles fall back to defaults). This mirrors the old fallback.
+                let mut cells: Vec<Text> = Vec::new();
+                let mut headers: Vec<&str> = Vec::new();
+
+                if self.show_time {
+                    cells.push(self.render_time_with_omit());
+                    headers.push("");
+                }
+
+                if self.show_level {
+                    let name = match record.level() {
+                        log::Level::Error => "ERROR",
+                        log::Level::Warn => "WARN",
+                        log::Level::Info => "INFO",
+                        log::Level::Debug => "DEBUG",
+                        log::Level::Trace => "TRACE",
+                    };
+                    let padded = format!("{:<8}", name);
+                    let level_style = self
+                        .level_styles
                         .get(&record.level())
                         .cloned()
-                        .unwrap_or_else(Style::null)
-                });
-            let kw_style = console
-                .get_style("logging.keyword")
-                .unwrap_or_else(|_| Style::parse("bold on dark_green"));
-            (level_style, kw_style)
-        } else {
-            (
-                self.level_styles
-                    .get(&record.level())
-                    .cloned()
-                    .unwrap_or_else(Style::null),
-                Style::parse("bold on dark_green"),
-            )
-        };
+                        .unwrap_or_else(Style::null);
+                    cells.push(Text::styled_with(&padded, level_style));
+                    headers.push("");
+                }
 
-        let mut cells: Vec<Text> = Vec::new();
-        let mut headers: Vec<&str> = Vec::new();
+                let msg = format!("{}", record.args());
+                let mut text = if self.markup {
+                    let base = Style::null();
+                    markup::render(&msg, base).unwrap_or_else(|_| Text::new(&msg, Style::null()))
+                } else {
+                    Text::new(&msg, Style::null())
+                };
+                self.highlighter.highlight(&mut text);
+                if !self.keywords.is_empty() {
+                    let kw_style = Style::parse("bold on dark_green");
+                    let words: Vec<&str> = self.keywords.iter().map(|s| s.as_str()).collect();
+                    text.highlight_words(&words, kw_style, false);
+                }
+                cells.push(text);
+                headers.push("");
 
-        if self.show_time {
-            cells.push(self.render_time_with_omit());
-            headers.push("");
-        }
-
-        if self.show_level {
-            // Build level cell directly using pre-fetched style (avoids re-locking).
-            let name = match record.level() {
-                log::Level::Error => "ERROR",
-                log::Level::Warn => "WARN",
-                log::Level::Info => "INFO",
-                log::Level::Debug => "DEBUG",
-                log::Level::Trace => "TRACE",
+                (cells, headers)
             };
-            let padded = format!("{:<8}", name);
-            cells.push(Text::styled_with(&padded, level_style));
-            headers.push("");
-        }
-
-        // Build message cell using pre-fetched kw_style.
-        let msg = format!("{}", record.args());
-        let mut text = if self.markup {
-            let base = Style::null();
-            markup::render(&msg, base).unwrap_or_else(|_| Text::new(&msg, Style::null()))
-        } else {
-            Text::new(&msg, Style::null())
-        };
-        self.highlighter.highlight(&mut text);
-        if !self.keywords.is_empty() {
-            let words: Vec<&str> = self.keywords.iter().map(|s| s.as_str()).collect();
-            text.highlight_words(&words, kw_style, false);
-        }
-        cells.push(text);
-        headers.push("");
 
         if self.show_path {
             cells.push(self.render_path_with_link(record));

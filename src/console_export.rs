@@ -479,12 +479,21 @@ impl Console {
                     }
                     continue;
                 } else if inline_styles {
-                    // Inline mode: anchor wraps span (#7 behaviour, unchanged).
-                    let span = format!("<span style=\"{}\">{}</span>", css, escaped);
+                    // Inline mode: span wraps anchor (rich parity — rich
+                    // nests the anchor INSIDE the styled span in BOTH inline
+                    // and class modes so the link inherits the text color).
+                    let span = format!("<span style=\"{}\">", css);
                     if let Some(url) = link_url {
-                        write!(code, "<a href=\"{}\">{}</a>", html_escape(&url), span).unwrap();
+                        write!(
+                            code,
+                            "{}<a href=\"{}\">{}</a></span>",
+                            span,
+                            html_escape(&url),
+                            escaped
+                        )
+                        .unwrap();
                     } else {
-                        code.push_str(&span);
+                        write!(code, "{}{}</span>", span, escaped).unwrap();
                     }
                     continue;
                 } else {

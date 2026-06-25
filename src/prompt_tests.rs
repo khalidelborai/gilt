@@ -1269,11 +1269,18 @@ fn test_pre_prompt_hook_stored_in_readline_path() {
     use std::sync::{Arc, Mutex};
     let count = Arc::new(Mutex::new(0u32));
     let count_clone = Arc::clone(&count);
-    let p = Prompt::new("Enter value").with_pre_prompt(move || {
+    let mut p = Prompt::new("Enter value").with_pre_prompt(move || {
         *count_clone.lock().unwrap() += 1;
     });
-    // The hook is stored; ask_with_input (the BufRead path) must also call it.
-    assert!(p.pre_prompt.is_some(), "pre_prompt should be stored");
+    // The hook is stored; ask_with_input (the BufRead path) must call it.
+    // (Field is now private — verify via actual invocation, not field access.)
+    let mut input = Cursor::new(b"hello\n" as &[u8]);
+    let _ = p.ask_with_input(&mut input);
+    let calls = *count.lock().unwrap();
+    assert!(
+        calls >= 1,
+        "pre_prompt hook should have been called at least once"
+    );
 }
 
 /// pre_prompt is called once per loop iteration in ask_with_input.
@@ -1344,4 +1351,46 @@ fn test_validate_error_hook_type_is_public() {
     let hook: ValidateErrorHook = Box::new(|_msg: &str| {});
     // Just calling it proves the type is accessible and usable.
     hook("test error");
+}
+
+// ---------------------------------------------------------------------------
+// Deep-review: CRLF strip in captured prompt output
+// ---------------------------------------------------------------------------
+
+/// When input has CRLF line endings, the prompt must still work correctly.
+/// `confirm_with_input_and_default` reads input via `read_line` which on
+/// CRLF platforms leaves `\r\n` — the `line.trim()` handles input, but the
+/// *captured prompt rendering* must also strip `\r` (previously only `\n`
+/// was stripped via `strip_suffix('\n')`, leaving a dangling `\r`).
+#[test]
+fn test_confirm_with_crlf_input() {
+    // Simulate CRLF input (Windows-style).
+    let mut input = Cursor::new(b"yes\r\n" as &[u8]);
+    let result = confirm_with_input_and_default("Ok?", None, &mut input);
+    assert!(result, "CRLF input 'yes\\r\\n' should return true");
+}
+
+/// IntPrompt with CRLF input must parse correctly.
+#[test]
+fn test_int_prompt_with_crlf_input() {
+    let mut p = IntPrompt::new("Enter age").with_default(18);
+    let mut input = Cursor::new(b"42\r\n" as &[u8]);
+    assert_eq!(p.ask_with_input(&mut input), 42);
+}
+
+/// FloatPrompt with CRLF input must parse correctly.
+#[test]
+fn test_float_prompt_with_crlf_input() {
+    let mut p = FloatPrompt::new("Enter rate").with_default(1.5);
+    let mut input = Cursor::new(b"3.14\r\n" as &[u8]);
+    assert!((p.ask_with_input(&mut input) - 3.14).abs() < f64::EPSILON);
+}
+
+/// Confirm with CRLF input and default.
+#[test]
+fn test_confirm_struct_with_crlf_input() {
+    let mut c = Confirm::new("Continue?").with_default(true);
+    // CRLF "no\r\n" — should return false.
+    let mut input = Cursor::new(b"no\r\n" as &[u8]);
+    assert!(!c.ask_with_input(&mut input));
 }
