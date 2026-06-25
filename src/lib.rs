@@ -993,11 +993,7 @@ pub fn print_json(json: &str) {
 /// # }
 /// ```
 #[cfg(feature = "json")]
-pub fn print_json_opts(
-    json: Option<&str>,
-    data: Option<&serde_json::Value>,
-    ensure_ascii: bool,
-) {
+pub fn print_json_opts(json: Option<&str>, data: Option<&serde_json::Value>, ensure_ascii: bool) {
     match format_json_for_test(json, data, ensure_ascii) {
         Ok(serialized) => with_console(|c| c.print_json(&serialized)),
         Err(e) => with_console(|c| c.print_text(&format!("[print_json_opts error: {e}]"))),

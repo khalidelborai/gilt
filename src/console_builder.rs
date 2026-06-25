@@ -77,7 +77,7 @@ impl Default for ConsoleBuilder {
             legacy_windows: None,
             log_path: false,
             log_time: true,
-         }
+        }
     }
 }
 

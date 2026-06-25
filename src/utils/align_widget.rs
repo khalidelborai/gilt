@@ -128,8 +128,6 @@ impl Align {
         )
     }
 
-
-
     /// Measure the minimum and maximum width requirements.
     ///
     /// The **maximum** stays the content's full width; the **minimum** is
@@ -758,7 +756,7 @@ mod tests {
         assert_eq!(m.minimum, 5);
         assert_eq!(m.maximum, 5);
     }
- 
+
     // -- Plan 7.24 Task 3: VerticalCenter convenience ------------------------
 
     #[test]
@@ -803,13 +801,7 @@ mod tests {
         // The content line is padded with trailing spaces by the Align
         // widget to fill the available width; check via `starts_with`
         // rather than equality.
-        let has_content = lines
-            .iter()
-            .any(|l| l.trim_start().starts_with("hi"));
-        assert!(
-            has_content,
-            "content line must be present: {lines:?}"
-        );
+        let has_content = lines.iter().any(|l| l.trim_start().starts_with("hi"));
+        assert!(has_content, "content line must be present: {lines:?}");
     }
-
 }

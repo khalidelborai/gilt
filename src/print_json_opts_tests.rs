@@ -11,8 +11,8 @@ use serde_json::json;
 fn print_json_opts_data_with_ensure_ascii_true_escapes_non_ascii() {
     // ensure_ascii=true → "é" is escaped to "\u00e9".
     let v = json!({ "k": "é" });
-    let out = crate::format_json_for_test(None, Some(&v), true)
-        .expect("serialization should succeed");
+    let out =
+        crate::format_json_for_test(None, Some(&v), true).expect("serialization should succeed");
     assert!(
         out.contains(r"\u00e9"),
         "ensure_ascii=true must escape non-ASCII; got: {out:?}"
@@ -27,8 +27,8 @@ fn print_json_opts_data_with_ensure_ascii_true_escapes_non_ascii() {
 fn print_json_opts_data_with_ensure_ascii_false_keeps_non_ascii() {
     // ensure_ascii=false → "é" stays as the raw character.
     let v = json!({ "k": "é" });
-    let out = crate::format_json_for_test(None, Some(&v), false)
-        .expect("serialization should succeed");
+    let out =
+        crate::format_json_for_test(None, Some(&v), false).expect("serialization should succeed");
     assert!(
         out.contains('é'),
         "ensure_ascii=false must keep non-ASCII; got: {out:?}"
@@ -45,8 +45,14 @@ fn print_json_opts_json_string_path_routes_through_serializer() {
     // re-serialized. ASCII content should pass through unchanged.
     let out = crate::format_json_for_test(Some(r#"{"k": "v"}"#), None, true)
         .expect("serialization should succeed");
-    assert!(out.contains(r#""k""#), "key must be preserved; got: {out:?}");
-    assert!(out.contains(r#""v""#), "value must be preserved; got: {out:?}");
+    assert!(
+        out.contains(r#""k""#),
+        "key must be preserved; got: {out:?}"
+    );
+    assert!(
+        out.contains(r#""v""#),
+        "value must be preserved; got: {out:?}"
+    );
 }
 
 #[test]
