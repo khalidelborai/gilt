@@ -976,6 +976,7 @@ Gilt supports **bold**, *italic*, and `inline code` in markdown.
     let long_text = "word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12 word13 word14 word15";
     let wrapped = Text::new(long_text, Style::null());
     let lines = wrapped.wrap(
+        &console,
         40,
         Some(JustifyMethod::Left),
         Some(OverflowMethod::Fold),
@@ -991,7 +992,7 @@ Gilt supports **bold**, *italic*, and `inline code` in markdown.
     }
 
     let tab_text = Text::new("col1\tcol2\tcol3\tcol4", Style::null());
-    let tab_lines = tab_text.wrap(60, Some(JustifyMethod::Left), None, 8, false);
+    let tab_lines = tab_text.wrap(&console, 60, Some(JustifyMethod::Left), None, 8, false);
     console.print(&Text::new(
         "  Tab stops (tab_size=8):",
         Style::parse("bold"),

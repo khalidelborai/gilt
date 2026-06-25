@@ -2,6 +2,8 @@
 
 use std::ops::{Index, IndexMut};
 
+use crate::console::Console;
+
 use super::{JustifyMethod, OverflowMethod, Span, Text};
 
 /// A collection of [`Text`] lines, typically produced by wrapping or splitting.
@@ -55,8 +57,16 @@ impl Lines {
     /// Justify every line according to the given method, truncating or padding to `width`.
     ///
     /// `Full` justification distributes extra space between words on all lines
-    /// except the last, which is left-justified.
-    pub fn justify(&mut self, width: usize, justify: JustifyMethod, overflow: OverflowMethod) {
+    /// except the last, which is left-justified. The `console` parameter is
+    /// used to resolve the inter-word space style from the adjacent word's
+    /// style (matching rich's `Lines.justify`).
+    pub fn justify(
+        &mut self,
+        console: &Console,
+        width: usize,
+        justify: JustifyMethod,
+        overflow: OverflowMethod,
+    ) {
         match justify {
             JustifyMethod::Default | JustifyMethod::Left => {
                 for line in &mut self.lines {
@@ -111,7 +121,6 @@ impl Lines {
                     let mut remainder = extra_spaces % gaps;
 
                     // Build new text with distributed spaces
-                    // We need to find positions of spaces in the original text and expand them
                     let plain_chars: Vec<char> = plain.chars().collect();
                     let mut new_text = String::new();
                     let mut space_adjustments: Vec<(usize, usize)> = Vec::new(); // (char_pos, extra_spaces)
@@ -149,8 +158,8 @@ impl Lines {
                         }
                     }
 
-                    // Adjust spans
-                    let mut new_spans = Vec::new();
+                    // Adjust existing spans for the new offsets.
+                    let mut new_spans = Vec::with_capacity(line.spans().len() + gaps);
                     for span in line.spans() {
                         let mut new_start = span.start;
                         let mut new_end = span.end;
@@ -169,6 +178,29 @@ impl Lines {
                         new_start += shift_start;
                         new_end += shift_end;
                         new_spans.push(Span::new(new_start, new_end, span.style.clone()));
+                    }
+
+                    // Insert gap spans (rich's `Lines.justify(Full)` resolves the
+                    // inter-word space style from the adjacent word's style via
+                    // `console`; if the two sides differ, fall back to the line's
+                    // root style).
+                    let line_style = line.style().clone();
+                    let mut running_shift: usize = 0;
+                    for (sp_pos, extra) in &space_adjustments {
+                        let prev_offset = sp_pos.saturating_sub(1);
+                        let next_offset = sp_pos + 1;
+                        let prev_style = line.get_style_at_offset_themed(console, prev_offset);
+                        let next_style = line.get_style_at_offset_themed(console, next_offset);
+                        let gap_style = if prev_style == next_style {
+                            prev_style
+                        } else {
+                            line_style.clone()
+                        };
+                        let gap_len = 1 + extra;
+                        let gap_start = sp_pos + running_shift;
+                        let gap_end = gap_start + gap_len;
+                        new_spans.push(Span::new(gap_start, gap_end, gap_style));
+                        running_shift += extra;
                     }
 
                     line.set_plain(&new_text);

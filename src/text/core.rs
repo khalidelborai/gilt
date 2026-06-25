@@ -1565,6 +1565,7 @@ impl Text {
     /// according to the `overflow` strategy.
     pub fn wrap(
         &self,
+        console: &crate::console::Console,
         width: usize,
         justify: Option<JustifyMethod>,
         overflow: Option<OverflowMethod>,
@@ -1603,7 +1604,7 @@ impl Text {
 
         // 4. Justify
         if let Some(j) = justify {
-            all_lines.justify(width, j, overflow);
+            all_lines.justify(console, width, j, overflow);
         }
 
         // 5. Truncate each line

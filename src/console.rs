@@ -344,6 +344,7 @@ impl Renderable for Text {
         } else {
             let tab_size = text.tab_size.unwrap_or(8);
             let lines = text.wrap(
+                console,
                 options.max_width,
                 text.justify,
                 text.overflow,
