@@ -11,10 +11,11 @@
 //! | `Braille`  | 2 × 4      | U+2800 (Braille)      |
 //! | `Sextant`  | 2 × 3      | U+1FB00 (Legacy comp.)   |
 //! | `HalfBlock`| 1 × 2      | U+2580..U+2588 (Blocks)  |
-//! | `Octant`   | 2 × 4      | Stubbed → Braille[^1]     |
+//! | `Octant`   | 2 × 4      | U+1CD00 (Octant 16)[^1]  |
 //!
-//! [^1]: Octant Unicode 16 block (U+1CD00) is not yet widely supported;
-//!       the stub falls back to Braille so output is always valid.
+//! [^1]: Octant uses Unicode 16.0 "Symbols for Legacy Computing Supplement"
+//!       (U+1CD00..U+1CDE5) plus 26 reused legacy glyphs. The mapping is
+//!       complete and authoritative; rendering requires a Unicode-16 font.
 //!
 //! # Example
 //!
@@ -60,11 +61,11 @@ use crate::style::Style;
 /// | `Braille`   | 2 × 4                  | U+2800 Braille Patterns              |
 /// | `Sextant`   | 2 × 3                  | U+1FB00 Legacy Computing Symbols     |
 /// | `HalfBlock` | 1 × 2                  | U+2580..U+2588 Block Elements        |
-/// | `Octant`    | 2 × 4                  | **Stub** — falls back to `Braille`   |
+/// | `Octant`    | 2 × 4                  | U+1CD00 Octant (Unicode 16)          |
 ///
-/// The `Octant` variant (Unicode 16 U+1CD00 block) is not yet widely
-/// available in terminal fonts, so it is currently stubbed to the Braille
-/// mapping.
+/// The `Octant` variant offers the same 2×4 resolution as `Braille` but uses
+/// solid sub-cell blocks (Unicode 16.0) instead of dots; it requires a
+/// Unicode-16 font to render correctly.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum Blitter {
     /// 2×4 Braille patterns (default). Maximum resolution, universal support.
@@ -75,11 +76,13 @@ pub enum Blitter {
     Sextant,
     /// 1×2 half-block characters (▀ ▄ █). Lowest resolution, best compatibility.
     HalfBlock,
-    /// 2×4 octant characters (Unicode 16, U+1CD00).
+    /// 2×4 octant characters (Unicode 16, U+1CD00 block).
     ///
-    /// **Currently stubbed to `Braille`** because the Unicode 16 Octant block is
-    /// not yet widely available in terminal fonts.  The API is stable; a future
-    /// version will activate the native mapping once font support is widespread.
+    /// Same 2×4 sub-cell resolution as `Braille`, but renders solid blocks
+    /// rather than dots. The full 256-pattern mapping is authoritative
+    /// (verified against Unicode 16.0 `UnicodeData.txt`): it combines the new
+    /// `U+1CD00..=U+1CDE5` glyphs with 26 reused legacy glyphs (SPACE, the
+    /// half/quarter/quadrant blocks, FULL BLOCK). Requires a Unicode-16 font.
     Octant,
 }
 
@@ -162,6 +165,100 @@ fn halfblock_bits_to_char(bits: u8) -> char {
         0b10 => '\u{2584}', // ▄ LOWER HALF BLOCK
         _ => '\u{2588}',    // █ FULL BLOCK (0b11)
     }
+}
+
+// ---------------------------------------------------------------------------
+// Octant pixel mapping (Unicode 16.0)
+// ---------------------------------------------------------------------------
+//
+// Each octant cell is 2 columns × 4 rows = 8 bits.  Bit order is row-major:
+//
+//   bit = row * 2 + col
+//
+//   col:   0     1
+//   row 0: bit0  bit1   (0x01  0x02)
+//   row 1: bit2  bit3   (0x04  0x08)
+//   row 2: bit4  bit5   (0x10  0x20)
+//   row 3: bit6  bit7   (0x40  0x80)
+//
+// This matches Unicode's `BLOCK OCTANT-N` naming, where cells are numbered
+// 1..8 reading the 2×4 grid left-to-right, top-to-bottom — so cell `c`
+// corresponds to `bit (c - 1)`:
+//
+//   cell:  1 2 / 3 4 / 5 6 / 7 8   →   bit: 0 1 / 2 3 / 4 5 / 6 7
+//
+// The 256 patterns do NOT map to a single contiguous code-point run.  Unicode
+// reuses 26 pre-existing glyphs (SPACE, the four half blocks, the sixteen 2×2
+// quadrant glyphs, FULL BLOCK, the upper/lower one-quarter and three-quarter
+// blocks, the four half×quarter corner blocks, and the two Unicode-16
+// MIDDLE-LEFT/RIGHT one-quarter blocks U+1FBE6/U+1FBE7); the remaining 230 are
+// encoded contiguously at U+1CD00..=U+1CDE5 in *name* order (which is not
+// pattern order).  `OCTANT_CHARS` below is the verified, fully-covered table.
+//
+// Authoritatively derived from Unicode 16.0 `UnicodeData.txt`
+// (https://www.unicode.org/Public/16.0.0/ucd/UnicodeData.txt): the 230
+// `BLOCK OCTANT-N` names were parsed to (cell-set → code-point) pairs, and the
+// 26 patterns absent from that block were mapped to their reused glyphs by
+// matching the documented geometry of the corresponding Block-Elements /
+// Symbols-for-Legacy-Computing names. Every pattern maps to a distinct glyph
+// (asserted by `test_octant_table_all_distinct`).
+
+/// Row-major bit lookup for the [`Blitter::Octant`] 2×4 cell.
+///
+/// `OCTANT_PIXEL_MAP[row][col]` is the bit set for the pixel at that position,
+/// where `bit = row * 2 + col` (bit0 = top-left … bit7 = bottom-right).
+const OCTANT_PIXEL_MAP: [[u8; 2]; 4] = [
+    [0x01, 0x02], // row 0
+    [0x04, 0x08], // row 1
+    [0x10, 0x20], // row 2
+    [0x40, 0x80], // row 3
+];
+
+/// Pattern (`0..=255`) → Unicode glyph for the octant blitter.
+///
+/// Index by the 8-bit cell value (`bit = row * 2 + col`).  Reused pre-existing
+/// glyphs (SPACE, half/quarter/quadrant blocks, FULL BLOCK) sit alongside the
+/// new U+1CD00 block characters; see the module-level note for the derivation.
+#[rustfmt::skip]
+const OCTANT_CHARS: [char; 256] = [
+    '\u{0020}', '\u{1CEA8}', '\u{1CEAB}', '\u{1FB82}', '\u{1CD00}', '\u{2598}', '\u{1CD01}', '\u{1CD02}', // 0x00..=0x07
+    '\u{1CD03}', '\u{1CD04}', '\u{259D}', '\u{1CD05}', '\u{1CD06}', '\u{1CD07}', '\u{1CD08}', '\u{2580}', // 0x08..=0x0F
+    '\u{1CD09}', '\u{1CD0A}', '\u{1CD0B}', '\u{1CD0C}', '\u{1FBE6}', '\u{1CD0D}', '\u{1CD0E}', '\u{1CD0F}', // 0x10..=0x17
+    '\u{1CD10}', '\u{1CD11}', '\u{1CD12}', '\u{1CD13}', '\u{1CD14}', '\u{1CD15}', '\u{1CD16}', '\u{1CD17}', // 0x18..=0x1F
+    '\u{1CD18}', '\u{1CD19}', '\u{1CD1A}', '\u{1CD1B}', '\u{1CD1C}', '\u{1CD1D}', '\u{1CD1E}', '\u{1CD1F}', // 0x20..=0x27
+    '\u{1FBE7}', '\u{1CD20}', '\u{1CD21}', '\u{1CD22}', '\u{1CD23}', '\u{1CD24}', '\u{1CD25}', '\u{1CD26}', // 0x28..=0x2F
+    '\u{1CD27}', '\u{1CD28}', '\u{1CD29}', '\u{1CD2A}', '\u{1CD2B}', '\u{1CD2C}', '\u{1CD2D}', '\u{1CD2E}', // 0x30..=0x37
+    '\u{1CD2F}', '\u{1CD30}', '\u{1CD31}', '\u{1CD32}', '\u{1CD33}', '\u{1CD34}', '\u{1CD35}', '\u{1FB85}', // 0x38..=0x3F
+    '\u{1CEA3}', '\u{1CD36}', '\u{1CD37}', '\u{1CD38}', '\u{1CD39}', '\u{1CD3A}', '\u{1CD3B}', '\u{1CD3C}', // 0x40..=0x47
+    '\u{1CD3D}', '\u{1CD3E}', '\u{1CD3F}', '\u{1CD40}', '\u{1CD41}', '\u{1CD42}', '\u{1CD43}', '\u{1CD44}', // 0x48..=0x4F
+    '\u{2596}', '\u{1CD45}', '\u{1CD46}', '\u{1CD47}', '\u{1CD48}', '\u{258C}', '\u{1CD49}', '\u{1CD4A}', // 0x50..=0x57
+    '\u{1CD4B}', '\u{1CD4C}', '\u{259E}', '\u{1CD4D}', '\u{1CD4E}', '\u{1CD4F}', '\u{1CD50}', '\u{259B}', // 0x58..=0x5F
+    '\u{1CD51}', '\u{1CD52}', '\u{1CD53}', '\u{1CD54}', '\u{1CD55}', '\u{1CD56}', '\u{1CD57}', '\u{1CD58}', // 0x60..=0x67
+    '\u{1CD59}', '\u{1CD5A}', '\u{1CD5B}', '\u{1CD5C}', '\u{1CD5D}', '\u{1CD5E}', '\u{1CD5F}', '\u{1CD60}', // 0x68..=0x6F
+    '\u{1CD61}', '\u{1CD62}', '\u{1CD63}', '\u{1CD64}', '\u{1CD65}', '\u{1CD66}', '\u{1CD67}', '\u{1CD68}', // 0x70..=0x77
+    '\u{1CD69}', '\u{1CD6A}', '\u{1CD6B}', '\u{1CD6C}', '\u{1CD6D}', '\u{1CD6E}', '\u{1CD6F}', '\u{1CD70}', // 0x78..=0x7F
+    '\u{1CEA0}', '\u{1CD71}', '\u{1CD72}', '\u{1CD73}', '\u{1CD74}', '\u{1CD75}', '\u{1CD76}', '\u{1CD77}', // 0x80..=0x87
+    '\u{1CD78}', '\u{1CD79}', '\u{1CD7A}', '\u{1CD7B}', '\u{1CD7C}', '\u{1CD7D}', '\u{1CD7E}', '\u{1CD7F}', // 0x88..=0x8F
+    '\u{1CD80}', '\u{1CD81}', '\u{1CD82}', '\u{1CD83}', '\u{1CD84}', '\u{1CD85}', '\u{1CD86}', '\u{1CD87}', // 0x90..=0x97
+    '\u{1CD88}', '\u{1CD89}', '\u{1CD8A}', '\u{1CD8B}', '\u{1CD8C}', '\u{1CD8D}', '\u{1CD8E}', '\u{1CD8F}', // 0x98..=0x9F
+    '\u{2597}', '\u{1CD90}', '\u{1CD91}', '\u{1CD92}', '\u{1CD93}', '\u{259A}', '\u{1CD94}', '\u{1CD95}', // 0xA0..=0xA7
+    '\u{1CD96}', '\u{1CD97}', '\u{2590}', '\u{1CD98}', '\u{1CD99}', '\u{1CD9A}', '\u{1CD9B}', '\u{259C}', // 0xA8..=0xAF
+    '\u{1CD9C}', '\u{1CD9D}', '\u{1CD9E}', '\u{1CD9F}', '\u{1CDA0}', '\u{1CDA1}', '\u{1CDA2}', '\u{1CDA3}', // 0xB0..=0xB7
+    '\u{1CDA4}', '\u{1CDA5}', '\u{1CDA6}', '\u{1CDA7}', '\u{1CDA8}', '\u{1CDA9}', '\u{1CDAA}', '\u{1CDAB}', // 0xB8..=0xBF
+    '\u{2582}', '\u{1CDAC}', '\u{1CDAD}', '\u{1CDAE}', '\u{1CDAF}', '\u{1CDB0}', '\u{1CDB1}', '\u{1CDB2}', // 0xC0..=0xC7
+    '\u{1CDB3}', '\u{1CDB4}', '\u{1CDB5}', '\u{1CDB6}', '\u{1CDB7}', '\u{1CDB8}', '\u{1CDB9}', '\u{1CDBA}', // 0xC8..=0xCF
+    '\u{1CDBB}', '\u{1CDBC}', '\u{1CDBD}', '\u{1CDBE}', '\u{1CDBF}', '\u{1CDC0}', '\u{1CDC1}', '\u{1CDC2}', // 0xD0..=0xD7
+    '\u{1CDC3}', '\u{1CDC4}', '\u{1CDC5}', '\u{1CDC6}', '\u{1CDC7}', '\u{1CDC8}', '\u{1CDC9}', '\u{1CDCA}', // 0xD8..=0xDF
+    '\u{1CDCB}', '\u{1CDCC}', '\u{1CDCD}', '\u{1CDCE}', '\u{1CDCF}', '\u{1CDD0}', '\u{1CDD1}', '\u{1CDD2}', // 0xE0..=0xE7
+    '\u{1CDD3}', '\u{1CDD4}', '\u{1CDD5}', '\u{1CDD6}', '\u{1CDD7}', '\u{1CDD8}', '\u{1CDD9}', '\u{1CDDA}', // 0xE8..=0xEF
+    '\u{2584}', '\u{1CDDB}', '\u{1CDDC}', '\u{1CDDD}', '\u{1CDDE}', '\u{2599}', '\u{1CDDF}', '\u{1CDE0}', // 0xF0..=0xF7
+    '\u{1CDE1}', '\u{1CDE2}', '\u{259F}', '\u{1CDE3}', '\u{2586}', '\u{1CDE4}', '\u{1CDE5}', '\u{2588}', // 0xF8..=0xFF
+];
+
+/// Render an 8-bit octant pattern to its Unicode glyph (see [`OCTANT_CHARS`]).
+#[inline]
+fn octant_bits_to_char(bits: u8) -> char {
+    OCTANT_CHARS[bits as usize]
 }
 
 // ---------------------------------------------------------------------------
@@ -278,11 +375,18 @@ impl Canvas {
             return None;
         }
         let (cell_col, cell_row, bit) = match self.blitter {
-            Blitter::Braille | Blitter::Octant => {
-                // 2 columns × 4 rows per cell; Octant is stubbed to Braille.
+            Blitter::Braille => {
+                // 2 columns × 4 rows per cell (Braille dot bit-order).
                 let col = x / 2;
                 let row = y / 4;
                 let bit = PIXEL_MAP[y % 4][x % 2];
+                (col, row, bit)
+            }
+            Blitter::Octant => {
+                // 2 columns × 4 rows per cell (row-major bit-order).
+                let col = x / 2;
+                let row = y / 4;
+                let bit = OCTANT_PIXEL_MAP[y % 4][x % 2];
                 (col, row, bit)
             }
             Blitter::Sextant => {
@@ -447,12 +551,11 @@ impl Canvas {
         let mut lines: Vec<String> = Vec::with_capacity(self.height);
         for row in &self.pixels {
             let line: String = match self.blitter {
-                Blitter::Braille | Blitter::Octant => {
-                    // Octant is stubbed to Braille (see `Blitter::Octant` docs).
-                    row.iter()
-                        .map(|&bits| char::from_u32(BRAILLE_BASE + bits as u32).unwrap_or(' '))
-                        .collect()
-                }
+                Blitter::Braille => row
+                    .iter()
+                    .map(|&bits| char::from_u32(BRAILLE_BASE + bits as u32).unwrap_or(' '))
+                    .collect(),
+                Blitter::Octant => row.iter().map(|&bits| octant_bits_to_char(bits)).collect(),
                 Blitter::Sextant => row.iter().map(|&bits| sextant_bits_to_char(bits)).collect(),
                 Blitter::HalfBlock => row
                     .iter()
@@ -493,10 +596,11 @@ impl Renderable for Canvas {
         let mut segments = Vec::new();
         for (i, row) in self.pixels.iter().enumerate() {
             let line: String = match self.blitter {
-                Blitter::Braille | Blitter::Octant => row
+                Blitter::Braille => row
                     .iter()
                     .map(|&bits| char::from_u32(BRAILLE_BASE + bits as u32).unwrap_or(' '))
                     .collect(),
+                Blitter::Octant => row.iter().map(|&bits| octant_bits_to_char(bits)).collect(),
                 Blitter::Sextant => row.iter().map(|&bits| sextant_bits_to_char(bits)).collect(),
                 Blitter::HalfBlock => row
                     .iter()
@@ -866,5 +970,124 @@ mod tests {
         assert_eq!(c.pixels[0][0], 0xFF);
         let ch = char::from_u32(BRAILLE_BASE + 0xFF).unwrap();
         assert_eq!(c.frame(), ch.to_string());
+    }
+
+    // -- Octant blitter (Unicode 16) ----------------------------------------
+    //
+    // The 256 2×4 octant patterns were verified against the authoritative
+    // Unicode 16.0 `UnicodeData.txt` (`BLOCK OCTANT-N` names).  Bit order:
+    // `bit = row * 2 + col`, so cell `c` (numbered 1..8 left-to-right,
+    // top-to-bottom) corresponds to `bit (c - 1)`.
+
+    // 26. Octant anchors: empty → SPACE, all set → FULL BLOCK.
+    #[test]
+    fn test_octant_anchors() {
+        assert_eq!(octant_bits_to_char(0x00), ' ');
+        assert_eq!(octant_bits_to_char(0xFF), '\u{2588}');
+    }
+
+    // 27. The four half-block patterns reuse existing Block Elements glyphs.
+    #[test]
+    fn test_octant_half_blocks() {
+        assert_eq!(octant_bits_to_char(0x0F), '\u{2580}'); // ▀ upper (cells 1-4)
+        assert_eq!(octant_bits_to_char(0xF0), '\u{2584}'); // ▄ lower (cells 5-8)
+        assert_eq!(octant_bits_to_char(0x55), '\u{258C}'); // ▌ left  (cells 1,3,5,7)
+        assert_eq!(octant_bits_to_char(0xAA), '\u{2590}'); // ▐ right (cells 2,4,6,8)
+    }
+
+    // 28. New U+1CD00 block glyphs — codepoints verified against Unicode 16.0
+    //     UnicodeData.txt:
+    //       U+1CD00 BLOCK OCTANT-3       (cell 3        = 0x04)
+    //       U+1CD01 BLOCK OCTANT-23      (cells 2,3     = 0x06)
+    //       U+1CD02 BLOCK OCTANT-123     (cells 1,2,3   = 0x07)
+    //       U+1CDE5 BLOCK OCTANT-2345678 (cells 2-8     = 0xFE)
+    #[test]
+    fn test_octant_new_block_codepoints() {
+        assert_eq!(octant_bits_to_char(0x04), '\u{1CD00}');
+        assert_eq!(octant_bits_to_char(0x06), '\u{1CD01}');
+        assert_eq!(octant_bits_to_char(0x07), '\u{1CD02}');
+        assert_eq!(octant_bits_to_char(0xFE), '\u{1CDE5}');
+    }
+
+    // 29. The two new Unicode 16 "middle quarter" glyphs + corner quarter
+    //     blocks (also reused, not in the contiguous block).
+    #[test]
+    fn test_octant_reused_quarter_blocks() {
+        assert_eq!(octant_bits_to_char(0x14), '\u{1FBE6}'); // MIDDLE LEFT ¼ (cells 3,5)
+        assert_eq!(octant_bits_to_char(0x28), '\u{1FBE7}'); // MIDDLE RIGHT ¼ (cells 4,6)
+        assert_eq!(octant_bits_to_char(0x03), '\u{1FB82}'); // UPPER ¼ (cells 1,2)
+        assert_eq!(octant_bits_to_char(0xC0), '\u{2582}'); // LOWER ¼ (cells 7,8)
+        assert_eq!(octant_bits_to_char(0x3F), '\u{1FB85}'); // UPPER ¾ (cells 1-6)
+        assert_eq!(octant_bits_to_char(0xFC), '\u{2586}'); // LOWER ¾ (cells 3-8)
+        assert_eq!(octant_bits_to_char(0x01), '\u{1CEA8}'); // top-left cell only
+        assert_eq!(octant_bits_to_char(0x80), '\u{1CEA0}'); // bottom-right cell only
+    }
+
+    // 30. Each of the 8 sub-cell positions sets exactly its row-major bit.
+    #[test]
+    fn test_octant_pixel_bit_mapping() {
+        let cases: [(usize, usize, u8); 8] = [
+            (0, 0, 0x01), // cell 1 (top-left)
+            (1, 0, 0x02), // cell 2 (top-right)
+            (0, 1, 0x04), // cell 3
+            (1, 1, 0x08), // cell 4
+            (0, 2, 0x10), // cell 5
+            (1, 2, 0x20), // cell 6
+            (0, 3, 0x40), // cell 7 (bottom-left)
+            (1, 3, 0x80), // cell 8 (bottom-right)
+        ];
+        for (px, py, expected_bit) in cases {
+            let mut c = Canvas::new(1, 1).with_blitter(Blitter::Octant);
+            c.set(px, py);
+            assert_eq!(
+                c.pixels[0][0], expected_bit,
+                "octant pixel ({px},{py}) should set bit 0x{expected_bit:02X}"
+            );
+        }
+    }
+
+    // 31. Octant frame: a fully-set cell renders FULL BLOCK.
+    #[test]
+    fn test_octant_frame_full_cell() {
+        let mut c = Canvas::new(1, 1).with_blitter(Blitter::Octant);
+        for y in 0..4 {
+            for x in 0..2 {
+                c.set(x, y);
+            }
+        }
+        assert_eq!(c.pixels[0][0], 0xFF);
+        assert_eq!(c.frame(), '\u{2588}'.to_string());
+    }
+
+    // 32. An empty octant canvas renders SPACEs (not braille blanks) — proves
+    //     the Octant arm no longer falls back to Braille.
+    #[test]
+    fn test_octant_empty_frame_is_space() {
+        let c = Canvas::new(3, 1).with_blitter(Blitter::Octant);
+        assert_eq!(c.frame(), "   ");
+    }
+
+    // 33. gilt_console renders octant glyphs (not braille) for the Octant arm.
+    #[test]
+    fn test_octant_gilt_console_uses_octant_glyphs() {
+        let mut c = Canvas::new(1, 1).with_blitter(Blitter::Octant);
+        c.set(0, 1); // cell 3 → bit 0x04 → U+1CD00 BLOCK OCTANT-3
+        let console = Console::builder().width(80).build();
+        let opts = make_options(80);
+        let segs = c.gilt_console(&console, &opts);
+        assert_eq!(segs[0].text.as_str(), "\u{1CD00}");
+    }
+
+    // 34. Invariant: every one of the 256 patterns maps to a distinct glyph
+    //     (guards against typos in the table).
+    #[test]
+    fn test_octant_table_all_distinct() {
+        use std::collections::HashSet;
+        let set: HashSet<char> = OCTANT_CHARS.iter().copied().collect();
+        assert_eq!(
+            set.len(),
+            256,
+            "every octant pattern must map to a distinct glyph"
+        );
     }
 }
