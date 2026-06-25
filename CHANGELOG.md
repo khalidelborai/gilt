@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- **`Tree` nested in a fixed-size `Layout`/`Panel` region rendered only its root,
+  dropping all child nodes.** Each node label was rendered with the ambient
+  (region) height still set, so the root label was padded to fill the whole
+  region and the children were cropped away. Node labels now render at their
+  natural height (rich parity: `height=None` per label), so a `Tree` survives
+  composition inside a fixed-size region.
+
 ## [2.3.0] - 2026-06-25
 
 Inline images everywhere, two more charts, and richer Canvas demos. All

@@ -406,6 +406,12 @@ impl Renderable for Tree {
             // P2 parity (finding #5): forward highlight flag into options so
             // the label renderer can apply syntax highlighting.
             let mut child_opts = options.update_width(child_width);
+            // rich parity (rich/tree.py; research_doc/13-tree.md): render each
+            // node label with height = None. Otherwise a constrained ambient
+            // height (e.g. a fixed-size Layout region or a height-bounded Panel)
+            // pads the FIRST label to fill the whole region, cropping out every
+            // sibling node and leaving a root-only tree.
+            child_opts.height = None;
             if self.highlight {
                 child_opts.highlight = Some(true);
             }
@@ -1651,6 +1657,125 @@ mod tests {
             "Guide segments should carry a color from the 'tree.line' theme style; \
              segments: {:?}",
             guide_segs
+        );
+    }
+
+    // -- Regression: children survive a constrained ambient height --------------
+    //
+    // A `Tree` rendered with a constrained `options.height` (as a fixed-size
+    // `Layout`/`Panel` region supplies) must still emit ALL child labels.
+    // Before the fix, the per-label render inherited the ambient height, so the
+    // root label alone was padded to fill the region and the children were
+    // cropped away — leaving a root-only tree. rich parity: each node label is
+    // rendered with height=None.
+
+    /// Collect non-control text from a `render_lines` result.
+    fn lines_text(lines: &[Vec<Segment>]) -> String {
+        lines
+            .iter()
+            .flat_map(|l| l.iter())
+            .filter(|s| !s.is_control())
+            .map(|s| s.text.as_str())
+            .collect()
+    }
+
+    #[test]
+    fn test_tree_children_survive_constrained_height() {
+        let console = test_console(40);
+        // Simulate a fixed-size Layout region of height 20.
+        let opts = console.options().update_dimensions(40, 20);
+
+        let mut tree = Tree::new(Text::new("root", Style::null()));
+        tree.add(Text::new("child1", Style::null()));
+        tree.add(Text::new("child2", Style::null()));
+        tree.add(Text::new("child3", Style::null()));
+
+        // render_lines applies the same height crop/pad that Layout and Panel do.
+        let lines = console.render_lines(&tree, Some(&opts), None, true, false);
+        let text = lines_text(&lines);
+
+        assert!(text.contains("root"));
+        assert!(
+            text.contains("child1"),
+            "child1 dropped under constrained height: {text:?}"
+        );
+        assert!(
+            text.contains("child2"),
+            "child2 dropped under constrained height: {text:?}"
+        );
+        assert!(
+            text.contains("child3"),
+            "child3 dropped under constrained height: {text:?}"
+        );
+        // The region is still filled to its height (children + blank padding).
+        assert_eq!(lines.len(), 20);
+    }
+
+    #[test]
+    fn test_tree_constrained_height_exactly_node_count() {
+        let console = test_console(40);
+        // Height exactly equals the natural line count: root + 3 children = 4.
+        let opts = console.options().update_dimensions(40, 4);
+
+        let mut tree = Tree::new(Text::new("root", Style::null()));
+        tree.add(Text::new("child1", Style::null()));
+        tree.add(Text::new("child2", Style::null()));
+        tree.add(Text::new("child3", Style::null()));
+
+        let lines = console.render_lines(&tree, Some(&opts), None, true, false);
+        let text = lines_text(&lines);
+
+        assert_eq!(lines.len(), 4);
+        assert!(text.contains("root"));
+        assert!(text.contains("child1"), "child1 dropped: {text:?}");
+        assert!(text.contains("child2"), "child2 dropped: {text:?}");
+        assert!(text.contains("child3"), "child3 dropped: {text:?}");
+    }
+
+    #[test]
+    fn test_tree_constrained_height_one_crops_to_root() {
+        let console = test_console(40);
+        // A genuinely too-short region (height = 1) can only show the root.
+        // The fix restores natural rendering; it does not conjure vertical space.
+        // rich behaves the same way.
+        let opts = console.options().update_dimensions(40, 1);
+
+        let mut tree = Tree::new(Text::new("root", Style::null()));
+        tree.add(Text::new("child1", Style::null()));
+        tree.add(Text::new("child2", Style::null()));
+
+        let lines = console.render_lines(&tree, Some(&opts), None, true, false);
+        let text = lines_text(&lines);
+
+        assert_eq!(lines.len(), 1);
+        assert!(text.contains("root"));
+        assert!(
+            !text.contains("child1"),
+            "height=1 region should crop children: {text:?}"
+        );
+    }
+
+    #[test]
+    fn test_tree_nested_survives_constrained_height() {
+        let console = test_console(40);
+        let opts = console.options().update_dimensions(40, 20);
+
+        // root → child → grandchild (depth 2): the height reset must apply at
+        // every level, not just the first.
+        let mut tree = Tree::new(Text::new("root", Style::null()));
+        let child = tree.add(Text::new("child", Style::null()));
+        child
+            .children
+            .push(Tree::new(Text::new("grandchild", Style::null())));
+
+        let lines = console.render_lines(&tree, Some(&opts), None, true, false);
+        let text = lines_text(&lines);
+
+        assert!(text.contains("root"));
+        assert!(text.contains("child"), "child dropped: {text:?}");
+        assert!(
+            text.contains("grandchild"),
+            "grandchild dropped under constrained height: {text:?}"
         );
     }
 }
