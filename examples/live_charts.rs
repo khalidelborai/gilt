@@ -92,7 +92,10 @@ fn dashboard(cpu: &[f64], mem: &[f64], reqs: &[f64], net: &[Vec<f64>], frame: us
     g.push(Text::new("", Style::null()));
 
     // Network heatmap (flowing left), cool→hot gradient.
-    g.push(Text::new("network throughput", Style::parse("bold #f8f8f2")));
+    g.push(Text::new(
+        "network throughput",
+        Style::parse("bold #f8f8f2"),
+    ));
     g.push(
         Heatmap::new(net.to_vec())
             .with_min(0.0)
@@ -117,8 +120,14 @@ fn dashboard(cpu: &[f64], mem: &[f64], reqs: &[f64], net: &[Vec<f64>], frame: us
     );
 
     Panel::new(g)
-        .with_title(Text::new(" gilt · live charts ", Style::parse("bold #282a36 on #bd93f9")))
-        .with_subtitle(Text::new("Sparkline · BarChart · Heatmap, animated", Style::parse("italic #6272a4")))
+        .with_title(Text::new(
+            " gilt · live charts ",
+            Style::parse("bold #282a36 on #bd93f9"),
+        ))
+        .with_subtitle(Text::new(
+            "Sparkline · BarChart · Heatmap, animated",
+            Style::parse("italic #6272a4"),
+        ))
         .with_border_style(Style::parse("bold #bd93f9"))
 }
 

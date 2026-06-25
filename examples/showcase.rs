@@ -1752,9 +1752,9 @@ Mumbai,India,12440000,603";
 
             // Live metrics column — a scrolling CPU sparkline (with min/max
             // markers) + a per-step BarChart, both animating each frame.
-            let cpu_v = (52.0 + 38.0 * (frame as f64 * 0.4).sin()
-                + 6.0 * (frame as f64 * 1.3).sin())
-            .clamp(3.0, 99.0);
+            let cpu_v =
+                (52.0 + 38.0 * (frame as f64 * 0.4).sin() + 6.0 * (frame as f64 * 1.3).sin())
+                    .clamp(3.0, 99.0);
             cpu.push_back(cpu_v);
             if cpu.len() > 24 {
                 cpu.pop_front();
@@ -1772,7 +1772,10 @@ Mumbai,India,12440000,603";
                             .with_min_style(Style::parse("blue"))
                             .with_max_style(Style::parse("bold red")),
                     )
-                    .with_title(Text::new(&format!("cpu {cpu_v:>3.0}%"), Style::parse("dim"))),
+                    .with_title(Text::new(
+                        &format!("cpu {cpu_v:>3.0}%"),
+                        Style::parse("dim"),
+                    )),
                 );
             let step_f = progress * steps.len() as f64;
             let mut bars = BarChart::new()

@@ -1,15 +1,33 @@
-//! Demonstrates the BarChart widget -- horizontal Unicode bar charts.
+//! `BarChart` — horizontal Unicode bar charts with sub-cell precision.
 //!
-//! Each row is `label  ███████▌░░  value`: a right-padded label, a
-//! proportional bar (full blocks plus a fractional partial block for sub-cell
-//! precision over a `░` track), and an optional value.
+//! Each row is `label  ███████▌  value`: a right-aligned label, a proportional
+//! bar drawn with full blocks plus an eighth-block partial cell for fractional
+//! precision, and an optional value. This demo frames each chart in a `Panel`
+//! (gilt 2.0 lets a `Panel` hold any `Renderable`) for a dashboard feel.
 //!
 //! Run with: `cargo run --example barchart`
 
 use gilt::barchart::BarChart;
+use gilt::color::Color;
 use gilt::console::Console;
-use gilt::rule::Rule;
+use gilt::gradient::Gradient;
+use gilt::panel::Panel;
 use gilt::style::Style;
+use gilt::text::Text;
+
+/// A subtle Dracula-grey panel border.
+fn border() -> Style {
+    Style::parse("#44475a")
+}
+
+fn titled(title: &str, color: &str, chart: BarChart) -> Panel {
+    Panel::new(chart)
+        .with_title(Text::new(
+            &format!(" {title} "),
+            Style::parse(&format!("bold {color}")),
+        ))
+        .with_border_style(border())
+}
 
 fn main() {
     let mut console = Console::builder()
@@ -18,47 +36,77 @@ fn main() {
         .no_color(false)
         .build();
 
-    // -- Basic chart, auto-scaled to the largest value -----------------------
-    console.print(&Rule::with_title("Languages by stars (auto scale)"));
+    console.print(&Gradient::new(
+        "gilt · BarChart — sub-cell precision, any data, any style",
+        vec![
+            Color::from_rgb(189, 147, 249),
+            Color::from_rgb(255, 121, 198),
+            Color::from_rgb(139, 233, 253),
+        ],
+    ));
+    console.line(1);
 
-    let langs = BarChart::from_pairs([
-        ("Rust", 81_000.0),
-        ("Go", 119_000.0),
-        ("Zig", 33_000.0),
-        ("Python", 59_000.0),
+    // 1. Auto-scaled to the largest value (cyan).
+    let stars = BarChart::from_pairs([
+        ("ratatui", 12_400.0),
+        ("clap", 15_900.0),
+        ("indicatif", 4_300.0),
+        ("crossterm", 3_100.0),
+        ("gilt", 9_001.0),
     ])
-    .with_width(60)
-    .with_bar_style(Style::parse("cyan"))
-    .with_label_style(Style::parse("bold"))
+    .with_width(54)
+    .with_bar_style(Style::parse("#8be9fd"))
+    .with_label_style(Style::parse("bold #f8f8f2"))
     .with_value_style(Style::parse("dim"));
-    console.print(&langs);
+    console.print(&titled("GitHub stars · auto-scaled", "#8be9fd", stars));
+    console.line(1);
 
-    // -- Explicit max (0..100) keeps every bar on the same percentage scale --
-    console.print(&Rule::with_title("Disk usage % (fixed max = 100)"));
+    // 2. Fixed 0..100 scale so bars read as true percentages (green).
+    let disk = BarChart::from_pairs([
+        ("/", 72.0),
+        ("/home", 48.5),
+        ("/var", 93.0),
+        ("/tmp", 6.0),
+        ("/boot", 31.0),
+    ])
+    .with_width(54)
+    .with_max(100.0)
+    .with_bar_style(Style::parse("#50fa7b"))
+    .with_label_style(Style::parse("bold"))
+    .with_value_style(Style::parse("dim #50fa7b"));
+    console.print(&titled("disk usage % · fixed max 100", "#50fa7b", disk));
+    console.line(1);
 
-    let disks = BarChart::from_pairs([("/", 72.0), ("/home", 48.5), ("/var", 91.0), ("/tmp", 6.0)])
-        .with_width(60)
+    // 3. Built incrementally with push(); fractional values show the eighth-block
+    //    partial cell that gives the bars their sub-cell precision (pink).
+    let mut build = BarChart::new()
+        .with_width(54)
+        .with_bar_style(Style::parse("#ff79c6"))
+        .with_label_style(Style::parse("bold"))
+        .with_value_style(Style::parse("dim"));
+    build.push("parse", 0.8);
+    build.push("typecheck", 4.25);
+    build.push("codegen", 9.7);
+    build.push("link", 2.1);
+    console.print(&titled(
+        "build phase · seconds (push-built)",
+        "#ff79c6",
+        build,
+    ));
+    console.line(1);
+
+    // 4. Values hidden — clean bars only (yellow).
+    let poll = BarChart::from_pairs([("Rust", 58.0), ("Go", 22.0), ("Zig", 13.0), ("C", 7.0)])
+        .with_width(54)
         .with_max(100.0)
-        .with_bar_style(Style::parse("green"));
-    console.print(&disks);
-
-    // -- Incremental building via push, values hidden ------------------------
-    console.print(&Rule::with_title("Votes (built with push, no values)"));
-
-    let mut votes = BarChart::new()
-        .with_width(60)
         .with_show_values(false)
-        .with_bar_style(Style::parse("magenta"));
-    votes.push("Alice", 12.0);
-    votes.push("Bob", 7.0);
-    votes.push("Carol", 19.0);
-    console.print(&votes);
+        .with_bar_style(Style::parse("#f1fa8c"))
+        .with_label_style(Style::parse("bold"));
+    console.print(&titled("favourite language · bars only", "#f1fa8c", poll));
 
-    // -- Display trait (via println!) ----------------------------------------
-    console.print(&Rule::with_title("Display trait (via println!)"));
-
-    let quick = BarChart::from_pairs([("cpu", 63.0), ("mem", 41.0), ("net", 88.0)])
-        .with_width(48)
-        .with_max(100.0);
-    println!("{quick}");
+    console.line(1);
+    console.print(&Text::new(
+        "  every bar is a Renderable — drop one in a Panel, Table cell, or Live display.",
+        Style::parse("italic #6272a4"),
+    ));
 }
