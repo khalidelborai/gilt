@@ -1270,7 +1270,7 @@ impl Table {
         // only applies them when safe=True). The outer guard `ascii_only || safe`
         // mirrors that — substitute is only called when at least one mode is active.
         let the_box: Option<&BoxChars> = self.box_chars.map(|b| {
-            let safe = self.safe_box.unwrap_or(true);
+            let safe = self.safe_box.unwrap_or(console.safe_box());
             let ascii_only = options.ascii_only();
             let legacy_windows = options.legacy_windows;
             let substituted = if ascii_only || safe {
@@ -2353,5 +2353,50 @@ mod parity_batch_7_10_tests {
         let output = render_plain(&table);
         assert!(output.contains("alice"), "alice missing: {output:?}");
         assert!(output.contains("bob"), "bob missing: {output:?}");
+    }
+
+    // ---- Deep-review: Table safe_box inheritance from console ----
+
+    /// Table with `safe_box=None` on a console with `safe_box(false)` must
+    /// inherit the console's setting and keep Unicode box characters (not
+    /// substitute to SQUARE).  This mirrors the Panel fix (Panel P2 item 2)
+    /// which was already applied — Table was missed.
+    ///
+    /// We force `legacy_windows=true` so that the `safe` flag gates the
+    /// ROUNDED→SQUARE substitution.  With the bug (`unwrap_or(true)`), the
+    /// table substitutes to SQUARE even though the console says safe_box=false.
+    #[test]
+    fn table_inherits_safe_box_from_console() {
+        use crate::box_chars::ROUNDED;
+        let console = Console::builder()
+            .width(30)
+            .force_terminal(true)
+            .no_color(true)
+            .markup(false)
+            .safe_box(false)
+            .build();
+        let mut table = Table::new(&["A", "B"]);
+        table.box_chars = Some(&ROUNDED);
+        table.show_header = true;
+        table.add_row(&["1", "2"]);
+        // safe_box field must be None (no override).
+        assert!(
+            table.safe_box.is_none(),
+            "Table default safe_box must be None"
+        );
+        let mut opts = console.options();
+        opts.legacy_windows = true;
+        // Force utf-8 so only the safe/legacy path is exercised.
+        opts.encoding = std::borrow::Cow::Borrowed("utf-8");
+        let segments = table.gilt_console(&console, &opts);
+        let text: String = segments.iter().map(|s| s.text.as_str()).collect();
+        // With safe_box=false, the original rounded box chars survive.
+        // (Bug: unwrap_or(true) → substitutes ROUNDED → SQUARE, losing ╭/╰.)
+        assert!(
+            text.contains('╭') || text.contains('╰'),
+            "Table must use Unicode rounded box when console.safe_box=false and \
+             table.safe_box=None; got '{}'",
+            text
+        );
     }
 }
