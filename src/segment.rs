@@ -958,9 +958,64 @@ impl Segment {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Renderable wrapper types (Phase 7 parity)
+// ---------------------------------------------------------------------------
+
+/// Renderable wrapper around a flat list of [`Segment`]s.
+///
+/// Mirrors rich's `Segments` helper class — exposes an existing segment list
+/// through the [`Renderable`] trait so it can flow through the same console
+/// pipeline as a hand-written renderable.
+///
+/// [`Renderable`]: crate::console::Renderable
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Segments(pub Vec<Segment>);
+
+/// Renderable wrapper around pre-split lines of [`Segment`]s.
+///
+/// Mirrors rich's `SegmentLines`. When rendered, each inner line is emitted in
+/// order, separated by a single `Segment::line()` (i.e. `\n`) so a downstream
+/// consumer gets one continuous segment stream. An empty input renders to an
+/// empty output — no stray trailing newline.
+///
+/// [`Renderable`]: crate::console::Renderable
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct SegmentLines(pub Vec<Vec<Segment>>);
+
+impl crate::console::Renderable for Segments {
+    fn gilt_console(
+        &self,
+        _console: &crate::console::Console,
+        _options: &crate::console::ConsoleOptions,
+    ) -> Vec<Segment> {
+        self.0.clone()
+    }
+}
+
+impl crate::console::Renderable for SegmentLines {
+    fn gilt_console(
+        &self,
+        _console: &crate::console::Console,
+        _options: &crate::console::ConsoleOptions,
+    ) -> Vec<Segment> {
+        let mut out: Vec<Segment> = Vec::with_capacity(self.0.iter().map(|l| l.len() + 1).sum());
+        let mut first = true;
+        for line in &self.0 {
+            if !first {
+                out.push(Segment::line());
+            }
+            out.extend(line.iter().cloned());
+            first = false;
+        }
+        out
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::console::Console;
 
     #[test]
     fn test_line() {
@@ -1500,5 +1555,42 @@ mod tests {
         let lines = Segment::split_lines_terminator(&segments);
         assert_eq!(lines.len(), 1);
         assert!(lines[0].1);
+    }
+    // -- Segments / SegmentLines renderable wrappers ------------------------
+
+    #[test]
+    fn test_segments_renders_as_is() {
+        use crate::console::Renderable;
+
+        let console = Console::new();
+        let options = console.options();
+        let inner = vec![Segment::new("hi", None, None)];
+        let wrapper = Segments(inner.clone());
+        let rendered = wrapper.gilt_console(&console, &options);
+        assert_eq!(rendered, inner);
+    }
+
+    #[test]
+    fn test_segment_lines_flattens_with_newlines() {
+        use crate::console::Renderable;
+
+        let console = Console::new();
+        let options = console.options();
+        let a = Segment::new("a", None, None);
+        let b = Segment::new("b", None, None);
+        let wrapper = SegmentLines(vec![vec![a.clone()], vec![b.clone()]]);
+        let rendered = wrapper.gilt_console(&console, &options);
+        assert_eq!(rendered, vec![a, Segment::line(), b],);
+    }
+
+    #[test]
+    fn test_segment_lines_empty() {
+        use crate::console::Renderable;
+
+        let console = Console::new();
+        let options = console.options();
+        let wrapper = SegmentLines(Vec::new());
+        let rendered = wrapper.gilt_console(&console, &options);
+        assert!(rendered.is_empty());
     }
 }
