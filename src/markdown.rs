@@ -709,11 +709,18 @@ impl Renderable for Markdown {
                     // P2 parity: prepend the item indent to continuation lines
                     let cont_indent: String =
                         std::iter::repeat_n(' ', indent_level * 4 + 3).collect();
+                    let n_item_segs = item_segs.len();
                     let mut first_line = true;
-                    for seg in item_segs {
+                    for (i, seg) in item_segs.into_iter().enumerate() {
                         if !first_line && seg.text == "\n" {
                             item_buf.push(seg);
-                            item_buf.push(Segment::text(&cont_indent));
+                            // Indent the NEXT wrapped continuation line — but NOT
+                            // after the item's TRAILING newline, or the indent
+                            // leaks onto the following sibling item's bullet,
+                            // making flat lists look progressively nested.
+                            if i + 1 < n_item_segs {
+                                item_buf.push(Segment::text(&cont_indent));
+                            }
                             continue;
                         }
                         first_line = false;

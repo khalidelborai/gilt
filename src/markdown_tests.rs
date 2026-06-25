@@ -268,6 +268,26 @@ fn test_unordered_list() {
     assert!(output.contains('\u{2022}'));
 }
 
+#[test]
+fn test_flat_list_items_share_indent_not_progressive() {
+    // Regression: flat sibling bullets must all share the SAME indent.
+    // Previously each item's trailing continuation-indent leaked onto the
+    // next sibling's bullet, making item 2/3 look nested under item 1.
+    let console = make_console(80);
+    let md = Markdown::new("- Item 1\n- Item 2\n- Item 3");
+    let output = render_markdown(&console, &md);
+    let leads: Vec<usize> = output
+        .lines()
+        .filter(|l| l.contains('\u{2022}') && l.contains("Item"))
+        .map(|l| l.chars().take_while(|c| *c == ' ').count())
+        .collect();
+    assert_eq!(leads.len(), 3, "expected 3 bullet lines, got {leads:?}");
+    assert!(
+        leads.iter().all(|&n| n == leads[0]),
+        "flat sibling bullets must share the same indent, got {leads:?}"
+    );
+}
+
 // -- Ordered lists (numbers) --------------------------------------------
 
 #[test]
