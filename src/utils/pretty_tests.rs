@@ -1391,3 +1391,140 @@ fn test_apply_indent_guides_with_console() {
         combined
     );
 }
+
+// ---------------------------------------------------------------------------
+// Deep-review: max_depth must be applied BEFORE max_length on the Debug path
+// ---------------------------------------------------------------------------
+
+/// When both `max_depth` and `max_length` are set, rich applies depth pruning
+/// during the recursive traversal (before length truncation).  This means
+/// length truncation operates on the depth-pruned tree, and `... +N` markers
+/// from length truncation must not be swallowed into `{...}` depth collapses.
+#[test]
+fn test_debug_max_depth_before_max_length() {
+    // A vec of nested vecs: [[1], [2], [3], [4], [5]]
+    // With max_depth=1, the inner vecs collapse to [...].
+    // With max_length=2, the outer vec truncates to 2 items + "... +3".
+    // Rich applies depth first: [[...], [...], ... +3] (5 items → 2 kept + 3 hidden)
+    let value: Vec<Vec<i32>> = vec![vec![1], vec![2], vec![3], vec![4], vec![5]];
+    let pretty = Pretty::from_debug(&value)
+        .with_max_depth(1)
+        .with_max_length(2)
+        .rebuild_debug(&value);
+    let plain = pretty.text.plain().to_string();
+
+    // The depth-pruned inner vecs should appear as [...]
+    assert!(
+        plain.contains("[...]"),
+        "inner vecs should be depth-pruned to [...]; got: {:?}",
+        plain
+    );
+    // The length truncation marker should be present (not swallowed by depth)
+    assert!(
+        plain.contains("+3"),
+        "length truncation marker ... +3 should survive depth pruning; got: {:?}",
+        plain
+    );
+    // Original inner values should be hidden by depth pruning
+    assert!(
+        !plain.contains("1") || plain.contains("+3"),
+        "inner values should be hidden by depth pruning; got: {:?}",
+        plain
+    );
+}
+
+/// Depth-first order matters when a container has many items AND is itself
+/// at the depth limit.  In that case, depth pruning collapses the entire
+/// container to `{...}`/`[...]`, and length truncation should NOT add a
+/// `... +N` marker to a container that depth has already collapsed.
+#[test]
+fn test_debug_max_depth_collapses_before_length_truncates() {
+    #[derive(Debug)]
+    #[allow(dead_code)]
+    struct Wrapper {
+        items: Vec<i32>,
+    }
+    let value = Wrapper {
+        items: vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    };
+    let pretty = Pretty::from_debug(&value)
+        .with_max_depth(0)
+        .with_max_length(3)
+        .rebuild_debug(&value);
+    let plain = pretty.text.plain().to_string();
+    assert!(
+        plain.contains("{...}"),
+        "outer struct at max_depth=0 should collapse to {{...}}; got: {:?}",
+        plain
+    );
+    assert!(
+        !plain.contains("+7"),
+        "length truncation marker should not survive inside depth-collapsed region; got: {:?}",
+        plain
+    );
+}
+
+/// When both max_depth and max_length are set on a multi-line Debug struct,
+/// depth pruning must happen BEFORE length truncation.  This ensures the
+/// `... +N` length marker is not swallowed and the output structure (closing
+/// brace, etc.) remains intact.
+#[test]
+fn test_debug_max_depth_before_max_length_multiline() {
+    #[derive(Debug)]
+    #[allow(dead_code)]
+    struct Inner {
+        a: i32,
+        b: i32,
+        c: i32,
+    }
+    #[derive(Debug)]
+    #[allow(dead_code)]
+    struct Outer {
+        f1: Inner,
+        f2: Inner,
+        f3: Inner,
+        f4: Inner,
+        f5: Inner,
+    }
+    let value = Outer {
+        f1: Inner { a: 1, b: 2, c: 3 },
+        f2: Inner { a: 4, b: 5, c: 6 },
+        f3: Inner { a: 7, b: 8, c: 9 },
+        f4: Inner {
+            a: 10,
+            b: 11,
+            c: 12,
+        },
+        f5: Inner {
+            a: 13,
+            b: 14,
+            c: 15,
+        },
+    };
+    let pretty = Pretty::from_debug(&value)
+        .with_max_depth(1)
+        .with_max_length(2)
+        .with_expand_all(true)
+        .rebuild_debug(&value);
+    let plain = pretty.text.plain().to_string();
+    assert!(
+        plain.contains("Inner {...}"),
+        "inner structs should be depth-pruned to Inner {{...}}; got: {:?}",
+        plain
+    );
+    assert!(
+        plain.contains("+3"),
+        "length truncation marker ... +3 should survive; got: {:?}",
+        plain
+    );
+    assert!(
+        plain.contains('}'),
+        "closing brace should be present; got: {:?}",
+        plain
+    );
+    assert!(
+        !plain.contains("15"),
+        "inner value 15 should be hidden by depth pruning; got: {:?}",
+        plain
+    );
+}

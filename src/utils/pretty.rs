@@ -646,11 +646,16 @@ fn apply_debug_params(
     if let Some(max_s) = max_string {
         result = truncate_debug_strings(&result, max_s);
     }
-    if let Some(max_l) = max_length {
-        result = truncate_debug_collections(&result, max_l);
-    }
+    // Deep-review fix: apply max_depth BEFORE max_length, matching rich's
+    // traversal order where depth pruning happens during the recursive walk
+    // (before length truncation operates on the tree).  This ensures length
+    // truncation sees the depth-pruned tree and `... +N` markers aren't
+    // swallowed into `{...}` collapses.
     if let Some(max_d) = max_depth {
         result = apply_max_depth_debug(&result, max_d);
+    }
+    if let Some(max_l) = max_length {
+        result = truncate_debug_collections(&result, max_l);
     }
     result
 }
