@@ -604,8 +604,23 @@ impl Live {
             // instead of appending below the previous frame.
             let home_ctrl = crate::control::Control::home();
             s.console.control(&home_ctrl);
-            let screen = Screen::from_arc(content.clone());
-            s.console.print(&screen);
+            // Enable application mode so lines are separated by a CR-bearing
+            // terminator (`\n\r`) rather than a bare `\n`. In the alt-screen /
+            // raw-mode context a TUI runs in, a bare LF moves the cursor DOWN
+            // but NOT to column 0 (the tty's ONLCR translation is off), so a
+            // full-width split `Layout` staircases and collapses. The CR
+            // returns the column, keeping every row aligned. (Matches
+            // DeepForge's production-validated `with_application_mode(true)`.)
+            let screen = Screen::from_arc(content.clone()).with_application_mode(true);
+            // Write the rendered frame directly instead of via `console.print`:
+            // `print` appends a trailing bare `\n` that would scroll a
+            // full-height alt-screen frame by one row each refresh. The frame
+            // is exactly `height` lines with `height - 1` CR-bearing
+            // separators and no trailing terminator — mirroring the non-screen
+            // branch below, which also writes segments directly. `no_color`
+            // and the color system are still honoured by `render_buffer`.
+            let segments = s.console.render(&screen, None);
+            s.console.write_segments(&segments);
             s.console.end_synchronized();
         } else {
             // Normal mode: render to segments, then emit cursor repositioning
@@ -2184,6 +2199,148 @@ mod tests {
             live.state.lock().unwrap().console.live_depth(),
             0,
             "depth after stop must be 0"
+        );
+    }
+
+    // -- Screen-mode (alt-screen) emission ----------------------------------
+
+    /// Build a DeepForge-shaped split layout: a column of
+    /// `header / [sidebar | main] / footer`, each region a `Panel`.
+    fn split_layout() -> crate::layout::Layout {
+        use crate::layout::Layout;
+        use crate::panel::Panel;
+
+        let header = Layout::new(None, Some("header".into()), Some(3), None, None, None)
+            .with_renderable(Panel::new(Text::new("HEADER", Style::null())));
+        let sidebar = Layout::new(None, Some("sidebar".into()), Some(12), None, None, None)
+            .with_renderable(Panel::new(Text::new("side", Style::null())));
+        let main = Layout::new(None, Some("main".into()), None, None, Some(1), None)
+            .with_renderable(Panel::new(Text::new("MAIN", Style::null())));
+        let mut body = Layout::new(None, Some("body".into()), None, None, Some(1), None);
+        body.split_row(vec![sidebar, main]);
+        let footer = Layout::new(None, Some("footer".into()), Some(3), None, None, None)
+            .with_renderable(Panel::new(Text::new("FOOTER", Style::null())));
+        let mut root = Layout::new(None, Some("root".into()), None, None, None, None);
+        root.split_column(vec![header, body, footer]);
+        root
+    }
+
+    /// Returns `true` if `s` contains a `\n` (LF) that is NOT adjacent to a
+    /// `\r` (CR) — i.e. a *bare* line feed. In raw / alt-screen mode a bare LF
+    /// moves the cursor down without returning it to column 0, so a full-width
+    /// split `Layout` staircases and collapses. The screen frame must never
+    /// emit one (every line terminator carries a CR: `\n\r` or `\r\n`).
+    fn has_bare_lf(s: &str) -> bool {
+        let b = s.as_bytes();
+        for (i, &c) in b.iter().enumerate() {
+            if c == b'\n' {
+                let prev_cr = i > 0 && b[i - 1] == b'\r';
+                let next_cr = i + 1 < b.len() && b[i + 1] == b'\r';
+                if !prev_cr && !next_cr {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    /// Capture the raw frame `Live::with_screen` emits for a split `Layout`.
+    ///
+    /// Uses a non-quiet, *capturing* console: `begin_capture` intercepts every
+    /// write into a buffer (so nothing reaches stdout) while still preserving
+    /// the exact control codes and `\n` / `\r` bytes — which `export_text`
+    /// would normalize away. This is the screen-mode render test DeepForge
+    /// asked for: it observes the emitted bytes, not a string round-trip.
+    fn capture_screen_frame() -> String {
+        let console = Console::builder()
+            .width(40)
+            .height(12)
+            .markup(false)
+            .no_color(true)
+            .force_terminal(true)
+            .build();
+        let live = Live::new(split_layout())
+            .with_console(console)
+            .with_screen(true)
+            .with_auto_refresh(false);
+
+        {
+            let mut s = live.state.lock().unwrap();
+            s.console.begin_capture();
+            s.console.set_alt_screen(true);
+        }
+        live.refresh();
+        let mut s = live.state.lock().unwrap();
+        s.console.end_capture()
+    }
+
+    /// Mechanism regression (the bug): the alt-screen frame must terminate
+    /// every line with a carriage return, never a bare LF. Fails on the old
+    /// bare-`\n` emission; passes once the screen path emits CR-bearing
+    /// separators (DeepForge's production-validated `application_mode`).
+    #[test]
+    fn screen_mode_split_layout_emits_no_bare_lf() {
+        let frame = capture_screen_frame();
+
+        assert!(
+            frame.contains('\n'),
+            "screen frame should contain line separators; got {frame:?}"
+        );
+        assert!(
+            !has_bare_lf(&frame),
+            "screen frame must not contain a bare LF (raw-mode collapse); got {frame:?}"
+        );
+        // The CR-bearing separator the fix emits (`application_mode` => `\n\r`).
+        assert!(
+            frame.contains("\n\r"),
+            "screen frame should use CR-bearing line separators; got {frame:?}"
+        );
+    }
+
+    /// Symptom regression: the split-row geometry survives into the screen
+    /// frame — both row-split regions render side by side (adjacent `││`
+    /// border junction) and neither region is empty.
+    #[test]
+    fn screen_mode_split_layout_keeps_row_geometry() {
+        let frame = capture_screen_frame();
+
+        // Strip ANSI/control bytes to plaintext rows.
+        let plain: String = {
+            let mut out = String::new();
+            let bytes: Vec<char> = frame.chars().collect();
+            let mut i = 0;
+            while i < bytes.len() {
+                if bytes[i] == '\x1b' {
+                    // skip CSI: ESC [ ... final-letter
+                    i += 1;
+                    if i < bytes.len() && bytes[i] == '[' {
+                        i += 1;
+                        while i < bytes.len() && !bytes[i].is_ascii_alphabetic() {
+                            i += 1;
+                        }
+                        i += 1; // skip final byte
+                    }
+                } else if bytes[i] == '\r' {
+                    i += 1;
+                } else {
+                    out.push(bytes[i]);
+                    i += 1;
+                }
+            }
+            out
+        };
+
+        assert!(
+            plain.contains("side"),
+            "sidebar region must render its content; got {plain:?}"
+        );
+        assert!(
+            plain.contains("MAIN"),
+            "main region must be non-empty; got {plain:?}"
+        );
+        assert!(
+            plain.lines().any(|l| l.contains("\u{2502}\u{2502}")),
+            "row-split regions must sit side by side (adjacent border junction); got {plain:?}"
         );
     }
 }

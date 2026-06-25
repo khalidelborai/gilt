@@ -5,7 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [2.3.1] - 2026-06-25
+
+Two `Layout` rendering fixes reported by a downstream adopter (DeepForge) while
+building an alt-screen TUI on gilt 2.0.
 
 ### Fixed
 
@@ -15,6 +18,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   region and the children were cropped away. Node labels now render at their
   natural height (rich parity: `height=None` per label), so a `Tree` survives
   composition inside a fixed-size region.
+- **Split `Layout` collapsed under `Live::with_screen(true)`** — the alt-screen
+  frame was emitted with bare `\n` line separators (and a trailing `\n` from
+  `console.print`). In the raw mode an interactive alt-screen TUI runs in, the
+  tty's `ONLCR` (`\n`→`\r\n`) translation is off, so a bare LF moved the cursor
+  down but not to column 0; full-width split-`Layout` rows staircased and
+  collapsed (thin left column, empty middle, scattered borders). The print/export
+  path was unaffected because it renders into a string buffer. `do_refresh` now
+  emits the screen frame with CR-bearing separators (`application_mode`) and
+  writes it directly (no trailing newline that would scroll a full-height frame).
+  Geometry, the DEC-2026 synchronized-output wrapper, and line-diff/pause-resume
+  are unchanged. Adds a screen-mode render test asserting no bare LF + intact
+  row geometry.
 
 ## [2.3.0] - 2026-06-25
 
