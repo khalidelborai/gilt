@@ -1014,6 +1014,81 @@ fn test_markdown_image_with_alt_not_overridden() {
     );
 }
 
+// -- Inline images (gilt extension, feature `inline-images`) ------------
+
+/// A `![alt](local-file)` whose src is an existing local image renders as a
+/// REAL inline image (halfblock under a recording console) instead of the
+/// 🌆 text placeholder.
+#[cfg(feature = "inline-images")]
+#[test]
+fn test_markdown_inline_image_renders_real_image() {
+    // Write a tiny 2×2 PNG to a unique temp path.
+    let path = std::env::temp_dir().join(format!("gilt_md_inline_{}.png", std::process::id()));
+    let pixels = vec![
+        255, 0, 0, 255, 0, 255, 0, 255, // red, green
+        0, 0, 255, 255, 255, 255, 255, 255, // blue, white
+    ];
+    let buf = ::image::RgbaImage::from_raw(2, 2, pixels).expect("2x2 rgba buffer");
+    buf.save(&path).expect("write temp png");
+
+    // Recording console → Image's protocol ladder picks halfblock → ▀.
+    let console = Console::builder().width(80).record(true).build();
+    let md = Markdown::new(&format!("![x]({})", path.display()));
+    let output = render_markdown(&console, &md);
+
+    let _ = std::fs::remove_file(&path);
+
+    assert!(
+        output.contains('\u{2580}'),
+        "expected halfblock ▀ from real inline image; got: {:?}",
+        output
+    );
+    // The text placeholder (🌆) must NOT appear — the image replaced it.
+    assert!(
+        !output.contains('\u{1F306}'),
+        "🌆 placeholder must be gone when image renders inline; got: {:?}",
+        output
+    );
+}
+
+/// A missing local file keeps the text placeholder (no inline-image attempt).
+/// True in BOTH default and `inline-images` builds (file doesn't exist).
+#[test]
+fn test_markdown_missing_local_image_keeps_placeholder() {
+    let console = make_console(80);
+    let md = Markdown::new("![x](nope.png)");
+    let output = render_markdown(&console, &md);
+    assert!(
+        output.contains('\u{1F306}'),
+        "missing local file → 🌆 placeholder; got: {:?}",
+        output
+    );
+    assert!(
+        !output.contains('\u{2580}'),
+        "no halfblock for a missing file; got: {:?}",
+        output
+    );
+}
+
+/// A remote (http/https) URL keeps the text placeholder — never loaded over
+/// the network. True in BOTH default and `inline-images` builds.
+#[test]
+fn test_markdown_remote_image_keeps_placeholder() {
+    let console = make_console(80);
+    let md = Markdown::new("![x](https://e/x.png)");
+    let output = render_markdown(&console, &md);
+    assert!(
+        output.contains('\u{1F306}'),
+        "remote URL → 🌆 placeholder; got: {:?}",
+        output
+    );
+    assert!(
+        !output.contains('\u{2580}'),
+        "no halfblock for a remote URL; got: {:?}",
+        output
+    );
+}
+
 // ---------------------------------------------------------------------------
 // Reviewer fixes (task-7.2 post-review pass)
 // ---------------------------------------------------------------------------
