@@ -151,11 +151,12 @@ impl Scope {
             // `render_scope` by splitting the row into three styled cells
             // — key, "=", value. The key uses `scope.key` for normal
             // identifiers and `scope.key.special` for dunder / special
-            // names (start *and* end with `_`); the equals gets
-            // `scope.equals`; the value is run through `ReprHighlighter`
-            // so numbers / strings / paths / etc. are colored regardless
-            // of the console's `highlight` setting.
-            let is_special = key.starts_with('_') && key.ends_with('_');
+            // names (keys starting with `__` — rich parity: rich uses
+            // `key.startswith("__")` for both sorting and styling); the
+            // equals gets `scope.equals`; the value is run through
+            // `ReprHighlighter` so numbers / strings / paths / etc. are
+            // colored regardless of the console's `highlight` setting.
+            let is_special = key.starts_with("__");
             let cell_key_style = if is_special {
                 key_special_style.clone()
             } else {
@@ -826,6 +827,85 @@ mod tests {
             assert_eq!(
                 st, &number_style,
                 "value cell must carry repr.number style; got {st:?}"
+            );
+        }
+    }
+
+    /// Deep-review: rich uses `key.startswith("__")` (double underscore) to
+    /// decide `scope.key.special` — not `starts_with('_') && ends_with('_')`.
+    /// A key like `__private` (dunder prefix, no trailing underscore) must
+    /// use `scope.key.special`.  Previously gilt required both leading AND
+    /// trailing underscore, so `__private` wrongly got the regular style.
+    #[test]
+    fn test_dunder_prefix_only_uses_special_style() {
+        let scope = Scope::from_pairs(&[("__private", "val")]);
+        let console = Console::builder()
+            .width(60)
+            .force_terminal(true)
+            .color_system("truecolor")
+            .highlight(false)
+            .build();
+        let opts = console.options();
+        let special_style = console
+            .get_style("scope.key.special")
+            .expect("scope.key.special must be defined in default theme");
+        let key_style = console.get_style("scope.key").unwrap();
+        assert_ne!(
+            special_style, key_style,
+            "scope.key.special must differ from scope.key in the theme"
+        );
+        let segments = scope.gilt_console(&console, &opts);
+        let key_segs: Vec<&Segment> = segments
+            .iter()
+            .filter(|s| s.text.contains("__private"))
+            .collect();
+        assert!(
+            !key_segs.is_empty(),
+            "expected at least one segment containing '__private'"
+        );
+        for seg in &key_segs {
+            let st = seg
+                .style()
+                .expect("dunder-prefix key segment must be styled");
+            assert_eq!(
+                st, &special_style,
+                "dunder-prefix key '__private' must carry scope.key.special (rich uses startswith('__')); got {st:?}"
+            );
+        }
+    }
+
+    /// Deep-review: single-underscore `_private` must use `scope.key` (not
+    /// special) — rich only treats double-underscore keys as special.
+    #[test]
+    fn test_single_underscore_uses_regular_style() {
+        let scope = Scope::from_pairs(&[("_private", "val")]);
+        let console = Console::builder()
+            .width(60)
+            .force_terminal(true)
+            .color_system("truecolor")
+            .highlight(false)
+            .build();
+        let opts = console.options();
+        let key_style = console.get_style("scope.key").unwrap();
+        let special_style = console.get_style("scope.key.special").unwrap();
+        let segments = scope.gilt_console(&console, &opts);
+        let key_segs: Vec<&Segment> = segments
+            .iter()
+            .filter(|s| s.text.contains("_private"))
+            .collect();
+        assert!(
+            !key_segs.is_empty(),
+            "expected at least one segment containing '_private'"
+        );
+        for seg in &key_segs {
+            let st = seg.style().expect("key segment must be styled");
+            assert_eq!(
+                st, &key_style,
+                "single-underscore key '_private' must carry scope.key (not special); got {st:?}"
+            );
+            assert_ne!(
+                st, &special_style,
+                "single-underscore key must NOT carry scope.key.special"
             );
         }
     }
