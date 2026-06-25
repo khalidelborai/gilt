@@ -76,7 +76,7 @@ pub fn detect_color_system_from(colorterm: Option<&str>, term: Option<&str>) -> 
 /// unit-tested without mutating the process environment. Empty strings
 /// are NOT treated as set — `Option<&str>` differentiates "variable
 /// unset" from "variable set to empty".
-pub fn detect_modern_windows_terminal(
+pub(crate) fn detect_modern_windows_terminal(
     wt_session: Option<&str>,
     wt_profile_id: Option<&str>,
     term_program: Option<&str>,
@@ -193,6 +193,7 @@ pub struct ConsoleOptions {
 
 /// Builder for applying selective updates to `ConsoleOptions`.
 #[derive(Debug, Clone, Default)]
+#[non_exhaustive]
 pub struct ConsoleOptionsUpdates {
     /// New width in columns, if changing.
     pub width: Option<usize>,
