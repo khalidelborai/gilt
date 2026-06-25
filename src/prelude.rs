@@ -28,6 +28,7 @@ pub use crate::gradient::Gradient;
 pub use crate::group::Group;
 pub use crate::heatmap::Heatmap;
 pub use crate::inspect::Inspect;
+pub use crate::linechart::LineChart;
 #[cfg(feature = "markdown")]
 pub use crate::markdown::Markdown;
 pub use crate::panel::Panel;

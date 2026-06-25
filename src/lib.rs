@@ -793,6 +793,7 @@ pub mod barchart;
 pub mod form;
 pub mod fuzzy_select;
 pub mod layout;
+pub mod linechart;
 #[cfg(feature = "markdown")]
 pub mod markdown;
 pub mod markup;
@@ -805,6 +806,7 @@ pub mod prompt;
 pub mod region;
 pub mod rule;
 pub use barchart::BarChart;
+pub use linechart::LineChart;
 pub mod segment;
 pub mod sparkline;
 pub mod style;
