@@ -1,5 +1,7 @@
 /target
 /rust_out
+/.orca-fanout/
+/.superpowers/
 
 # macOS
 .DS_Store
