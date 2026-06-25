@@ -231,6 +231,26 @@ pub struct Segment {
     pub control: Option<Vec<ControlCode>>,
 }
 
+impl std::fmt::Display for Segment {
+    /// Render the segment in a debug-friendly form.
+    ///
+    /// Mirrors rich's `Segment.__str__` (which falls back to the NamedTuple
+    /// repr): `Segment(<text>, <style>, <control>)`. Style and control are
+    /// rendered with their `Debug` impls so the output is stable, greppable,
+    /// and round-trippable by reading it back as `Debug` if needed.
+    ///
+    /// `Display` is intentionally distinct from the derived `Debug` so
+    /// `format!("{segment}")` (the conventional "show me the text" call)
+    /// still works without requiring `{segment:?}` everywhere.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Segment({:?}, {:?}, {:?})",
+            self.text, self.style, self.control
+        )
+    }
+}
+
 impl Segment {
     /// Creates a new segment with text, style, and control codes.
     ///
@@ -1722,5 +1742,36 @@ mod tests {
             before,
             "repeat call must hit, not grow, the cache"
         );
+    }
+
+    // -- Display impl for Segment (Phase 7) ----------------------------------
+
+    #[test]
+    fn test_segment_display_contains_text() {
+        let s = format!("{}", Segment::new("x", None, None));
+        assert!(
+            s.contains('x'),
+            "Display must contain the segment text; got: {s:?}"
+        );
+    }
+
+    #[test]
+    fn test_segment_display_empty_text() {
+        let s = format!("{}", Segment::new("", None, None));
+        // An empty-text segment still must produce a Display representation
+        // that is recognizably a Segment — the format string must include
+        // the "Segment(" prefix even when there is no text.
+        assert!(
+            s.contains("Segment("),
+            "Display must include the Segment() prefix; got: {s:?}"
+        );
+    }
+
+    #[test]
+    fn test_segment_display_with_style() {
+        let s = format!("{}", Segment::styled("hi", Style::parse("bold")));
+        // Should include the text and indicate this is a Segment.
+        assert!(s.contains("hi"));
+        assert!(s.contains("Segment("));
     }
 }
