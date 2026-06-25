@@ -3374,6 +3374,57 @@ fn test_svg_per_line_clip_paths() {
     );
 }
 
+// -- Phase 7.28: wire per-line clip-paths to <text> -------------------
+
+/// Phase 7.28 (P2 deferred from Phase 5 #c): each rendered `<text>` element
+/// must reference its line's clipPath so the clipPath is actually functional.
+/// The clipPath defs are emitted in `<defs>` by `lines_defs` (covered by
+/// `test_svg_per_line_clip_paths`); this test asserts the *reference* appears
+/// on the text elements themselves, matching rich's `clip_path=...` on each
+/// `<text>` (see research_doc/10-export.md line 475).
+#[test]
+fn test_svg_per_line_clip_paths_referenced_on_text() {
+    use crate::console::console_export::build_svg_text;
+    use crate::segment::Segment;
+    use crate::terminal_theme::SVG_EXPORT_THEME;
+
+    // Two newline-delimited lines, each renders a distinct <text> element.
+    let segs = vec![Segment::text("line one\n"), Segment::text("line two\n")];
+
+    let terminal_pixel_width = 300.0_f64;
+    let (matrix, _, _, lines_defs) = build_svg_text(
+        &segs,
+        40,
+        &SVG_EXPORT_THEME,
+        "testid",
+        7.0,
+        14.0,
+        40.0,
+        8.0,
+        terminal_pixel_width,
+    );
+
+    // The per-line clipPath defs are still emitted (regression guard).
+    assert!(
+        lines_defs.contains("testid-line-0"),
+        "lines_defs must still contain clip-path for line 0; got:\n{lines_defs}"
+    );
+    assert!(
+        lines_defs.contains("testid-line-1"),
+        "lines_defs must still contain clip-path for line 1; got:\n{lines_defs}"
+    );
+
+    // The matrix (rendered <text> elements) must reference both clipPaths.
+    assert!(
+        matrix.contains("clip-path=\"url(#testid-line-0)\""),
+        "matrix <text> elements must reference line-0 clip-path; got:\n{matrix}"
+    );
+    assert!(
+        matrix.contains("clip-path=\"url(#testid-line-1)\""),
+        "matrix <text> elements must reference line-1 clip-path; got:\n{matrix}"
+    );
+}
+
 // -- Fix h: traffic-light chrome geometry -------------------------------
 
 /// Fix h: `build_svg_chrome` must emit the corrected dot geometry:
