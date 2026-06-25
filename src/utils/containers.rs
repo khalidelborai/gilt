@@ -640,6 +640,78 @@ mod tests {
         assert_eq!(gap.style, line_style);
     }
 
+    /// Phase 7 — multi-gap styled justification. Three styled words with two
+    /// gaps; verify BOTH gaps are independently styled and that
+    /// `running_shift` correctly offsets the second gap's span start.
+    #[test]
+    fn test_lines_justify_full_multi_gap_styled() {
+        let console = make_console();
+        let red = Style::parse("red");
+        let blue = Style::parse("blue");
+        // "aa bb cc" -> 8 chars; width=11 -> 3 extras, 2 gaps -> per_gap=1, remainder=1.
+        // Right-to-left distribution: gap[1] (between bb and cc) gets the
+        // remainder -> extras = [1, 2]. New text = "aa bb  cc" (11 chars).
+        let mut text = Text::new("aa bb cc", Style::null());
+        text.spans_mut().push(Span::new(0, 2, red.clone())); // "aa"
+        text.spans_mut().push(Span::new(3, 5, blue.clone())); // "bb"
+        text.spans_mut().push(Span::new(6, 8, red.clone())); // "cc"
+        let mut lines = Lines::new(vec![text, Text::new("end", Style::null())]);
+        lines.justify(&console, 11, JustifyMethod::Full, OverflowMethod::Fold);
+        // "aa bb cc" -> 8 chars; width=11 -> 3 extras, 2 gaps -> per_gap=1, remainder=1.
+        // Right-to-left distribution: gap[1] (between bb and cc) gets the
+        // remainder -> extras = [1, 2]. New text = "aa  bb   cc" (11 chars):
+        // gap0 [2..4] (2 spaces), gap1 [6..9] (3 spaces).
+        assert_eq!(lines[0].plain(), "aa  bb   cc");
+        let spans = lines[0].spans();
+        // Gap 0 (aa|bb): red vs blue -> differ -> falls back to line.style (null).
+        let gap0 = spans
+            .iter()
+            .find(|s| s.start == 2 && s.end == 4)
+            .expect("gap 0 (between aa and bb) must be covered");
+        assert_eq!(gap0.style, Style::null());
+        // Gap 1 (bb|cc): blue vs red -> differ -> falls back to line.style (null).
+        // Position: sp_pos=5, running_shift after gap 0 = 1, gap_len=1+2=3.
+        let gap1 = spans
+            .iter()
+            .find(|s| s.start == 6 && s.end == 9)
+            .expect("gap 1 (between bb and cc) must be covered");
+        assert_eq!(gap1.style, Style::null());
+    }
+
+    /// Phase 7 — multi-gap with one equal-styled and one differing gap. The
+    /// equal gap should carry the shared style; the differing gap should
+    /// fall back to the line's root style.
+    #[test]
+    fn test_lines_justify_full_mixed_styled_gaps() {
+        let console = make_console();
+        let red = Style::parse("red");
+        let italic = Style::parse("italic");
+        // "aa bb cc" -> 8 chars; width=10 -> 2 extras, 2 gaps -> per_gap=1, remainder=0.
+        // Both gaps get 1 extra. New text = "aa bb cc" with each gap = 2 chars.
+        let mut text = Text::new("aa bb cc", italic.clone());
+        text.spans_mut().push(Span::new(0, 2, red.clone())); // "aa"
+        text.spans_mut().push(Span::new(3, 5, red.clone())); // "bb"
+        text.spans_mut().push(Span::new(6, 8, Style::parse("blue"))); // "cc"
+        let mut lines = Lines::new(vec![text, Text::new("end", Style::null())]);
+        lines.justify(&console, 10, JustifyMethod::Full, OverflowMethod::Fold);
+        // Gap 0 (red/red equal) -> gap carries italic + red (line.style + span style).
+        // Gap 1 (red/blue differ) -> falls back to italic only.
+        // Both gap styles are themed-composed by get_style_at_offset_themed,
+        // which combines the line's root style with overlapping span styles.
+        let spans = lines[0].spans();
+        let italic_red = italic.clone() + red.clone();
+        let gap0 = spans
+            .iter()
+            .find(|s| s.start == 2 && s.end == 4)
+            .expect("gap 0 must be covered");
+        assert_eq!(gap0.style, italic_red);
+        let gap1 = spans
+            .iter()
+            .find(|s| s.start == 6 && s.end == 8)
+            .expect("gap 1 must be covered");
+        assert_eq!(gap1.style, italic);
+    }
+
     // -- gilt_measure override -----------------------------------------------
 
     #[test]
