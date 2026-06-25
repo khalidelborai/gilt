@@ -57,6 +57,13 @@ pub struct Sparkline {
     max_value: Option<f64>,
     /// Visual style applied to the sparkline output.
     style: Style,
+    /// When `true`, the minimum and maximum data cells are drawn with distinct
+    /// styles layered over [`style`](Self::style).
+    markers: bool,
+    /// Style layered over the base style for the minimum data cell (markers on).
+    min_style: Style,
+    /// Style layered over the base style for the maximum data cell (markers on).
+    max_style: Style,
 }
 
 impl Sparkline {
@@ -68,6 +75,9 @@ impl Sparkline {
             min_value: None,
             max_value: None,
             style: Style::null(),
+            markers: false,
+            min_style: Style::parse("blue"),
+            max_style: Style::parse("bold red"),
         }
     }
 
@@ -102,6 +112,47 @@ impl Sparkline {
         self
     }
 
+    /// Enable or disable min/max marker styling (builder pattern).
+    ///
+    /// When enabled, the cell holding the minimum data point is drawn with
+    /// [`with_min_style`](Self::with_min_style) and the cell holding the
+    /// maximum with [`with_max_style`](Self::with_max_style), each layered over
+    /// the base style. Markers are located from the *original* data's extrema;
+    /// when the data is resampled to a different width, each extreme is mapped
+    /// to the resampled cell that samples nearest it.
+    ///
+    /// Defaults to `false`; when disabled the rendered output is byte-identical
+    /// to a sparkline without markers. If every data point is equal there are no
+    /// distinct extrema, so no markers are drawn even when enabled.
+    #[must_use]
+    pub fn with_min_max_markers(mut self, enabled: bool) -> Self {
+        self.markers = enabled;
+        self
+    }
+
+    /// Set the style layered over the base style for the minimum data cell
+    /// (builder pattern).
+    ///
+    /// Only takes effect when markers are enabled via
+    /// [`with_min_max_markers`](Self::with_min_max_markers). Defaults to `blue`.
+    #[must_use]
+    pub fn with_min_style(mut self, style: Style) -> Self {
+        self.min_style = style;
+        self
+    }
+
+    /// Set the style layered over the base style for the maximum data cell
+    /// (builder pattern).
+    ///
+    /// Only takes effect when markers are enabled via
+    /// [`with_min_max_markers`](Self::with_min_max_markers). Defaults to
+    /// `bold red`.
+    #[must_use]
+    pub fn with_max_style(mut self, style: Style) -> Self {
+        self.max_style = style;
+        self
+    }
+
     // -- internal helpers ---------------------------------------------------
 
     /// Resample `data` to `target_len` points using linear interpolation.
@@ -124,15 +175,15 @@ impl Sparkline {
             .collect()
     }
 
-    /// Render the sparkline data into a `String` of bar characters.
-    fn render_bars(&self) -> String {
+    /// Render the sparkline data into the per-cell bar characters.
+    fn bar_chars(&self) -> Vec<char> {
         if self.data.is_empty() {
-            return String::new();
+            return Vec::new();
         }
 
         // Width of zero explicitly produces empty output.
         if self.width == Some(0) {
-            return String::new();
+            return Vec::new();
         }
 
         // Determine the effective data (resample if width differs).
@@ -144,7 +195,7 @@ impl Sparkline {
         };
 
         if effective.is_empty() {
-            return String::new();
+            return Vec::new();
         }
 
         let min = self
@@ -158,7 +209,7 @@ impl Sparkline {
         if (max - min).abs() < f64::EPSILON {
             // Single value => full block; all-same => middle block.
             if effective.len() == 1 {
-                return String::from(BARS[7]);
+                return vec![BARS[7]];
             }
             return std::iter::repeat_n(BARS[3], effective.len()).collect();
         }
@@ -171,6 +222,54 @@ impl Sparkline {
                 BARS[idx.min(7)]
             })
             .collect()
+    }
+
+    /// Render the sparkline data into a `String` of bar characters.
+    fn render_bars(&self) -> String {
+        self.bar_chars().into_iter().collect()
+    }
+
+    /// Compute the cell indices that should carry the min and max marker styles
+    /// for a rendering with `cell_len` cells.
+    ///
+    /// Markers are located from the *original* data's extrema (the first
+    /// occurrence of the minimum and of the maximum). When the data is resampled
+    /// to a different width, each extreme source index is mapped to the
+    /// resampled cell that samples nearest it (the inverse of the linear
+    /// resample map). Returns `None` when markers are disabled, the data is
+    /// empty, or every value is equal (no distinct extrema to mark).
+    fn marker_cells(&self, cell_len: usize) -> Option<(usize, usize)> {
+        if !self.markers || cell_len == 0 || self.data.is_empty() {
+            return None;
+        }
+
+        let data = &self.data;
+        let (mut min_i, mut max_i) = (0usize, 0usize);
+        for (i, &v) in data.iter().enumerate() {
+            if v < data[min_i] {
+                min_i = i;
+            }
+            if v > data[max_i] {
+                max_i = i;
+            }
+        }
+
+        // All values equal => no distinct extrema, so no markers.
+        if (data[max_i] - data[min_i]).abs() < f64::EPSILON {
+            return None;
+        }
+
+        let src_len = data.len();
+        let to_cell = |src: usize| -> usize {
+            if cell_len <= 1 || src_len <= 1 {
+                0
+            } else {
+                let cell = (src as f64 * (cell_len - 1) as f64 / (src_len - 1) as f64).round();
+                (cell as usize).min(cell_len - 1)
+            }
+        };
+
+        Some((to_cell(min_i), to_cell(max_i)))
     }
 
     /// Effective output width.
@@ -195,14 +294,56 @@ impl fmt::Display for Sparkline {
 
 impl Renderable for Sparkline {
     fn gilt_console(&self, _console: &Console, _options: &ConsoleOptions) -> Vec<Segment> {
-        let text = self.render_bars();
-        if text.is_empty() {
+        let chars = self.bar_chars();
+        if chars.is_empty() {
             return vec![Segment::line()];
         }
-        vec![
-            Segment::new(&text, Some(self.style.clone()), None),
-            Segment::line(),
-        ]
+
+        match self.marker_cells(chars.len()) {
+            // No markers: classic single-segment output (byte-identical).
+            None => {
+                let text: String = chars.iter().collect();
+                vec![
+                    Segment::new(&text, Some(self.style.clone()), None),
+                    Segment::line(),
+                ]
+            }
+            // Markers: split out the min/max cells, layering each marker style
+            // over the base style. On collision (both extrema land on the same
+            // cell after resampling) the max marker wins.
+            Some((min_cell, max_cell)) => {
+                let min_style = self.style.clone() + self.min_style.clone();
+                let max_style = self.style.clone() + self.max_style.clone();
+                let style_at = |i: usize| -> Style {
+                    if i == max_cell {
+                        max_style.clone()
+                    } else if i == min_cell {
+                        min_style.clone()
+                    } else {
+                        self.style.clone()
+                    }
+                };
+
+                // Coalesce consecutive cells with equal style into one segment.
+                let mut segments = Vec::new();
+                let mut run = String::new();
+                let mut run_style = style_at(0);
+                run.push(chars[0]);
+                for (i, &ch) in chars.iter().enumerate().skip(1) {
+                    let style = style_at(i);
+                    if style == run_style {
+                        run.push(ch);
+                    } else {
+                        segments.push(Segment::new(&run, Some(run_style), None));
+                        run = String::from(ch);
+                        run_style = style;
+                    }
+                }
+                segments.push(Segment::new(&run, Some(run_style), None));
+                segments.push(Segment::line());
+                segments
+            }
+        }
     }
 
     fn gilt_measure(&self, console: &Console, options: &ConsoleOptions) -> Measurement {
@@ -479,5 +620,142 @@ mod tests {
         for ch in text.chars() {
             assert_eq!(ch, BARS[0]);
         }
+    }
+
+    // -- min/max markers ----------------------------------------------------
+
+    /// Expand a sparkline's rendered segments into one `Style` per cell,
+    /// ignoring the trailing newline segment. Robust to segment coalescing.
+    fn cell_styles(spark: &Sparkline) -> Vec<Style> {
+        let console = Console::builder().width(80).build();
+        let opts = make_options(80);
+        let mut styles = Vec::new();
+        for seg in spark.gilt_console(&console, &opts) {
+            if seg.text.as_str() == "\n" {
+                continue;
+            }
+            for _ in seg.text.as_str().chars() {
+                styles.push(seg.style.clone().unwrap_or_else(Style::null));
+            }
+        }
+        styles
+    }
+
+    // 22. Markers default off => output byte-identical to no-marker rendering.
+    #[test]
+    fn test_markers_off_is_regression_identical() {
+        let data = [3.0, 1.0, 5.0, 2.0];
+        let console = Console::builder().width(80).build();
+        let opts = make_options(80);
+
+        let plain = Sparkline::new(&data);
+        let explicit_off = Sparkline::new(&data).with_min_max_markers(false);
+
+        // Default and explicit-off both emit the classic single content segment.
+        let plain_segs = plain.gilt_console(&console, &opts);
+        let off_segs = explicit_off.gilt_console(&console, &opts);
+        assert_eq!(plain_segs.len(), 2, "no markers => content + newline");
+        assert_eq!(plain_segs.len(), off_segs.len());
+        assert_eq!(plain_segs[0].text.as_str(), off_segs[0].text.as_str());
+        assert_eq!(plain_segs[0].style, Some(Style::null()));
+        // Display output unaffected by the marker flag.
+        assert_eq!(plain.to_string(), explicit_off.to_string());
+    }
+
+    // 23. Markers on: min cell carries min_style, max cell carries max_style.
+    #[test]
+    fn test_markers_apply_default_styles() {
+        // min value 1.0 at index 1, max value 5.0 at index 2 (no resampling).
+        let spark = Sparkline::new(&[3.0, 1.0, 5.0, 2.0]).with_min_max_markers(true);
+        let styles = cell_styles(&spark);
+        assert_eq!(styles.len(), 4);
+        assert_eq!(styles[0], Style::null());
+        assert_eq!(styles[1], Style::null() + Style::parse("blue"));
+        assert_eq!(styles[2], Style::null() + Style::parse("bold red"));
+        assert_eq!(styles[3], Style::null());
+    }
+
+    // 24. Marker styles layer over (do not replace) the base style.
+    #[test]
+    fn test_markers_layer_over_base_style() {
+        let base = Style::parse("on white");
+        // min at index 1, max at index 2.
+        let spark = Sparkline::new(&[2.0, 0.0, 4.0])
+            .with_style(base.clone())
+            .with_min_max_markers(true);
+        let styles = cell_styles(&spark);
+        assert_eq!(styles[0], base.clone());
+        assert_eq!(styles[1], base.clone() + Style::parse("blue"));
+        assert_eq!(styles[2], base + Style::parse("bold red"));
+    }
+
+    // 25. Custom marker styles override the defaults.
+    #[test]
+    fn test_markers_custom_styles() {
+        let spark = Sparkline::new(&[2.0, 0.0, 4.0])
+            .with_min_max_markers(true)
+            .with_min_style(Style::parse("green"))
+            .with_max_style(Style::parse("magenta"));
+        let styles = cell_styles(&spark);
+        assert_eq!(styles[1], Style::null() + Style::parse("green"));
+        assert_eq!(styles[2], Style::null() + Style::parse("magenta"));
+    }
+
+    // 26. All-equal data with markers on => no markers, no panic.
+    #[test]
+    fn test_markers_all_equal_no_markers() {
+        let spark = Sparkline::new(&[5.0, 5.0, 5.0, 5.0]).with_min_max_markers(true);
+        let styles = cell_styles(&spark);
+        assert_eq!(styles.len(), 4);
+        for s in &styles {
+            assert_eq!(*s, Style::null(), "all-equal data must not be marked");
+        }
+    }
+
+    // 27. Single element with markers on => no markers, no panic.
+    #[test]
+    fn test_markers_single_element_no_panic() {
+        let spark = Sparkline::new(&[42.0]).with_min_max_markers(true);
+        let styles = cell_styles(&spark);
+        assert_eq!(styles.len(), 1);
+        assert_eq!(styles[0], Style::null());
+    }
+
+    // 28. Empty data with markers on => single newline segment, no panic.
+    #[test]
+    fn test_markers_empty_no_panic() {
+        let spark = Sparkline::new(&[]).with_min_max_markers(true);
+        let console = Console::builder().width(80).build();
+        let opts = make_options(80);
+        let segments = spark.gilt_console(&console, &opts);
+        assert_eq!(segments.len(), 1);
+        assert_eq!(segments[0].text.as_str(), "\n");
+    }
+
+    // 29. Resampling maps each extreme to the nearest resampled cell.
+    #[test]
+    fn test_markers_resampled_extreme_cell() {
+        // src_len 5: min 1.0 at index 0, max 9.0 at index 1; resampled to 3 cells.
+        // to_cell(0) = round(0 * 2/4) = 0; to_cell(1) = round(1 * 2/4) = round(0.5) = 1.
+        let spark = Sparkline::new(&[1.0, 9.0, 1.0, 1.0, 1.0])
+            .with_width(3)
+            .with_min_max_markers(true);
+        let styles = cell_styles(&spark);
+        assert_eq!(styles.len(), 3);
+        assert_eq!(styles[0], Style::null() + Style::parse("blue"));
+        assert_eq!(styles[1], Style::null() + Style::parse("bold red"));
+        assert_eq!(styles[2], Style::null());
+    }
+
+    // 30. Collision (min and max collapse to one cell): max wins.
+    #[test]
+    fn test_markers_collision_max_wins() {
+        // [1, 9] resampled to a single cell: both extrema map to cell 0.
+        let spark = Sparkline::new(&[1.0, 9.0])
+            .with_width(1)
+            .with_min_max_markers(true);
+        let styles = cell_styles(&spark);
+        assert_eq!(styles.len(), 1);
+        assert_eq!(styles[0], Style::null() + Style::parse("bold red"));
     }
 }
