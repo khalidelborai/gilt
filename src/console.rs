@@ -1748,7 +1748,15 @@ impl Console {
     pub fn pager_text<F: FnOnce(&mut Console)>(&mut self, styles: bool, f: F) -> String {
         let was_recording = self.record;
         self.record = true;
-        f(self);
+        // Panic-safety: if `f` panics, restore `record` before unwinding so
+        // the console isn't left in record mode (silent buffer growth).
+        // AssertUnwindSafe is sound: we only restore `record` to its prior
+        // value in the error branch — we never re-enter `f` or read torn state.
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(self)));
+        if let Err(payload) = result {
+            self.record = was_recording;
+            std::panic::resume_unwind(payload);
+        }
         // export_text requires self.record == true; call it before restoring.
         let text = self.export_text(true, styles);
         self.record = was_recording;

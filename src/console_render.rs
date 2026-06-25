@@ -1502,6 +1502,38 @@ mod batch_7_7_tests {
         );
     }
 
+    /// Regression: if the closure passed to `pager_text` panics, `self.record`
+    /// must be restored to its prior value (panic-safety). Before the fix,
+    /// a plain assignment left `record = true` forever after a panic, causing
+    /// silent record-buffer growth.
+    #[test]
+    fn pager_text_restores_record_on_panic() {
+        use std::panic;
+
+        let mut console = Console::builder()
+            .width(80)
+            .no_color(true)
+            .markup(false)
+            .build();
+        // record starts false (not recording).
+        assert!(!console.record, "record should start false");
+
+        // The closure panics. catch_unwind prevents the test from aborting.
+        let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+            console.pager_text(false, |_c| {
+                panic!("boom inside pager closure");
+            });
+        }));
+        assert!(result.is_err(), "closure should have panicked");
+
+        // After the panic, record must be back to its prior value (false).
+        assert!(
+            !console.record,
+            "record must be restored to false after panic, but is true — \
+             silent buffer growth risk"
+        );
+    }
+
     // -- Item 6: RenderHook pipeline ----------------------------------------
 
     #[test]
