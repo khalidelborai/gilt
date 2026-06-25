@@ -577,18 +577,25 @@ impl Layout {
         render_map
     }
 
-    /// Re-render a single named pane and return its segments (P2, finding #9).
+    /// Re-render a single named pane and write it to the active alternate
+    /// screen via [`Console::update_screen_lines`] (P2, Plan 7.18 Task 1).
     ///
-    /// This is analogous to rich's `refresh_screen`: it locates the named pane
+    /// Mirrors rich's `Layout.refresh_screen`: locates the named leaf pane
     /// within the layout, computes its region, renders only that pane, and
-    /// returns its flattened segments.  Returns `None` if no pane with the
-    /// given name exists or if the pane has no allocated region.
+    /// then asks the console to splat the rendered lines into place.
+    ///
+    /// Returns the [`Region`] that was updated, or `None` if no pane with
+    /// the given name exists (or the pane has no allocated region).
+    ///
+    /// Side effect: writes the rendered segments into `console`.  When the
+    /// console is not in alt-screen mode, [`Console::update_screen_lines`]
+    /// is a no-op (it never scribbles on the main scrollback buffer).
     pub fn refresh_screen(
-        &self,
-        console: &Console,
+        &mut self,
+        console: &mut Console,
         options: &ConsoleOptions,
         name: &str,
-    ) -> Option<Vec<Segment>> {
+    ) -> Option<Region> {
         let render_width = options.max_width;
         let render_height = options.height.unwrap_or(options.size.height);
         // Re-use make_region_map; it is cheap (no rendering).
@@ -606,7 +613,10 @@ impl Layout {
                 };
                 let lines =
                     Segment::set_shape(&lines, region.width, Some(region.height), None, false);
-                return Some(lines.into_iter().flatten().collect());
+                let x = usize::try_from(region.x).unwrap_or(0);
+                let y = usize::try_from(region.y).unwrap_or(0);
+                console.update_screen_lines(x, y, &lines);
+                return Some(*region);
             }
         }
         None
@@ -1557,5 +1567,122 @@ mod tests {
         );
         let s = format!("{}", layout);
         assert!(!s.is_empty());
+    }
+    // -- refresh_screen (Plan 7.18 Task 1) -------------------------------
+
+    /// Helper: build a recording console in alt-screen mode, with width/height
+    /// matching the requested layout options.
+    fn alt_screen_console(width: usize, height: usize) -> Console {
+        let mut console = Console::builder()
+            .force_terminal(true)
+            .record(true)
+            .width(width)
+            .height(height)
+            .build();
+        console.set_alt_screen(true);
+        console
+    }
+
+    #[test]
+    fn refresh_screen_writes_named_pane_via_update_screen_lines() {
+        // Build a 1x2 column layout: "header" (3 rows) and "body" (rest).
+        let mut layout = Layout::default_layout();
+        layout.split_column([
+            Layout::new(
+                Some("HEADER".into()),
+                Some("header".into()),
+                Some(3),
+                None,
+                None,
+                None,
+            ),
+            Layout::new(
+                Some("BODY".into()),
+                Some("body".into()),
+                None,
+                None,
+                None,
+                None,
+            ),
+        ]);
+
+        let mut console = alt_screen_console(20, 10);
+        let opts = console.options();
+        let region = layout
+            .refresh_screen(&mut console, &opts, "body")
+            .expect("body pane should be found");
+
+        // Region should be {x=0, y=3, width=20, height=7} after 3-row header.
+        assert_eq!(region.x, 0);
+        assert_eq!(region.y, 3);
+        assert_eq!(region.width, 20);
+        assert_eq!(region.height, 7);
+
+        // The pane content should have been written into the console buffer
+        // via update_screen_lines (which is a no-op outside alt screen, so
+        // our `alt_screen_console` helper is required for this assertion).
+        let text = console.export_text(false, true);
+        assert!(
+            text.contains("BODY"),
+            "expected refresh_screen to write BODY into the alt-screen buffer, got: {text:?}"
+        );
+    }
+
+    #[test]
+    fn refresh_screen_returns_none_for_unknown_name() {
+        let mut layout = Layout::default_layout();
+        layout.split_column([Layout::new(
+            Some("A".into()),
+            Some("a".into()),
+            None,
+            None,
+            None,
+            None,
+        )]);
+
+        let mut console = alt_screen_console(10, 5);
+        let opts = console.options();
+        assert!(layout
+            .refresh_screen(&mut console, &opts, "missing")
+            .is_none());
+    }
+
+    #[test]
+    fn refresh_screen_is_noop_outside_alt_screen() {
+        // Without alt-screen, update_screen_lines is a no-op — refresh_screen
+        // must still succeed (return Some(region)) and not write anything
+        // into the recorded output.
+        let mut layout = Layout::default_layout();
+        layout.split_column([Layout::new(
+            Some("X".into()),
+            Some("only".into()),
+            None,
+            None,
+            None,
+            None,
+        )]);
+
+        // Build without alt-screen so update_screen_lines becomes a no-op.
+        let mut console = Console::builder()
+            .force_terminal(true)
+            .record(true)
+            .width(10)
+            .height(5)
+            .build();
+
+        let opts = console.options();
+        let region = layout
+            .refresh_screen(&mut console, &opts, "only")
+            .expect("pane should still resolve when not in alt-screen");
+        assert_eq!(region.width, 10);
+        assert_eq!(region.height, 5);
+
+        // No content should have been emitted because update_screen_lines
+        // refuses to write outside alt-screen.
+        let text = console.export_text(false, true);
+        assert!(
+            !text.contains('X'),
+            "update_screen_lines must be a no-op outside alt-screen, got: {text:?}"
+        );
     }
 }
