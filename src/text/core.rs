@@ -1274,7 +1274,10 @@ impl Text {
             }
 
             let trimmed = line.trim_start();
-            let indent = line.len() - trimmed.len();
+            // Count leading whitespace in CHARS (not bytes) so that multi-byte
+            // whitespace like U+3000 IDEOGRAPHIC SPACE counts as one indent step,
+            // matching rich's indent-guide spacing.
+            let indent = line.chars().count() - trimmed.chars().count();
 
             if indent == 0 || trimmed.is_empty() {
                 new_text.push_str(line);
@@ -2616,5 +2619,39 @@ mod tests {
         assert_eq!(group_span.start, 6);
         assert_eq!(group_span.end, 8);
         assert_eq!(group_span.style.bold(), Some(true));
+    }
+
+    // --- Task 3 (P2): with_indent_guides counts leading whitespace in CHARS ---
+
+    /// Leading whitespace that is multi-byte in UTF-8 (fullwidth space U+3000
+    /// = 3 bytes / 1 char) must be counted in chars, not bytes, when deciding
+    /// where to insert guide characters. The buggy byte-based detection
+    /// over-counted and inserted too many guide characters.
+    ///
+    /// With `indent_size = 1` every leading-whitespace character should
+    /// become a guide character. Two fullwidth spaces → exactly 2 guides,
+    /// not 6 (which is what byte-counting produces).
+    #[test]
+    fn with_indent_guides_fullwidth_leading_whitespace() {
+        // Two fullwidth spaces (U+3000 each = 3 bytes / 1 char) then "hi".
+        let line = "\u{3000}\u{3000}hi";
+        let text = Text::new(line, Style::null());
+        let result = text.with_indent_guides(Some(1), '|', Style::null());
+        // Expected: "||hi" (2 guides), not "||||||hi" (6 from byte count).
+        assert_eq!(
+            result.plain(),
+            "||hi",
+            "expected 2 guide chars (one per fullwidth space), got {:?}",
+            result.plain()
+        );
+    }
+
+    /// Plain ASCII leading spaces should still produce the correct number of
+    /// guides — guards against the fix accidentally regressing the ASCII case.
+    #[test]
+    fn with_indent_guides_ascii_leading_whitespace_unchanged() {
+        let text = Text::new("    hi", Style::null());
+        let result = text.with_indent_guides(Some(1), '|', Style::null());
+        assert_eq!(result.plain(), "||||hi");
     }
 }
