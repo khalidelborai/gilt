@@ -40,7 +40,10 @@ pub use box_chars::{
     HORIZONTALS, MARKDOWN, MINIMAL, MINIMAL_DOUBLE_HEAD, MINIMAL_HEAVY_HEAD, ROUNDED, SIMPLE,
     SIMPLE_HEAD, SIMPLE_HEAVY, SQUARE, SQUARE_DOUBLE_HEAD,
 };
-pub use cells::{cell_len, get_character_cell_size, set_cell_size};
+pub use cells::{
+    cell_len, chop_cells, get_character_cell_size, is_single_cell_widths, set_cell_size,
+    split_graphemes, split_text,
+};
 pub use constrain::Constrain;
 pub use control::{escape_control_codes, strip_control_codes, Control};
 pub use default_styles::DEFAULT_STYLES;

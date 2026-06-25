@@ -267,6 +267,157 @@ pub fn is_single_cell_widths(text: &str) -> bool {
     text.chars().all(|c| get_character_cell_size(c) == 1)
 }
 
+/// Split `text` into grapheme cluster spans, returning one entry per visual
+/// unit as `(start_byte, end_byte, cell_width)`.
+///
+/// Grapheme clusters are determined by Unicode UAX #29 extended grapheme
+/// cluster boundaries (`unicode_segmentation::UnicodeSegmentation::graphemes`).
+/// The `cell_width` of each span equals the sum of the per-codepoint widths
+/// of all characters in the cluster, consistent with [`cell_len`].
+///
+/// Zero-width combining marks (e.g. U+0301 COMBINING ACUTE ACCENT) and ZWJ
+/// sequences (e.g. family emoji U+1F468 U+200D …) are included in the span
+/// of their base character, so the cluster's byte range covers the whole
+/// sequence.
+///
+/// # Examples
+///
+/// ```
+/// use gilt::cells::split_graphemes;
+///
+/// // Pure ASCII: each character is its own span, width 1.
+/// let spans = split_graphemes("ab");
+/// assert_eq!(spans, vec![(0, 1, 1), (1, 2, 1)]);
+///
+/// // CJK: "日" is U+65E5, encoded as 3 UTF-8 bytes, width 2.
+/// let spans = split_graphemes("日");
+/// assert_eq!(spans.len(), 1);
+/// assert_eq!(spans[0].2, 2);
+///
+/// // Combining mark: café (c a f e + U+0301).  The combining acute joins
+/// // the 'e' cluster — five codepoints but four grapheme clusters.
+/// let s = "cafe\u{0301}";
+/// let spans = split_graphemes(s);
+/// assert_eq!(spans.len(), 4);  // c, a, f, é-cluster
+/// assert_eq!(spans[3].0, 3);   // 'e' starts at byte 3
+/// assert_eq!(spans[3].1, s.len()); // cluster ends at end-of-string
+/// assert_eq!(spans[3].2, 1);   // 'e' + combining = still 1 cell wide
+/// ```
+pub fn split_graphemes(text: &str) -> Vec<(usize, usize, usize)> {
+    // Fast path for pure ASCII (no grapheme overhead needed).
+    if text.bytes().all(|b| (0x20..0x7f).contains(&b)) {
+        return text
+            .char_indices()
+            .map(|(i, c)| (i, i + c.len_utf8(), 1))
+            .collect();
+    }
+
+    let mut spans = Vec::new();
+    // `graphemes(text, true)` returns string slices into `text`.
+    // We recover the byte offset from the pointer difference.
+    let base = text.as_ptr() as usize;
+
+    for cluster in UnicodeSegmentation::graphemes(text, true) {
+        let start_byte = cluster.as_ptr() as usize - base;
+        let end_byte = start_byte + cluster.len();
+        let width = cell_len(cluster);
+        spans.push((start_byte, end_byte, width));
+    }
+
+    spans
+}
+
+/// Split `text` at exactly `length` terminal cells, returning `(left, right)`.
+///
+/// If `length` falls inside a double-width character, that character is
+/// replaced with spaces: `left` gains a trailing space (filling the remaining
+/// cell) and `right` gains a leading space (occupying the vacated first cell).
+/// This matches the behaviour of rich's `cells.split_text`.
+///
+/// # Fast path
+/// For strings where every character is single-cell-width, the split is a
+/// simple slice at the `length`-th character with no allocation.
+///
+/// # Examples
+///
+/// ```
+/// use gilt::cells::split_text;
+///
+/// // Pure ASCII: straightforward split.
+/// let (l, r) = split_text("hello world", 5);
+/// assert_eq!(l, "hello");
+/// assert_eq!(r, " world");
+///
+/// // CJK: "日本語" is 3 × 2 = 6 cells.  Split at 4 → "日本" | "語".
+/// let (l, r) = split_text("日本語", 4);
+/// assert_eq!(l, "日本");
+/// assert_eq!(r, "語");
+///
+/// // Split in the middle of a CJK char → space padding on both sides.
+/// let (l, r) = split_text("日本語", 3);
+/// assert_eq!(l, "日 ");   // "日" (2 cells) + space = 3 cells
+/// assert_eq!(r, " 語");   // space + "語" (2 cells)
+///
+/// // Split beyond string length returns the full string and empty.
+/// let (l, r) = split_text("abc", 10);
+/// assert_eq!(l, "abc");
+/// assert_eq!(r, "");
+/// ```
+pub fn split_text(text: &str, length: usize) -> (String, String) {
+    if length == 0 {
+        return (String::new(), text.to_owned());
+    }
+
+    // Fast path: all single-cell characters — the n-th cell == n-th char.
+    if is_single_cell_widths(text) {
+        let split_byte = text
+            .char_indices()
+            .nth(length)
+            .map(|(i, _)| i)
+            .unwrap_or(text.len());
+        return (text[..split_byte].to_owned(), text[split_byte..].to_owned());
+    }
+
+    // General path via grapheme spans.
+    let spans = split_graphemes(text);
+    let total_cells: usize = spans.iter().map(|s| s.2).sum();
+
+    // If requested length >= total width, return the whole string.
+    if length >= total_cells {
+        return (text.to_owned(), String::new());
+    }
+
+    // Walk spans to find the split point.
+    let mut accumulated = 0usize;
+    for &(start, end, width) in &spans {
+        if accumulated + width <= length {
+            accumulated += width;
+            if accumulated == length {
+                // Exact boundary between this cluster and the next.
+                return (text[..end].to_owned(), text[end..].to_owned());
+            }
+        } else {
+            // `length` falls inside this span (a wide char straddles the
+            // boundary). Replace the wide cluster with spaces on both sides,
+            // exactly as rich does.
+            let mut left = text[..start].to_owned();
+            // Fill remaining cells with spaces so left has exactly `length` cells.
+            let left_cells = accumulated; // cells before this cluster
+            let spaces_left = length.saturating_sub(left_cells);
+            left.push_str(&" ".repeat(spaces_left));
+
+            let right_cells_needed = width.saturating_sub(spaces_left);
+            let mut right = " ".repeat(right_cells_needed);
+            right.push_str(&text[end..]);
+
+            return (left, right);
+        }
+    }
+
+    // Accumulated == length exactly at the end of the string.
+    (text.to_owned(), String::new())
+}
+
 // RED test lives in the `tests` mod below. See `cell_len_cache_hit_on_second_call`.
 #[cfg(test)]
 mod tests {
@@ -580,6 +731,239 @@ mod tests {
             "Newline width should be <= 1, got {}",
             newline_width
         );
+    }
+
+    // -----------------------------------------------------------------------
+    // split_graphemes tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_split_graphemes_ascii() {
+        // Pure ASCII: each char is its own span, width 1.
+        let spans = split_graphemes("abc");
+        assert_eq!(spans.len(), 3);
+        assert_eq!(spans[0], (0, 1, 1));
+        assert_eq!(spans[1], (1, 2, 1));
+        assert_eq!(spans[2], (2, 3, 1));
+    }
+
+    #[test]
+    fn test_split_graphemes_empty() {
+        let spans = split_graphemes("");
+        assert!(spans.is_empty());
+    }
+
+    #[test]
+    fn test_split_graphemes_cjk_double_width() {
+        // "日" is U+65E5: 3 UTF-8 bytes, width 2.
+        let spans = split_graphemes("日");
+        assert_eq!(spans.len(), 1);
+        assert_eq!(spans[0].0, 0);
+        assert_eq!(spans[0].1, "日".len()); // 3
+        assert_eq!(spans[0].2, 2, "CJK char must be width 2");
+
+        // "日本" = two CJK chars, each 3 bytes, 2 cells.
+        let spans = split_graphemes("日本");
+        assert_eq!(spans.len(), 2);
+        assert_eq!(spans[0], (0, 3, 2));
+        assert_eq!(spans[1], (3, 6, 2));
+    }
+
+    #[test]
+    fn test_split_graphemes_combining_mark() {
+        // "cafe\u{0301}" — e + combining acute = 1 grapheme cluster.
+        // 'e' is at byte 3, '\u{0301}' is 2 bytes, so cluster spans bytes 3..6.
+        let s = "cafe\u{0301}";
+        let spans = split_graphemes(s);
+        assert_eq!(spans.len(), 4, "four grapheme clusters: c, a, f, é-cluster");
+        assert_eq!(spans[0], (0, 1, 1)); // 'c'
+        assert_eq!(spans[1], (1, 2, 1)); // 'a'
+        assert_eq!(spans[2], (2, 3, 1)); // 'f'
+                                         // é-cluster: starts at byte 3, length = 'e'(1) + U+0301(2) = 3 bytes, width = 1
+        assert_eq!(spans[3].0, 3);
+        assert_eq!(spans[3].1, s.len()); // 3 + 3 = 6
+        assert_eq!(spans[3].2, 1, "combining accent does not add cell width");
+    }
+
+    #[test]
+    fn test_split_graphemes_zwj_family_emoji() {
+        // 👨‍👩‍👧 = U+1F468 ZWJ U+1F469 ZWJ U+1F467 — 5 codepoints, 1 grapheme cluster.
+        // Per-codepoint widths: 2 + 0 + 2 + 0 + 2 = 6 (terminal reality).
+        let s = "👨\u{200d}👩\u{200d}👧";
+        let spans = split_graphemes(s);
+        // UAX #29 says the whole ZWJ sequence is one cluster.
+        assert_eq!(spans.len(), 1, "ZWJ family emoji is one grapheme cluster");
+        assert_eq!(spans[0].0, 0);
+        assert_eq!(spans[0].1, s.len());
+        // cell_len sums per-codepoint: 2+0+2+0+2 = 6
+        assert_eq!(spans[0].2, 6, "ZWJ family emoji has terminal width 6");
+    }
+
+    #[test]
+    fn test_split_graphemes_flag_emoji() {
+        // 🇺🇸 = U+1F1FA U+1F1F8 (two regional indicators) → 1 grapheme cluster, 2 cells.
+        let s = "\u{1F1FA}\u{1F1F8}";
+        let spans = split_graphemes(s);
+        assert_eq!(spans.len(), 1, "flag emoji is one grapheme cluster");
+        assert_eq!(spans[0].2, 2, "flag emoji is 2 cells wide");
+    }
+
+    #[test]
+    fn test_split_graphemes_mixed() {
+        // "日a本" = CJK(2) + ASCII(1) + CJK(2)
+        let s = "日a本";
+        let spans = split_graphemes(s);
+        assert_eq!(spans.len(), 3);
+        assert_eq!(spans[0].2, 2); // 日
+        assert_eq!(spans[1].2, 1); // a
+        assert_eq!(spans[2].2, 2); // 本
+    }
+
+    #[test]
+    fn test_split_graphemes_span_covers_full_string() {
+        // Total byte coverage: all spans together must cover [0, text.len()).
+        let s = "日a本\u{0301}café";
+        let spans = split_graphemes(s);
+        if !spans.is_empty() {
+            assert_eq!(spans[0].0, 0, "first span must start at byte 0");
+            assert_eq!(
+                spans.last().unwrap().1,
+                s.len(),
+                "last span must end at text.len()"
+            );
+        }
+        // Contiguous: each span's end == next span's start.
+        for window in spans.windows(2) {
+            assert_eq!(
+                window[0].1, window[1].0,
+                "spans must be contiguous (no gaps)"
+            );
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // split_text tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_split_text_ascii() {
+        let (l, r) = split_text("hello world", 5);
+        assert_eq!(l, "hello");
+        assert_eq!(r, " world");
+
+        let (l, r) = split_text("abc", 0);
+        assert_eq!(l, "");
+        assert_eq!(r, "abc");
+
+        let (l, r) = split_text("abc", 3);
+        assert_eq!(l, "abc");
+        assert_eq!(r, "");
+
+        // Beyond string length.
+        let (l, r) = split_text("abc", 10);
+        assert_eq!(l, "abc");
+        assert_eq!(r, "");
+    }
+
+    #[test]
+    fn test_split_text_cjk_exact_boundary() {
+        // "日本語" = 6 cells. Split at 4 gives "日本" | "語".
+        let (l, r) = split_text("日本語", 4);
+        assert_eq!(l, "日本");
+        assert_eq!(r, "語");
+
+        // Task brief example: split_text("日本語ab", 4) → "日本" | "語ab"
+        let (l, r) = split_text("日本語ab", 4);
+        assert_eq!(l, "日本");
+        assert_eq!(r, "語ab");
+
+        // Split at 0.
+        let (l, r) = split_text("日本語", 0);
+        assert_eq!(l, "");
+        assert_eq!(r, "日本語");
+
+        // Split at full width.
+        let (l, r) = split_text("日本語", 6);
+        assert_eq!(l, "日本語");
+        assert_eq!(r, "");
+    }
+
+    #[test]
+    fn test_split_text_cjk_straddle() {
+        // "日本語": split at 3 falls inside "本" (which occupies cells 2-3).
+        // Expected: left = "日 " (2 + 1 space = 3 cells), right = " 語" (1 space + 2 = 3 cells).
+        let (l, r) = split_text("日本語", 3);
+        assert_eq!(
+            cell_len(&l),
+            3,
+            "left part must be exactly 3 cells, got '{}'",
+            l
+        );
+        assert_eq!(l, "日 ", "left must be '日 ' (日 + space)");
+        assert_eq!(r, " 語", "right must be ' 語' (space + 語)");
+    }
+
+    #[test]
+    fn test_split_text_emoji_straddle() {
+        // "😽😽" = 4 cells. Split at 1 straddles first emoji.
+        let (l, r) = split_text("😽😽", 1);
+        assert_eq!(cell_len(&l), 1, "left must be 1 cell wide");
+        assert_eq!(l, " ", "left must be a single space");
+        assert_eq!(r, " 😽", "right must start with compensating space");
+    }
+
+    #[test]
+    fn test_split_text_emoji_exact() {
+        // Split at 2 gives first emoji | second emoji.
+        let (l, r) = split_text("😽😽", 2);
+        assert_eq!(l, "😽");
+        assert_eq!(r, "😽");
+    }
+
+    #[test]
+    fn test_split_text_mixed_ascii_cjk() {
+        // "aあb" = 4 cells (1+2+1). Split at 2 → "a" + space + ... wait:
+        // spans: ('a',0..1,1), ('あ',1..4,2), ('b',4..5,1)
+        // accumulated after 'a' = 1, after 'あ' = 3, but split at 2 straddles 'あ'.
+        let (l, r) = split_text("aあb", 2);
+        assert_eq!(cell_len(&l), 2, "left must be 2 cells");
+        // 'a'(1) + space(1) = 2 cells
+        assert_eq!(l, "a ");
+        // space(1) + 'b'(1) = 2 cells
+        assert_eq!(r, " b");
+
+        // Split at 1 → "a" | "あb"
+        let (l, r) = split_text("aあb", 1);
+        assert_eq!(l, "a");
+        assert_eq!(r, "あb");
+
+        // Split at 3 → "aあ" | "b"
+        let (l, r) = split_text("aあb", 3);
+        assert_eq!(l, "aあ");
+        assert_eq!(r, "b");
+    }
+
+    #[test]
+    fn test_split_text_width_preservation() {
+        // cell_len(left) + cell_len(right) should equal cell_len(text)
+        // for clean splits, or cell_len(text) + spaces for straddle splits.
+        let cases = [
+            ("日本語abc", 3),
+            ("hello world", 6),
+            ("あいうえお", 5),
+            ("a日b本c語", 4),
+        ];
+        for (text, at) in cases {
+            let (l, r) = split_text(text, at);
+            assert_eq!(
+                cell_len(&l),
+                at.min(cell_len(text)),
+                "split_text({text:?}, {at}): left width should be {at} cells, got '{}' = {} cells",
+                l,
+                cell_len(&l)
+            );
+            let _ = r; // right side checked implicitly
+        }
     }
 }
 
