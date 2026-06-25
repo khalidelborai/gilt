@@ -1011,6 +1011,66 @@ impl Text {
         count
     }
 
+    /// Apply both a base style and per-named-group prefix styles in one walk.
+    ///
+    /// - When `style` is `Some`, each match of `pattern` gets that style over its full range.
+    /// - When `style_prefix` is `Some`, each named group `name` produces an
+    ///   additional span styled `f"{style_prefix}{name}"` (resolved via
+    ///   [`DEFAULT_STYLES`] then [`Style::parse_strict`]).
+    ///
+    /// Returns the total number of spans added.
+    pub fn highlight_regex_unified(
+        &mut self,
+        pattern: &Regex,
+        style: Option<Style>,
+        style_prefix: Option<&str>,
+    ) -> usize {
+        if style.is_none() && style_prefix.is_none() {
+            return 0;
+        }
+        fn build_byte_to_char_index(text: &str) -> Vec<usize> {
+            let mut map = vec![0usize; text.len() + 1];
+            let mut char_idx = 0usize;
+            for (byte_idx, _) in text.char_indices() {
+                map[byte_idx] = char_idx;
+                char_idx += 1;
+            }
+            map[text.len()] = char_idx;
+            map
+        }
+        // Single captures_iter walk — covers base-style matches (full match)
+        // and named-group spans in one pass.
+        let mut pending: Vec<(Style, usize, usize)> = Vec::new();
+        for captures in pattern.captures_iter(&self.text) {
+            if let (Some(base), Some(whole)) = (style.as_ref(), captures.get(0)) {
+                pending.push((base.clone(), whole.start(), whole.end()));
+            }
+            if let Some(prefix) = style_prefix {
+                for name in pattern.capture_names().flatten() {
+                    if let Some(mat) = captures.name(name) {
+                        let style_str = format!("{}{}", prefix, name);
+                        if let Some(s) = DEFAULT_STYLES
+                            .get(style_str.as_str())
+                            .cloned()
+                            .or_else(|| Style::parse_strict(&style_str).ok())
+                        {
+                            pending.push((s, mat.start(), mat.end()));
+                        }
+                    }
+                }
+            }
+        }
+        if pending.is_empty() {
+            return 0;
+        }
+        let b2c = build_byte_to_char_index(&self.text);
+        let count = pending.len();
+        for (s, bs, be) in pending {
+            self.stylize(s, b2c[bs], Some(b2c[be]));
+        }
+        count
+    }
+
     /// Apply `style` to every occurrence of each word.
     ///
     /// Matches are plain substring matches (no word-boundary anchors), which
@@ -2526,5 +2586,35 @@ mod tests {
         assert_eq!(spans[3].start, 9);
         assert_eq!(spans[3].end, 13);
         assert_eq!(spans[3].style, italic_s);
+    }
+
+    // --- Task 2 (P2): highlight_regex_unified (base style + style_prefix) ---
+
+    /// A regex with a named group + a base style applied via the unified API
+    /// should produce BOTH a base-style span over the whole match AND a
+    /// named-group span (looked up via DEFAULT_STYLES under `style_prefix`).
+    #[test]
+    fn highlight_regex_unified_applies_base_and_prefix() {
+        let base = Style::parse("bold");
+        let mut text = Text::new("count=42", Style::null());
+        let re = Regex::new(r"(?P<number>\d+)").unwrap();
+        // "repr.number" exists in DEFAULT_STYLES (cyan bold not-italic)
+        let count = text.highlight_regex_unified(&re, Some(base.clone()), Some("repr."));
+        // 1 base span + 1 group span = 2
+        assert_eq!(count, 2, "expected 2 spans (base + named group)");
+        let spans = text.spans();
+        assert_eq!(spans.len(), 2);
+        // base span covers whole match "42" (6..8)
+        let base_span = spans.iter().find(|s| s.style == base).expect("base span");
+        assert_eq!(base_span.start, 6);
+        assert_eq!(base_span.end, 8);
+        // group span covers the same "42" (6..8) but with the named-group style
+        let group_span = spans
+            .iter()
+            .find(|s| s.style != base)
+            .expect("group span");
+        assert_eq!(group_span.start, 6);
+        assert_eq!(group_span.end, 8);
+        assert_eq!(group_span.style.bold(), Some(true));
     }
 }
