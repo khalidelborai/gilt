@@ -3688,6 +3688,29 @@ fn test_update_screen_region_in_alt_screen() {
     );
 }
 
+/// Regression: a renderable taller than `region.height` must be clamped —
+/// it must NOT overflow into adjacent pane rows. Before the fix,
+/// `update_screen_region` set `opts.max_width` but never `opts.height`.
+#[test]
+fn test_update_screen_region_clamps_to_region_height() {
+    let mut console = Console::builder().force_terminal(true).record(true).build();
+    console.set_alt_screen(true);
+    // A 10-row region.
+    let region = crate::region::Region::new(0, 0, 80, 10);
+    // A renderable that is 25 lines tall.
+    let tall: String = (0..25).map(|i| format!("line {i}\n")).collect();
+    let tall_text = Text::new(&tall, Style::null());
+    console.update_screen_region(region, &tall_text);
+    let text = console.export_text(false, true);
+    // Count the number of non-empty text lines (strip control sequences).
+    let content_lines: Vec<&str> = text.lines().filter(|l| !l.is_empty()).collect();
+    assert!(
+        content_lines.len() <= 10,
+        "region height is 10 but got {} content lines: {text:?}",
+        content_lines.len()
+    );
+}
+
 // -- Phase 7.13 parity tests -----------------------------------------------
 
 /// Item 1: render_buffer with legacy_windows=true must NOT emit OSC 8 hyperlinks.

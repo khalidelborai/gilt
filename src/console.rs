@@ -76,7 +76,7 @@ pub fn detect_color_system_from(colorterm: Option<&str>, term: Option<&str>) -> 
 /// unit-tested without mutating the process environment. Empty strings
 /// are NOT treated as set — `Option<&str>` differentiates "variable
 /// unset" from "variable set to empty".
-pub fn detect_modern_windows_terminal(
+pub(crate) fn detect_modern_windows_terminal(
     wt_session: Option<&str>,
     wt_profile_id: Option<&str>,
     term_program: Option<&str>,
@@ -193,6 +193,7 @@ pub struct ConsoleOptions {
 
 /// Builder for applying selective updates to `ConsoleOptions`.
 #[derive(Debug, Clone, Default)]
+#[non_exhaustive]
 pub struct ConsoleOptionsUpdates {
     /// New width in columns, if changing.
     pub width: Option<usize>,
@@ -1565,9 +1566,18 @@ impl Console {
         self.write_segments(&[ctrl.segment]);
         let mut opts = self.options();
         opts.max_width = region.width;
+        // Clamp to the region's height so a renderable taller than the region
+        // does not overflow into adjacent pane rows (parity with rich's
+        // Screen.update, which renders into a bounded box).
+        opts.height = Some(region.height);
         let segments = renderable.gilt_console(self, &opts);
-        // write_segments (not print()) to avoid newline normalization for region-constrained rendering.
-        self.write_segments(&segments);
+        // Not all renderables honour opts.height (Text doesn't), so also
+        // truncate at the segment level: split into lines, keep only the
+        // first `region.height`, then flatten back.
+        let mut lines = Segment::split_and_crop_lines(&segments, region.width, None, false, true);
+        lines.truncate(region.height);
+        let clamped: Vec<Segment> = lines.into_iter().flatten().collect();
+        self.write_segments(&clamped);
     }
 
     /// Render a slice of [`Segment`] lines at successive rows starting from
@@ -1739,7 +1749,15 @@ impl Console {
     pub fn pager_text<F: FnOnce(&mut Console)>(&mut self, styles: bool, f: F) -> String {
         let was_recording = self.record;
         self.record = true;
-        f(self);
+        // Panic-safety: if `f` panics, restore `record` before unwinding so
+        // the console isn't left in record mode (silent buffer growth).
+        // AssertUnwindSafe is sound: we only restore `record` to its prior
+        // value in the error branch — we never re-enter `f` or read torn state.
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(self)));
+        if let Err(payload) = result {
+            self.record = was_recording;
+            std::panic::resume_unwind(payload);
+        }
         // export_text requires self.record == true; call it before restoring.
         let text = self.export_text(true, styles);
         self.record = was_recording;

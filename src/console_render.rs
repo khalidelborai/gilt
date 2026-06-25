@@ -197,8 +197,10 @@ impl Console {
             current = hook.process_renderables(current);
         }
         self.render_hooks = hooks;
-        if let Some(r) = current.last().copied() {
-            self.print_styled(r, None, None, None, false, true, self.soft_wrap);
+        // rich's RenderHook pipeline renders EVERY element the hook returns,
+        // in order — not just the last. Each gets its own line (default sep).
+        for r in &current {
+            self.print_styled(*r, None, None, None, false, true, self.soft_wrap);
         }
     }
 
@@ -586,8 +588,12 @@ impl Console {
 
         // Optional locals label
         if log_locals {
+            // rich renders locals via render_scope(title="[i]locals"). The
+            // (locals) marker here is a placeholder for that; style it with
+            // log.level (the log content style) rather than log.path (which
+            // is specifically for caller file:line), falling back to dim.
             let locals_style = self
-                .get_style("log.path")
+                .get_style("log.level")
                 .unwrap_or_else(|_| Style::parse("dim"));
             segments.push(Segment::text(" "));
             segments.push(Segment::styled("(locals)", locals_style));
@@ -1500,6 +1506,38 @@ mod batch_7_7_tests {
         );
     }
 
+    /// Regression: if the closure passed to `pager_text` panics, `self.record`
+    /// must be restored to its prior value (panic-safety). Before the fix,
+    /// a plain assignment left `record = true` forever after a panic, causing
+    /// silent record-buffer growth.
+    #[test]
+    fn pager_text_restores_record_on_panic() {
+        use std::panic;
+
+        let mut console = Console::builder()
+            .width(80)
+            .no_color(true)
+            .markup(false)
+            .build();
+        // record starts false (not recording).
+        assert!(!console.record, "record should start false");
+
+        // The closure panics. catch_unwind prevents the test from aborting.
+        let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+            console.pager_text(false, |_c| {
+                panic!("boom inside pager closure");
+            });
+        }));
+        assert!(result.is_err(), "closure should have panicked");
+
+        // After the panic, record must be back to its prior value (false).
+        assert!(
+            !console.record,
+            "record must be restored to false after panic, but is true — \
+             silent buffer growth risk"
+        );
+    }
+
     // -- Item 6: RenderHook pipeline ----------------------------------------
 
     #[test]
@@ -1623,6 +1661,59 @@ mod batch_7_7_tests {
             *count.lock().unwrap(),
             0,
             "print() should not invoke render hooks (use print_with_hooks)"
+        );
+    }
+
+    /// Regression: a hook that returns MULTIPLE renderables must have ALL of
+    /// them rendered, not just the last. rich's RenderHook pipeline renders
+    /// every element the hook returns (in order); gilt was discarding all but
+    /// `current.last()`.
+    #[test]
+    fn render_hook_multiple_outputs_all_rendered() {
+        use crate::console::RenderHook;
+
+        static FIRST: std::sync::OnceLock<Text> = std::sync::OnceLock::new();
+        static SECOND: std::sync::OnceLock<Text> = std::sync::OnceLock::new();
+        fn first() -> &'static Text {
+            FIRST.get_or_init(|| Text::new("AAA", Style::null()))
+        }
+        fn second() -> &'static Text {
+            SECOND.get_or_init(|| Text::new("BBB", Style::null()))
+        }
+
+        struct MultiHook;
+        impl RenderHook for MultiHook {
+            fn process_renderables<'a>(
+                &self,
+                _: Vec<&'a dyn Renderable>,
+            ) -> Vec<&'a dyn Renderable> {
+                vec![first() as &dyn Renderable, second() as &dyn Renderable]
+            }
+        }
+
+        let mut console = Console::builder()
+            .width(80)
+            .no_color(true)
+            .markup(false)
+            .build();
+        console.add_render_hook(Box::new(MultiHook));
+
+        console.begin_capture();
+        let original = Text::new("ORIGINAL", Style::null());
+        console.print_with_hooks(&original as &dyn Renderable);
+        let out = console.end_capture();
+
+        assert!(
+            out.contains("AAA"),
+            "first hook output should appear: got {out:?}"
+        );
+        assert!(
+            out.contains("BBB"),
+            "second hook output should appear: got {out:?}"
+        );
+        assert!(
+            !out.contains("ORIGINAL"),
+            "original should not appear when hook replaces it: got {out:?}"
         );
     }
 
