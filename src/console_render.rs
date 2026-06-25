@@ -446,7 +446,10 @@ impl Console {
             format!(" [{}:{}]", short, location.line())
         };
 
-        let now = {
+        // Plan 7.24 Task 4: timestamp is gated on `self.log_time`. When
+        // false, the body (and the optional caller path) is emitted
+        // without any leading `[HH:MM:SS]` text.
+        let now = if self.log_time {
             let secs = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
@@ -456,24 +459,30 @@ impl Console {
             let h = secs_of_day / 3600;
             let m = (secs_of_day % 3600) / 60;
             let s = secs_of_day % 60;
-            format!("[{:02}:{:02}:{:02}]", h, m, s)
+            Some(format!("[{:02}:{:02}:{:02}]", h, m, s))
+        } else {
+            None
         };
 
-        let time_style = self
-            .get_style("log.time")
-            .unwrap_or_else(|_| Style::parse("dim"));
-
-        let time_text = Text::styled_with(&now, time_style);
         let body = self.render_str(text, None, None, None);
 
         // Finding #16: cache options() once instead of calling twice.
         let opts = self.options();
 
-        // Combine: time + space + body [+ optional caller path]
-        let mut segments = time_text.gilt_console(self, &opts);
-        // Remove trailing newline from time segments
-        segments.retain(|s| s.text != "\n");
-        segments.push(Segment::text(" "));
+        // Combine: [time] + body [+ optional caller path]
+        let mut segments = if let Some(ref now) = now {
+            let time_style = self
+                .get_style("log.time")
+                .unwrap_or_else(|_| Style::parse("dim"));
+            let time_text = Text::styled_with(now, time_style);
+            let mut segs = time_text.gilt_console(self, &opts);
+            // Remove trailing newline from time segments
+            segs.retain(|s| s.text != "\n");
+            segs.push(Segment::text(" "));
+            segs
+        } else {
+            Vec::new()
+        };
         segments.extend(body.gilt_console(self, &opts));
 
         // Append caller path when log_path is enabled on this console.
@@ -534,7 +543,10 @@ impl Console {
             format!(" [{}:{}]", short, location.line())
         };
 
-        let now = {
+        // Plan 7.24 Task 4: timestamp is gated on `self.log_time`. When
+        // false, the body is emitted without any leading `[HH:MM:SS]`
+        // text.
+        let now = if self.log_time {
             let secs = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
@@ -544,19 +556,25 @@ impl Console {
             let h = secs_of_day / 3600;
             let m = (secs_of_day % 3600) / 60;
             let s = secs_of_day % 60;
-            format!("[{:02}:{:02}:{:02}]", h, m, s)
+            Some(format!("[{:02}:{:02}:{:02}]", h, m, s))
+        } else {
+            None
         };
-
-        let time_style = self
-            .get_style("log.time")
-            .unwrap_or_else(|_| Style::parse("dim"));
 
         let opts = self.options();
 
-        let time_text = Text::styled_with(&now, time_style);
-        let mut segments = time_text.gilt_console(self, &opts);
-        // Remove trailing newline from time
-        segments.retain(|s| s.text != "\n");
+        let mut segments = if let Some(ref now) = now {
+            let time_style = self
+                .get_style("log.time")
+                .unwrap_or_else(|_| Style::parse("dim"));
+            let time_text = Text::styled_with(now, time_style);
+            let mut segs = time_text.gilt_console(self, &opts);
+            // Remove trailing newline from time
+            segs.retain(|s| s.text != "\n");
+            segs
+        } else {
+            Vec::new()
+        };
 
         // Render each object separated by a space
         for obj in objects.iter() {
@@ -1271,6 +1289,75 @@ mod batch_7_7_tests {
         let out = console.end_capture();
         assert!(out.contains('['), "expected at least a timestamp bracket");
     }
+
+    // -- Plan 7.24 Task 4: log_time toggle -----------------------------------
+
+    #[test]
+    fn log_time_default_includes_timestamp_bracket() {
+        // Default (log_time=true) must keep the existing behaviour:
+        // `log()` produces output containing a `[HH:MM:SS]` timestamp.
+        let mut console = Console::builder()
+            .width(80)
+            .no_color(true)
+            .markup(false)
+            .build();
+        console.begin_capture();
+        console.log("hello");
+        let out = console.end_capture();
+        assert!(
+            out.contains('['),
+            "default log_time=true must emit a timestamp bracket; got: {out:?}"
+        );
+    }
+
+    #[test]
+    fn log_time_false_suppresses_timestamp_bracket() {
+        // With log_time=false, `log()` must NOT emit a `[HH:MM:SS]`
+        // timestamp bracket — only the body and (if enabled) caller path.
+        let mut console = Console::builder()
+            .width(80)
+            .no_color(true)
+            .markup(false)
+            .log_time(false)
+            .build();
+        console.begin_capture();
+        console.log("hello world");
+        let out = console.end_capture();
+        assert!(
+            out.contains("hello world"),
+            "body must still be printed; got: {out:?}"
+        );
+        // The timestamp pattern is a leading "[HH:MM:SS]".  After trim_start
+        // the first non-space char should be 'h' (start of the body) — not
+        // '[' from a timestamp.
+        let trimmed = out.trim_start();
+        assert!(
+            !trimmed.starts_with('['),
+            "log_time=false must suppress the leading timestamp bracket; got: {out:?}"
+        );
+    }
+
+    #[test]
+    fn log_objects_log_time_false_suppresses_timestamp_bracket() {
+        // Same gate applied to log_objects — leading '[' must be absent.
+        let mut console = Console::builder()
+            .width(80)
+            .no_color(true)
+            .markup(false)
+            .log_time(false)
+            .build();
+        console.begin_capture();
+        let a = Text::new("alpha", Style::null());
+        console.log_objects(&[&a], false);
+        let out = console.end_capture();
+        assert!(out.contains("alpha"), "body must be present: {out:?}");
+        let trimmed = out.trim_start();
+        assert!(
+            !trimmed.starts_with('['),
+            "log_time=false on log_objects must suppress the leading timestamp; got: {out:?}"
+        );
+    }
+
 
     // -- Item 4: soft_wrap wiring -------------------------------------------
 

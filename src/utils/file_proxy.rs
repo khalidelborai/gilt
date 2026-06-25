@@ -110,6 +110,16 @@ impl FileProxy {
             }
         }
     }
+
+    /// Returns `false`: a `FileProxy`-wrapped stream is never a TTY.
+    ///
+    /// Matches Python rich's `FileProxy.isatty` returning `False`. Useful
+    /// for callers that branch on `isatty()` (e.g. progress bars deciding
+    /// whether to render spinners); a `Live`-captured stream should be
+    /// treated as a non-interactive sink.
+    pub fn isatty(&self) -> bool {
+        false
+    }
 }
 
 impl Write for FileProxy {
@@ -236,6 +246,14 @@ mod tests {
         assert!(proxy.is_alive());
         drop(sink);
         assert!(!proxy.is_alive());
+    }
+
+    #[test]
+    fn isatty_is_false() {
+        // A LiveProxy/FileProxy-wrapped stream is never a TTY; mirrors
+        // rich's `FileProxy.isatty` returning False (Plan 7.24 Task 1).
+        let (proxy, _captured, _sink) = proxy_with_sink(false);
+        assert!(!proxy.isatty());
     }
 
     #[test]

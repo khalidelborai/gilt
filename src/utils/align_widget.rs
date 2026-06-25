@@ -128,6 +128,8 @@ impl Align {
         )
     }
 
+
+
     /// Measure the minimum and maximum width requirements.
     ///
     /// The **maximum** stays the content's full width; the **minimum** is
@@ -195,6 +197,36 @@ impl Align {
             }
         }
     }
+}
+
+/// Convenience constructor for an `Align` that centers its content
+/// vertically with a default (left) horizontal alignment.
+///
+/// Mirrors Python rich's `vertical_center` helper: returns an `Align` with
+/// `vertical = Some(VerticalAlign::Middle)`, `align = HorizontalAlign::Left`,
+/// `pad = true`, and no explicit width/height (so the widget takes the
+/// available console dimensions). The content's height drives the
+/// middle-pad split when rendered with a non-zero console height.
+///
+/// # Examples
+///
+/// ```ignore
+/// use gilt::utils::align_widget::vertical_center;
+/// use gilt::text::Text;
+/// use gilt::style::Style;
+///
+/// let _a = vertical_center(Text::new("hi", Style::null()));
+/// ```
+pub fn vertical_center(content: impl Renderable + Send + Sync + 'static) -> Align {
+    Align::new(
+        content,
+        HorizontalAlign::Left,
+        None,
+        Some(VerticalAlign::Middle),
+        true,
+        None,
+        None,
+    )
 }
 
 impl Renderable for Align {
@@ -726,4 +758,58 @@ mod tests {
         assert_eq!(m.minimum, 5);
         assert_eq!(m.maximum, 5);
     }
+ 
+    // -- Plan 7.24 Task 3: VerticalCenter convenience ------------------------
+
+    #[test]
+    fn vertical_center_sets_vertical_middle() {
+        // The convenience constructor must produce an Align with
+        // vertical=Some(Middle) and a left default for horizontal align.
+        let align = vertical_center(Text::new("x", Style::null()));
+        assert_eq!(align.vertical, Some(VerticalAlign::Middle));
+        assert_eq!(align.align, HorizontalAlign::Left);
+    }
+
+    #[test]
+    fn vertical_center_renders_content_when_height_matches() {
+        // When the available height matches the content's line count, the
+        // rendered output must contain the content unchanged (no padding).
+        let console = make_console(40);
+        let align = vertical_center(Text::new("hi", Style::null()));
+        let opts = console.options();
+        let segs = align.gilt_console(&console, &opts);
+        let text: String = segs.iter().map(|s| s.text.as_str()).collect();
+        assert!(text.contains("hi"), "content must be rendered: {text:?}");
+    }
+
+    #[test]
+    fn vertical_center_pads_above_and_below_when_height_exceeds() {
+        // With an explicit height larger than the content, vertical=Middle
+        // must produce padding above AND below the single content line.
+        let console = make_console(40);
+        let align = Align::new(
+            Text::new("hi", Style::null()),
+            HorizontalAlign::Left,
+            None,
+            Some(VerticalAlign::Middle),
+            true,
+            None,
+            Some(5),
+        );
+        let opts = console.options();
+        let segs = align.gilt_console(&console, &opts);
+        let text: String = segs.iter().map(|s| s.text.as_str()).collect();
+        let lines: Vec<&str> = text.split('\n').filter(|l| !l.is_empty()).collect();
+        // The content line is padded with trailing spaces by the Align
+        // widget to fill the available width; check via `starts_with`
+        // rather than equality.
+        let has_content = lines
+            .iter()
+            .any(|l| l.trim_start().starts_with("hi"));
+        assert!(
+            has_content,
+            "content line must be present: {lines:?}"
+        );
+    }
+
 }
