@@ -1481,13 +1481,17 @@ impl Console {
 
     /// Pipe recorded output through an external pager.
     ///
-    /// Captures the current recorded output via `export_text(true, false)` and
-    /// pipes it through a [`Pager`]. If `pager_command` is `Some`, uses the
-    /// specified command; otherwise uses the default pager (`less -r`).
+    /// Captures the current recorded output via `export_text(clear, styles)`
+    /// and pipes it through a [`Pager`]. If `pager_command` is `Some`, uses
+    /// the specified command; otherwise uses the default pager (`less -r`,
+    /// or `$PAGER` if set — see [`Pager::from_env`]).
+    ///
+    /// `styles` controls whether ANSI escapes are kept (`true`) or stripped
+    /// (`false`, the default — matches rich's `Console.pager(styles=False)`).
     ///
     /// Pager errors are silently ignored.
-    pub fn pager(&mut self, pager_command: Option<&str>) {
-        let text = self.export_text(true, false);
+    pub fn pager(&mut self, pager_command: Option<&str>, styles: bool) {
+        let text = self.export_text(true, styles);
         let pager = match pager_command {
             Some(cmd) => Pager::new().with_command(cmd),
             None => Pager::new(),
@@ -1692,6 +1696,8 @@ impl Console {
     /// output through the pager — matching rich's context-manager `pager()`.
     ///
     /// `pager_command` overrides the default `"less -r"`.
+    /// `styles` controls whether ANSI escapes are kept (`true`) or stripped
+    /// (`false`, the default — matches rich's `Console.pager(styles=False)`).
     ///
     /// # Examples
     ///
@@ -1701,20 +1707,43 @@ impl Console {
     /// let mut c = Console::new();
     /// c.pager_with(|c| {
     ///     c.print_text("Hello from the pager!");
-    /// }, None);
+    /// }, None, false);
     /// ```
-    pub fn pager_with<F: FnOnce(&mut Console)>(&mut self, f: F, pager_command: Option<&str>) {
-        let was_recording = self.record;
-        self.record = true;
-        f(self);
-        // export_text requires self.record == true; call it before restoring.
-        let text = self.export_text(true, false);
-        self.record = was_recording;
+    pub fn pager_with<F: FnOnce(&mut Console)>(
+        &mut self,
+        f: F,
+        pager_command: Option<&str>,
+        styles: bool,
+    ) {
+        let text = self.pager_text(styles, f);
         let pager = match pager_command {
             Some(cmd) => Pager::new().with_command(cmd),
             None => Pager::new(),
         };
         let _ = pager.show(&text);
+    }
+
+    /// Run a closure, capturing its output, and return it as the pager text.
+    ///
+    /// This is the render-only side of [`pager_with`](Self::pager_with): it
+    /// does the closure, the record-mode setup, and the styled/plain text
+    /// selection, but does NOT spawn the pager. The returned `String` is what
+    /// `pager_with` would have piped to the pager.
+    ///
+    /// Useful for tests that need to assert on the formatted text without
+    /// spawning a subprocess, and for callers that want to post-process the
+    /// pager text (e.g. write it to a file) instead of piping it.
+    ///
+    /// `styles = false` (rich default) strips ANSI escapes; `styles = true`
+    /// keeps the styled buffer as-is.
+    pub fn pager_text<F: FnOnce(&mut Console)>(&mut self, styles: bool, f: F) -> String {
+        let was_recording = self.record;
+        self.record = true;
+        f(self);
+        // export_text requires self.record == true; call it before restoring.
+        let text = self.export_text(true, styles);
+        self.record = was_recording;
+        text
     }
 }
 

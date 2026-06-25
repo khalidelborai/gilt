@@ -737,6 +737,7 @@ dependencies = [
  "log",
  "lru",
  "miette",
+ "parking_lot",
  "pretty_assertions",
  "proptest",
  "pulldown-cmark",
