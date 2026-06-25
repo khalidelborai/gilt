@@ -414,8 +414,12 @@ pub fn split_text(text: &str, length: usize) -> (String, String) {
         }
     }
 
-    // Accumulated == length exactly at the end of the string.
-    (text.to_owned(), String::new())
+    // The loop above always returns: because `length < total_cells` (ensured
+    // by the guard at line 386), the accumulated width must exceed `length`
+    // at some span (widths are ≥ 1 for non-empty text), hitting either the
+    // `accumulated == length` exact-boundary return or the straddle `else`
+    // return. This line is unreachable.
+    unreachable!("split_text loop exhausted without finding a split point")
 }
 
 // RED test lives in the `tests` mod below. See `cell_len_cache_hit_on_second_call`.

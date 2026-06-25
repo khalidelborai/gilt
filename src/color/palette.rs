@@ -19,10 +19,11 @@ use std::num::NonZeroUsize;
 //
 // Keyed by `(palette identity, triplet)` so STANDARD_PALETTE,
 // WINDOWS_PALETTE, and EIGHT_BIT_PALETTE do not collide. Identity is the
-// data pointer of the palette's underlying `Vec`; this is stable for
-// the static palettes and for any `Palette` instance that owns its
-// `colors` vec (clones share the same pointer via `Vec::clone`, which is
-// intentional — a cloned palette is semantically the same data).
+// data pointer of the palette's underlying `Vec`; this is stable for the
+// static `LazyLock` palettes (the pointer never changes after init). A
+// cloned `Palette` owns a fresh `Vec` with a different pointer, so it gets
+// its own cache slot — this is acceptable because clones are rare (the hot
+// path always goes through the static palettes).
 thread_local! {
     static MATCH_COLOR_CACHE: RefCell<LruCache<(*const u8, ColorTriplet), usize>> =
         RefCell::new(LruCache::new(NonZeroUsize::new(1024).unwrap()));
