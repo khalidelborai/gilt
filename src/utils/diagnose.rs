@@ -356,34 +356,53 @@ fn detect_box_drawing_support() -> bool {
     true
 }
 
+/// Environment variable names collected for the diagnostic report.
+///
+/// Exposed as `pub(crate)` so tests can assert the iteration list (not just
+/// the values that happen to be set in the test env). Phase 7.26 added
+/// Jupyter/VSCode keys for rich parity.
+pub(crate) const ENV_VARS: &[&str] = &[
+    "NO_COLOR",
+    "FORCE_COLOR",
+    "CLICOLOR",
+    "CLICOLOR_FORCE",
+    "COLORTERM",
+    "TERM_PROGRAM",
+    "TERM_PROGRAM_VERSION",
+    "COLUMNS",
+    "LINES",
+    "REDUCE_MOTION",
+    "LANG",
+    "LC_ALL",
+    "LC_CTYPE",
+    "TMUX",
+    "SCREEN",
+    "VTE_VERSION",
+    "ITERM_SESSION_ID",
+    "WT_SESSION",
+    "KONSOLE_VERSION",
+    "ALACRITTY_WINDOW_ID",
+    "WEZTERM_PANE",
+    "JPY_PARENT_PID",
+    "JUPYTER_COLUMNS",
+    "JUPYTER_LINES",
+    "VSCODE_VERBOSE_LOGGING",
+];
+
+/// Test-only: return the list of env-var names the diagnose report iterates.
+/// Useful for asserting that a key is tracked regardless of whether the
+/// env-var is set in the test environment.
+#[cfg(test)]
+pub(crate) fn collect_environment_keys() -> Vec<&'static str> {
+    ENV_VARS.to_vec()
+}
+
 /// Collect relevant environment variables.
 fn collect_environment() -> HashMap<String, String> {
-    let vars = [
-        "NO_COLOR",
-        "FORCE_COLOR",
-        "CLICOLOR",
-        "CLICOLOR_FORCE",
-        "COLORTERM",
-        "TERM_PROGRAM",
-        "TERM_PROGRAM_VERSION",
-        "COLUMNS",
-        "LINES",
-        "REDUCE_MOTION",
-        "LANG",
-        "LC_ALL",
-        "LC_CTYPE",
-        "TMUX",
-        "SCREEN",
-        "VTE_VERSION",
-        "ITERM_SESSION_ID",
-        "WT_SESSION",
-        "KONSOLE_VERSION",
-        "ALACRITTY_WINDOW_ID",
-        "WEZTERM_PANE",
-    ];
+    let vars = ENV_VARS;
 
     let mut result = HashMap::new();
-    for var in &vars {
+    for var in vars {
         if let Ok(val) = env::var(var) {
             if !val.is_empty() {
                 result.insert(var.to_string(), val);
@@ -690,5 +709,25 @@ mod tests {
             ColorSupport::TrueColor.color_system(),
             Some(ColorSystem::TrueColor)
         );
+    }
+
+    /// Phase 7.26: ensure the env-var iteration list covers Jupyter/VSCode
+    /// keys (rich parity). The list drives which env vars appear in the
+    /// report — we only need the keys to be present, not the values to
+    /// be set in the test env.
+    #[test]
+    fn test_collect_environment_includes_jupyter_vscode_keys() {
+        for key in [
+            "JPY_PARENT_PID",
+            "JUPYTER_COLUMNS",
+            "JUPYTER_LINES",
+            "VSCODE_VERBOSE_LOGGING",
+        ] {
+            assert!(
+                collect_environment_keys().contains(&key),
+                "diagnose env list missing {key}; got {:?}",
+                collect_environment_keys()
+            );
+        }
     }
 }
