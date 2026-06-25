@@ -3,11 +3,119 @@
 //! All content flows through segments, which combine text, style, and control codes.
 
 use compact_str::CompactString;
+use lru::LruCache;
+use std::cell::RefCell;
+use std::num::NonZeroUsize;
 
 use crate::cells::{cell_len, get_character_cell_size, is_single_cell_widths, set_cell_size};
 use crate::style::Style;
 
-/// Terminal control code types.
+thread_local! {
+    /// Per-thread LRU cache for `Segment::split_cells` results, keyed by
+    /// `(text, cut)` → `(left_text, right_text)`.
+    ///
+    /// Mirrors rich's `@lru_cache(maxsize=16_384)` on the `_split_cells`
+    /// classmethod (rich/segment.py). The capacity is 16K entries — large
+    /// enough to absorb the hot path of repeated re-renders of the same
+    /// content (status bars, live displays, etc.) while keeping per-thread
+    /// memory bounded.
+    ///
+    /// Style is intentionally *not* part of the key: `split_cells` only
+    /// inspects the cell layout, and a cached result is re-wrapped in the
+    /// caller's style at the use site. Treating style as cache-local would
+    /// either require an owned `Option<Style>` per value (cloning on every
+    /// miss) or risk aliasing if two callers share the same `(text, cut)`.
+    static SPLIT_CELLS_CACHE: RefCell<LruCache<(CompactString, usize), (CompactString, CompactString)>> =
+        RefCell::new(LruCache::new(NonZeroUsize::new(16_384).unwrap()));
+}
+
+/// Look up (or compute) the (left, right) text pair for a `(text, cut)`.
+///
+/// Extracted so the LRU plumbing lives in one place; the method body itself
+/// still owns the segment-cloning logic so the style and control codes are
+/// not silently shared.
+fn cached_split_texts(text: &str, cut: usize) -> (CompactString, CompactString) {
+    let key = (CompactString::from(text), cut);
+    SPLIT_CELLS_CACHE.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        if let Some(hit) = cache.get(&key) {
+            return hit.clone();
+        }
+        let (left, right) = compute_split_texts(text, cut);
+        cache.put(key, (left.clone(), right.clone()));
+        (left, right)
+    })
+}
+
+/// Test-only hook: number of entries currently in the per-thread cache.
+///
+/// `pub(crate)` so integration tests can assert that the cache is actually
+/// being populated for repeated `(text, cut)` lookups.
+#[cfg(test)]
+pub(crate) fn split_cells_cache_len() -> usize {
+    SPLIT_CELLS_CACHE.with(|cache| cache.borrow().len())
+}
+
+/// Test-only hook: clear the per-thread cache (useful for test isolation).
+#[cfg(test)]
+pub(crate) fn split_cells_cache_clear() {
+    SPLIT_CELLS_CACHE.with(|cache| cache.borrow_mut().clear());
+}
+
+/// Pure split that returns just the two text halves. Used by the cache
+/// wrapper above; the public `split_cells` method re-wraps the result with
+/// the caller's style and clones the result out.
+///
+/// This mirrors the body of `Segment::split_cells` — including the
+/// double-width straddling space substitution — so the cached text is
+/// byte-equal to what the un-cached function would produce.
+fn compute_split_texts(text: &str, cut: usize) -> (CompactString, CompactString) {
+    let text_len = text.len();
+    let cell_length = cell_len(text);
+
+    // Fast path: if cut is beyond text length, return (full, empty)
+    if cut >= cell_length {
+        return (CompactString::from(text), CompactString::new(""));
+    }
+
+    // Fast path: ASCII only. `is_single_cell_widths` is true here, so
+    // every char is one cell. On a single-byte string `cut` is also a
+    // valid byte boundary; on a multi-byte single-cell string (e.g.
+    // "café résumé") the index is `text_len`-clipped above, so the byte
+    // slice is well-formed.
+    if is_single_cell_widths(text) {
+        let byte_pos = cut.min(text_len);
+        return (
+            CompactString::from(&text[..byte_pos]),
+            CompactString::from(&text[byte_pos..]),
+        );
+    }
+
+    // General case: iterate through characters by cell width.
+    let mut cell_pos = 0;
+    for (idx, ch) in text.char_indices() {
+        let char_width = get_character_cell_size(ch);
+
+        if cell_pos == cut {
+            return (
+                CompactString::from(&text[..idx]),
+                CompactString::from(&text[idx..]),
+            );
+        } else if cell_pos + char_width > cut {
+            // Double-width char straddling the cut — match the
+            // un-cached `split_cells` behavior: replace the wide char
+            // with a space on each side.
+            let before = format!("{} ", &text[..idx]);
+            let after = format!(" {}", &text[idx + ch.len_utf8()..]);
+            return (CompactString::from(before), CompactString::from(after));
+        }
+
+        cell_pos += char_width;
+    }
+
+    // Shouldn't reach here for in-range cuts, but handle defensively.
+    (CompactString::from(text), CompactString::new(""))
+}
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(u8)]
 pub enum ControlType {
@@ -121,6 +229,26 @@ pub struct Segment {
     pub(crate) style: Option<Style>,
     /// Terminal control codes carried by this segment, or `None` for text-only segments.
     pub control: Option<Vec<ControlCode>>,
+}
+
+impl std::fmt::Display for Segment {
+    /// Render the segment in a debug-friendly form.
+    ///
+    /// Mirrors rich's `Segment.__str__` (which falls back to the NamedTuple
+    /// repr): `Segment(<text>, <style>, <control>)`. Style and control are
+    /// rendered with their `Debug` impls so the output is stable, greppable,
+    /// and round-trippable by reading it back as `Debug` if needed.
+    ///
+    /// `Display` is intentionally distinct from the derived `Debug` so
+    /// `format!("{segment}")` (the conventional "show me the text" call)
+    /// still works without requiring `{segment:?}` everywhere.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Segment({:?}, {:?}, {:?})",
+            self.text, self.style, self.control
+        )
+    }
 }
 
 impl Segment {
@@ -274,51 +402,11 @@ impl Segment {
     /// assert_eq!(right.text, "llo");
     /// ```
     pub fn split_cells(&self, cut: usize) -> (Segment, Segment) {
-        let text_len = self.text.len();
-        let cell_length = cell_len(&self.text);
-
-        // Fast path: if cut is beyond text length, return (self, empty)
-        if cut >= cell_length {
-            return (self.clone(), Segment::new("", self.style.clone(), None));
-        }
-
-        // Fast path: ASCII only
-        if is_single_cell_widths(&self.text) {
-            let byte_pos = cut.min(text_len);
-            return (
-                Segment::new(&self.text[..byte_pos], self.style.clone(), None),
-                Segment::new(&self.text[byte_pos..], self.style.clone(), None),
-            );
-        }
-
-        // General case: iterate through characters
-        let mut cell_pos = 0;
-
-        for (idx, ch) in self.text.char_indices() {
-            let char_width = get_character_cell_size(ch);
-
-            if cell_pos == cut {
-                // Exact match
-                return (
-                    Segment::new(&self.text[..idx], self.style.clone(), None),
-                    Segment::new(&self.text[idx..], self.style.clone(), None),
-                );
-            } else if cell_pos + char_width > cut {
-                // Would overflow: double-width char straddling the cut
-                // Replace with spaces
-                let before = format!("{} ", &self.text[..idx]);
-                let after = format!(" {}", &self.text[idx + ch.len_utf8()..]);
-                return (
-                    Segment::new(&before, self.style.clone(), None),
-                    Segment::new(&after, self.style.clone(), None),
-                );
-            }
-
-            cell_pos += char_width;
-        }
-
-        // Shouldn't reach here, but handle edge case
-        (self.clone(), Segment::new("", self.style.clone(), None))
+        let (left_text, right_text) = cached_split_texts(&self.text, cut);
+        (
+            Segment::new(&left_text, self.style.clone(), None),
+            Segment::new(&right_text, self.style.clone(), None),
+        )
     }
 
     /// Applies a base style and/or post style to a list of segments.
@@ -958,9 +1046,64 @@ impl Segment {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Renderable wrapper types (Phase 7 parity)
+// ---------------------------------------------------------------------------
+
+/// Renderable wrapper around a flat list of [`Segment`]s.
+///
+/// Mirrors rich's `Segments` helper class — exposes an existing segment list
+/// through the [`Renderable`] trait so it can flow through the same console
+/// pipeline as a hand-written renderable.
+///
+/// [`Renderable`]: crate::console::Renderable
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Segments(pub Vec<Segment>);
+
+/// Renderable wrapper around pre-split lines of [`Segment`]s.
+///
+/// Mirrors rich's `SegmentLines`. When rendered, each inner line is emitted in
+/// order, separated by a single `Segment::line()` (i.e. `\n`) so a downstream
+/// consumer gets one continuous segment stream. An empty input renders to an
+/// empty output — no stray trailing newline.
+///
+/// [`Renderable`]: crate::console::Renderable
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct SegmentLines(pub Vec<Vec<Segment>>);
+
+impl crate::console::Renderable for Segments {
+    fn gilt_console(
+        &self,
+        _console: &crate::console::Console,
+        _options: &crate::console::ConsoleOptions,
+    ) -> Vec<Segment> {
+        self.0.clone()
+    }
+}
+
+impl crate::console::Renderable for SegmentLines {
+    fn gilt_console(
+        &self,
+        _console: &crate::console::Console,
+        _options: &crate::console::ConsoleOptions,
+    ) -> Vec<Segment> {
+        let mut out: Vec<Segment> = Vec::with_capacity(self.0.iter().map(|l| l.len() + 1).sum());
+        let mut first = true;
+        for line in &self.0 {
+            if !first {
+                out.push(Segment::line());
+            }
+            out.extend(line.iter().cloned());
+            first = false;
+        }
+        out
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::console::Console;
 
     #[test]
     fn test_line() {
@@ -1500,5 +1643,135 @@ mod tests {
         let lines = Segment::split_lines_terminator(&segments);
         assert_eq!(lines.len(), 1);
         assert!(lines[0].1);
+    }
+    // -- Segments / SegmentLines renderable wrappers ------------------------
+
+    #[test]
+    fn test_segments_renders_as_is() {
+        use crate::console::Renderable;
+
+        let console = Console::new();
+        let options = console.options();
+        let inner = vec![Segment::new("hi", None, None)];
+        let wrapper = Segments(inner.clone());
+        let rendered = wrapper.gilt_console(&console, &options);
+        assert_eq!(rendered, inner);
+    }
+
+    #[test]
+    fn test_segment_lines_flattens_with_newlines() {
+        use crate::console::Renderable;
+
+        let console = Console::new();
+        let options = console.options();
+        let a = Segment::new("a", None, None);
+        let b = Segment::new("b", None, None);
+        let wrapper = SegmentLines(vec![vec![a.clone()], vec![b.clone()]]);
+        let rendered = wrapper.gilt_console(&console, &options);
+        assert_eq!(rendered, vec![a, Segment::line(), b],);
+    }
+
+    #[test]
+    fn test_segment_lines_empty() {
+        use crate::console::Renderable;
+
+        let console = Console::new();
+        let options = console.options();
+        let wrapper = SegmentLines(Vec::new());
+        let rendered = wrapper.gilt_console(&console, &options);
+        assert!(rendered.is_empty());
+    }
+
+    // -- split_cells cache (Phase 7) -----------------------------------------
+
+    #[test]
+    fn test_split_cells_cache_repeat_same_input() {
+        // Cache correctness: calling the split fn twice with the same input
+        // must return equal results. The un-cached function already satisfies
+        // this; the LRU cache must not break it.
+        let seg = Segment::text("Hello, World!");
+        let (a1, a2) = seg.split_cells(5);
+        let (b1, b2) = seg.split_cells(5);
+        assert_eq!(a1.text, b1.text);
+        assert_eq!(a2.text, b2.text);
+    }
+
+    #[test]
+    fn test_split_cells_cache_third_distinct_input() {
+        // A third distinct input must also be correct after the cache has
+        // been populated by prior lookups.
+        let seg_a = Segment::text("Hello, World!");
+        let _ = seg_a.split_cells(5);
+        let seg_b = Segment::text("foo bar baz");
+        let _ = seg_b.split_cells(3);
+        let seg_c = Segment::text("ABCDE");
+        let (c1, c2) = seg_c.split_cells(3);
+        assert_eq!(c1.text, "ABC");
+        assert_eq!(c2.text, "DE");
+    }
+
+    #[test]
+    fn test_split_cells_cache_double_width_boundary() {
+        // Exercise the double-width boundary path (CJK) with repeated calls.
+        // '中' is two cells; splitting at 2 must keep it on the left.
+        let seg = Segment::text("中文A");
+        let (a1, a2) = seg.split_cells(2);
+        let (b1, b2) = seg.split_cells(2);
+        assert_eq!(a1.text, b1.text);
+        assert_eq!(a2.text, b2.text);
+        assert_eq!(a1.text, "中");
+        assert_eq!(a2.text, "文A");
+    }
+
+    #[test]
+    fn test_split_cells_cache_populates() {
+        // Verify the LRU cache is actually populated by `split_cells`. The
+        // first call must add an entry; a second call with the same key
+        // must not grow the cache.
+        split_cells_cache_clear();
+        let seg = Segment::text("cache populate test");
+        let _ = seg.split_cells(4);
+        assert!(
+            split_cells_cache_len() >= 1,
+            "cache should have at least one entry after a split_cells call"
+        );
+        let before = split_cells_cache_len();
+        let _ = seg.split_cells(4);
+        assert_eq!(
+            split_cells_cache_len(),
+            before,
+            "repeat call must hit, not grow, the cache"
+        );
+    }
+
+    // -- Display impl for Segment (Phase 7) ----------------------------------
+
+    #[test]
+    fn test_segment_display_contains_text() {
+        let s = format!("{}", Segment::new("x", None, None));
+        assert!(
+            s.contains('x'),
+            "Display must contain the segment text; got: {s:?}"
+        );
+    }
+
+    #[test]
+    fn test_segment_display_empty_text() {
+        let s = format!("{}", Segment::new("", None, None));
+        // An empty-text segment still must produce a Display representation
+        // that is recognizably a Segment — the format string must include
+        // the "Segment(" prefix even when there is no text.
+        assert!(
+            s.contains("Segment("),
+            "Display must include the Segment() prefix; got: {s:?}"
+        );
+    }
+
+    #[test]
+    fn test_segment_display_with_style() {
+        let s = format!("{}", Segment::styled("hi", Style::parse("bold")));
+        // Should include the text and indicate this is a Segment.
+        assert!(s.contains("hi"));
+        assert!(s.contains("Segment("));
     }
 }
