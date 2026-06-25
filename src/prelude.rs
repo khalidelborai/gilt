@@ -50,3 +50,8 @@ pub use crate::status::Status;
 
 // Markup
 pub use crate::markup::render as render_markup;
+pub use crate::markup::render_with_options as render_markup_with_options;
+
+// Theme scope guard + vertical-center convenience
+pub use crate::console::ThemeGuard;
+pub use crate::utils::align_widget::vertical_center;

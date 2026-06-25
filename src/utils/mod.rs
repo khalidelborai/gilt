@@ -32,7 +32,7 @@ pub mod styled;
 pub mod styled_str;
 
 // Re-export commonly used items for convenience
-pub use align_widget::{Align, HorizontalAlign, VerticalAlign};
+pub use align_widget::{vertical_center, Align, HorizontalAlign, VerticalAlign};
 pub use ansi::AnsiDecoder;
 pub use bar::Bar;
 pub use box_chars::{

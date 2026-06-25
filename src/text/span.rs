@@ -21,6 +21,7 @@ use crate::style::Style;
 /// [`Span::named_with_meta`]; unnamed spans (created with [`Span::new`] /
 /// [`Span::with_meta`]) leave this field as `None`.
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Span {
     /// Start character offset (inclusive).
     pub start: usize,

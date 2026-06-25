@@ -884,6 +884,7 @@ pub use utils::{
 pub use widgets::table;
 
 // Re-export cache management functions
+pub use color::{ansi_color_name, get_ansi_color_number};
 pub use color::{clear_color_cache, color_cache_size};
 pub use style::{clear_style_cache, style_cache_size};
 
@@ -1006,7 +1007,7 @@ pub fn print_json_opts(json: Option<&str>, data: Option<&serde_json::Value>, ens
 /// console mutex (which is non-reentrant).
 #[cfg(feature = "json")]
 #[doc(hidden)]
-pub fn format_json_for_test(
+pub(crate) fn format_json_for_test(
     json: Option<&str>,
     data: Option<&serde_json::Value>,
     ensure_ascii: bool,
