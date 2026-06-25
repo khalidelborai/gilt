@@ -1685,4 +1685,64 @@ mod tests {
             "update_screen_lines must be a no-op outside alt-screen, got: {text:?}"
         );
     }
+
+    // -- Regression: Tree children survive a fixed-size Layout region ------------
+    //
+    // A `Tree` with children placed inside a fixed-size `Layout` region (here a
+    // 30-wide sidebar holding `Panel::new(tree)`) must render ALL its child
+    // labels. Before the fix, the Tree's per-label render inherited the region
+    // height and padded the root label to fill the region, cropping out the
+    // children — so only the root label survived composition.
+
+    #[test]
+    fn tree_children_survive_fixed_layout_region() {
+        use crate::panel::Panel;
+        use crate::tree::Tree;
+
+        let mut tree = Tree::new(Text::new("Files", Style::null()));
+        tree.add(Text::new("alpha.rs", Style::null()));
+        tree.add(Text::new("beta.rs", Style::null()));
+        tree.add(Text::new("gamma.rs", Style::null()));
+
+        let mut root = Layout::default_layout();
+        let sidebar = Layout::new(None, Some("sidebar".into()), Some(30), None, None, None)
+            .with_renderable(Panel::new(tree));
+        let main = Layout::new(
+            Some("MAIN".into()),
+            Some("main".into()),
+            None,
+            None,
+            Some(1),
+            None,
+        );
+        root.split_row(vec![sidebar, main]);
+
+        let console = Console::builder()
+            .width(100)
+            .height(24)
+            .markup(false)
+            .no_color(true)
+            .build();
+        let opts = console.options();
+        let segments = root.gilt_console(&console, &opts);
+        let text: String = segments
+            .iter()
+            .filter(|s| !s.is_control())
+            .map(|s| s.text.as_str())
+            .collect();
+
+        assert!(text.contains("Files"));
+        assert!(
+            text.contains("alpha.rs"),
+            "Tree child dropped in fixed Layout region: {text:?}"
+        );
+        assert!(
+            text.contains("beta.rs"),
+            "Tree child dropped in fixed Layout region: {text:?}"
+        );
+        assert!(
+            text.contains("gamma.rs"),
+            "Tree child dropped in fixed Layout region: {text:?}"
+        );
+    }
 }
