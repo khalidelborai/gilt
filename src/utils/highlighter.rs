@@ -146,7 +146,7 @@ static REPR_HIGHLIGHTS: LazyLock<Vec<Regex>> = LazyLock::new(|| {
         // Tags: <tag_name contents>
         r"(?P<tag_start><)(?P<tag_name>[-\w.:|]*)(?P<tag_contents>[\w\W]*)(?P<tag_end>>)",
         // Attribute name=value
-        r#"(?P<attrib_name>[\w_]{1,50})=(?P<attrib_value>"?[\w_]+"?)?"#,
+        r#"(?P<attrib_name>[\w_]+)=(?P<attrib_value>"?[\w_]+"?)?"#,
         // Braces
         r"(?P<brace>[\[\]{}\(\)])",
         // Combined pattern for everything else
@@ -756,6 +756,27 @@ mod tests {
         let text = hl.apply("<MyTag contents>");
         assert_eq!(text.plain(), "<MyTag contents>");
         assert!(!text.spans().is_empty());
+    }
+
+    #[test]
+    fn test_repr_attrib_name_unbounded() {
+        // Phase 7 P3 parity: the `attrib_name` regex must match names longer
+        // than 50 chars (rich uses unbounded `\w+`). Build a 60-char
+        // alphanumeric name and assert the full string is captured as a
+        // single `attrib_name` span.
+        let hl = ReprHighlighter::new();
+        let long = "a".repeat(60);
+        let input = format!("{long}=42");
+        let text = hl.apply(&input);
+        let plain = text.plain();
+        let has_full_name = text
+            .spans()
+            .iter()
+            .any(|s| span_text(plain, s) == long.as_str());
+        assert!(
+            has_full_name,
+            "expected full-length attrib_name span for a 60-char name"
+        );
     }
 
     // -- JSONHighlighter ----------------------------------------------------
