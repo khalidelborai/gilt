@@ -1,0 +1,302 @@
+<svg class="gilt-terminal" viewBox="0 0 897 294" xmlns="http://www.w3.org/2000/svg">
+    <!-- Generated with gilt https://github.com/gilt-rs -->
+    <style>
+
+    @font-face {
+        font-family: "Fira Code";
+        src: local("FiraCode-Regular"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff2/FiraCode-Regular.woff2") format("woff2"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff/FiraCode-Regular.woff") format("woff");
+        font-style: normal;
+        font-weight: 400;
+    }
+    @font-face {
+        font-family: "Fira Code";
+        src: local("FiraCode-Bold"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff2/FiraCode-Bold.woff2") format("woff2"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff/FiraCode-Bold.woff") format("woff");
+        font-style: bold;
+        font-weight: 700;
+    }
+
+    .gilt-demo-syntax-matrix {
+        font-family: Fira Code, monospace;
+        font-size: 20.0px;
+        line-height: 24.4px;
+        font-variant-east-asian: full-width;
+    }
+
+    .gilt-demo-syntax-title {
+        font-size: 18px;
+        font-weight: bold;
+        font-family: arial;
+    }
+
+        .gilt-demo-syntax-s1 {  }
+    .gilt-demo-syntax-s2 { fill: #575c67 }
+    .gilt-demo-syntax-s3 { fill: #b48ead }
+    .gilt-demo-syntax-s4 { fill: #c0c5ce }
+    .gilt-demo-syntax-s5 { fill: #8fa1b3 }
+    .gilt-demo-syntax-s6 { fill: #96b5b4 }
+    .gilt-demo-syntax-s7 { fill: #a3be8c }
+
+    </style>
+
+    <defs>
+    <clipPath id="gilt-demo-syntax-clip-terminal">
+      <rect x="0" y="0" width="895" height="292" />
+    </clipPath>
+        <clipPath id="gilt-demo-syntax-line-0"><rect x="0" y="40.0" width="895.0" height="24.4"/></clipPath>
+    <clipPath id="gilt-demo-syntax-line-1"><rect x="0" y="64.4" width="895.0" height="24.4"/></clipPath>
+    <clipPath id="gilt-demo-syntax-line-2"><rect x="0" y="88.8" width="895.0" height="24.4"/></clipPath>
+    <clipPath id="gilt-demo-syntax-line-3"><rect x="0" y="113.2" width="895.0" height="24.4"/></clipPath>
+    <clipPath id="gilt-demo-syntax-line-4"><rect x="0" y="137.6" width="895.0" height="24.4"/></clipPath>
+    <clipPath id="gilt-demo-syntax-line-5"><rect x="0" y="162.0" width="895.0" height="24.4"/></clipPath>
+    <clipPath id="gilt-demo-syntax-line-6"><rect x="0" y="186.4" width="895.0" height="24.4"/></clipPath>
+    <clipPath id="gilt-demo-syntax-line-7"><rect x="0" y="210.8" width="895.0" height="24.4"/></clipPath>
+    <clipPath id="gilt-demo-syntax-line-8"><rect x="0" y="235.2" width="895.0" height="24.4"/></clipPath>
+    <clipPath id="gilt-demo-syntax-line-9"><rect x="0" y="259.6" width="895.0" height="24.4"/></clipPath>
+
+    </defs>
+
+    <rect fill="#282a36" stroke="rgba(255,255,255,0.35)" stroke-width="1" x="0" y="0" width="895" height="292" rx="8"/>
+    <circle cx="26" cy="22" r="7" fill="#ff5f57"/>
+    <circle cx="48" cy="22" r="7" fill="#febc2e"/>
+    <circle cx="70" cy="22" r="7" fill="#28c840"/>
+    <text class="gilt-demo-syntax-title" fill="#f8f8f2" x="447.5" y="30" text-anchor="middle">gilt syntax</text>
+
+    <g transform="translate(1, 1)" clip-path="url(#gilt-demo-syntax-clip-terminal)">
+        <rect fill="#2b303b" x="8.0" y="43.0" width="24.4" height="24.4"/>
+    <rect fill="#2b303b" x="32.4" y="43.0" width="36.6" height="24.4"/>
+    <rect fill="#2b303b" x="69.0" y="43.0" width="36.6" height="24.4"/>
+    <rect fill="#2b303b" x="105.6" y="43.0" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="117.8" y="43.0" width="48.8" height="24.4"/>
+    <rect fill="#2b303b" x="166.6" y="43.0" width="24.4" height="24.4"/>
+    <rect fill="#2b303b" x="191.0" y="43.0" width="85.4" height="24.4"/>
+    <rect fill="#2b303b" x="276.4" y="43.0" width="24.4" height="24.4"/>
+    <rect fill="#2b303b" x="300.8" y="43.0" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="313.0" y="43.0" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="325.2" y="43.0" width="561.2" height="24.4"/>
+    <rect fill="#2b303b" x="8.0" y="67.4" width="24.4" height="24.4"/>
+    <rect fill="#2b303b" x="32.4" y="67.4" width="36.6" height="24.4"/>
+    <rect fill="#2b303b" x="69.0" y="67.4" width="817.4" height="24.4"/>
+    <rect fill="#2b303b" x="8.0" y="91.8" width="24.4" height="24.4"/>
+    <rect fill="#2b303b" x="32.4" y="91.8" width="36.6" height="24.4"/>
+    <rect fill="#2b303b" x="69.0" y="91.8" width="24.4" height="24.4"/>
+    <rect fill="#2b303b" x="93.4" y="91.8" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="105.6" y="91.8" width="48.8" height="24.4"/>
+    <rect fill="#2b303b" x="154.4" y="91.8" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="166.6" y="91.8" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="178.8" y="91.8" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="191.0" y="91.8" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="203.2" y="91.8" width="683.2" height="24.4"/>
+    <rect fill="#2b303b" x="8.0" y="116.2" width="24.4" height="24.4"/>
+    <rect fill="#2b303b" x="32.4" y="116.2" width="36.6" height="24.4"/>
+    <rect fill="#2b303b" x="69.0" y="116.2" width="48.8" height="24.4"/>
+    <rect fill="#2b303b" x="117.8" y="116.2" width="36.6" height="24.4"/>
+    <rect fill="#2b303b" x="154.4" y="116.2" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="166.6" y="116.2" width="36.6" height="24.4"/>
+    <rect fill="#2b303b" x="203.2" y="116.2" width="109.8" height="24.4"/>
+    <rect fill="#2b303b" x="313.0" y="116.2" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="325.2" y="116.2" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="337.4" y="116.2" width="85.4" height="24.4"/>
+    <rect fill="#2b303b" x="422.8" y="116.2" width="24.4" height="24.4"/>
+    <rect fill="#2b303b" x="447.2" y="116.2" width="85.4" height="24.4"/>
+    <rect fill="#2b303b" x="532.6" y="116.2" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="544.8" y="116.2" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="557.0" y="116.2" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="569.2" y="116.2" width="317.2" height="24.4"/>
+    <rect fill="#2b303b" x="8.0" y="140.6" width="24.4" height="24.4"/>
+    <rect fill="#2b303b" x="32.4" y="140.6" width="36.6" height="24.4"/>
+    <rect fill="#2b303b" x="69.0" y="140.6" width="146.4" height="24.4"/>
+    <rect fill="#2b303b" x="215.4" y="140.6" width="122.0" height="24.4"/>
+    <rect fill="#2b303b" x="337.4" y="140.6" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="349.6" y="140.6" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="361.8" y="140.6" width="353.8" height="24.4"/>
+    <rect fill="#2b303b" x="715.6" y="140.6" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="727.8" y="140.6" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="740.0" y="140.6" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="752.2" y="140.6" width="134.2" height="24.4"/>
+    <rect fill="#2b303b" x="8.0" y="165.0" width="24.4" height="24.4"/>
+    <rect fill="#2b303b" x="32.4" y="165.0" width="36.6" height="24.4"/>
+    <rect fill="#2b303b" x="69.0" y="165.0" width="817.4" height="24.4"/>
+    <rect fill="#2b303b" x="8.0" y="189.4" width="24.4" height="24.4"/>
+    <rect fill="#2b303b" x="32.4" y="189.4" width="36.6" height="24.4"/>
+    <rect fill="#2b303b" x="69.0" y="189.4" width="48.8" height="24.4"/>
+    <rect fill="#2b303b" x="117.8" y="189.4" width="36.6" height="24.4"/>
+    <rect fill="#2b303b" x="154.4" y="189.4" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="166.6" y="189.4" width="36.6" height="24.4"/>
+    <rect fill="#2b303b" x="203.2" y="189.4" width="85.4" height="24.4"/>
+    <rect fill="#2b303b" x="288.6" y="189.4" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="300.8" y="189.4" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="313.0" y="189.4" width="61.0" height="24.4"/>
+    <rect fill="#2b303b" x="374.0" y="189.4" width="24.4" height="24.4"/>
+    <rect fill="#2b303b" x="398.4" y="189.4" width="36.6" height="24.4"/>
+    <rect fill="#2b303b" x="435.0" y="189.4" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="447.2" y="189.4" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="459.4" y="189.4" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="471.6" y="189.4" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="483.8" y="189.4" width="48.8" height="24.4"/>
+    <rect fill="#2b303b" x="532.6" y="189.4" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="544.8" y="189.4" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="557.0" y="189.4" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="569.2" y="189.4" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="581.4" y="189.4" width="61.0" height="24.4"/>
+    <rect fill="#2b303b" x="642.4" y="189.4" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="654.6" y="189.4" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="666.8" y="189.4" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="679.0" y="189.4" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="691.2" y="189.4" width="195.2" height="24.4"/>
+    <rect fill="#2b303b" x="8.0" y="213.8" width="24.4" height="24.4"/>
+    <rect fill="#2b303b" x="32.4" y="213.8" width="36.6" height="24.4"/>
+    <rect fill="#2b303b" x="69.0" y="213.8" width="122.0" height="24.4"/>
+    <rect fill="#2b303b" x="191.0" y="213.8" width="85.4" height="24.4"/>
+    <rect fill="#2b303b" x="276.4" y="213.8" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="288.6" y="213.8" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="300.8" y="213.8" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="313.0" y="213.8" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="325.2" y="213.8" width="48.8" height="24.4"/>
+    <rect fill="#2b303b" x="374.0" y="213.8" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="386.2" y="213.8" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="398.4" y="213.8" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="410.6" y="213.8" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="422.8" y="213.8" width="48.8" height="24.4"/>
+    <rect fill="#2b303b" x="471.6" y="213.8" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="483.8" y="213.8" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="496.0" y="213.8" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="508.2" y="213.8" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="520.4" y="213.8" width="366.0" height="24.4"/>
+    <rect fill="#2b303b" x="8.0" y="238.2" width="24.4" height="24.4"/>
+    <rect fill="#2b303b" x="32.4" y="238.2" width="36.6" height="24.4"/>
+    <rect fill="#2b303b" x="69.0" y="238.2" width="146.4" height="24.4"/>
+    <rect fill="#2b303b" x="215.4" y="238.2" width="61.0" height="24.4"/>
+    <rect fill="#2b303b" x="276.4" y="238.2" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="288.6" y="238.2" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="300.8" y="238.2" width="61.0" height="24.4"/>
+    <rect fill="#2b303b" x="361.8" y="238.2" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="374.0" y="238.2" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="386.2" y="238.2" width="500.2" height="24.4"/>
+    <rect fill="#2b303b" x="8.0" y="262.6" width="24.4" height="24.4"/>
+    <rect fill="#2b303b" x="32.4" y="262.6" width="36.6" height="24.4"/>
+    <rect fill="#2b303b" x="69.0" y="262.6" width="12.2" height="24.4"/>
+    <rect fill="#2b303b" x="81.2" y="262.6" width="805.2" height="24.4"/>
+
+    <g class="gilt-demo-syntax-matrix">
+        <text class="gilt-demo-syntax-s1" x="8.0" y="64.4" textLength="24.4" clip-path="url(#gilt-demo-syntax-line-0)">  </text>
+    <text class="gilt-demo-syntax-s2" x="32.4" y="64.4" textLength="36.6" clip-path="url(#gilt-demo-syntax-line-0)"> 1 </text>
+    <text class="gilt-demo-syntax-s3" x="69.0" y="64.4" textLength="36.6" clip-path="url(#gilt-demo-syntax-line-0)">use</text>
+    <text class="gilt-demo-syntax-s4" x="105.6" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-0)"> </text>
+    <text class="gilt-demo-syntax-s4" x="117.8" y="64.4" textLength="48.8" clip-path="url(#gilt-demo-syntax-line-0)">gilt</text>
+    <text class="gilt-demo-syntax-s4" x="166.6" y="64.4" textLength="24.4" clip-path="url(#gilt-demo-syntax-line-0)">::</text>
+    <text class="gilt-demo-syntax-s4" x="191.0" y="64.4" textLength="85.4" clip-path="url(#gilt-demo-syntax-line-0)">prelude</text>
+    <text class="gilt-demo-syntax-s4" x="276.4" y="64.4" textLength="24.4" clip-path="url(#gilt-demo-syntax-line-0)">::</text>
+    <text class="gilt-demo-syntax-s4" x="300.8" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-0)">*</text>
+    <text class="gilt-demo-syntax-s4" x="313.0" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-0)">;</text>
+    <text class="gilt-demo-syntax-s1" x="325.2" y="64.4" textLength="561.2" clip-path="url(#gilt-demo-syntax-line-0)">                                              </text>
+    <text class="gilt-demo-syntax-s1" x="8.0" y="88.8" textLength="24.4" clip-path="url(#gilt-demo-syntax-line-1)">  </text>
+    <text class="gilt-demo-syntax-s2" x="32.4" y="88.8" textLength="36.6" clip-path="url(#gilt-demo-syntax-line-1)"> 2 </text>
+    <text class="gilt-demo-syntax-s1" x="69.0" y="88.8" textLength="817.4" clip-path="url(#gilt-demo-syntax-line-1)">                                                                   </text>
+    <text class="gilt-demo-syntax-s1" x="8.0" y="113.2" textLength="24.4" clip-path="url(#gilt-demo-syntax-line-2)">  </text>
+    <text class="gilt-demo-syntax-s2" x="32.4" y="113.2" textLength="36.6" clip-path="url(#gilt-demo-syntax-line-2)"> 3 </text>
+    <text class="gilt-demo-syntax-s3" x="69.0" y="113.2" textLength="24.4" clip-path="url(#gilt-demo-syntax-line-2)">fn</text>
+    <text class="gilt-demo-syntax-s4" x="93.4" y="113.2" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-2)"> </text>
+    <text class="gilt-demo-syntax-s5" x="105.6" y="113.2" textLength="48.8" clip-path="url(#gilt-demo-syntax-line-2)">main</text>
+    <text class="gilt-demo-syntax-s4" x="154.4" y="113.2" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-2)">(</text>
+    <text class="gilt-demo-syntax-s4" x="166.6" y="113.2" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-2)">)</text>
+    <text class="gilt-demo-syntax-s4" x="178.8" y="113.2" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-2)"> </text>
+    <text class="gilt-demo-syntax-s4" x="191.0" y="113.2" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-2)">{</text>
+    <text class="gilt-demo-syntax-s1" x="203.2" y="113.2" textLength="683.2" clip-path="url(#gilt-demo-syntax-line-2)">                                                        </text>
+    <text class="gilt-demo-syntax-s1" x="8.0" y="137.6" textLength="24.4" clip-path="url(#gilt-demo-syntax-line-3)">  </text>
+    <text class="gilt-demo-syntax-s2" x="32.4" y="137.6" textLength="36.6" clip-path="url(#gilt-demo-syntax-line-3)"> 4 </text>
+    <text class="gilt-demo-syntax-s4" x="69.0" y="137.6" textLength="48.8" clip-path="url(#gilt-demo-syntax-line-3)">    </text>
+    <text class="gilt-demo-syntax-s3" x="117.8" y="137.6" textLength="36.6" clip-path="url(#gilt-demo-syntax-line-3)">let</text>
+    <text class="gilt-demo-syntax-s4" x="154.4" y="137.6" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-3)"> </text>
+    <text class="gilt-demo-syntax-s3" x="166.6" y="137.6" textLength="36.6" clip-path="url(#gilt-demo-syntax-line-3)">mut</text>
+    <text class="gilt-demo-syntax-s4" x="203.2" y="137.6" textLength="109.8" clip-path="url(#gilt-demo-syntax-line-3)"> console </text>
+    <text class="gilt-demo-syntax-s4" x="313.0" y="137.6" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-3)">=</text>
+    <text class="gilt-demo-syntax-s4" x="325.2" y="137.6" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-3)"> </text>
+    <text class="gilt-demo-syntax-s4" x="337.4" y="137.6" textLength="85.4" clip-path="url(#gilt-demo-syntax-line-3)">Console</text>
+    <text class="gilt-demo-syntax-s4" x="422.8" y="137.6" textLength="24.4" clip-path="url(#gilt-demo-syntax-line-3)">::</text>
+    <text class="gilt-demo-syntax-s4" x="447.2" y="137.6" textLength="85.4" clip-path="url(#gilt-demo-syntax-line-3)">default</text>
+    <text class="gilt-demo-syntax-s4" x="532.6" y="137.6" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-3)">(</text>
+    <text class="gilt-demo-syntax-s4" x="544.8" y="137.6" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-3)">)</text>
+    <text class="gilt-demo-syntax-s4" x="557.0" y="137.6" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-3)">;</text>
+    <text class="gilt-demo-syntax-s1" x="569.2" y="137.6" textLength="317.2" clip-path="url(#gilt-demo-syntax-line-3)">                          </text>
+    <text class="gilt-demo-syntax-s1" x="8.0" y="162.0" textLength="24.4" clip-path="url(#gilt-demo-syntax-line-4)">  </text>
+    <text class="gilt-demo-syntax-s2" x="32.4" y="162.0" textLength="36.6" clip-path="url(#gilt-demo-syntax-line-4)"> 5 </text>
+    <text class="gilt-demo-syntax-s4" x="69.0" y="162.0" textLength="146.4" clip-path="url(#gilt-demo-syntax-line-4)">    console.</text>
+    <text class="gilt-demo-syntax-s6" x="215.4" y="162.0" textLength="122.0" clip-path="url(#gilt-demo-syntax-line-4)">print_text</text>
+    <text class="gilt-demo-syntax-s4" x="337.4" y="162.0" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-4)">(</text>
+    <text class="gilt-demo-syntax-s4" x="349.6" y="162.0" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-4)">&quot;</text>
+    <text class="gilt-demo-syntax-s7" x="361.8" y="162.0" textLength="353.8" clip-path="url(#gilt-demo-syntax-line-4)">Hello, [bold magenta]gilt[/]!</text>
+    <text class="gilt-demo-syntax-s4" x="715.6" y="162.0" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-4)">&quot;</text>
+    <text class="gilt-demo-syntax-s4" x="727.8" y="162.0" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-4)">)</text>
+    <text class="gilt-demo-syntax-s4" x="740.0" y="162.0" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-4)">;</text>
+    <text class="gilt-demo-syntax-s1" x="752.2" y="162.0" textLength="134.2" clip-path="url(#gilt-demo-syntax-line-4)">           </text>
+    <text class="gilt-demo-syntax-s1" x="8.0" y="186.4" textLength="24.4" clip-path="url(#gilt-demo-syntax-line-5)">  </text>
+    <text class="gilt-demo-syntax-s2" x="32.4" y="186.4" textLength="36.6" clip-path="url(#gilt-demo-syntax-line-5)"> 6 </text>
+    <text class="gilt-demo-syntax-s1" x="69.0" y="186.4" textLength="817.4" clip-path="url(#gilt-demo-syntax-line-5)">                                                                   </text>
+    <text class="gilt-demo-syntax-s1" x="8.0" y="210.8" textLength="24.4" clip-path="url(#gilt-demo-syntax-line-6)">  </text>
+    <text class="gilt-demo-syntax-s2" x="32.4" y="210.8" textLength="36.6" clip-path="url(#gilt-demo-syntax-line-6)"> 7 </text>
+    <text class="gilt-demo-syntax-s4" x="69.0" y="210.8" textLength="48.8" clip-path="url(#gilt-demo-syntax-line-6)">    </text>
+    <text class="gilt-demo-syntax-s3" x="117.8" y="210.8" textLength="36.6" clip-path="url(#gilt-demo-syntax-line-6)">let</text>
+    <text class="gilt-demo-syntax-s4" x="154.4" y="210.8" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-6)"> </text>
+    <text class="gilt-demo-syntax-s3" x="166.6" y="210.8" textLength="36.6" clip-path="url(#gilt-demo-syntax-line-6)">mut</text>
+    <text class="gilt-demo-syntax-s4" x="203.2" y="210.8" textLength="85.4" clip-path="url(#gilt-demo-syntax-line-6)"> table </text>
+    <text class="gilt-demo-syntax-s4" x="288.6" y="210.8" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-6)">=</text>
+    <text class="gilt-demo-syntax-s4" x="300.8" y="210.8" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-6)"> </text>
+    <text class="gilt-demo-syntax-s4" x="313.0" y="210.8" textLength="61.0" clip-path="url(#gilt-demo-syntax-line-6)">Table</text>
+    <text class="gilt-demo-syntax-s4" x="374.0" y="210.8" textLength="24.4" clip-path="url(#gilt-demo-syntax-line-6)">::</text>
+    <text class="gilt-demo-syntax-s4" x="398.4" y="210.8" textLength="36.6" clip-path="url(#gilt-demo-syntax-line-6)">new</text>
+    <text class="gilt-demo-syntax-s4" x="435.0" y="210.8" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-6)">(</text>
+    <text class="gilt-demo-syntax-s4" x="447.2" y="210.8" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-6)">&amp;</text>
+    <text class="gilt-demo-syntax-s4" x="459.4" y="210.8" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-6)">[</text>
+    <text class="gilt-demo-syntax-s4" x="471.6" y="210.8" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-6)">&quot;</text>
+    <text class="gilt-demo-syntax-s7" x="483.8" y="210.8" textLength="48.8" clip-path="url(#gilt-demo-syntax-line-6)">Lang</text>
+    <text class="gilt-demo-syntax-s4" x="532.6" y="210.8" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-6)">&quot;</text>
+    <text class="gilt-demo-syntax-s4" x="544.8" y="210.8" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-6)">,</text>
+    <text class="gilt-demo-syntax-s4" x="557.0" y="210.8" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-6)"> </text>
+    <text class="gilt-demo-syntax-s4" x="569.2" y="210.8" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-6)">&quot;</text>
+    <text class="gilt-demo-syntax-s7" x="581.4" y="210.8" textLength="61.0" clip-path="url(#gilt-demo-syntax-line-6)">Lines</text>
+    <text class="gilt-demo-syntax-s4" x="642.4" y="210.8" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-6)">&quot;</text>
+    <text class="gilt-demo-syntax-s4" x="654.6" y="210.8" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-6)">]</text>
+    <text class="gilt-demo-syntax-s4" x="666.8" y="210.8" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-6)">)</text>
+    <text class="gilt-demo-syntax-s4" x="679.0" y="210.8" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-6)">;</text>
+    <text class="gilt-demo-syntax-s1" x="691.2" y="210.8" textLength="195.2" clip-path="url(#gilt-demo-syntax-line-6)">                </text>
+    <text class="gilt-demo-syntax-s1" x="8.0" y="235.2" textLength="24.4" clip-path="url(#gilt-demo-syntax-line-7)">  </text>
+    <text class="gilt-demo-syntax-s2" x="32.4" y="235.2" textLength="36.6" clip-path="url(#gilt-demo-syntax-line-7)"> 8 </text>
+    <text class="gilt-demo-syntax-s4" x="69.0" y="235.2" textLength="122.0" clip-path="url(#gilt-demo-syntax-line-7)">    table.</text>
+    <text class="gilt-demo-syntax-s6" x="191.0" y="235.2" textLength="85.4" clip-path="url(#gilt-demo-syntax-line-7)">add_row</text>
+    <text class="gilt-demo-syntax-s4" x="276.4" y="235.2" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-7)">(</text>
+    <text class="gilt-demo-syntax-s4" x="288.6" y="235.2" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-7)">&amp;</text>
+    <text class="gilt-demo-syntax-s4" x="300.8" y="235.2" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-7)">[</text>
+    <text class="gilt-demo-syntax-s4" x="313.0" y="235.2" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-7)">&quot;</text>
+    <text class="gilt-demo-syntax-s7" x="325.2" y="235.2" textLength="48.8" clip-path="url(#gilt-demo-syntax-line-7)">Rust</text>
+    <text class="gilt-demo-syntax-s4" x="374.0" y="235.2" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-7)">&quot;</text>
+    <text class="gilt-demo-syntax-s4" x="386.2" y="235.2" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-7)">,</text>
+    <text class="gilt-demo-syntax-s4" x="398.4" y="235.2" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-7)"> </text>
+    <text class="gilt-demo-syntax-s4" x="410.6" y="235.2" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-7)">&quot;</text>
+    <text class="gilt-demo-syntax-s7" x="422.8" y="235.2" textLength="48.8" clip-path="url(#gilt-demo-syntax-line-7)">9000</text>
+    <text class="gilt-demo-syntax-s4" x="471.6" y="235.2" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-7)">&quot;</text>
+    <text class="gilt-demo-syntax-s4" x="483.8" y="235.2" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-7)">]</text>
+    <text class="gilt-demo-syntax-s4" x="496.0" y="235.2" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-7)">)</text>
+    <text class="gilt-demo-syntax-s4" x="508.2" y="235.2" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-7)">;</text>
+    <text class="gilt-demo-syntax-s1" x="520.4" y="235.2" textLength="366.0" clip-path="url(#gilt-demo-syntax-line-7)">                              </text>
+    <text class="gilt-demo-syntax-s1" x="8.0" y="259.6" textLength="24.4" clip-path="url(#gilt-demo-syntax-line-8)">  </text>
+    <text class="gilt-demo-syntax-s2" x="32.4" y="259.6" textLength="36.6" clip-path="url(#gilt-demo-syntax-line-8)"> 9 </text>
+    <text class="gilt-demo-syntax-s4" x="69.0" y="259.6" textLength="146.4" clip-path="url(#gilt-demo-syntax-line-8)">    console.</text>
+    <text class="gilt-demo-syntax-s6" x="215.4" y="259.6" textLength="61.0" clip-path="url(#gilt-demo-syntax-line-8)">print</text>
+    <text class="gilt-demo-syntax-s4" x="276.4" y="259.6" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-8)">(</text>
+    <text class="gilt-demo-syntax-s4" x="288.6" y="259.6" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-8)">&amp;</text>
+    <text class="gilt-demo-syntax-s4" x="300.8" y="259.6" textLength="61.0" clip-path="url(#gilt-demo-syntax-line-8)">table</text>
+    <text class="gilt-demo-syntax-s4" x="361.8" y="259.6" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-8)">)</text>
+    <text class="gilt-demo-syntax-s4" x="374.0" y="259.6" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-8)">;</text>
+    <text class="gilt-demo-syntax-s1" x="386.2" y="259.6" textLength="500.2" clip-path="url(#gilt-demo-syntax-line-8)">                                         </text>
+    <text class="gilt-demo-syntax-s1" x="8.0" y="284.0" textLength="24.4" clip-path="url(#gilt-demo-syntax-line-9)">  </text>
+    <text class="gilt-demo-syntax-s2" x="32.4" y="284.0" textLength="36.6" clip-path="url(#gilt-demo-syntax-line-9)">10 </text>
+    <text class="gilt-demo-syntax-s4" x="69.0" y="284.0" textLength="12.2" clip-path="url(#gilt-demo-syntax-line-9)">}</text>
+    <text class="gilt-demo-syntax-s1" x="81.2" y="284.0" textLength="805.2" clip-path="url(#gilt-demo-syntax-line-9)">                                                                  </text>
+
+    </g>
+    </g>
+</svg>

@@ -32,10 +32,23 @@
         font-family: arial;
     }
 
-        .gilt-demo-styles-s1 { font-weight: bold }
-    .gilt-demo-styles-s2 { font-style: italic }
-    .gilt-demo-styles-s3 { text-decoration: underline }
-    .gilt-demo-styles-s4 { text-decoration: line-through }
+        .gilt-demo-styles-s1 { fill: #69ff9c }
+    .gilt-demo-styles-s2 { fill: #ff79c6; font-weight: bold }
+    .gilt-demo-styles-s3 { font-weight: bold }
+    .gilt-demo-styles-s4 { font-style: italic }
+    .gilt-demo-styles-s5 { text-decoration: underline }
+    .gilt-demo-styles-s6 { text-decoration: line-through }
+    .gilt-demo-styles-s7 { fill: #ff5555 }
+    .gilt-demo-styles-s8 { fill: #50fa7b }
+    .gilt-demo-styles-s9 { fill: #bd93f9 }
+    .gilt-demo-styles-s10 { fill: #f1fa8c }
+    .gilt-demo-styles-s11 { fill: #8be9fd }
+    .gilt-demo-styles-s12 { fill: #ff79c6 }
+    .gilt-demo-styles-s13 { fill: #ffb86c }
+    .gilt-demo-styles-s14 { fill: #282a36; font-weight: bold }
+    .gilt-demo-styles-s15 { fill: #282a36; font-weight: bold }
+    .gilt-demo-styles-s16 { fill: #282a36; font-weight: bold }
+    .gilt-demo-styles-s17 { fill: #8be9fd; text-decoration: underline }
 
     </style>
 
@@ -55,41 +68,45 @@
 
     </defs>
 
-    <rect fill="#292929" stroke="rgba(255,255,255,0.35)" stroke-width="1" x="0" y="0" width="895" height="268" rx="8"/>
+    <rect fill="#282a36" stroke="rgba(255,255,255,0.35)" stroke-width="1" x="0" y="0" width="895" height="268" rx="8"/>
     <circle cx="26" cy="22" r="7" fill="#ff5f57"/>
     <circle cx="48" cy="22" r="7" fill="#febc2e"/>
     <circle cx="70" cy="22" r="7" fill="#28c840"/>
-    <text class="gilt-demo-styles-title" fill="#c5c8c6" x="447.5" y="30" text-anchor="middle">gilt styles</text>
+    <text class="gilt-demo-styles-title" fill="#f8f8f2" x="447.5" y="30" text-anchor="middle">gilt styles</text>
 
     <g transform="translate(1, 1)" clip-path="url(#gilt-demo-styles-clip-terminal)">
-    
+        <rect fill="#ff5555" x="8.0" y="165.0" width="85.4" height="24.4"/>
+    <rect fill="#f1fa8c" x="117.8" y="165.0" width="73.2" height="24.4"/>
+    <rect fill="#50fa7b" x="215.4" y="165.0" width="48.8" height="24.4"/>
+
     <g class="gilt-demo-styles-matrix">
-        <text fill="#c5c8c6" x="8.0" y="64.4" textLength="341.6" clip-path="url(#gilt-demo-styles-line-0)">────────────────────────────</text>
-    <text fill="#c5c8c6" x="361.8" y="64.4" textLength="158.6" clip-path="url(#gilt-demo-styles-line-0)">gilt — styles</text>
-    <text fill="#c5c8c6" x="532.6" y="64.4" textLength="353.8" clip-path="url(#gilt-demo-styles-line-0)">─────────────────────────────</text>
-    <text class="gilt-demo-styles-s1" x="8.0" y="88.8" textLength="48.8" clip-path="url(#gilt-demo-styles-line-1)">gilt</text>
-    <text fill="#c5c8c6" x="56.8" y="88.8" textLength="390.4" clip-path="url(#gilt-demo-styles-line-1)"> — rich terminal output for Rust</text>
-    <text class="gilt-demo-styles-s1" x="8.0" y="113.2" textLength="48.8" clip-path="url(#gilt-demo-styles-line-2)">bold</text>
-    <text class="gilt-demo-styles-s2" x="81.2" y="113.2" textLength="73.2" clip-path="url(#gilt-demo-styles-line-2)">italic</text>
-    <text class="gilt-demo-styles-s3" x="178.8" y="113.2" textLength="109.8" clip-path="url(#gilt-demo-styles-line-2)">underline</text>
-    <text fill="#c5c8c6" x="313.0" y="113.2" textLength="36.6" clip-path="url(#gilt-demo-styles-line-2)">dim</text>
-    <text class="gilt-demo-styles-s4" x="374.0" y="113.2" textLength="73.2" clip-path="url(#gilt-demo-styles-line-2)">strike</text>
-    <text fill="#c5c8c6" x="8.0" y="137.6" textLength="36.6" clip-path="url(#gilt-demo-styles-line-3)">red</text>
-    <text fill="#c5c8c6" x="56.8" y="137.6" textLength="61.0" clip-path="url(#gilt-demo-styles-line-3)">green</text>
-    <text fill="#c5c8c6" x="130.0" y="137.6" textLength="48.8" clip-path="url(#gilt-demo-styles-line-3)">blue</text>
-    <text fill="#c5c8c6" x="191.0" y="137.6" textLength="73.2" clip-path="url(#gilt-demo-styles-line-3)">yellow</text>
-    <text fill="#c5c8c6" x="276.4" y="137.6" textLength="48.8" clip-path="url(#gilt-demo-styles-line-3)">cyan</text>
-    <text fill="#c5c8c6" x="337.4" y="137.6" textLength="85.4" clip-path="url(#gilt-demo-styles-line-3)">magenta</text>
-    <text fill="#c5c8c6" x="8.0" y="162.0" textLength="73.2" clip-path="url(#gilt-demo-styles-line-4)">salmon</text>
-    <text fill="#c5c8c6" x="105.6" y="162.0" textLength="48.8" clip-path="url(#gilt-demo-styles-line-4)">sage</text>
-    <text fill="#c5c8c6" x="178.8" y="162.0" textLength="36.6" clip-path="url(#gilt-demo-styles-line-4)">sky</text>
-    <text fill="#c5c8c6" x="239.8" y="162.0" textLength="48.8" clip-path="url(#gilt-demo-styles-line-4)">plum</text>
-    <text class="gilt-demo-styles-s1" x="8.0" y="186.4" textLength="85.4" clip-path="url(#gilt-demo-styles-line-5)"> ERROR </text>
-    <text class="gilt-demo-styles-s1" x="117.8" y="186.4" textLength="73.2" clip-path="url(#gilt-demo-styles-line-5)"> WARN </text>
-    <text class="gilt-demo-styles-s1" x="215.4" y="186.4" textLength="48.8" clip-path="url(#gilt-demo-styles-line-5)"> OK </text>
-    <text class="gilt-demo-styles-s3" x="8.0" y="210.8" textLength="207.4" clip-path="url(#gilt-demo-styles-line-6)">gilt on crates.io</text>
-    <text class="gilt-demo-styles-s2" x="8.0" y="235.2" textLength="378.2" clip-path="url(#gilt-demo-styles-line-7)">A quiet note tucked at the end.</text>
-    <text fill="#c5c8c6" x="8.0" y="259.6" textLength="878.4" clip-path="url(#gilt-demo-styles-line-8)">────────────────────────────────────────────────────────────────────────</text>
+        <text class="gilt-demo-styles-s1" x="8.0" y="64.4" textLength="341.6" clip-path="url(#gilt-demo-styles-line-0)">────────────────────────────</text>
+    <text fill="#f8f8f2" x="361.8" y="64.4" textLength="158.6" clip-path="url(#gilt-demo-styles-line-0)">gilt — styles</text>
+    <text class="gilt-demo-styles-s1" x="532.6" y="64.4" textLength="353.8" clip-path="url(#gilt-demo-styles-line-0)">─────────────────────────────</text>
+    <text class="gilt-demo-styles-s2" x="8.0" y="88.8" textLength="48.8" clip-path="url(#gilt-demo-styles-line-1)">gilt</text>
+    <text fill="#f8f8f2" x="56.8" y="88.8" textLength="390.4" clip-path="url(#gilt-demo-styles-line-1)"> — rich terminal output for Rust</text>
+    <text class="gilt-demo-styles-s3" x="8.0" y="113.2" textLength="48.8" clip-path="url(#gilt-demo-styles-line-2)">bold</text>
+    <text class="gilt-demo-styles-s4" x="81.2" y="113.2" textLength="73.2" clip-path="url(#gilt-demo-styles-line-2)">italic</text>
+    <text class="gilt-demo-styles-s5" x="178.8" y="113.2" textLength="109.8" clip-path="url(#gilt-demo-styles-line-2)">underline</text>
+    <text fill="#f8f8f2" x="313.0" y="113.2" textLength="36.6" clip-path="url(#gilt-demo-styles-line-2)">dim</text>
+    <text class="gilt-demo-styles-s6" x="374.0" y="113.2" textLength="73.2" clip-path="url(#gilt-demo-styles-line-2)">strike</text>
+    <text class="gilt-demo-styles-s7" x="8.0" y="137.6" textLength="36.6" clip-path="url(#gilt-demo-styles-line-3)">red</text>
+    <text class="gilt-demo-styles-s8" x="56.8" y="137.6" textLength="61.0" clip-path="url(#gilt-demo-styles-line-3)">green</text>
+    <text class="gilt-demo-styles-s9" x="130.0" y="137.6" textLength="48.8" clip-path="url(#gilt-demo-styles-line-3)">blue</text>
+    <text class="gilt-demo-styles-s10" x="191.0" y="137.6" textLength="73.2" clip-path="url(#gilt-demo-styles-line-3)">yellow</text>
+    <text class="gilt-demo-styles-s11" x="276.4" y="137.6" textLength="48.8" clip-path="url(#gilt-demo-styles-line-3)">cyan</text>
+    <text class="gilt-demo-styles-s12" x="337.4" y="137.6" textLength="85.4" clip-path="url(#gilt-demo-styles-line-3)">magenta</text>
+    <text class="gilt-demo-styles-s7" x="8.0" y="162.0" textLength="36.6" clip-path="url(#gilt-demo-styles-line-4)">red</text>
+    <text class="gilt-demo-styles-s8" x="69.0" y="162.0" textLength="61.0" clip-path="url(#gilt-demo-styles-line-4)">green</text>
+    <text class="gilt-demo-styles-s11" x="154.4" y="162.0" textLength="48.8" clip-path="url(#gilt-demo-styles-line-4)">cyan</text>
+    <text class="gilt-demo-styles-s9" x="227.6" y="162.0" textLength="73.2" clip-path="url(#gilt-demo-styles-line-4)">purple</text>
+    <text class="gilt-demo-styles-s13" x="325.2" y="162.0" textLength="73.2" clip-path="url(#gilt-demo-styles-line-4)">orange</text>
+    <text class="gilt-demo-styles-s14" x="8.0" y="186.4" textLength="85.4" clip-path="url(#gilt-demo-styles-line-5)"> ERROR </text>
+    <text class="gilt-demo-styles-s15" x="117.8" y="186.4" textLength="73.2" clip-path="url(#gilt-demo-styles-line-5)"> WARN </text>
+    <text class="gilt-demo-styles-s16" x="215.4" y="186.4" textLength="48.8" clip-path="url(#gilt-demo-styles-line-5)"> OK </text>
+    <text class="gilt-demo-styles-s17" x="8.0" y="210.8" textLength="207.4" clip-path="url(#gilt-demo-styles-line-6)">gilt on crates.io</text>
+    <text class="gilt-demo-styles-s4" x="8.0" y="235.2" textLength="378.2" clip-path="url(#gilt-demo-styles-line-7)">A quiet note tucked at the end.</text>
+    <text class="gilt-demo-styles-s1" x="8.0" y="259.6" textLength="878.4" clip-path="url(#gilt-demo-styles-line-8)">────────────────────────────────────────────────────────────────────────</text>
 
     </g>
     </g>

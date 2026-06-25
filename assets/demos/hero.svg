@@ -1,0 +1,264 @@
+<svg class="gilt-terminal" viewBox="0 0 897 368" xmlns="http://www.w3.org/2000/svg">
+    <!-- Generated with gilt https://github.com/gilt-rs -->
+    <style>
+
+    @font-face {
+        font-family: "Fira Code";
+        src: local("FiraCode-Regular"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff2/FiraCode-Regular.woff2") format("woff2"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff/FiraCode-Regular.woff") format("woff");
+        font-style: normal;
+        font-weight: 400;
+    }
+    @font-face {
+        font-family: "Fira Code";
+        src: local("FiraCode-Bold"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff2/FiraCode-Bold.woff2") format("woff2"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff/FiraCode-Bold.woff") format("woff");
+        font-style: bold;
+        font-weight: 700;
+    }
+
+    .gilt-demo-hero-matrix {
+        font-family: Fira Code, monospace;
+        font-size: 20.0px;
+        line-height: 24.4px;
+        font-variant-east-asian: full-width;
+    }
+
+    .gilt-demo-hero-title {
+        font-size: 18px;
+        font-weight: bold;
+        font-family: arial;
+    }
+
+        .gilt-demo-hero-s1 { fill: #bd93f9 }
+    .gilt-demo-hero-s2 { fill: #c192f6 }
+    .gilt-demo-hero-s3 { fill: #c590f3 }
+    .gilt-demo-hero-s4 { fill: #c88ff0 }
+    .gilt-demo-hero-s5 { fill: #cc8ded }
+    .gilt-demo-hero-s6 { fill: #d08cea }
+    .gilt-demo-hero-s7 { fill: #d48ae8 }
+    .gilt-demo-hero-s8 { fill: #d789e5 }
+    .gilt-demo-hero-s9 { fill: #db87e2 }
+    .gilt-demo-hero-s10 { fill: #df86df }
+    .gilt-demo-hero-s11 { fill: #e384dc }
+    .gilt-demo-hero-s12 { fill: #e683d9 }
+    .gilt-demo-hero-s13 { fill: #ea81d6 }
+    .gilt-demo-hero-s14 { fill: #ee80d3 }
+    .gilt-demo-hero-s15 { fill: #f27ed0 }
+    .gilt-demo-hero-s16 { fill: #f67dcd }
+    .gilt-demo-hero-s17 { fill: #f97bca }
+    .gilt-demo-hero-s18 { fill: #fd7ac7 }
+    .gilt-demo-hero-s19 { fill: #fc7cc8 }
+    .gilt-demo-hero-s20 { fill: #f583cb }
+    .gilt-demo-hero-s21 { fill: #ee89ce }
+    .gilt-demo-hero-s22 { fill: #e88fd1 }
+    .gilt-demo-hero-s23 { fill: #e196d4 }
+    .gilt-demo-hero-s24 { fill: #db9cd7 }
+    .gilt-demo-hero-s25 { fill: #d4a3da }
+    .gilt-demo-hero-s26 { fill: #cda9de }
+    .gilt-demo-hero-s27 { fill: #c7afe1 }
+    .gilt-demo-hero-s28 { fill: #c0b6e4 }
+    .gilt-demo-hero-s29 { fill: #b9bce7 }
+    .gilt-demo-hero-s30 { fill: #b3c3ea }
+    .gilt-demo-hero-s31 { fill: #acc9ed }
+    .gilt-demo-hero-s32 { fill: #a6cff0 }
+    .gilt-demo-hero-s33 { fill: #9fd6f4 }
+    .gilt-demo-hero-s34 { fill: #98dcf7 }
+    .gilt-demo-hero-s35 { fill: #92e3fa }
+    .gilt-demo-hero-s36 { fill: #8be9fd }
+    .gilt-demo-hero-s37 { fill: #bd93f9; font-weight: bold }
+    .gilt-demo-hero-s38 { fill: #282a36; font-weight: bold }
+    .gilt-demo-hero-s39 { fill: #ff79c6 }
+    .gilt-demo-hero-s40 { font-weight: bold }
+    .gilt-demo-hero-s41 { font-style: italic }
+    .gilt-demo-hero-s42 { text-decoration: underline }
+    .gilt-demo-hero-s43 { fill: #50fa7b }
+    .gilt-demo-hero-s44 { fill: #8be9fd; font-weight: bold }
+    .gilt-demo-hero-s45 { fill: #f1fa8c }
+    .gilt-demo-hero-s46 { fill: #6272a4; font-style: italic }
+
+    </style>
+
+    <defs>
+    <clipPath id="gilt-demo-hero-clip-terminal">
+      <rect x="0" y="0" width="895" height="366" />
+    </clipPath>
+        <clipPath id="gilt-demo-hero-line-0"><rect x="0" y="40.0" width="895.0" height="24.4"/></clipPath>
+    <clipPath id="gilt-demo-hero-line-1"><rect x="0" y="64.4" width="895.0" height="24.4"/></clipPath>
+    <clipPath id="gilt-demo-hero-line-2"><rect x="0" y="88.8" width="895.0" height="24.4"/></clipPath>
+    <clipPath id="gilt-demo-hero-line-3"><rect x="0" y="113.2" width="895.0" height="24.4"/></clipPath>
+    <clipPath id="gilt-demo-hero-line-4"><rect x="0" y="137.6" width="895.0" height="24.4"/></clipPath>
+    <clipPath id="gilt-demo-hero-line-5"><rect x="0" y="162.0" width="895.0" height="24.4"/></clipPath>
+    <clipPath id="gilt-demo-hero-line-6"><rect x="0" y="186.4" width="895.0" height="24.4"/></clipPath>
+    <clipPath id="gilt-demo-hero-line-7"><rect x="0" y="210.8" width="895.0" height="24.4"/></clipPath>
+    <clipPath id="gilt-demo-hero-line-8"><rect x="0" y="235.2" width="895.0" height="24.4"/></clipPath>
+    <clipPath id="gilt-demo-hero-line-9"><rect x="0" y="259.6" width="895.0" height="24.4"/></clipPath>
+    <clipPath id="gilt-demo-hero-line-10"><rect x="0" y="284.0" width="895.0" height="24.4"/></clipPath>
+    <clipPath id="gilt-demo-hero-line-11"><rect x="0" y="308.4" width="895.0" height="24.4"/></clipPath>
+    <clipPath id="gilt-demo-hero-line-12"><rect x="0" y="332.8" width="895.0" height="24.4"/></clipPath>
+
+    </defs>
+
+    <rect fill="#282a36" stroke="rgba(255,255,255,0.35)" stroke-width="1" x="0" y="0" width="895" height="366" rx="8"/>
+    <circle cx="26" cy="22" r="7" fill="#ff5f57"/>
+    <circle cx="48" cy="22" r="7" fill="#febc2e"/>
+    <circle cx="70" cy="22" r="7" fill="#28c840"/>
+    <text class="gilt-demo-hero-title" fill="#f8f8f2" x="447.5" y="30" text-anchor="middle">gilt</text>
+
+    <g transform="translate(1, 1)" clip-path="url(#gilt-demo-hero-clip-terminal)">
+        <rect fill="#bd93f9" x="374.0" y="91.8" width="146.4" height="24.4"/>
+
+    <g class="gilt-demo-hero-matrix">
+        <text class="gilt-demo-hero-s1" x="8.0" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-0)">g</text>
+    <text class="gilt-demo-hero-s2" x="20.2" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-0)">i</text>
+    <text class="gilt-demo-hero-s3" x="32.4" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-0)">l</text>
+    <text class="gilt-demo-hero-s4" x="44.6" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-0)">t</text>
+    <text class="gilt-demo-hero-s5" x="56.8" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-0)"> </text>
+    <text class="gilt-demo-hero-s6" x="69.0" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-0)">—</text>
+    <text class="gilt-demo-hero-s7" x="81.2" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-0)"> </text>
+    <text class="gilt-demo-hero-s8" x="93.4" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-0)">r</text>
+    <text class="gilt-demo-hero-s9" x="105.6" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-0)">i</text>
+    <text class="gilt-demo-hero-s10" x="117.8" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-0)">c</text>
+    <text class="gilt-demo-hero-s11" x="130.0" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-0)">h</text>
+    <text class="gilt-demo-hero-s12" x="142.2" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-0)"> </text>
+    <text class="gilt-demo-hero-s13" x="154.4" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-0)">t</text>
+    <text class="gilt-demo-hero-s14" x="166.6" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-0)">e</text>
+    <text class="gilt-demo-hero-s15" x="178.8" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-0)">r</text>
+    <text class="gilt-demo-hero-s16" x="191.0" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-0)">m</text>
+    <text class="gilt-demo-hero-s17" x="203.2" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-0)">i</text>
+    <text class="gilt-demo-hero-s18" x="215.4" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-0)">n</text>
+    <text class="gilt-demo-hero-s19" x="227.6" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-0)">a</text>
+    <text class="gilt-demo-hero-s20" x="239.8" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-0)">l</text>
+    <text class="gilt-demo-hero-s21" x="252.0" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-0)"> </text>
+    <text class="gilt-demo-hero-s22" x="264.2" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-0)">o</text>
+    <text class="gilt-demo-hero-s23" x="276.4" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-0)">u</text>
+    <text class="gilt-demo-hero-s24" x="288.6" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-0)">t</text>
+    <text class="gilt-demo-hero-s25" x="300.8" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-0)">p</text>
+    <text class="gilt-demo-hero-s26" x="313.0" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-0)">u</text>
+    <text class="gilt-demo-hero-s27" x="325.2" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-0)">t</text>
+    <text class="gilt-demo-hero-s28" x="337.4" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-0)"> </text>
+    <text class="gilt-demo-hero-s29" x="349.6" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-0)">f</text>
+    <text class="gilt-demo-hero-s30" x="361.8" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-0)">o</text>
+    <text class="gilt-demo-hero-s31" x="374.0" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-0)">r</text>
+    <text class="gilt-demo-hero-s32" x="386.2" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-0)"> </text>
+    <text class="gilt-demo-hero-s33" x="398.4" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-0)">R</text>
+    <text class="gilt-demo-hero-s34" x="410.6" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-0)">u</text>
+    <text class="gilt-demo-hero-s35" x="422.8" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-0)">s</text>
+    <text class="gilt-demo-hero-s36" x="435.0" y="64.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-0)">t</text>
+    <text class="gilt-demo-hero-s37" x="8.0" y="113.2" textLength="24.4" clip-path="url(#gilt-demo-hero-line-2)">╭─</text>
+    <text class="gilt-demo-hero-s37" x="32.4" y="113.2" textLength="341.6" clip-path="url(#gilt-demo-hero-line-2)">────────────────────────────</text>
+    <text class="gilt-demo-hero-s38" x="374.0" y="113.2" textLength="146.4" clip-path="url(#gilt-demo-hero-line-2)">  gilt 2.0  </text>
+    <text class="gilt-demo-hero-s37" x="520.4" y="113.2" textLength="341.6" clip-path="url(#gilt-demo-hero-line-2)">────────────────────────────</text>
+    <text class="gilt-demo-hero-s37" x="862.0" y="113.2" textLength="24.4" clip-path="url(#gilt-demo-hero-line-2)">─╮</text>
+    <text class="gilt-demo-hero-s37" x="8.0" y="137.6" textLength="12.2" clip-path="url(#gilt-demo-hero-line-3)">│</text>
+    <text fill="#f8f8f2" x="20.2" y="137.6" textLength="12.2" clip-path="url(#gilt-demo-hero-line-3)"> </text>
+    <text class="gilt-demo-hero-s39" x="32.4" y="137.6" textLength="719.8" clip-path="url(#gilt-demo-hero-line-3)">┏━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓</text>
+    <text fill="#f8f8f2" x="752.2" y="137.6" textLength="109.8" clip-path="url(#gilt-demo-hero-line-3)">         </text>
+    <text fill="#f8f8f2" x="862.0" y="137.6" textLength="12.2" clip-path="url(#gilt-demo-hero-line-3)"> </text>
+    <text class="gilt-demo-hero-s37" x="874.2" y="137.6" textLength="12.2" clip-path="url(#gilt-demo-hero-line-3)">│</text>
+    <text class="gilt-demo-hero-s37" x="8.0" y="162.0" textLength="12.2" clip-path="url(#gilt-demo-hero-line-4)">│</text>
+    <text fill="#f8f8f2" x="20.2" y="162.0" textLength="12.2" clip-path="url(#gilt-demo-hero-line-4)"> </text>
+    <text class="gilt-demo-hero-s39" x="32.4" y="162.0" textLength="12.2" clip-path="url(#gilt-demo-hero-line-4)">┃</text>
+    <text class="gilt-demo-hero-s40" x="44.6" y="162.0" textLength="231.8" clip-path="url(#gilt-demo-hero-line-4)"> Widget            </text>
+    <text class="gilt-demo-hero-s39" x="276.4" y="162.0" textLength="12.2" clip-path="url(#gilt-demo-hero-line-4)">┃</text>
+    <text class="gilt-demo-hero-s40" x="288.6" y="162.0" textLength="451.4" clip-path="url(#gilt-demo-hero-line-4)"> What you get                        </text>
+    <text class="gilt-demo-hero-s39" x="740.0" y="162.0" textLength="12.2" clip-path="url(#gilt-demo-hero-line-4)">┃</text>
+    <text fill="#f8f8f2" x="752.2" y="162.0" textLength="109.8" clip-path="url(#gilt-demo-hero-line-4)">         </text>
+    <text fill="#f8f8f2" x="862.0" y="162.0" textLength="12.2" clip-path="url(#gilt-demo-hero-line-4)"> </text>
+    <text class="gilt-demo-hero-s37" x="874.2" y="162.0" textLength="12.2" clip-path="url(#gilt-demo-hero-line-4)">│</text>
+    <text class="gilt-demo-hero-s37" x="8.0" y="186.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-5)">│</text>
+    <text fill="#f8f8f2" x="20.2" y="186.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-5)"> </text>
+    <text class="gilt-demo-hero-s39" x="32.4" y="186.4" textLength="719.8" clip-path="url(#gilt-demo-hero-line-5)">┡━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩</text>
+    <text fill="#f8f8f2" x="752.2" y="186.4" textLength="109.8" clip-path="url(#gilt-demo-hero-line-5)">         </text>
+    <text fill="#f8f8f2" x="862.0" y="186.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-5)"> </text>
+    <text class="gilt-demo-hero-s37" x="874.2" y="186.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-5)">│</text>
+    <text class="gilt-demo-hero-s37" x="8.0" y="210.8" textLength="12.2" clip-path="url(#gilt-demo-hero-line-6)">│</text>
+    <text fill="#f8f8f2" x="20.2" y="210.8" textLength="12.2" clip-path="url(#gilt-demo-hero-line-6)"> </text>
+    <text class="gilt-demo-hero-s39" x="32.4" y="210.8" textLength="12.2" clip-path="url(#gilt-demo-hero-line-6)">│</text>
+    <text fill="#f8f8f2" x="44.6" y="210.8" textLength="12.2" clip-path="url(#gilt-demo-hero-line-6)"> </text>
+    <text class="gilt-demo-hero-s40" x="56.8" y="210.8" textLength="73.2" clip-path="url(#gilt-demo-hero-line-6)">Styles</text>
+    <text fill="#f8f8f2" x="130.0" y="210.8" textLength="146.4" clip-path="url(#gilt-demo-hero-line-6)">            </text>
+    <text class="gilt-demo-hero-s39" x="276.4" y="210.8" textLength="12.2" clip-path="url(#gilt-demo-hero-line-6)">│</text>
+    <text fill="#f8f8f2" x="288.6" y="210.8" textLength="12.2" clip-path="url(#gilt-demo-hero-line-6)"> </text>
+    <text class="gilt-demo-hero-s40" x="300.8" y="210.8" textLength="48.8" clip-path="url(#gilt-demo-hero-line-6)">bold</text>
+    <text fill="#f8f8f2" x="349.6" y="210.8" textLength="12.2" clip-path="url(#gilt-demo-hero-line-6)"> </text>
+    <text class="gilt-demo-hero-s41" x="361.8" y="210.8" textLength="73.2" clip-path="url(#gilt-demo-hero-line-6)">italic</text>
+    <text fill="#f8f8f2" x="435.0" y="210.8" textLength="12.2" clip-path="url(#gilt-demo-hero-line-6)"> </text>
+    <text class="gilt-demo-hero-s36" x="447.2" y="210.8" textLength="61.0" clip-path="url(#gilt-demo-hero-line-6)">color</text>
+    <text fill="#f8f8f2" x="508.2" y="210.8" textLength="12.2" clip-path="url(#gilt-demo-hero-line-6)"> </text>
+    <text class="gilt-demo-hero-s42" x="520.4" y="210.8" textLength="61.0" clip-path="url(#gilt-demo-hero-line-6)">links</text>
+    <text fill="#f8f8f2" x="581.4" y="210.8" textLength="158.6" clip-path="url(#gilt-demo-hero-line-6)">             </text>
+    <text class="gilt-demo-hero-s39" x="740.0" y="210.8" textLength="12.2" clip-path="url(#gilt-demo-hero-line-6)">│</text>
+    <text fill="#f8f8f2" x="752.2" y="210.8" textLength="109.8" clip-path="url(#gilt-demo-hero-line-6)">         </text>
+    <text fill="#f8f8f2" x="862.0" y="210.8" textLength="12.2" clip-path="url(#gilt-demo-hero-line-6)"> </text>
+    <text class="gilt-demo-hero-s37" x="874.2" y="210.8" textLength="12.2" clip-path="url(#gilt-demo-hero-line-6)">│</text>
+    <text class="gilt-demo-hero-s37" x="8.0" y="235.2" textLength="12.2" clip-path="url(#gilt-demo-hero-line-7)">│</text>
+    <text fill="#f8f8f2" x="20.2" y="235.2" textLength="12.2" clip-path="url(#gilt-demo-hero-line-7)"> </text>
+    <text class="gilt-demo-hero-s39" x="32.4" y="235.2" textLength="12.2" clip-path="url(#gilt-demo-hero-line-7)">│</text>
+    <text fill="#f8f8f2" x="44.6" y="235.2" textLength="12.2" clip-path="url(#gilt-demo-hero-line-7)"> </text>
+    <text class="gilt-demo-hero-s40" x="56.8" y="235.2" textLength="146.4" clip-path="url(#gilt-demo-hero-line-7)">Table · Tree</text>
+    <text fill="#f8f8f2" x="203.2" y="235.2" textLength="73.2" clip-path="url(#gilt-demo-hero-line-7)">      </text>
+    <text class="gilt-demo-hero-s39" x="276.4" y="235.2" textLength="12.2" clip-path="url(#gilt-demo-hero-line-7)">│</text>
+    <text fill="#f8f8f2" x="288.6" y="235.2" textLength="451.4" clip-path="url(#gilt-demo-hero-line-7)"> Unicode box-drawing, free nesting   </text>
+    <text class="gilt-demo-hero-s39" x="740.0" y="235.2" textLength="12.2" clip-path="url(#gilt-demo-hero-line-7)">│</text>
+    <text fill="#f8f8f2" x="752.2" y="235.2" textLength="109.8" clip-path="url(#gilt-demo-hero-line-7)">         </text>
+    <text fill="#f8f8f2" x="862.0" y="235.2" textLength="12.2" clip-path="url(#gilt-demo-hero-line-7)"> </text>
+    <text class="gilt-demo-hero-s37" x="874.2" y="235.2" textLength="12.2" clip-path="url(#gilt-demo-hero-line-7)">│</text>
+    <text class="gilt-demo-hero-s37" x="8.0" y="259.6" textLength="12.2" clip-path="url(#gilt-demo-hero-line-8)">│</text>
+    <text fill="#f8f8f2" x="20.2" y="259.6" textLength="12.2" clip-path="url(#gilt-demo-hero-line-8)"> </text>
+    <text class="gilt-demo-hero-s39" x="32.4" y="259.6" textLength="12.2" clip-path="url(#gilt-demo-hero-line-8)">│</text>
+    <text fill="#f8f8f2" x="44.6" y="259.6" textLength="12.2" clip-path="url(#gilt-demo-hero-line-8)"> </text>
+    <text class="gilt-demo-hero-s40" x="56.8" y="259.6" textLength="97.6" clip-path="url(#gilt-demo-hero-line-8)">Markdown</text>
+    <text fill="#f8f8f2" x="154.4" y="259.6" textLength="122.0" clip-path="url(#gilt-demo-hero-line-8)">          </text>
+    <text class="gilt-demo-hero-s39" x="276.4" y="259.6" textLength="12.2" clip-path="url(#gilt-demo-hero-line-8)">│</text>
+    <text fill="#f8f8f2" x="288.6" y="259.6" textLength="219.6" clip-path="url(#gilt-demo-hero-line-8)"> headings, lists, </text>
+    <text class="gilt-demo-hero-s43" x="508.2" y="259.6" textLength="48.8" clip-path="url(#gilt-demo-hero-line-8)">code</text>
+    <text fill="#f8f8f2" x="557.0" y="259.6" textLength="183.0" clip-path="url(#gilt-demo-hero-line-8)">, tables       </text>
+    <text class="gilt-demo-hero-s39" x="740.0" y="259.6" textLength="12.2" clip-path="url(#gilt-demo-hero-line-8)">│</text>
+    <text fill="#f8f8f2" x="752.2" y="259.6" textLength="109.8" clip-path="url(#gilt-demo-hero-line-8)">         </text>
+    <text fill="#f8f8f2" x="862.0" y="259.6" textLength="12.2" clip-path="url(#gilt-demo-hero-line-8)"> </text>
+    <text class="gilt-demo-hero-s37" x="874.2" y="259.6" textLength="12.2" clip-path="url(#gilt-demo-hero-line-8)">│</text>
+    <text class="gilt-demo-hero-s37" x="8.0" y="284.0" textLength="12.2" clip-path="url(#gilt-demo-hero-line-9)">│</text>
+    <text fill="#f8f8f2" x="20.2" y="284.0" textLength="12.2" clip-path="url(#gilt-demo-hero-line-9)"> </text>
+    <text class="gilt-demo-hero-s39" x="32.4" y="284.0" textLength="12.2" clip-path="url(#gilt-demo-hero-line-9)">│</text>
+    <text fill="#f8f8f2" x="44.6" y="284.0" textLength="12.2" clip-path="url(#gilt-demo-hero-line-9)"> </text>
+    <text class="gilt-demo-hero-s40" x="56.8" y="284.0" textLength="73.2" clip-path="url(#gilt-demo-hero-line-9)">Syntax</text>
+    <text fill="#f8f8f2" x="130.0" y="284.0" textLength="146.4" clip-path="url(#gilt-demo-hero-line-9)">            </text>
+    <text class="gilt-demo-hero-s39" x="276.4" y="284.0" textLength="12.2" clip-path="url(#gilt-demo-hero-line-9)">│</text>
+    <text fill="#f8f8f2" x="288.6" y="284.0" textLength="12.2" clip-path="url(#gilt-demo-hero-line-9)"> </text>
+    <text class="gilt-demo-hero-s44" x="300.8" y="284.0" textLength="36.6" clip-path="url(#gilt-demo-hero-line-9)">150</text>
+    <text class="gilt-demo-hero-s45" x="337.4" y="284.0" textLength="12.2" clip-path="url(#gilt-demo-hero-line-9)">+</text>
+    <text fill="#f8f8f2" x="349.6" y="284.0" textLength="390.4" clip-path="url(#gilt-demo-hero-line-9)"> languages                      </text>
+    <text class="gilt-demo-hero-s39" x="740.0" y="284.0" textLength="12.2" clip-path="url(#gilt-demo-hero-line-9)">│</text>
+    <text fill="#f8f8f2" x="752.2" y="284.0" textLength="109.8" clip-path="url(#gilt-demo-hero-line-9)">         </text>
+    <text fill="#f8f8f2" x="862.0" y="284.0" textLength="12.2" clip-path="url(#gilt-demo-hero-line-9)"> </text>
+    <text class="gilt-demo-hero-s37" x="874.2" y="284.0" textLength="12.2" clip-path="url(#gilt-demo-hero-line-9)">│</text>
+    <text class="gilt-demo-hero-s37" x="8.0" y="308.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-10)">│</text>
+    <text fill="#f8f8f2" x="20.2" y="308.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-10)"> </text>
+    <text class="gilt-demo-hero-s39" x="32.4" y="308.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-10)">│</text>
+    <text fill="#f8f8f2" x="44.6" y="308.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-10)"> </text>
+    <text class="gilt-demo-hero-s40" x="56.8" y="308.4" textLength="183.0" clip-path="url(#gilt-demo-hero-line-10)">Progress · Live</text>
+    <text fill="#f8f8f2" x="239.8" y="308.4" textLength="36.6" clip-path="url(#gilt-demo-hero-line-10)">   </text>
+    <text class="gilt-demo-hero-s39" x="276.4" y="308.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-10)">│</text>
+    <text fill="#f8f8f2" x="288.6" y="308.4" textLength="451.4" clip-path="url(#gilt-demo-hero-line-10)"> ETA, speed, lock-free updates       </text>
+    <text class="gilt-demo-hero-s39" x="740.0" y="308.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-10)">│</text>
+    <text fill="#f8f8f2" x="752.2" y="308.4" textLength="109.8" clip-path="url(#gilt-demo-hero-line-10)">         </text>
+    <text fill="#f8f8f2" x="862.0" y="308.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-10)"> </text>
+    <text class="gilt-demo-hero-s37" x="874.2" y="308.4" textLength="12.2" clip-path="url(#gilt-demo-hero-line-10)">│</text>
+    <text class="gilt-demo-hero-s37" x="8.0" y="332.8" textLength="12.2" clip-path="url(#gilt-demo-hero-line-11)">│</text>
+    <text fill="#f8f8f2" x="20.2" y="332.8" textLength="12.2" clip-path="url(#gilt-demo-hero-line-11)"> </text>
+    <text class="gilt-demo-hero-s39" x="32.4" y="332.8" textLength="719.8" clip-path="url(#gilt-demo-hero-line-11)">└───────────────────┴─────────────────────────────────────┘</text>
+    <text fill="#f8f8f2" x="752.2" y="332.8" textLength="109.8" clip-path="url(#gilt-demo-hero-line-11)">         </text>
+    <text fill="#f8f8f2" x="862.0" y="332.8" textLength="12.2" clip-path="url(#gilt-demo-hero-line-11)"> </text>
+    <text class="gilt-demo-hero-s37" x="874.2" y="332.8" textLength="12.2" clip-path="url(#gilt-demo-hero-line-11)">│</text>
+    <text class="gilt-demo-hero-s37" x="8.0" y="357.2" textLength="24.4" clip-path="url(#gilt-demo-hero-line-12)">╰─</text>
+    <text class="gilt-demo-hero-s37" x="32.4" y="357.2" textLength="280.6" clip-path="url(#gilt-demo-hero-line-12)">───────────────────────</text>
+    <text class="gilt-demo-hero-s46" x="313.0" y="357.2" textLength="256.2" clip-path="url(#gilt-demo-hero-line-12)"> a Rust port of rich </text>
+    <text class="gilt-demo-hero-s37" x="569.2" y="357.2" textLength="292.8" clip-path="url(#gilt-demo-hero-line-12)">────────────────────────</text>
+    <text class="gilt-demo-hero-s37" x="862.0" y="357.2" textLength="24.4" clip-path="url(#gilt-demo-hero-line-12)">─╯</text>
+
+    </g>
+    </g>
+</svg>

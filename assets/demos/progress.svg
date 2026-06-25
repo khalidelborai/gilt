@@ -32,7 +32,10 @@
         font-family: arial;
     }
 
-    
+        .gilt-demo-progress-s1 { fill: #69ff9c }
+    .gilt-demo-progress-s2 { fill: #f92672 }
+    .gilt-demo-progress-s3 { fill: #3a3a3a }
+
     </style>
 
     <defs>
@@ -46,45 +49,45 @@
 
     </defs>
 
-    <rect fill="#292929" stroke="rgba(255,255,255,0.35)" stroke-width="1" x="0" y="0" width="895" height="146" rx="8"/>
+    <rect fill="#282a36" stroke="rgba(255,255,255,0.35)" stroke-width="1" x="0" y="0" width="895" height="146" rx="8"/>
     <circle cx="26" cy="22" r="7" fill="#ff5f57"/>
     <circle cx="48" cy="22" r="7" fill="#febc2e"/>
     <circle cx="70" cy="22" r="7" fill="#28c840"/>
-    <text class="gilt-demo-progress-title" fill="#c5c8c6" x="447.5" y="30" text-anchor="middle">gilt progress</text>
+    <text class="gilt-demo-progress-title" fill="#f8f8f2" x="447.5" y="30" text-anchor="middle">gilt progress</text>
 
     <g transform="translate(1, 1)" clip-path="url(#gilt-demo-progress-clip-terminal)">
     
     <g class="gilt-demo-progress-matrix">
-        <text fill="#c5c8c6" x="8.0" y="64.4" textLength="341.6" clip-path="url(#gilt-demo-progress-line-0)">────────────────────────────</text>
-    <text fill="#c5c8c6" x="361.8" y="64.4" textLength="170.8" clip-path="url(#gilt-demo-progress-line-0)">build progress</text>
-    <text fill="#c5c8c6" x="544.8" y="64.4" textLength="341.6" clip-path="url(#gilt-demo-progress-line-0)">────────────────────────────</text>
-    <text fill="#c5c8c6" x="8.0" y="88.8" textLength="219.6" clip-path="url(#gilt-demo-progress-line-1)">Compiling crates… </text>
-    <text fill="#c5c8c6" x="227.6" y="88.8" textLength="12.2" clip-path="url(#gilt-demo-progress-line-1)"> </text>
-    <text fill="#c5c8c6" x="239.8" y="88.8" textLength="292.8" clip-path="url(#gilt-demo-progress-line-1)">━━━━━━━━━━━━━━━━━━━━━━━━</text>
-    <text fill="#c5c8c6" x="532.6" y="88.8" textLength="12.2" clip-path="url(#gilt-demo-progress-line-1)">╺</text>
-    <text fill="#c5c8c6" x="544.8" y="88.8" textLength="183.0" clip-path="url(#gilt-demo-progress-line-1)">━━━━━━━━━━━━━━━</text>
-    <text fill="#c5c8c6" x="727.8" y="88.8" textLength="12.2" clip-path="url(#gilt-demo-progress-line-1)"> </text>
-    <text fill="#c5c8c6" x="740.0" y="88.8" textLength="12.2" clip-path="url(#gilt-demo-progress-line-1)"> </text>
-    <text fill="#c5c8c6" x="752.2" y="88.8" textLength="48.8" clip-path="url(#gilt-demo-progress-line-1)">62% </text>
-    <text fill="#c5c8c6" x="801.0" y="88.8" textLength="85.4" clip-path="url(#gilt-demo-progress-line-1)">-:--:--</text>
-    <text fill="#c5c8c6" x="8.0" y="113.2" textLength="183.0" clip-path="url(#gilt-demo-progress-line-2)">Running tests… </text>
-    <text fill="#c5c8c6" x="191.0" y="113.2" textLength="48.8" clip-path="url(#gilt-demo-progress-line-2)">    </text>
-    <text fill="#c5c8c6" x="239.8" y="113.2" textLength="317.2" clip-path="url(#gilt-demo-progress-line-2)">━━━━━━━━━━━━━━━━━━━━━━━━━━</text>
-    <text fill="#c5c8c6" x="557.0" y="113.2" textLength="12.2" clip-path="url(#gilt-demo-progress-line-2)">╸</text>
-    <text fill="#c5c8c6" x="569.2" y="113.2" textLength="158.6" clip-path="url(#gilt-demo-progress-line-2)">━━━━━━━━━━━━━</text>
-    <text fill="#c5c8c6" x="727.8" y="113.2" textLength="12.2" clip-path="url(#gilt-demo-progress-line-2)"> </text>
-    <text fill="#c5c8c6" x="740.0" y="113.2" textLength="12.2" clip-path="url(#gilt-demo-progress-line-2)"> </text>
-    <text fill="#c5c8c6" x="752.2" y="113.2" textLength="48.8" clip-path="url(#gilt-demo-progress-line-2)">65% </text>
-    <text fill="#c5c8c6" x="801.0" y="113.2" textLength="85.4" clip-path="url(#gilt-demo-progress-line-2)">-:--:--</text>
-    <text fill="#c5c8c6" x="8.0" y="137.6" textLength="207.4" clip-path="url(#gilt-demo-progress-line-3)">Generating docs… </text>
-    <text fill="#c5c8c6" x="215.4" y="137.6" textLength="24.4" clip-path="url(#gilt-demo-progress-line-3)">  </text>
-    <text fill="#c5c8c6" x="239.8" y="137.6" textLength="170.8" clip-path="url(#gilt-demo-progress-line-3)">━━━━━━━━━━━━━━</text>
-    <text fill="#c5c8c6" x="410.6" y="137.6" textLength="12.2" clip-path="url(#gilt-demo-progress-line-3)">╸</text>
-    <text fill="#c5c8c6" x="422.8" y="137.6" textLength="305.0" clip-path="url(#gilt-demo-progress-line-3)">━━━━━━━━━━━━━━━━━━━━━━━━━</text>
-    <text fill="#c5c8c6" x="727.8" y="137.6" textLength="12.2" clip-path="url(#gilt-demo-progress-line-3)"> </text>
-    <text fill="#c5c8c6" x="740.0" y="137.6" textLength="12.2" clip-path="url(#gilt-demo-progress-line-3)"> </text>
-    <text fill="#c5c8c6" x="752.2" y="137.6" textLength="48.8" clip-path="url(#gilt-demo-progress-line-3)">36% </text>
-    <text fill="#c5c8c6" x="801.0" y="137.6" textLength="85.4" clip-path="url(#gilt-demo-progress-line-3)">-:--:--</text>
+        <text class="gilt-demo-progress-s1" x="8.0" y="64.4" textLength="341.6" clip-path="url(#gilt-demo-progress-line-0)">────────────────────────────</text>
+    <text fill="#f8f8f2" x="361.8" y="64.4" textLength="170.8" clip-path="url(#gilt-demo-progress-line-0)">build progress</text>
+    <text class="gilt-demo-progress-s1" x="544.8" y="64.4" textLength="341.6" clip-path="url(#gilt-demo-progress-line-0)">────────────────────────────</text>
+    <text fill="#f8f8f2" x="8.0" y="88.8" textLength="219.6" clip-path="url(#gilt-demo-progress-line-1)">Compiling crates… </text>
+    <text fill="#f8f8f2" x="227.6" y="88.8" textLength="12.2" clip-path="url(#gilt-demo-progress-line-1)"> </text>
+    <text class="gilt-demo-progress-s2" x="239.8" y="88.8" textLength="292.8" clip-path="url(#gilt-demo-progress-line-1)">━━━━━━━━━━━━━━━━━━━━━━━━</text>
+    <text class="gilt-demo-progress-s2" x="532.6" y="88.8" textLength="12.2" clip-path="url(#gilt-demo-progress-line-1)">╺</text>
+    <text class="gilt-demo-progress-s3" x="544.8" y="88.8" textLength="183.0" clip-path="url(#gilt-demo-progress-line-1)">━━━━━━━━━━━━━━━</text>
+    <text fill="#f8f8f2" x="727.8" y="88.8" textLength="12.2" clip-path="url(#gilt-demo-progress-line-1)"> </text>
+    <text fill="#f8f8f2" x="740.0" y="88.8" textLength="12.2" clip-path="url(#gilt-demo-progress-line-1)"> </text>
+    <text fill="#f8f8f2" x="752.2" y="88.8" textLength="48.8" clip-path="url(#gilt-demo-progress-line-1)">62% </text>
+    <text fill="#f8f8f2" x="801.0" y="88.8" textLength="85.4" clip-path="url(#gilt-demo-progress-line-1)">-:--:--</text>
+    <text fill="#f8f8f2" x="8.0" y="113.2" textLength="183.0" clip-path="url(#gilt-demo-progress-line-2)">Running tests… </text>
+    <text fill="#f8f8f2" x="191.0" y="113.2" textLength="48.8" clip-path="url(#gilt-demo-progress-line-2)">    </text>
+    <text class="gilt-demo-progress-s2" x="239.8" y="113.2" textLength="317.2" clip-path="url(#gilt-demo-progress-line-2)">━━━━━━━━━━━━━━━━━━━━━━━━━━</text>
+    <text class="gilt-demo-progress-s3" x="557.0" y="113.2" textLength="12.2" clip-path="url(#gilt-demo-progress-line-2)">╸</text>
+    <text class="gilt-demo-progress-s3" x="569.2" y="113.2" textLength="158.6" clip-path="url(#gilt-demo-progress-line-2)">━━━━━━━━━━━━━</text>
+    <text fill="#f8f8f2" x="727.8" y="113.2" textLength="12.2" clip-path="url(#gilt-demo-progress-line-2)"> </text>
+    <text fill="#f8f8f2" x="740.0" y="113.2" textLength="12.2" clip-path="url(#gilt-demo-progress-line-2)"> </text>
+    <text fill="#f8f8f2" x="752.2" y="113.2" textLength="48.8" clip-path="url(#gilt-demo-progress-line-2)">65% </text>
+    <text fill="#f8f8f2" x="801.0" y="113.2" textLength="85.4" clip-path="url(#gilt-demo-progress-line-2)">-:--:--</text>
+    <text fill="#f8f8f2" x="8.0" y="137.6" textLength="207.4" clip-path="url(#gilt-demo-progress-line-3)">Generating docs… </text>
+    <text fill="#f8f8f2" x="215.4" y="137.6" textLength="24.4" clip-path="url(#gilt-demo-progress-line-3)">  </text>
+    <text class="gilt-demo-progress-s2" x="239.8" y="137.6" textLength="170.8" clip-path="url(#gilt-demo-progress-line-3)">━━━━━━━━━━━━━━</text>
+    <text class="gilt-demo-progress-s3" x="410.6" y="137.6" textLength="12.2" clip-path="url(#gilt-demo-progress-line-3)">╸</text>
+    <text class="gilt-demo-progress-s3" x="422.8" y="137.6" textLength="305.0" clip-path="url(#gilt-demo-progress-line-3)">━━━━━━━━━━━━━━━━━━━━━━━━━</text>
+    <text fill="#f8f8f2" x="727.8" y="137.6" textLength="12.2" clip-path="url(#gilt-demo-progress-line-3)"> </text>
+    <text fill="#f8f8f2" x="740.0" y="137.6" textLength="12.2" clip-path="url(#gilt-demo-progress-line-3)"> </text>
+    <text fill="#f8f8f2" x="752.2" y="137.6" textLength="48.8" clip-path="url(#gilt-demo-progress-line-3)">36% </text>
+    <text fill="#f8f8f2" x="801.0" y="137.6" textLength="85.4" clip-path="url(#gilt-demo-progress-line-3)">-:--:--</text>
 
     </g>
     </g>
