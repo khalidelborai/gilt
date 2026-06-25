@@ -197,8 +197,10 @@ impl Console {
             current = hook.process_renderables(current);
         }
         self.render_hooks = hooks;
-        if let Some(r) = current.last().copied() {
-            self.print_styled(r, None, None, None, false, true, self.soft_wrap);
+        // rich's RenderHook pipeline renders EVERY element the hook returns,
+        // in order — not just the last. Each gets its own line (default sep).
+        for r in &current {
+            self.print_styled(*r, None, None, None, false, true, self.soft_wrap);
         }
     }
 
@@ -1623,6 +1625,59 @@ mod batch_7_7_tests {
             *count.lock().unwrap(),
             0,
             "print() should not invoke render hooks (use print_with_hooks)"
+        );
+    }
+
+    /// Regression: a hook that returns MULTIPLE renderables must have ALL of
+    /// them rendered, not just the last. rich's RenderHook pipeline renders
+    /// every element the hook returns (in order); gilt was discarding all but
+    /// `current.last()`.
+    #[test]
+    fn render_hook_multiple_outputs_all_rendered() {
+        use crate::console::RenderHook;
+
+        static FIRST: std::sync::OnceLock<Text> = std::sync::OnceLock::new();
+        static SECOND: std::sync::OnceLock<Text> = std::sync::OnceLock::new();
+        fn first() -> &'static Text {
+            FIRST.get_or_init(|| Text::new("AAA", Style::null()))
+        }
+        fn second() -> &'static Text {
+            SECOND.get_or_init(|| Text::new("BBB", Style::null()))
+        }
+
+        struct MultiHook;
+        impl RenderHook for MultiHook {
+            fn process_renderables<'a>(
+                &self,
+                _: Vec<&'a dyn Renderable>,
+            ) -> Vec<&'a dyn Renderable> {
+                vec![first() as &dyn Renderable, second() as &dyn Renderable]
+            }
+        }
+
+        let mut console = Console::builder()
+            .width(80)
+            .no_color(true)
+            .markup(false)
+            .build();
+        console.add_render_hook(Box::new(MultiHook));
+
+        console.begin_capture();
+        let original = Text::new("ORIGINAL", Style::null());
+        console.print_with_hooks(&original as &dyn Renderable);
+        let out = console.end_capture();
+
+        assert!(
+            out.contains("AAA"),
+            "first hook output should appear: got {out:?}"
+        );
+        assert!(
+            out.contains("BBB"),
+            "second hook output should appear: got {out:?}"
+        );
+        assert!(
+            !out.contains("ORIGINAL"),
+            "original should not appear when hook replaces it: got {out:?}"
         );
     }
 
