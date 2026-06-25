@@ -18,6 +18,7 @@ pub use crate::text::{JustifyMethod, OverflowMethod, Text};
 pub use crate::utils::styled_str::{StyledStr, Stylize};
 
 // Widgets
+pub use crate::barchart::BarChart;
 pub use crate::canvas::Canvas;
 pub use crate::columns::Columns;
 pub use crate::csv_table::CsvTable;
