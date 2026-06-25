@@ -126,6 +126,25 @@ impl TableContext {
 // Renderable implementation
 // ---------------------------------------------------------------------------
 
+/// Remove trailing blockquote prefix and padding segments that were emitted
+/// after the final newline of a block but have no content following them.
+///
+/// The blockquote prefix-wrapping loops emit a prefix after every `\n`
+/// segment to prepare for the next content line.  When the segment stream
+/// ends with a `\n`, the last emitted prefix (and any padding/indent
+/// segments that follow it) dangles with no content after it — rich only
+/// prefixes content lines, never a trailing one.  This function pops those
+/// dangling non-content segments, stopping at the last `\n` or content.
+fn strip_trailing_bq_prefix(segments: &mut Vec<Segment>, bq_prefix: &str) {
+    while let Some(seg) = segments.last() {
+        if seg.text == bq_prefix || seg.text.trim().is_empty() {
+            segments.pop();
+        } else {
+            break;
+        }
+    }
+}
+
 impl Renderable for Markdown {
     fn gilt_console(&self, console: &Console, options: &ConsoleOptions) -> Vec<Segment> {
         let mut segments: Vec<Segment> = Vec::new();
@@ -282,6 +301,9 @@ impl Renderable for Markdown {
                                 segments.push(seg.clone());
                             }
                         }
+                        // Remove trailing blockquote prefix that was emitted after
+                        // the final newline but has no content following it.
+                        strip_trailing_bq_prefix(&mut segments, &bq_prefix);
                     } else {
                         segments.extend(heading_segs);
                     }
@@ -365,6 +387,9 @@ impl Renderable for Markdown {
                                     segments.push(seg.clone());
                                 }
                             }
+                            // Remove trailing blockquote prefix that was emitted after
+                            // the final newline but has no content following it.
+                            strip_trailing_bq_prefix(&mut segments, &bq_prefix);
                         }
                     } else {
                         let text_segs = text_buffer.gilt_console(console, &para_opts);
@@ -573,6 +598,9 @@ impl Renderable for Markdown {
                                     segments.push(seg.clone());
                                 }
                             }
+                            // Remove trailing blockquote prefix that was emitted after
+                            // the final newline but has no content following it.
+                            strip_trailing_bq_prefix(&mut segments, &bq_prefix);
                         } else {
                             segments.extend(block_segs);
                         }
@@ -705,6 +733,9 @@ impl Renderable for Markdown {
                                 segments.push(seg);
                             }
                         }
+                        // Remove trailing blockquote prefix that was emitted after
+                        // the final newline but has no content following it.
+                        strip_trailing_bq_prefix(&mut segments, &bq_prefix);
                     } else {
                         segments.extend(item_buf);
                     }
@@ -818,6 +849,9 @@ impl Renderable for Markdown {
                                 segments.push(seg.clone());
                             }
                         }
+                        // Remove trailing blockquote prefix that was emitted after
+                        // the final newline but has no content following it.
+                        strip_trailing_bq_prefix(&mut segments, &bq_prefix);
                     } else {
                         segments.extend(rule_segs);
                     }
