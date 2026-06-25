@@ -932,11 +932,7 @@ impl Text {
     /// Returns the number of matches that produced a span (matches with an
     /// empty matched range are still counted in iteration but stylize() is a
     /// no-op on zero-width ranges, so they contribute no visible span).
-    pub fn highlight_regex_callable<F>(
-        &mut self,
-        pattern: &Regex,
-        style_fn: F,
-    ) -> usize
+    pub fn highlight_regex_callable<F>(&mut self, pattern: &Regex, style_fn: F) -> usize
     where
         F: Fn(&str) -> Style,
     {
@@ -2612,10 +2608,7 @@ mod tests {
         assert_eq!(base_span.start, 6);
         assert_eq!(base_span.end, 8);
         // group span covers the same "42" (6..8) but with the named-group style
-        let group_span = spans
-            .iter()
-            .find(|s| s.style != base)
-            .expect("group span");
+        let group_span = spans.iter().find(|s| s.style != base).expect("group span");
         assert_eq!(group_span.start, 6);
         assert_eq!(group_span.end, 8);
         assert_eq!(group_span.style.bold(), Some(true));
