@@ -177,7 +177,17 @@ impl Lines {
                         }
                         new_start += shift_start;
                         new_end += shift_end;
-                        new_spans.push(Span::new(new_start, new_end, span.style.clone()));
+                        // Preserve `style_name` and `meta` from the source span
+                        // — `Span::new(..)` would reset both to `None`,
+                        // silently dropping deferred theme tokens (e.g.
+                        // `[repr.number]`) and meta spans (e.g. `[@click]`).
+                        new_spans.push(Span {
+                            start: new_start,
+                            end: new_end,
+                            style: span.style.clone(),
+                            meta: span.meta.clone(),
+                            style_name: span.style_name.clone(),
+                        });
                     }
 
                     // Insert gap spans (rich's `Lines.justify(Full)` resolves the

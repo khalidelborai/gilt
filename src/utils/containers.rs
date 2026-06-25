@@ -712,6 +712,66 @@ mod tests {
         assert_eq!(gap1.style, italic);
     }
 
+    // -- deep-review: style_name + meta survival through Full justify --------
+
+    /// A named span (`style_name = Some("repr.number")`) must survive
+    /// `Lines::justify(Full)` with its `style_name` intact.  Before the fix
+    /// the span was reconstructed with `Span::new(..)` which reset
+    /// `style_name` to `None`, silently dropping the deferred theme token.
+    #[test]
+    fn test_lines_justify_full_preserves_style_name() {
+        let console = make_console();
+        // "a b c" = 5 chars, width = 9 -> 4 extra spaces among 2 gaps.
+        // per_gap = 2, remainder = 0 -> "a   b   c" (3 spaces per gap).
+        let mut text = Text::new("a b c", Style::null());
+        // Named span on "b" (char offset 2..3 in the original text).
+        text.spans_mut().push(Span::named(2, 3, "repr.number"));
+        let mut lines = Lines::new(vec![text, Text::new("end", Style::null())]);
+        lines.justify(&console, 9, JustifyMethod::Full, OverflowMethod::Fold);
+        assert_eq!(lines[0].plain(), "a   b   c");
+        // The named span must still carry its style_name after the offset
+        // shift (b now lives at offset 4..5).
+        let named = lines[0]
+            .spans()
+            .iter()
+            .find(|s| s.style_name.is_some())
+            .expect("named span must survive Full justify");
+        assert_eq!(named.style_name(), Some("repr.number"));
+        assert_eq!(named.start, 4);
+        assert_eq!(named.end, 5);
+    }
+
+    /// A meta span (e.g. from `[@click]`) must survive `Lines::justify(Full)`
+    /// with its `meta` map intact.  Before the fix `Span::new(..)` reset
+    /// `meta` to `None`.
+    #[test]
+    fn test_lines_justify_full_preserves_meta() {
+        use std::collections::HashMap;
+        use std::sync::Arc;
+
+        let console = make_console();
+        let mut text = Text::new("a b c", Style::null());
+        let mut m = HashMap::new();
+        m.insert("@click".to_string(), "true".to_string());
+        // Meta span on "c" (char offset 4..5 in the original text).
+        text.spans_mut()
+            .push(Span::with_meta(4, 5, Style::null(), Some(Arc::new(m))));
+        let mut lines = Lines::new(vec![text, Text::new("end", Style::null())]);
+        lines.justify(&console, 9, JustifyMethod::Full, OverflowMethod::Fold);
+        assert_eq!(lines[0].plain(), "a   b   c");
+        // The meta span must still carry its metadata after the offset shift
+        // (c now lives at offset 8..9).
+        let meta_span = lines[0]
+            .spans()
+            .iter()
+            .find(|s| s.meta.is_some())
+            .expect("meta span must survive Full justify");
+        let meta = meta_span.meta.as_ref().unwrap();
+        assert_eq!(meta.get("@click").map(|v| v.as_str()), Some("true"));
+        assert_eq!(meta_span.start, 8);
+        assert_eq!(meta_span.end, 9);
+    }
+
     // -- gilt_measure override -----------------------------------------------
 
     #[test]
